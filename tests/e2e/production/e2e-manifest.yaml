@@ -556,7 +556,7 @@ flows:
           layoutSpec:
             rows: 4
             cols: 6
-          status: active
+          status: published
     expected_status: 204
     cleanup: none
 
@@ -682,7 +682,7 @@ flows:
       Content-Type: application/json
     request_template:
       operator_session_id: "{{operatorSessionId}}"
-      reason: refill
+      reason: restock
       items:
         - cabinetCode: A
           slotCode: A1

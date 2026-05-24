@@ -1495,7 +1495,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"refill\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}"
+              "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}"
             },
             "auth": {
               "type": "bearer",
@@ -1769,7 +1769,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"active\"\n    }\n  ]\n}"
+              "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"published\"\n    }\n  ]\n}"
             },
             "auth": {
               "type": "bearer",

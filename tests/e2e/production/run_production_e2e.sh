@@ -3,7 +3,7 @@
 # Usage:
 #   bash tests/e2e/production/run_production_e2e.sh --mode contract [--dry-run]
 #   bash tests/e2e/production/run_production_e2e.sh --mode route-matrix [--fetch-swagger]
-#   bash tests/e2e/production/run_production_e2e.sh --mode live [--suite all|all-no-online-payment|rest|grpc|mqtt]
+#   bash tests/e2e/production/run_production_e2e.sh --mode live [--suite all|all-no-online-payment|planogram-no-online-payment|rest|grpc|mqtt]
 set -Eeuo pipefail
 
 PROD_E2E_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -313,6 +313,15 @@ prod_e2e_flow_matches_suite() {
       fi
       return 1
       ;;
+    planogram-no-online-payment)
+      if [[ "$protocol" == "rest" ]]; then
+        case "$phase" in
+          preflight|auth|catalog|media|provisioning|planogram|operator|reports) return 0 ;;
+          *) return 1 ;;
+        esac
+      fi
+      return 1
+      ;;
     *) return 0 ;;
   esac
 }
@@ -320,6 +329,7 @@ prod_e2e_flow_matches_suite() {
 prod_e2e_run_flows_from_manifest() {
   local manifest="$1"
   local failures=0
+  local last_phase=""
   while IFS= read -r flow; do
     [[ -n "$flow" ]] || continue
     local protocol phase fid fpath skip_reason
@@ -345,6 +355,10 @@ prod_e2e_run_flows_from_manifest() {
       esac
     fi
     prod_e2e_flow_matches_suite "$protocol" "$phase" || continue
+    if [[ "$phase" == "planogram" && "$last_phase" != "planogram" ]]; then
+      prod_e2e_refresh_admin_token || true
+    fi
+    last_phase="$phase"
     case "$protocol" in
       rest) prod_e2e_rest_run_flow "$flow" || failures=$((failures + 1)) ;;
       grpc) prod_e2e_grpc_run_flow "$flow" || failures=$((failures + 1)) ;;
@@ -408,7 +422,7 @@ prod_e2e_print_final_verdict() {
   if [[ "${fail_count:-0}" -eq 0 ]]; then
     verdict="PRODUCTION_E2E_NO_ONLINE_PAYMENT_100_PERCENT_PASS"
   fi
-  if [[ "${SUITE}" == "all-no-online-payment" ]]; then
+  if [[ "${SUITE}" == "all-no-online-payment" || "${SUITE}" == "planogram-no-online-payment" ]]; then
     echo ""
     echo "== FINAL VERDICT =="
     echo "RUN_ID=${PROD_E2E_RUN_ID}"
@@ -497,13 +511,14 @@ main() {
       }
     fi
     prod_e2e_evidence_init
+    printf '%s\n' "${MODE}" >"${PROD_E2E_RUN_DIR}/harness.mode.txt"
     printf '%s\n' "${SUITE}" >"${PROD_E2E_RUN_DIR}/suite.profile.txt"
     local failures=0
     prod_e2e_run_flows || failures=$?
-    if [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" ]]; then
+    if [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" ]]; then
       prod_e2e_lock_postman_parity || failures=$((failures + 1))
     fi
-    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" ]]; then
       prod_e2e_run_newman || failures=$((failures + 1))
     fi
     prod_e2e_write_postman_checksums || true

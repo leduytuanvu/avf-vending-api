@@ -36,7 +36,7 @@ prod_e2e_rest_execute_flow() {
     body="$(prod_e2e_render_json_template "$fixture")"
   else
     body="$(echo "$flow_json" | jq -c '.request_template // {}')"
-    body="$(prod_e2e_render_template_string "$body")"
+    body="$(prod_e2e_coerce_json_body "$(prod_e2e_render_template_string "$body")")"
   fi
 
   jq -nc \
@@ -63,10 +63,10 @@ prod_e2e_rest_execute_flow() {
         prod_e2e_state_reload_key accessToken || true
         prod_e2e_state_reload_key ADMIN_TOKEN || true
       fi
-      if [[ -n "${ADMIN_TOKEN:-}" ]]; then
-        curl_opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
-      elif [[ -n "${accessToken:-}" ]]; then
+      if [[ -n "${accessToken:-}" ]]; then
         curl_opts+=(-H "Authorization: Bearer ${accessToken}")
+      elif [[ -n "${ADMIN_TOKEN:-}" ]]; then
+        curl_opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
       fi
       ;;
     bearer_machine)
