@@ -73,6 +73,9 @@ prod_e2e_grpc_idem_context() {
 }
 
 prod_e2e_grpc_machine_token() {
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key machineToken || true
+  fi
   printf '%s' "${machineToken:-${MACHINE_TOKEN:-}}"
 }
 
