@@ -20,10 +20,16 @@ prod_e2e_mqtt_resolve_topics() {
   fi
 
   local layout prefix
-  layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
-  prefix="${MQTT_TOPIC_PREFIX:-avf/prod}"
-  prefix="$(echo "$prefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
-  prefix="${prefix//$'\r'/}"
+  if [[ -n "${mqttTopicPrefix:-}" ]]; then
+    prefix="$(echo "$mqttTopicPrefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
+    prefix="${prefix//$'\r'/}"
+    layout="legacy"
+  else
+    layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
+    prefix="${MQTT_TOPIC_PREFIX:-avf/prod}"
+    prefix="$(echo "$prefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
+    prefix="${prefix//$'\r'/}"
+  fi
 
   if [[ "$layout" == "enterprise" ]]; then
     export PROD_E2E_MQTT_TOPIC_COMMAND_IN="${prefix}/machines/${mid}/commands"
