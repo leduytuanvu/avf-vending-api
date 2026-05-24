@@ -57,6 +57,7 @@ prod_e2e_state_set() {
     printf 'ADMIN_TOKEN=%q\n' "$val" >>"${PROD_E2E_STATE_FILE}.tmp"
     mv "${PROD_E2E_STATE_FILE}.tmp" "${PROD_E2E_STATE_FILE}"
     prod_e2e_state_reload_key ADMIN_TOKEN
+    prod_e2e_state_set accessTokenIssuedAt "$(date +%s)"
   fi
   if [[ "$key" == "machineToken" ]]; then
     export MACHINE_TOKEN="$val"

@@ -45,3 +45,55 @@ profiles:
       - /refunds
       - CreatePaymentSession
     skip_reason: "excluded by operator request: no online payment test"
+  route-coverage-no-online-payment:
+    description: >-
+      Targeted REST route coverage only (preflight + auth + REST-COV). Excludes online payment.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
+  grpc-token-no-online-payment:
+    description: >-
+      Targeted gRPC token bootstrap and refresh (activation + RefreshMachineToken + GetBootstrap).
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  newman-no-online-payment:
+    description: >-
+      Shell provisioning through reports/planogram then Newman reuse-mode (no duplicate provisioning).
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"

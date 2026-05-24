@@ -2,6 +2,29 @@
 # shellcheck shell=bash
 # REST flow executor — saves raw artifacts under .e2e-runs/production/<runId>/raw/
 
+prod_e2e_rest_expected_includes_status() {
+  local expected="$1"
+  local status="$2"
+  if echo "$expected" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    echo "$expected" | jq -e --argjson s "$status" 'index($s) != null' >/dev/null 2>&1
+    return $?
+  fi
+  [[ "$expected" == "$status" ]]
+}
+
+prod_e2e_rest_curl_once() {
+  local method="$1"
+  local -n _opts="$2"
+  local url="$3"
+  local body="$4"
+  case "$method" in
+    GET) curl "${_opts[@]}" "$url" || true ;;
+    POST|PUT|PATCH) curl "${_opts[@]}" -X "$method" -d "$body" "$url" || true ;;
+    DELETE) curl "${_opts[@]}" -X DELETE "$url" || true ;;
+    *) echo "000" ;;
+  esac
+}
+
 prod_e2e_rest_execute_flow() {
   local flow_json="$1"
   local id label method path auth evidence_label expected_status optional
@@ -96,20 +119,31 @@ prod_e2e_rest_execute_flow() {
 
   local code=""
   case "$method" in
-    GET)
-      code="$(curl "${curl_opts[@]}" "$url" || true)"
-      ;;
-    POST|PUT|PATCH)
-      code="$(curl "${curl_opts[@]}" -X "$method" -d "$body" "$url" || true)"
-      ;;
-    DELETE)
-      code="$(curl "${curl_opts[@]}" -X DELETE "$url" || true)"
+    GET|POST|PUT|PATCH|DELETE)
+      code="$(prod_e2e_rest_curl_once "$method" curl_opts "$url" "$body")"
       ;;
     *)
       echo "REST unsupported method ${method} for ${id}" >&2
       return 1
       ;;
   esac
+
+  if [[ "${PROD_E2E_RETRY_ON_AUTH_401:-1}" == "1" && "$code" == "401" && "$auth" == "bearer_admin" ]] \
+    && ! prod_e2e_rest_expected_includes_status "$expected_status" "401"; then
+    if prod_e2e_refresh_admin_token "${PROD_E2E_REST_COV_INDEX:-0}"; then
+      prod_e2e_state_reload_key accessToken || true
+      local -a retry_opts=()
+      local opt
+      for opt in "${curl_opts[@]}"; do
+        [[ "$opt" == Authorization:* ]] && continue
+        retry_opts+=("$opt")
+      done
+      if [[ -n "${accessToken:-}" ]]; then
+        retry_opts+=(-H "Authorization: Bearer ${accessToken}")
+        code="$(prod_e2e_rest_curl_once "$method" retry_opts "$url" "$body")"
+      fi
+    fi
+  fi
 
   jq -nc --arg method "$method" --arg path "$path" --argjson code "${code:-0}" \
     '{method:$method,path:$path,http_code:$code}' >"$meta_file"
@@ -146,11 +180,18 @@ prod_e2e_rest_execute_flow() {
 }
 
 # Re-authenticate admin before long REST-COV phase (JWT may expire during main manifest).
+prod_e2e_admin_token_age_sec() {
+  local issued="${accessTokenIssuedAt:-0}"
+  [[ "$issued" =~ ^[0-9]+$ ]] || { echo "0"; return 0; }
+  echo "$(( $(date +%s) - issued ))"
+}
+
 prod_e2e_refresh_admin_token() {
+  local flow_index="${1:-0}"
   [[ "${PROD_E2E_DRY_RUN:-}" == "1" ]] && return 0
   prod_e2e_state_reload_key refreshToken || true
   prod_e2e_state_reload_key accessToken || true
-  prod_e2e_state_reload_key ADMIN_TOKEN || true
+  prod_e2e_state_reload_key accessTokenIssuedAt || true
 
   if [[ -n "${refreshToken:-}" ]]; then
     local body resp_file code
@@ -162,12 +203,14 @@ prod_e2e_refresh_admin_token() {
       -X POST "${BASE_URL%/}/v1/auth/refresh" \
       -d "$body" 2>/dev/null || echo "000")"
     if [[ "$code" == "200" ]] && jq -e '.tokens.accessToken // .accessToken' "$resp_file" >/dev/null 2>&1; then
-      local at rt
+      local at rt now
       at="$(jq -r '.tokens.accessToken // .accessToken // empty' "$resp_file")"
       rt="$(jq -r '.tokens.refreshToken // .refreshToken // empty' "$resp_file")"
+      now="$(date +%s)"
       [[ -n "$at" ]] && prod_e2e_state_set accessToken "$at"
       [[ -n "$rt" ]] && prod_e2e_state_set refreshToken "$rt"
-      echo "ADMIN_TOKEN_REFRESH ok (pre REST-COV)"
+      prod_e2e_state_set accessTokenIssuedAt "$now"
+      echo "AUTH_REFRESH=OK flow_index=${flow_index} token_age_sec=0"
       return 0
     fi
   fi
@@ -181,17 +224,19 @@ prod_e2e_refresh_admin_token() {
       -X POST "${BASE_URL%/}/v1/auth/login" \
       -d "$login_body" 2>/dev/null || echo "000")"
     if [[ "$code" == "200" ]]; then
-      local at rt
+      local at rt now
       at="$(jq -r '.tokens.accessToken // empty' "$login_resp")"
       rt="$(jq -r '.tokens.refreshToken // empty' "$login_resp")"
+      now="$(date +%s)"
       [[ -n "$at" ]] && prod_e2e_state_set accessToken "$at"
       [[ -n "$rt" ]] && prod_e2e_state_set refreshToken "$rt"
-      echo "ADMIN_TOKEN_RELOGIN ok (pre REST-COV)"
+      prod_e2e_state_set accessTokenIssuedAt "$now"
+      echo "AUTH_REFRESH=OK flow_index=${flow_index} token_age_sec=0"
       return 0
     fi
   fi
 
-  echo "WARN: could not refresh admin token before REST-COV" >&2
+  echo "WARN: could not refresh admin token (flow_index=${flow_index} token_age_sec=$(prod_e2e_admin_token_age_sec))" >&2
   return 1
 }
 
