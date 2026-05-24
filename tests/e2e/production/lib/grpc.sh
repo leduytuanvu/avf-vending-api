@@ -19,9 +19,9 @@ prod_e2e_grpc_call_raw() {
   local hdr_file="${PROD_E2E_RAW_DIR}/${evidence_label}.metadata.txt"
   local log_redacted="${PROD_E2E_RAW_DIR}/${evidence_label}.grpc.redacted.log"
 
-  printf '%s\n' "$req_body" >"$req_file"
-  prod_e2e_redact_file "$req_file" "${req_file}.redacted"
-  mv "${req_file}.redacted" "$req_file"
+  local req_send_file="${PROD_E2E_RAW_DIR}/${evidence_label}.request.send.json"
+  printf '%s\n' "$req_body" >"$req_send_file"
+  prod_e2e_redact_file "$req_send_file" "$req_file"
 
   local -a args=()
   prod_e2e_grpc_proto_args args || return 1
@@ -69,9 +69,10 @@ prod_e2e_grpc_call_raw() {
 
   set +e
   grpcurl "${args[@]}" -max-time "${GRPC_MAX_TIME:-120}" "${grpc_target}" "${full_method}" \
-    <"$req_file" >"$resp_file" 2>"$log_file"
+    <"$req_send_file" >"$resp_file" 2>"$log_file"
   rc=$?
   set -e
+  rm -f "$req_send_file"
   t1="$(prod_e2e_py -c 'import time; print(time.time())')"
   elapsed="$(prod_e2e_py -c "print(int((${t1} - ${t0}) * 1000))")"
 
@@ -168,8 +169,12 @@ prod_e2e_grpc_execute_flow() {
   full_method="$(prod_e2e_grpc_full_method "$service" "$rpc")"
 
   if ! prod_e2e_grpc_call_raw "$full_method" "$req_body" "$evidence_label" "$auth" "$idem_key"; then
+    local grpc_err grpc_meta="${PROD_E2E_RAW_DIR}/${evidence_label}.meta.json"
+    grpc_err="$(grep -E 'Code:|Message:' "${PROD_E2E_RAW_DIR}/${evidence_label}.grpc.log" 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' || true)"
+    prod_e2e_fail_classify "a" "$id" "method=${full_method} grpcurl_exit=${PROD_E2E_GRPC_LAST_RC:-1} ${grpc_err:-grpc call failed}"
     prod_e2e_evidence_append_row "$id" "$label" "grpc" "fail" "$evidence_label"
     prod_e2e_evidence_append_grpc_section "$id" "$evidence_label" "$full_method" "ERROR"
+    [[ -f "$grpc_meta" ]] && jq -c '{grpcurl_exit, method, error_code, meta_status}' "$grpc_meta" 2>/dev/null >&2 || true
     return 1
   fi
 
