@@ -141,6 +141,7 @@ flows:
     phase: catalog
     protocol: rest
     evidence_label: rest-category-create
+    postman_skip_if_env: categoryId
     auth: bearer_admin
     method: POST
     path: /v1/admin/categories
@@ -165,6 +166,7 @@ flows:
     phase: catalog
     protocol: rest
     evidence_label: rest-brand-create
+    postman_skip_if_env: brandId
     auth: bearer_admin
     method: POST
     path: /v1/admin/brands
@@ -188,6 +190,7 @@ flows:
     phase: catalog
     protocol: rest
     evidence_label: rest-tag-create
+    postman_skip_if_env: tagId
     auth: bearer_admin
     method: POST
     path: /v1/admin/tags
@@ -312,6 +315,7 @@ flows:
     phase: catalog
     protocol: rest
     evidence_label: rest-product-create
+    postman_skip_if_env: productId
     auth: bearer_admin
     method: POST
     path: /v1/admin/products
@@ -361,6 +365,7 @@ flows:
     phase: provisioning
     protocol: rest
     evidence_label: rest-site-create
+    postman_skip_if_env: siteId
     auth: bearer_admin
     method: POST
     path: /v1/admin/sites
@@ -386,6 +391,7 @@ flows:
     phase: provisioning
     protocol: rest
     evidence_label: rest-machine-create
+    postman_skip_if_env: machineId
     auth: bearer_admin
     method: POST
     path: /v1/admin/machines
@@ -453,6 +459,7 @@ flows:
     phase: provisioning
     protocol: rest
     evidence_label: rest-activation-claim
+    postman_skip_if_env: machineAccessToken
     auth: none
     method: POST
     path: /v1/setup/activation-codes/claim

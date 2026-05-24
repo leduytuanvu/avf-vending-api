@@ -152,10 +152,14 @@ prod_e2e_grpc_execute_flow() {
   local req_body idem_key
   req_body="$(echo "$flow_json" | jq -c '.request_template // {}')"
   req_body="$(prod_e2e_render_template_string "$req_body")"
-  if echo "$req_body" | jq -e '.meta == null or (.meta | type == "object" and length == 0)' >/dev/null 2>&1; then
-    local meta_json
-    meta_json="$(prod_e2e_grpc_meta_json "${PROD_E2E_PREFIX}-${evidence_label}")"
-    req_body="$(echo "$req_body" | jq --argjson m "$meta_json" '. + {meta: $m}')"
+  local inject_meta
+  inject_meta="$(echo "$flow_json" | jq -r '.inject_meta // true')"
+  if [[ "$inject_meta" != "false" && "$inject_meta" != "0" ]]; then
+    if echo "$req_body" | jq -e '.meta == null or (.meta | type == "object" and length == 0)' >/dev/null 2>&1; then
+      local meta_json
+      meta_json="$(prod_e2e_grpc_meta_json "${PROD_E2E_PREFIX}-${evidence_label}")"
+      req_body="$(echo "$req_body" | jq --argjson m "$meta_json" '. + {meta: $m}')"
+    fi
   fi
   idem_key="$(echo "$flow_json" | jq -r '.idempotency_key // empty')"
   idem_key="$(prod_e2e_render_template_string "$idem_key")"

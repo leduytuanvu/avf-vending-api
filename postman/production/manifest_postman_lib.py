@@ -31,6 +31,7 @@ MANIFEST_TO_POSTMAN_VAR: dict[str, str] = {
     "machineId": "machineId",
     "activationCode": "activationCode",
     "machineToken": "machineAccessToken",
+    "machineRefreshToken": "machineRefreshToken",
     "orderId": "orderId",
     "paymentId": "paymentId",
     "commandId": "commandId",
@@ -47,6 +48,7 @@ POSTMAN_ENV_KEYS: list[tuple[str, str]] = [
     ("adminEmailInvalidTest", "e2e-invalid@invalid.local"),
     ("accessToken", ""),
     ("machineAccessToken", ""),
+    ("machineRefreshToken", ""),
     ("machineId", ""),
     ("activationCode", ""),
     ("runId", ""),
@@ -68,6 +70,16 @@ POSTMAN_ENV_KEYS: list[tuple[str, str]] = [
     ("planogramRevision", ""),
     ("allowGatedWrites", "false"),
     ("confirmProductionWrites", ""),
+    ("newmanReuseShellState", "false"),
+]
+
+SKIP_IF_ENV_PREREQUEST = [
+    "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
+    "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
+    "const envKey = pm.variables.get('_postman_skip_if_env_key');",
+    "if (reuse && envKey && pm.environment.get(envKey)) {",
+    "  pm.execution.skipRequest();",
+    "}",
 ]
 
 GATED_PREREQUEST = [
@@ -397,6 +409,11 @@ def build_postman_events(flow: dict[str, Any], manifest: dict[str, Any]) -> list
     needs_gate = auth not in ("none", "webhook_hmac", "webhook_hmac_invalid", "webhook_hmac_stale")
     if needs_gate and phase not in gate_phases and phase not in exclude:
         events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": GATED_PREREQUEST}})
+    skip_env = flow.get("postman_skip_if_env")
+    if skip_env:
+        lines = list(SKIP_IF_ENV_PREREQUEST)
+        lines.insert(1, f"pm.variables.set('_postman_skip_if_env_key', '{skip_env}');")
+        events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": lines}})
     if auth in WEBHOOK_PREREQUEST:
         events.append(
             {"listen": "prerequest", "script": {"type": "text/javascript", "exec": WEBHOOK_PREREQUEST[auth]}}
