@@ -25,8 +25,8 @@ from datetime import datetime, timezone
 
 run_dir = Path(os.environ['PROD_E2E_RUN_DIR'])
 prefix = os.environ.get('PROD_E2E_PREFIX', '')
-state_path = Path(os.environ.get('PROD_E2E_STATE_JSON', run_dir / 'state.json'))
-attestation = Path(os.environ['PROD_E2E_CLEANUP_ATTESTATION'])
+state_path = Path(os.environ.get('PROD_E2E_STATE_JSON', str(run_dir / 'state.json')))
+attestation = run_dir / 'cleanup-attestation.json'
 
 state = {}
 if state_path.is_file():
@@ -74,7 +74,6 @@ print('CLEANUP_ATTESTATION', attestation)
     PROD_E2E_RUN_DIR="${PROD_E2E_RUN_DIR}" \
     PROD_E2E_PREFIX="${prefix}" \
     PROD_E2E_STATE_JSON="${state_json}" \
-    PROD_E2E_CLEANUP_ATTESTATION="${attestation}" \
     PROD_E2E_CLEANUP_NOTE="${note}" || status="fail"
 
   echo "CLEANUP_ATTESTATION status=${status} path=${attestation}"
