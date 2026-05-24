@@ -52,6 +52,8 @@ prod_e2e_render_template_string() {
   s="${s//\{\{mediaFingerprint\}\}/${mediaFingerprint:-initial}}"
   s="${s//\{\{currency\}\}/${currency:-VND}}"
   s="${s//\{\{slotIndex\}\}/${slotIndex:-1}}"
+  s="${s//\{\{reportFrom\}\}/${PROD_E2E_REPORT_FROM:-2026-03-01T00:00:00Z}}"
+  s="${s//\{\{reportTo\}\}/${PROD_E2E_REPORT_TO:-2026-05-23T23:59:59Z}}"
   if [[ -f "${PROD_E2E_STATE_FILE}" ]]; then
     while IFS='=' read -r key val; do
       [[ -n "$key" ]] || continue

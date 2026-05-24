@@ -33,6 +33,31 @@ prod_e2e_grpc_slot_index() {
   echo "${slotIndex:-1}"
 }
 
+prod_e2e_grpc_slot_quantity() {
+  local resp_file="$1"
+  local si qty
+  si="$(prod_e2e_grpc_slot_index)"
+  qty="$(jq -r --argjson si "$si" '
+    (.slots // [])[] |
+    select(.slotIndex == $si or .slot_index == $si) |
+    (.currentQuantity // .current_quantity // empty)
+  ' "$resp_file" 2>/dev/null | head -n1)"
+  if [[ -z "$qty" || "$qty" == "null" ]]; then
+    qty="$(jq -r --arg sc "A1" '
+      (.slots // [])[] |
+      select(.slotCode == $sc or .slot_code == $sc) |
+      (.currentQuantity // .current_quantity // empty)
+    ' "$resp_file" 2>/dev/null | head -n1)"
+  fi
+  echo "${qty:-0}"
+}
+
+prod_e2e_grpc_normalize_sha256() {
+  local s="$1"
+  s="${s#sha256:}"
+  printf '%s' "$s"
+}
+
 prod_e2e_grpc_handler_catalog_sync_assert() {
   local flow_json="$1"
   local id evidence_label
@@ -102,9 +127,14 @@ prod_e2e_grpc_handler_media_download_cache() {
       failures=$((failures + 1))
       continue
     fi
-    if [[ -n "$sha256" && -n "$dl_sha" && "$sha256" != "$dl_sha" ]]; then
-      prod_e2e_fail_classify "c" "$id" "media download sha256 mismatch for ${url}"
-      failures=$((failures + 1))
+    if [[ -n "$sha256" && -n "$dl_sha" ]]; then
+      local exp_sha act_sha
+      exp_sha="$(prod_e2e_grpc_normalize_sha256 "$sha256")"
+      act_sha="$(prod_e2e_grpc_normalize_sha256 "$dl_sha")"
+      if [[ "$exp_sha" != "$act_sha" ]]; then
+        prod_e2e_fail_classify "c" "$id" "media download sha256 mismatch for ${url}"
+        failures=$((failures + 1))
+      fi
     fi
   done < <(jq -r '
     (.entries // [])[] |
@@ -141,8 +171,7 @@ prod_e2e_grpc_handler_inventory_snapshot_capture() {
   evidence_label="$(echo "$flow_json" | jq -r '.evidence_label')"
   local resp="${PROD_E2E_RAW_DIR}/${evidence_label}.response.json"
   local qty
-  qty="$(jq -r --arg sc "A1" '(.slots // [])[] | select(.slotCode==$sc or .slot_code==$sc) | (.currentQuantity // .current_quantity // 0)' "$resp" 2>/dev/null | head -n1)"
-  qty="${qty:-0}"
+  qty="$(prod_e2e_grpc_slot_quantity "$resp")"
   prod_e2e_state_set inventoryQtySlotA1 "$qty"
   return 0
 }
@@ -178,18 +207,17 @@ prod_e2e_grpc_handler_commerce_cash() {
   [[ -n "$oid" ]] || { prod_e2e_fail_classify "c" "$id" "CreateOrder missing orderId"; return 1; }
   prod_e2e_state_set grpcCashOrderId "$oid"
 
-  local ctx cc_body full
+  local inv_before inv_after ctx cc_body full
   ctx="$(prod_e2e_grpc_idem_context "${stem}-confirm")"
   cc_body="$(jq -nc --argjson ctx "$ctx" --arg oid "$oid" '{context:$ctx, orderId:$oid}')"
   full="$(prod_e2e_grpc_full_method MachineCommerceService ConfirmCashPayment)"
   prod_e2e_grpc_call_raw "$full" "$cc_body" "grpc-${stem}-confirm-cash" machine "$(echo "$ctx" | jq -r '.idempotencyKey')" || return 1
 
-  local inv_before inv_after
   inv_before="${inventoryQtySlotA1:-}"
   prod_e2e_grpc_call_raw "$(prod_e2e_grpc_full_method MachineInventoryService GetInventorySnapshot)" \
     "$(jq -nc --argjson meta "$(prod_e2e_grpc_meta_json "${stem}-inv-pre")" '{meta:$meta}')" \
     "grpc-${stem}-inv-pre" machine "" || true
-  inv_before="$(jq -r --arg sc "A1" '(.slots // [])[] | select(.slotCode==$sc) | .currentQuantity' "${PROD_E2E_RAW_DIR}/grpc-${stem}-inv-pre.response.json" 2>/dev/null | head -n1)"
+  inv_before="$(prod_e2e_grpc_slot_quantity "${PROD_E2E_RAW_DIR}/grpc-${stem}-inv-pre.response.json")"
   inv_before="${inv_before:-0}"
 
   ctx="$(prod_e2e_grpc_idem_context "${stem}-vstart")"
@@ -212,7 +240,7 @@ prod_e2e_grpc_handler_commerce_cash() {
   prod_e2e_grpc_call_raw "$(prod_e2e_grpc_full_method MachineInventoryService GetInventorySnapshot)" \
     "$(jq -nc --argjson meta "$(prod_e2e_grpc_meta_json "${stem}-inv-post")" '{meta:$meta}')" \
     "grpc-${stem}-inv-post" machine "" || return 1
-  inv_after="$(jq -r --arg sc "A1" '(.slots // [])[] | select(.slotCode==$sc) | .currentQuantity' "${PROD_E2E_RAW_DIR}/grpc-${stem}-inv-post.response.json" 2>/dev/null | head -n1)"
+  inv_after="$(prod_e2e_grpc_slot_quantity "${PROD_E2E_RAW_DIR}/grpc-${stem}-inv-post.response.json")"
   inv_after="${inv_after:-0}"
 
   if [[ "$inv_after" -ge "$inv_before" ]]; then

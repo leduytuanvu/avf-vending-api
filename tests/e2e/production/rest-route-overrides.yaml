@@ -136,6 +136,27 @@ routes:
     postman: true
 
   - method: GET
+    path: /v1/admin/reports/cash-collections/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/payments-summary/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/sales-summary/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
     path: /v1/reports/fleet-health
     coverage: success
     auth: bearer_admin
@@ -154,12 +175,40 @@ routes:
     postman: true
 
   - method: POST
-    coverage: auth_negative
-    skip_reason: null
-    flow_hint: Requires refresh token from login; covered indirectly via REST-AUTH-001 capture
+    path: /v1/auth/refresh
+    coverage: documented_skip
+    skip_reason: Token refresh chained from REST-AUTH-001 login capture; standalone unauthenticated probe is not contract-stable
     postman: false
     non_postman: true
-    non_postman_reason: Token refresh chained from login flow; not a standalone Postman request
+    non_postman_reason: Covered indirectly via login flow capture
+
+  - method: GET
+    path: /v1/admin/auth/users
+    coverage: documented_skip
+    skip_reason: List requires company scope; HTTP handler passes Nil companyID and returns 400 by contract
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/users
+    coverage: documented_skip
+    skip_reason: List requires company scope; returns 400 without company context in production
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/machines/{machineId}/check-ins
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted in production; use gRPC CheckIn
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/machines/{machineId}/config-applies
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted in production
+    postman: false
+    non_postman: true
 
   - method: POST
     path: /v1/auth/logout
@@ -192,8 +241,8 @@ routes:
   - method: POST
     path: /v1/auth/password/reset/request
     coverage: auth_negative
-    flow_hint: Public endpoint; unauthenticated probe expects 400/422 not customer email blast
-    expected_status: 422
+    flow_hint: Public endpoint; unauthenticated probe expects 400 without email body
+    expected_status: 400
     postman: true
 
   - method: POST
