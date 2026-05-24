@@ -18,6 +18,12 @@ prod_e2e_run_cleanup_attestation() {
   local status="pass"
   local note="attestation_only — no automated DELETE/archive APIs wired for production E2E yet"
 
+  export PROD_E2E_RUN_DIR="${PROD_E2E_RUN_DIR}"
+  export PROD_E2E_PREFIX="${prefix}"
+  export PROD_E2E_STATE_JSON="${state_json}"
+  export PROD_E2E_CLEANUP_ATTESTATION="${attestation}"
+  export PROD_E2E_CLEANUP_NOTE="${note}"
+
   prod_e2e_py -c "
 import json, os, re
 from pathlib import Path
@@ -70,12 +76,7 @@ doc = {
 }
 attestation.write_text(json.dumps(doc, indent=2) + '\n', encoding='utf-8')
 print('CLEANUP_ATTESTATION', attestation)
-" \
-    PROD_E2E_RUN_DIR="${PROD_E2E_RUN_DIR}" \
-    PROD_E2E_PREFIX="${prefix}" \
-    PROD_E2E_STATE_JSON="${state_json}" \
-    PROD_E2E_CLEANUP_ATTESTATION="${attestation}" \
-    PROD_E2E_CLEANUP_NOTE="${note}" || status="fail"
+" || status="fail"
 
   echo "CLEANUP_ATTESTATION status=${status} path=${attestation}"
 }

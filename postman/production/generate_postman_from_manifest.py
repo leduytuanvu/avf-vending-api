@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -14,8 +15,18 @@ from manifest_postman_lib import (  # noqa: E402
 )
 
 MANIFEST_MAIN = REPO_ROOT / "tests" / "e2e" / "production" / "e2e-manifest.yaml"
-OUT_COLL = REPO_ROOT / "postman" / "production" / "avf-production-e2e.postman_collection.json"
-OUT_ENV = REPO_ROOT / "postman" / "production" / "avf-production-e2e.postman_environment.json"
+OUT_COLL = Path(
+    os.environ.get(
+        "PROD_E2E_POSTMAN_OUT_COLL",
+        str(REPO_ROOT / "postman" / "production" / "avf-production-e2e.postman_collection.json"),
+    )
+)
+OUT_ENV = Path(
+    os.environ.get(
+        "PROD_E2E_POSTMAN_OUT_ENV",
+        str(REPO_ROOT / "postman" / "production" / "avf-production-e2e.postman_environment.json"),
+    )
+)
 
 
 def main() -> int:
