@@ -257,6 +257,16 @@ print('POSTMAN_CHECKSUMS', json.dumps(artifacts))
 "
 }
 
+prod_e2e_generate_postman_runtime_collection() {
+  [[ "${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}" == "1" ]] || return 0
+  local coll="${PROD_E2E_RUN_DIR}/postman/runtime.postman_collection.json"
+  mkdir -p "${PROD_E2E_RUN_DIR}/postman"
+  export PROD_E2E_POSTMAN_OUT_COLL="$coll"
+  export PROD_E2E_POSTMAN_OUT_ENV="${PROD_E2E_RUN_DIR}/postman/runtime.postman_template.environment.json"
+  prod_e2e_py "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py" || return 1
+  unset PROD_E2E_POSTMAN_OUT_COLL PROD_E2E_POSTMAN_OUT_ENV
+}
+
 prod_e2e_run_newman() {
   [[ "${SKIP_NEWMAN}" -eq 1 ]] && return 0
   local coll="${PROD_E2E_REPO_ROOT}/postman/production/avf-production-e2e.postman_collection.json"
@@ -273,6 +283,10 @@ prod_e2e_run_newman() {
   if [[ "${MODE}" != "live" ]]; then
     echo "NEWMAN_SKIP: not live mode"
     return 0
+  fi
+  if [[ "${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}" == "1" ]]; then
+    prod_e2e_generate_postman_runtime_collection || return 1
+    coll="${PROD_E2E_RUN_DIR}/postman/runtime.postman_collection.json"
   fi
   prod_e2e_sync_postman_env || return 1
   local envf="${PROD_E2E_RUN_DIR}/postman/runtime.postman_environment.json"

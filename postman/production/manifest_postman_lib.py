@@ -71,6 +71,9 @@ POSTMAN_ENV_KEYS: list[tuple[str, str]] = [
     ("allowGatedWrites", "false"),
     ("confirmProductionWrites", ""),
     ("newmanReuseShellState", "false"),
+    ("PROD_E2E_SKIP_LEGACY_MACHINE_HTTP", ""),
+    ("PROD_E2E_USE_CLOUDINARY_MEDIA", ""),
+    ("PROD_E2E_USE_MEDIA_PIPE", ""),
 ]
 
 SKIP_IF_ENV_PREREQUEST = [
@@ -78,6 +81,13 @@ SKIP_IF_ENV_PREREQUEST = [
     "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
     "const envKey = pm.variables.get('_postman_skip_if_env_key');",
     "if (reuse && envKey && pm.environment.get(envKey)) {",
+    "  pm.execution.skipRequest();",
+    "}",
+]
+
+SKIP_IF_ENV_SET_PREREQUEST = [
+    "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+    "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
     "  pm.execution.skipRequest();",
     "}",
 ]
@@ -166,6 +176,8 @@ def collect_manifest_rest_flows(
     repo_root: Path | None = None,
 ) -> list[dict[str, Any]]:
     """REST flows the shell harness executes that belong in Postman parity scope."""
+    import os
+
     exclude = postman_exclude_phases(manifest) if postman_only else set()
     root = repo_root or Path(__file__).resolve().parents[2]
     out: list[dict[str, Any]] = []
@@ -178,6 +190,9 @@ def collect_manifest_rest_flows(
             return
         if not flow.get("method"):
             return
+        skip_env = flow.get("skip_if_env")
+        if skip_env and os.environ.get(str(skip_env)):
+            return
         entry = dict(flow)
         if parent_id:
             entry["_parent_handler"] = parent_id
@@ -187,6 +202,9 @@ def collect_manifest_rest_flows(
 
     for flow in manifest.get("flows") or []:
         handler = flow.get("handler")
+        skip_env = flow.get("skip_if_env")
+        if skip_env and os.environ.get(str(skip_env)):
+            continue
         if handler == "media_presigned_upload":
             if postman_only and (flow.get("phase") or "") in exclude:
                 continue
@@ -355,12 +373,17 @@ def _assertion_test_lines(assertions: list[dict[str, Any]]) -> list[str]:
             ]
         elif atype == "json_path_equals":
             path = str(a.get("path", ""))
-            value = json.dumps(a.get("value", ""))
+            raw_value = str(a.get("value", ""))
             js = ".".join(path.split("."))
+            if raw_value.startswith("{{") and raw_value.endswith("}}"):
+                env_key = postman_var(raw_value[2:-2].strip())
+                expect_expr = f"pm.environment.get('{env_key}')"
+            else:
+                expect_expr = json.dumps(raw_value)
             lines += [
                 f"pm.test('assertion {i}: json_path_equals {path}', function () {{",
                 "  const j = pm.response.json();",
-                f"  pm.expect(String(j.{js})).to.eql(String({value}));",
+                f"  pm.expect(String(j.{js})).to.eql(String({expect_expr}));",
                 "});",
             ]
     return lines
@@ -413,6 +436,11 @@ def build_postman_events(flow: dict[str, Any], manifest: dict[str, Any]) -> list
     if skip_env:
         lines = list(SKIP_IF_ENV_PREREQUEST)
         lines.insert(1, f"pm.variables.set('_postman_skip_if_env_key', '{skip_env}');")
+        events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": lines}})
+    skip_if_env = flow.get("skip_if_env")
+    if skip_if_env and not skip_env:
+        lines = list(SKIP_IF_ENV_SET_PREREQUEST)
+        lines.insert(1, f"pm.variables.set('_postman_skip_if_env_var', '{skip_if_env}');")
         events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": lines}})
     if auth in WEBHOOK_PREREQUEST:
         events.append(

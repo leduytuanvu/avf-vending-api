@@ -78,7 +78,14 @@ prod_e2e_grpc_call_raw() {
 
   prod_e2e_grpc_redact_log "$log_file" "$log_redacted"
   mv "$log_redacted" "$log_file"
-  [[ -f "$resp_file" ]] && prod_e2e_redact_file "$resp_file" "${resp_file}.redacted" && mv "${resp_file}.redacted" "$resp_file"
+  local resp_capture="${resp_file}.capture.json"
+  if [[ -f "$resp_file" && -s "$resp_file" ]]; then
+    cp "$resp_file" "$resp_capture"
+    prod_e2e_redact_file "$resp_file" "${resp_file}.redacted"
+    mv "${resp_file}.redacted" "$resp_file"
+  else
+    rm -f "$resp_capture"
+  fi
 
   local trace_id request_id grpc_status error_code
   trace_id="$(jq -r '.meta.traceId // .meta.trace_id // empty' "$resp_file" 2>/dev/null || true)"
@@ -111,7 +118,11 @@ prod_e2e_grpc_call_raw() {
     }' >"$meta_file"
 
   PROD_E2E_GRPC_LAST_RC=$rc
-  PROD_E2E_GRPC_LAST_RESP="$resp_file"
+  if [[ -f "$resp_capture" ]]; then
+    PROD_E2E_GRPC_LAST_RESP="$resp_capture"
+  else
+    PROD_E2E_GRPC_LAST_RESP="$resp_file"
+  fi
   export PROD_E2E_GRPC_LAST_RC PROD_E2E_GRPC_LAST_RESP
   return "$rc"
 }
@@ -186,9 +197,10 @@ prod_e2e_grpc_execute_flow() {
     return 1
   fi
 
-  local capture assertions
+  local capture assertions capture_body
+  capture_body="${PROD_E2E_GRPC_LAST_RESP:-${PROD_E2E_RAW_DIR}/${evidence_label}.response.json}"
   capture="$(echo "$flow_json" | jq -c '.capture // null')"
-  prod_e2e_capture_from_body "${PROD_E2E_RAW_DIR}/${evidence_label}.response.json" "$capture"
+  prod_e2e_capture_from_body "$capture_body" "$capture"
 
   assertions="$(echo "$flow_json" | jq -c '.assertions // []')"
   if [[ "$assertions" != "[]" && "$assertions" != "null" ]]; then

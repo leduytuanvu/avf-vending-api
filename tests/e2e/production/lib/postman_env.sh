@@ -5,6 +5,11 @@
 prod_e2e_export_postman_runtime_state() {
   local dst="${PROD_E2E_RUN_DIR}/postman/runtime-state.json"
   mkdir -p "${PROD_E2E_RUN_DIR}/postman"
+  export dst
+  export PROD_E2E_STATE_JSON="${PROD_E2E_STATE_JSON:-${PROD_E2E_RUN_DIR}/state.json}"
+  export PROD_E2E_PREFIX="${PROD_E2E_PREFIX:-}"
+  export PROD_E2E_RUN_ID="${PROD_E2E_RUN_ID:-}"
+  export BASE_URL="${BASE_URL:-}"
   prod_e2e_py -c "
 import json, os, re
 from pathlib import Path
@@ -25,7 +30,7 @@ for k in keys:
         doc[k] = v
 Path(os.environ['dst']).write_text(json.dumps(doc, indent=2) + '\n', encoding='utf-8')
 print('POSTMAN_RUNTIME_STATE', os.environ['dst'])
-" dst="$dst" PROD_E2E_STATE_JSON="${PROD_E2E_STATE_JSON:-${PROD_E2E_RUN_DIR}/state.json}"
+"
 }
 
 prod_e2e_sync_postman_env() {
@@ -34,8 +39,28 @@ prod_e2e_sync_postman_env() {
   [[ -f "$src" ]] || { echo "missing Postman env: $src" >&2; return 1; }
   mkdir -p "${PROD_E2E_RUN_DIR}/postman"
   prod_e2e_state_sync_json || true
+  # Tokens are redacted in state.json; reload from state.env for Newman only.
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key accessToken || true
+    prod_e2e_state_reload_key ADMIN_TOKEN || true
+    prod_e2e_state_reload_key machineToken || true
+    prod_e2e_state_reload_key machineRefreshToken || true
+  fi
   prod_e2e_export_postman_runtime_state || true
   export src dst
+  export PROD_E2E_STATE_JSON="${PROD_E2E_STATE_JSON:-${PROD_E2E_RUN_DIR}/state.json}"
+  export PROD_E2E_PREFIX="${PROD_E2E_PREFIX:-}"
+  export PROD_E2E_RUN_ID="${PROD_E2E_RUN_ID:-}"
+  export BASE_URL="${BASE_URL:-}"
+  export ADMIN_EMAIL="${ADMIN_EMAIL:-}"
+  export ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+  export COMMERCE_PAYMENT_WEBHOOK_SECRET="${COMMERCE_PAYMENT_WEBHOOK_SECRET:-}"
+  export E2E_PRODUCTION_WRITE_CONFIRMATION="${E2E_PRODUCTION_WRITE_CONFIRMATION:-}"
+  export PROD_E2E_MEDIA_SHA256="${PROD_E2E_MEDIA_SHA256:-c414cd0e204de974f73753c7e28d7638e7b3691bb8b1a2bab6b25bb7fed7ce77}"
+  export ADMIN_EMAIL_INVALID_TEST="${ADMIN_EMAIL_INVALID_TEST:-e2e-invalid@invalid.local}"
+  export PROD_E2E_SKIP_LEGACY_MACHINE_HTTP="${PROD_E2E_SKIP_LEGACY_MACHINE_HTTP:-}"
+  export PROD_E2E_USE_CLOUDINARY_MEDIA="${PROD_E2E_USE_CLOUDINARY_MEDIA:-}"
+  export PROD_E2E_USE_MEDIA_PIPE="${PROD_E2E_USE_MEDIA_PIPE:-}"
   prod_e2e_py -c "
 import json, os
 from pathlib import Path
@@ -48,7 +73,7 @@ if state_path.is_file():
 env = json.loads(src.read_text(encoding='utf-8'))
 def pick(*keys):
     for k in keys:
-        v = state.get(k) or os.environ.get(k, '')
+        v = os.environ.get(k) or state.get(k, '')
         if v and v != '<redacted>':
             return str(v)
     return ''
@@ -57,7 +82,7 @@ mapping = {
     'adminEmail': os.environ.get('ADMIN_EMAIL', ''),
     'adminPassword': os.environ.get('ADMIN_PASSWORD', ''),
     'accessToken': pick('accessToken'),
-    'machineAccessToken': pick('machineToken', 'machineAccessToken'),
+    'machineAccessToken': pick('machineToken', 'machineAccessToken', 'MACHINE_TOKEN'),
     'machineRefreshToken': pick('machineRefreshToken'),
     'machineId': pick('machineId'),
     'runId': os.environ.get('PROD_E2E_RUN_ID', ''),
@@ -82,6 +107,9 @@ mapping = {
     'allowGatedWrites': 'true',
     'confirmProductionWrites': os.environ.get('E2E_PRODUCTION_WRITE_CONFIRMATION', ''),
     'newmanReuseShellState': 'true' if pick('siteId') else 'false',
+    'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP': os.environ.get('PROD_E2E_SKIP_LEGACY_MACHINE_HTTP', ''),
+    'PROD_E2E_USE_CLOUDINARY_MEDIA': os.environ.get('PROD_E2E_USE_CLOUDINARY_MEDIA', ''),
+    'PROD_E2E_USE_MEDIA_PIPE': os.environ.get('PROD_E2E_USE_MEDIA_PIPE', ''),
 }
 for item in env.get('values', []):
     k = item.get('key')
@@ -89,5 +117,5 @@ for item in env.get('values', []):
         item['value'] = mapping[k]
 dst.write_text(json.dumps(env, indent=2) + '\n', encoding='utf-8')
 print('POSTMAN_ENV_SYNC', dst)
-" src="$src" dst="$dst"
+"
 }
