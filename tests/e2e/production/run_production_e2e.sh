@@ -377,7 +377,7 @@ prod_e2e_flow_matches_suite() {
     grpc-inventory-media-cash-no-online-payment)
       if [[ "$protocol" == "grpc" ]]; then
         case "$phase" in
-          grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
+          grpc-auth|grpc-bootstrap|grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
           *) return 1 ;;
         esac
       fi
