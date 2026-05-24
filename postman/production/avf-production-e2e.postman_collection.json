@@ -714,7 +714,7 @@
                   "});",
                   "pm.test('assertion 0: json_path_equals id', function () {",
                   "  const j = pm.response.json();",
-                  "  pm.expect(String(j.id)).to.eql(String(\"{{productId}}\"));",
+                  "  pm.expect(String(j.id)).to.eql(String(pm.environment.get('productId')));",
                   "});",
                   "pm.test('assertion 1: json_path_exists primaryMediaId', function () {",
                   "  const j = pm.response.json();",
@@ -1412,6 +1412,21 @@
               }
             },
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
+                  "pm.variables.set('_postman_skip_if_env_key', 'mediaId');",
+                  "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
+                  "const envKey = pm.variables.get('_postman_skip_if_env_key');",
+                  "if (reuse && envKey && pm.environment.get(envKey)) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -1985,6 +2000,21 @@
               }
             },
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
+                  "pm.variables.set('_postman_skip_if_env_key', 'planogramRevision');",
+                  "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
+                  "const envKey = pm.variables.get('_postman_skip_if_env_key');",
+                  "if (reuse && envKey && pm.environment.get(envKey)) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
@@ -2050,6 +2080,21 @@
                   "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
                   "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
                   "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
+                  "pm.variables.set('_postman_skip_if_env_key', 'planogramRevision');",
+                  "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
+                  "const envKey = pm.variables.get('_postman_skip_if_env_key');",
+                  "if (reuse && envKey && pm.environment.get(envKey)) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
                 ]
               }
             },
