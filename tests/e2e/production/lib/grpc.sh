@@ -197,9 +197,10 @@ prod_e2e_grpc_execute_flow() {
     return 1
   fi
 
-  local capture assertions
+  local capture assertions capture_body
+  capture_body="${PROD_E2E_GRPC_LAST_RESP:-${PROD_E2E_RAW_DIR}/${evidence_label}.response.json}"
   capture="$(echo "$flow_json" | jq -c '.capture // null')"
-  prod_e2e_capture_from_body "${PROD_E2E_RAW_DIR}/${evidence_label}.response.json" "$capture"
+  prod_e2e_capture_from_body "$capture_body" "$capture"
 
   assertions="$(echo "$flow_json" | jq -c '.assertions // []')"
   if [[ "$assertions" != "[]" && "$assertions" != "null" ]]; then
