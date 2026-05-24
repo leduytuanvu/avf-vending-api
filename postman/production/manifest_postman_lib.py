@@ -82,6 +82,13 @@ SKIP_IF_ENV_PREREQUEST = [
     "}",
 ]
 
+SKIP_IF_ENV_SET_PREREQUEST = [
+    "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+    "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+    "  pm.execution.skipRequest();",
+    "}",
+]
+
 GATED_PREREQUEST = [
     "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
     "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
@@ -413,6 +420,11 @@ def build_postman_events(flow: dict[str, Any], manifest: dict[str, Any]) -> list
     if skip_env:
         lines = list(SKIP_IF_ENV_PREREQUEST)
         lines.insert(1, f"pm.variables.set('_postman_skip_if_env_key', '{skip_env}');")
+        events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": lines}})
+    skip_if_env = flow.get("skip_if_env")
+    if skip_if_env and not skip_env:
+        lines = list(SKIP_IF_ENV_SET_PREREQUEST)
+        lines.insert(1, f"pm.variables.set('_postman_skip_if_env_var', '{skip_if_env}');")
         events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": lines}})
     if auth in WEBHOOK_PREREQUEST:
         events.append(
