@@ -15,6 +15,7 @@ flows:
     service: MachineTokenService
     rpc: RefreshMachineToken
     auth: none
+    inject_meta: false
     request_template:
       refreshToken: "{{machineRefreshToken}}"
     expected_code: OK

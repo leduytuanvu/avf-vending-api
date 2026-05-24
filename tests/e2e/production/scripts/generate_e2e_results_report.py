@@ -539,8 +539,17 @@ def build_report(run_id: str, run_dir: Path) -> str:
             w("No mutable test entities created (preflight-only run; `state.json` empty).")
     w("")
     if is_live_run and state:
-        w("- **Cleanup status:** see cleanup attestation in run directory")
-        w("- **Remaining resources:** check cleanup log")
+        cleanup_path = run_dir / "cleanup-attestation.json"
+        if cleanup_path.is_file():
+            ca = read_json_safe(cleanup_path) or {}
+            w(f"- **Cleanup attempted:** `{ca.get('attempted', 'unknown')}`")
+            w(f"- **Cleanup status:** `{ca.get('status', 'unknown')}`")
+            w(f"- **Non-E2E mutation check:** `{ca.get('nonE2eMutationCheck', 'unknown')}`")
+            retained = ca.get("resourcesIntentionallyRetained") or []
+            w(f"- **Resources retained (E2E prefix):** `{len(retained)}` keys")
+        else:
+            w("- **Cleanup status:** attestation file missing")
+        w("- **Remaining resources:** see `cleanup-attestation.json`")
     elif is_live_run:
         w("- **Cleanup status:** not attested in this report")
         w("- **Remaining resources:** unknown")
