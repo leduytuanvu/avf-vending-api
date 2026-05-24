@@ -70,7 +70,36 @@ prod_e2e_render_json_template() {
   else
     raw="$inline_or_file"
   fi
-  prod_e2e_render_template_string "$raw"
+  prod_e2e_coerce_json_body "$(prod_e2e_render_template_string "$raw")"
+}
+
+# Template substitution yields string placeholders; coerce known numeric JSON fields for strict API decode.
+prod_e2e_coerce_json_body() {
+  local body="$1"
+  if ! command -v jq >/dev/null 2>&1; then
+    printf '%s' "$body"
+    return 0
+  fi
+  echo "$body" | jq -c '
+    def numify: if type == "string" then (tonumber? // .) else . end;
+    (if .planogramRevision != null then .planogramRevision |= numify else . end)
+    | (if .items then .items |= map(
+        (if .layoutRevision != null then .layoutRevision |= numify else . end)
+        | (if .legacySlotIndex != null then .legacySlotIndex |= numify else . end)
+        | (if .maxQuantity != null then .maxQuantity |= numify else . end)
+        | (if .priceMinor != null then .priceMinor |= numify else . end)
+        | (if .slotIndex != null then .slotIndex |= numify else . end)
+        | (if .quantityBefore != null then .quantityBefore |= numify else . end)
+        | (if .quantityAfter != null then .quantityAfter |= numify else . end)
+      ) else . end)
+    | (if .layouts then .layouts |= map(
+        (if .revision != null then .revision |= numify else . end)
+        | (if .layoutSpec then .layoutSpec |= (
+            (if .rows != null then .rows |= numify else . end)
+            | (if .cols != null then .cols |= numify else . end)
+          ) else . end)
+      ) else . end)
+  ' 2>/dev/null || printf '%s' "$body"
 }
 
 prod_e2e_is_e2e_resource_name() {

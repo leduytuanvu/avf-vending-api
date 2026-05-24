@@ -5,8 +5,8 @@
 prod_e2e_suite_profile_init() {
   PROD_E2E_SUITE_PROFILE="${PROD_E2E_SUITE_PROFILE:-}"
   case "${SUITE}" in
-    all-no-online-payment)
-      export PROD_E2E_SUITE_PROFILE=all-no-online-payment
+    all-no-online-payment|planogram-no-online-payment)
+      export PROD_E2E_SUITE_PROFILE="${SUITE}"
       export PROD_E2E_EXCLUDE_ONLINE_PAYMENT=1
       export SKIP_GRPC_QR_WEBHOOK=1
       ;;
@@ -16,6 +16,7 @@ prod_e2e_suite_profile_init() {
 prod_e2e_suite_effective() {
   case "${SUITE}" in
     all-no-online-payment) echo all ;;
+    planogram-no-online-payment) echo planogram-no-online-payment ;;
     *) echo "${SUITE}" ;;
   esac
 }
@@ -34,7 +35,8 @@ try:
 except ImportError:
     sys.exit(1)
 prof = yaml.safe_load(Path(sys.argv[1]).read_text(encoding='utf-8'))
-cfg = (prof.get('profiles') or {}).get('all-no-online-payment') or {}
+profile_name = sys.argv[4] if len(sys.argv) > 4 else 'all-no-online-payment'
+cfg = (prof.get('profiles') or {}).get(profile_name) or {}
 fid, path = sys.argv[2], sys.argv[3]
 if fid in (cfg.get('exclude_flow_ids') or []):
     print(cfg.get('skip_reason', 'excluded'))
@@ -44,7 +46,7 @@ for sub in cfg.get('exclude_coverage_path_substrings') or []:
         print(cfg.get('skip_reason', 'excluded'))
         raise SystemExit(0)
 sys.exit(1)
-" "$profile" "$fid" "$fpath" 2>/dev/null || return 1
+" "$profile" "$fid" "$fpath" "${PROD_E2E_SUITE_PROFILE:-all-no-online-payment}" 2>/dev/null || return 1
 }
 
 prod_e2e_record_skipped_flow() {

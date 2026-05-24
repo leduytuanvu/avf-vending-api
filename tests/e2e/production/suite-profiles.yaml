@@ -23,3 +23,25 @@ profiles:
       - /refunds
       - CreatePaymentSession
     skip_reason: "excluded by operator request: no online payment test"
+  planogram-no-online-payment:
+    description: >-
+      Targeted live production E2E for planogram/topology/operator prerequisites and reports.
+      Excludes gRPC, MQTT, REST coverage, Newman, and online payment flows.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
