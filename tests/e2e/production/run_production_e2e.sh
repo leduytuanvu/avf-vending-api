@@ -203,12 +203,21 @@ prod_e2e_route_matrix_pipeline() {
 }
 
 prod_e2e_generate_postman() {
-  # Committed Postman must always reflect the full manifest; online payment exclusion is runtime-only.
+  # Committed Postman must always reflect the full manifest; suite/runtime exclusions are Newman-only.
   local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  local saved_legacy="${PROD_E2E_SKIP_LEGACY_MACHINE_HTTP:-}"
+  local saved_cloudinary="${PROD_E2E_USE_CLOUDINARY_MEDIA:-}"
+  local saved_media_pipe="${PROD_E2E_USE_MEDIA_PIPE:-}"
   unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
+  unset PROD_E2E_SKIP_LEGACY_MACHINE_HTTP
+  unset PROD_E2E_USE_CLOUDINARY_MEDIA
+  unset PROD_E2E_USE_MEDIA_PIPE
   prod_e2e_py "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py"
   local rc=$?
   [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
+  [[ -n "${saved_legacy}" ]] && export PROD_E2E_SKIP_LEGACY_MACHINE_HTTP="${saved_legacy}"
+  [[ -n "${saved_cloudinary}" ]] && export PROD_E2E_USE_CLOUDINARY_MEDIA="${saved_cloudinary}"
+  [[ -n "${saved_media_pipe}" ]] && export PROD_E2E_USE_MEDIA_PIPE="${saved_media_pipe}"
   return "${rc}"
 }
 
