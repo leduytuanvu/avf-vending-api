@@ -19,9 +19,9 @@ prod_e2e_grpc_call_raw() {
   local hdr_file="${PROD_E2E_RAW_DIR}/${evidence_label}.metadata.txt"
   local log_redacted="${PROD_E2E_RAW_DIR}/${evidence_label}.grpc.redacted.log"
 
-  printf '%s\n' "$req_body" >"$req_file"
-  prod_e2e_redact_file "$req_file" "${req_file}.redacted"
-  mv "${req_file}.redacted" "$req_file"
+  local req_send_file="${PROD_E2E_RAW_DIR}/${evidence_label}.request.send.json"
+  printf '%s\n' "$req_body" >"$req_send_file"
+  prod_e2e_redact_file "$req_send_file" "$req_file"
 
   local -a args=()
   prod_e2e_grpc_proto_args args || return 1
@@ -69,9 +69,10 @@ prod_e2e_grpc_call_raw() {
 
   set +e
   grpcurl "${args[@]}" -max-time "${GRPC_MAX_TIME:-120}" "${grpc_target}" "${full_method}" \
-    <"$req_file" >"$resp_file" 2>"$log_file"
+    <"$req_send_file" >"$resp_file" 2>"$log_file"
   rc=$?
   set -e
+  rm -f "$req_send_file"
   t1="$(prod_e2e_py -c 'import time; print(time.time())')"
   elapsed="$(prod_e2e_py -c "print(int((${t1} - ${t0}) * 1000))")"
 
@@ -149,27 +150,39 @@ prod_e2e_grpc_execute_flow() {
     return 1
   fi
 
-  local req_body idem_key
-  req_body="$(echo "$flow_json" | jq -c '.request_template // {}')"
-  req_body="$(prod_e2e_render_template_string "$req_body")"
-  local inject_meta
-  inject_meta="$(echo "$flow_json" | jq -r '.inject_meta // true')"
-  if [[ "$inject_meta" != "false" && "$inject_meta" != "0" ]]; then
-    if echo "$req_body" | jq -e '.meta == null or (.meta | type == "object" and length == 0)' >/dev/null 2>&1; then
-      local meta_json
-      meta_json="$(prod_e2e_grpc_meta_json "${PROD_E2E_PREFIX}-${evidence_label}")"
-      req_body="$(echo "$req_body" | jq --argjson m "$meta_json" '. + {meta: $m}')"
-    fi
+  if [[ "$rpc" == "RefreshMachineToken" ]]; then
+    prod_e2e_state_reload_key machineRefreshToken || true
   fi
+
+  local req_body idem_key
   idem_key="$(echo "$flow_json" | jq -r '.idempotency_key // empty')"
   idem_key="$(prod_e2e_render_template_string "$idem_key")"
+  req_body="$(echo "$flow_json" | jq -c '.request_template // {}')"
+  req_body="$(prod_e2e_render_template_string "$req_body")"
+  local inject_meta=1
+  if echo "$flow_json" | jq -e '.inject_meta == false' >/dev/null 2>&1; then
+    inject_meta=0
+  fi
+  if [[ "$inject_meta" -eq 1 ]]; then
+    if echo "$req_body" | jq -e '.meta == null or (.meta | type == "object" and length == 0)' >/dev/null 2>&1; then
+      local meta_json
+      meta_json="$(prod_e2e_grpc_meta_json "${PROD_E2E_PREFIX}-${evidence_label}" "$idem_key")"
+      req_body="$(echo "$req_body" | jq --argjson m "$meta_json" '. + {meta: $m}')"
+    elif [[ -n "$idem_key" ]] && echo "$req_body" | jq -e '.meta != null' >/dev/null 2>&1; then
+      req_body="$(echo "$req_body" | jq --arg ik "$idem_key" '.meta += {idempotencyKey: $ik}')"
+    fi
+  fi
 
   local full_method
   full_method="$(prod_e2e_grpc_full_method "$service" "$rpc")"
 
   if ! prod_e2e_grpc_call_raw "$full_method" "$req_body" "$evidence_label" "$auth" "$idem_key"; then
+    local grpc_err grpc_meta="${PROD_E2E_RAW_DIR}/${evidence_label}.meta.json"
+    grpc_err="$(grep -E 'Code:|Message:' "${PROD_E2E_RAW_DIR}/${evidence_label}.grpc.log" 2>/dev/null | tr '\n' ' ' | sed 's/[[:space:]]\+/ /g' || true)"
+    prod_e2e_fail_classify "a" "$id" "method=${full_method} grpcurl_exit=${PROD_E2E_GRPC_LAST_RC:-1} ${grpc_err:-grpc call failed}"
     prod_e2e_evidence_append_row "$id" "$label" "grpc" "fail" "$evidence_label"
     prod_e2e_evidence_append_grpc_section "$id" "$evidence_label" "$full_method" "ERROR"
+    [[ -f "$grpc_meta" ]] && jq -c '{grpcurl_exit, method, error_code, meta_status}' "$grpc_meta" 2>/dev/null >&2 || true
     return 1
   fi
 

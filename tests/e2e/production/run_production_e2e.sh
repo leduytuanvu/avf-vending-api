@@ -471,9 +471,18 @@ prod_e2e_write_results_report() {
 
 prod_e2e_print_final_verdict() {
   [[ "${MODE}" != "live" ]] && return 0
+  local flow_failures="${1:-0}"
   local failures_file="${PROD_E2E_RUN_DIR}/failures.classification.txt"
   local fail_count=0
   [[ -f "$failures_file" ]] && fail_count="$(wc -l <"$failures_file" | tr -d ' \r')"
+  if [[ "${flow_failures:-0}" -gt "${fail_count:-0}" ]]; then
+    fail_count="$flow_failures"
+  fi
+  if [[ "${fail_count:-0}" -eq 0 && -f "${PROD_E2E_RESULT_MD:-}" ]]; then
+    local evidence_fail=0
+    evidence_fail="$(grep -cE '\| fail \|' "${PROD_E2E_RESULT_MD}" 2>/dev/null || true)"
+    [[ "${evidence_fail:-0}" -gt 0 ]] && fail_count="$evidence_fail"
+  fi
   local skipped_file="${PROD_E2E_RUN_DIR}/skipped.flows.txt"
   local skipped_count=0
   [[ -f "$skipped_file" ]] && skipped_count="$(wc -l <"$skipped_file" | tr -d ' \r')"
@@ -589,7 +598,7 @@ main() {
     prod_e2e_evidence_finalize
     prod_e2e_state_sync_json
     prod_e2e_write_results_report
-    prod_e2e_print_final_verdict
+    prod_e2e_print_final_verdict "$failures"
     [[ "$failures" -eq 0 ]] || exit 1
     case "${SUITE}" in
       grpc) echo "GRPC_LIVE_OK run_dir=${PROD_E2E_RUN_DIR}" ;;
