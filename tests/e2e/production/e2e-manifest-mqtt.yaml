@@ -141,7 +141,7 @@ flows:
         label: GET /v1/reports/fleet-health
         protocol: rest
         method: GET
-        path: /v1/reports/fleet-health?from=2020-01-01T00:00:00Z&to=2030-01-01T00:00:00Z
+        path: /v1/reports/fleet-health?from={{reportFrom}}&to={{reportTo}}
         auth: bearer_admin
         evidence_label: mqtt-rest-report-machine-health
         request_template: {}

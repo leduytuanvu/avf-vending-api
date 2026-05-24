@@ -240,11 +240,51 @@ prod_e2e_refresh_admin_token() {
   return 1
 }
 
+prod_e2e_init_report_window() {
+  local to from
+  to="$(date -u +%Y-%m-%dT23:59:59Z 2>/dev/null || true)"
+  from="$(date -u -d '90 days ago' +%Y-%m-%dT00:00:00Z 2>/dev/null || date -u -v-90d +%Y-%m-%dT00:00:00Z 2>/dev/null || true)"
+  [[ -z "$from" ]] && from="2026-03-01T00:00:00Z"
+  [[ -z "$to" ]] && to="2026-05-23T23:59:59Z"
+  export PROD_E2E_REPORT_FROM="$from"
+  export PROD_E2E_REPORT_TO="$to"
+  prod_e2e_state_set reportFrom "$from"
+  prod_e2e_state_set reportTo "$to"
+}
+
+prod_e2e_seed_rest_coverage_context() {
+  prod_e2e_init_report_window
+  if [[ -z "${commandId:-}" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]]; then
+    local resp code cid
+    resp="$(curl -sS -L \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: application/json" \
+      "${PROD_E2E_BASE_URL}/v1/admin/commands?limit=1" \
+      -w $'\nHTTP %{http_code}' 2>/dev/null || true)"
+    code="$(printf '%s' "$resp" | tail -n1 | sed -n 's/.*HTTP \([0-9][0-9][0-9]\).*/\1/p')"
+    if [[ "$code" == "200" ]]; then
+      cid="$(printf '%s' "$resp" | sed '$d' | jq -r '.items[0].commandId // empty' 2>/dev/null || true)"
+      [[ -n "$cid" ]] && prod_e2e_state_set commandId "$cid"
+    fi
+  fi
+  if [[ -z "${orderId:-}" && -n "${grpcCashOrderId:-}" ]]; then
+    prod_e2e_state_set orderId "$grpcCashOrderId"
+  fi
+}
+
 prod_e2e_rest_run_flow() {
   local flow_json="$1"
-  local skip_if id label evidence_label
+  local skip_if skip_if_empty id label evidence_label
   skip_if="$(echo "$flow_json" | jq -r '.skip_if_env // empty')"
   if [[ -n "$skip_if" && -n "${!skip_if:-}" ]]; then
+    id="$(echo "$flow_json" | jq -r '.id // ""')"
+    label="$(echo "$flow_json" | jq -r '.label // ""')"
+    evidence_label="$(echo "$flow_json" | jq -r '.evidence_label // ""')"
+    prod_e2e_evidence_append_row "$id" "$label" "rest" "skipped" "$evidence_label"
+    return 0
+  fi
+  skip_if_empty="$(echo "$flow_json" | jq -r '.skip_if_empty // empty')"
+  if [[ -n "$skip_if_empty" && -z "${!skip_if_empty:-}" ]]; then
     id="$(echo "$flow_json" | jq -r '.id // ""')"
     label="$(echo "$flow_json" | jq -r '.label // ""')"
     evidence_label="$(echo "$flow_json" | jq -r '.evidence_label // ""')"
