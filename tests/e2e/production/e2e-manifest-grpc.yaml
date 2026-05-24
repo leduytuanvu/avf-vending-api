@@ -165,6 +165,7 @@ flows:
     service: MachineInventoryService
     rpc: AckInventorySync
     auth: machine
+    idempotency_key: "{{run_prefix}}-ack-inv-ik"
     request_template:
       syncCursor: "{{run_prefix}}-inv-cursor"
     expected_code: OK

@@ -374,6 +374,33 @@ def auto_coverage(
     )
 
 
+REPORT_PATH_PREFIXES = ("/v1/admin/reports/", "/v1/reports/")
+STATE_SKIP_EMPTY = frozenset({"commandId", "orderId"})
+
+
+def readonly_smoke_query_suffix(method: str, openapi_path: str, overrides: dict[str, Any]) -> str:
+    """Return query string (with leading ?) for readonly smoke GET routes."""
+    ov = find_override(overrides, method, openapi_path)
+    if ov and ov.get("readonly_query"):
+        q = str(ov["readonly_query"]).strip()
+        return q if q.startswith("?") else f"?{q}"
+    if method.upper() != "GET":
+        return ""
+    if any(openapi_path.startswith(p) for p in REPORT_PATH_PREFIXES):
+        if "/export.csv" in openapi_path:
+            return ""
+        if openapi_path.endswith("/timeline"):
+            return "?limit=1"
+        return "?from={{reportFrom}}&to={{reportTo}}&limit=1"
+    if openapi_path == "/v1/operator-insights/users/action-attributions":
+        return "?user_principal={{adminUserId}}&limit=1"
+    if not path_params(openapi_path):
+        return "?limit=1"
+    if openapi_path == "/v1/admin/orders/{orderId}/timeline":
+        return "?limit=1"
+    return ""
+
+
 def build_flow_from_entry(entry: CoverageEntry, overrides: dict[str, Any], idx: int) -> dict[str, Any] | None:
     if entry.coverage == "documented_skip":
         return None
@@ -389,7 +416,10 @@ def build_flow_from_entry(entry: CoverageEntry, overrides: dict[str, Any], idx: 
             entry.path,
         )
     if "?" not in manifest_path and entry.coverage == "readonly_smoke" and entry.method == "GET":
-        if not path_params(entry.path):
+        suffix = readonly_smoke_query_suffix(entry.method, entry.path, overrides)
+        if suffix:
+            manifest_path += suffix
+        elif not path_params(entry.path):
             manifest_path += "?limit=1"
 
     fid = f"REST-COV-{entry.method[:3]}-{idx:04d}"
@@ -422,6 +452,11 @@ def build_flow_from_entry(entry: CoverageEntry, overrides: dict[str, Any], idx: 
     }
     if entry.method in ("POST", "PUT", "PATCH") and entry.coverage == "auth_negative":
         flow["request_template"] = {"probe": "auth-negative"}
+    for param in path_params(entry.path):
+        state_key = param_map.get(param)
+        if state_key in STATE_SKIP_EMPTY:
+            flow["skip_if_empty"] = state_key
+            break
     return flow
 
 

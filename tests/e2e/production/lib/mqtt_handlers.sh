@@ -70,6 +70,27 @@ prod_e2e_mqtt_handler_connect_invalid() {
   return 0
 }
 
+prod_e2e_mqtt_ensure_machine_commandable() {
+  local mid="${machineId:-${PROD_E2E_MQTT_MACHINE_ID:-}}"
+  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]] || return 0
+  local patch_flow
+  patch_flow="$(jq -nc \
+    --arg mid "$mid" \
+    '{
+      id: "MQTT-PREP-ACTIVE",
+      label: "PATCH machine active before MQTT command dispatch",
+      protocol: "rest",
+      method: "PATCH",
+      path: ("/v1/admin/machines/" + $mid),
+      auth: "bearer_admin",
+      evidence_label: "mqtt-prep-machine-active",
+      request_template: {status: "active"},
+      expected_status: 200,
+      optional: true
+    }')"
+  prod_e2e_rest_execute_flow "$patch_flow" || true
+}
+
 prod_e2e_mqtt_build_catalog_refresh_ack() {
   local recv_line="$1"
   local dedupe_suffix="${2:-}"
@@ -122,6 +143,7 @@ prod_e2e_mqtt_handler_command_pipeline() {
 
   prod_e2e_mqtt_subscribe_background "$cmd_in" 45 "$sub_label"
   sleep 2
+  prod_e2e_mqtt_ensure_machine_commandable
   prod_e2e_rest_execute_flow "$dispatch_flow" || {
     prod_e2e_mqtt_stop_subscriber
     prod_e2e_mqtt_fail_hint "$id" "bridge"

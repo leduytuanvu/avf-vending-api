@@ -64,6 +64,49 @@ profiles:
       - /payments/
       - /refunds
     skip_reason: "excluded by operator request: no online payment test"
+  route-coverage-with-context-no-online-payment:
+    description: >-
+      Full shell provisioning + gRPC inventory/media/cash context, then REST route coverage.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
+  grpc-inventory-media-cash-no-online-payment:
+    description: >-
+      Targeted gRPC inventory ack, media download cache, and cash commerce vend path.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  mqtt-command-telemetry-no-online-payment:
+    description: >-
+      Targeted MQTT connect, command dispatch/ACK, telemetry, readback, and negative tests.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
   grpc-token-no-online-payment:
     description: >-
       Targeted gRPC token bootstrap and refresh (activation + RefreshMachineToken + GetBootstrap).
