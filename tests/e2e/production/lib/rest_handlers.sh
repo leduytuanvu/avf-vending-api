@@ -172,7 +172,7 @@ prod_e2e_rest_slots_verify() {
   local resp="${PROD_E2E_RAW_DIR}/${evidence_label}.response.json"
   [[ -f "$resp" ]] || return 1
   if ! jq -e --arg sc "A1" --arg pid "${productId:-}" '
-    (.slots // [])[] | select(.slotCode == $sc) |
+    (.items // .slots // [])[] | select(.slotCode == $sc) |
     (.productId == $pid) and (.priceMinor != null) and
     ((.maxQuantity // .capacity) != null) and ((.currentQuantity // .quantity) != null)
   ' "$resp" >/dev/null 2>&1; then
