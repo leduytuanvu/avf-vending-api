@@ -140,6 +140,7 @@ def load_skipped(run_dir: Path) -> dict[str, str]:
 REDACT_PATTERNS = [
     (re.compile(r"AVF-[A-F0-9]{6}-[A-F0-9]{6}", re.I), "<redacted-activation-code>"),
     (re.compile(r"eyJ[A-Za-z0-9_+/=-]{16,}"), "<redacted-base64>"),
+    (re.compile(r"admin@ldtv\.dev", re.I), "<admin-email>"),
 ]
 
 
