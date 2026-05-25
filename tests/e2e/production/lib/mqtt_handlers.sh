@@ -156,19 +156,27 @@ prod_e2e_mqtt_ensure_machine_commandable() {
     return 1
   fi
 
-  prod_e2e_mqtt_ensure_clients || return 1
-  prod_e2e_mqtt_publish_presence "mqtt-prep" || true
+  local patch_resp="${PROD_E2E_RAW_DIR}/mqtt-prep-machine-active.response.json"
+  local st=""
+  if [[ -f "$patch_resp" ]]; then
+    st="$(jq -r '.status // empty' "$patch_resp" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+    if [[ "$st" == "active" ]]; then
+      export PROD_E2E_MQTT_COMMANDABLE=1
+      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>} source=patch"
+      return 0
+    fi
+  fi
 
   local deadline=$(( $(date +%s) + 45 ))
-  local st=""
+  st=""
   while [[ "$(date +%s)" -lt "$deadline" ]]; do
     st="$(prod_e2e_mqtt_machine_fleet_status "$mid")"
     if [[ "$st" == "active" ]]; then
       export PROD_E2E_MQTT_COMMANDABLE=1
-      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>}"
+      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>} source=poll"
       return 0
     fi
-    prod_e2e_mqtt_publish_presence "mqtt-prep-retry" || true
+    prod_e2e_rest_execute_flow "$patch_flow" || true
     sleep 2
   done
 
