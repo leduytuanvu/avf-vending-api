@@ -1,0 +1,154 @@
+# Suite profiles for production E2E harness (see run_production_e2e.sh --suite).
+version: 1
+profiles:
+  all-no-online-payment:
+    description: >-
+      Full live production E2E excluding online/QR payment, PSP webhooks, and real payment charges.
+      Cash/manual commerce runs via gRPC handlers only.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  planogram-no-online-payment:
+    description: >-
+      Targeted live production E2E for planogram/topology/operator prerequisites and reports.
+      Excludes gRPC, MQTT, REST coverage, Newman, and online payment flows.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  route-coverage-no-online-payment:
+    description: >-
+      Targeted REST route coverage only (preflight + auth + REST-COV). Excludes online payment.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
+  route-coverage-with-context-no-online-payment:
+    description: >-
+      Full shell provisioning + gRPC inventory/media/cash context, then REST route coverage.
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
+  grpc-inventory-media-cash-no-online-payment:
+    description: >-
+      Targeted gRPC inventory ack, media download cache, and cash commerce vend path.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  mqtt-command-telemetry-no-online-payment:
+    description: >-
+      Targeted MQTT connect, command dispatch/ACK, telemetry, readback, and negative tests.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+    skip_reason: "excluded by operator request: no online payment test"
+  mqtt-after-grpc-no-online-payment:
+    description: >-
+      Reproduce full-order dependency: REST provisioning, gRPC inventory/media/cash, then MQTT command phase.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  grpc-token-no-online-payment:
+    description: >-
+      Targeted gRPC token bootstrap and refresh (activation + RefreshMachineToken + GetBootstrap).
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
+  newman-no-online-payment:
+    description: >-
+      Shell provisioning through reports/planogram then Newman reuse-mode (no duplicate provisioning).
+    exclude_flow_ids:
+      - REST-COMMERCE-001
+      - REST-COMMERCE-002
+      - REST-COMMERCE-003
+      - REST-COMMERCE-003-DUP
+      - REST-COMMERCE-004
+      - REST-COMMERCE-005
+      - REST-COMMERCE-006
+      - REST-NEG-002
+      - REST-NEG-003
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"

@@ -1,0 +1,282 @@
+# Explicit production REST route coverage overrides (patterns + routes).
+# Used by scripts/generate_rest_route_matrix.py — every production swagger operation
+# must resolve to exactly one coverage kind via manifest, auto-coverage, or this file.
+
+version: 1
+
+# Routes excluded from live Postman/CI but counted as documented_skip in the matrix.
+skip_patterns:
+  - methods: [GET, POST, PUT, PATCH, DELETE]
+    path_prefix: /v1/setup/
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted when ENABLE_LEGACY_MACHINE_HTTP=false (production default; use gRPC)
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path_regex: '^/v1/machines/\{machineId\}/sale-catalog'
+    coverage: documented_skip
+    skip_reason: Legacy machine sale-catalog HTTP superseded by gRPC MachineCatalogService in production
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST]
+    path_regex: '^/v1/machines/\{machineId\}/operator-sessions'
+    coverage: documented_skip
+    skip_reason: Legacy operator session HTTP; production uses POST /v1/admin/machines/{machineId}/operator-sessions/start
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST, PUT, PATCH, DELETE]
+    path_prefix: /v1/commerce/
+    coverage: documented_skip
+    skip_reason: Legacy machine commerce HTTP; production vending uses avf.machine.v1 gRPC
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST]
+    path_prefix: /v1/device/
+    coverage: documented_skip
+    skip_reason: Legacy device bridge HTTP; production command path is MQTT + admin REST dispatch
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path_regex: '^/v1/machines/\{machineId\}/(shadow|telemetry)'
+    coverage: documented_skip
+    skip_reason: Legacy machine telemetry/shadow HTTP; production uses gRPC and MQTT
+    postman: false
+    non_postman: true
+
+  - methods: [POST]
+    path_regex: '^/v1/machines/\{machineId\}/commands/dispatch$'
+    coverage: documented_skip
+    skip_reason: Machine-scoped command dispatch HTTP; E2E uses admin POST /v1/admin/machines/{machineId}/commands
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path_prefix: /swagger/
+    coverage: documented_skip
+    skip_reason: OpenAPI documentation surface; not a customer/admin business API
+    postman: false
+    non_postman: true
+
+  - methods: [GET]
+    path: /metrics
+    coverage: documented_skip
+    skip_reason: Prometheus metrics on ops listener; scraped privately not via Postman E2E
+    postman: false
+    non_postman: true
+
+  - methods: [GET, POST]
+    path_regex: '^/v1/admin/reports/.+/export\\.csv$'
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - methods: [POST]
+    path_regex: '^/v1/admin/system/retention/(run|dry-run)$'
+    coverage: documented_skip
+    skip_reason: Destructive retention job; forbidden in production E2E automation
+    postman: false
+    non_postman: true
+
+  - methods: [POST]
+    path_regex: '^/v1/admin/ota/campaigns/.+/(start|rollback|publish|approve)$'
+    coverage: documented_skip
+    skip_reason: OTA fleet campaigns affect real devices; out of release E2E scope
+    postman: false
+    non_postman: true
+
+  - methods: [POST]
+    path_regex: '^/v1/admin/machines/\\{machineId\\}/(retire|mark-compromised|revoke-credentials|rotate-credentials|disable|suspend|archive|transfer-site)$'
+    coverage: documented_skip
+    skip_reason: Destructive machine lifecycle; only E2E-PROD resources via main manifest flows
+    postman: false
+    non_postman: true
+
+# Path params with no E2E state capture — readonly/auth probe uses auth_negative only.
+unmapped_param_policy: auth_negative
+
+param_state_map:
+  machineId: machineId
+  machine_id: machineId
+  productId: productId
+  orderId: orderId
+  paymentId: paymentId
+  categoryId: categoryId
+  brandId: brandId
+  siteId: siteId
+  mediaId: mediaId
+  tagId: tagId
+  commandId: commandId
+  activationCodeId: activationCode
+  slot_index: "1"
+
+# Explicit routes (method+path) when auto rules are insufficient.
+routes:
+  - method: POST
+    path: /v1/admin/activation-codes/{codeId}/revoke
+    coverage: auth_negative
+    expected_status: 401
+    postman: true
+
+  - method: DELETE
+    path: /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}
+    coverage: auth_negative
+    expected_status: 401
+    postman: true
+
+  - method: POST
+    path: /v1/admin/machines/{machineId}/operator-sessions/start
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/admin/reports/cash-collections/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/payments-summary/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/sales-summary/export.csv
+    coverage: documented_skip
+    skip_reason: CSV export download; manual ops verification only (binary response)
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/reports/fleet-health
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/reports/inventory-exceptions
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: GET
+    path: /v1/reports/sales-summary
+    coverage: success
+    auth: bearer_admin
+    postman: true
+
+  - method: POST
+    path: /v1/auth/refresh
+    coverage: documented_skip
+    skip_reason: Token refresh chained from REST-AUTH-001 login capture; standalone unauthenticated probe is not contract-stable
+    postman: false
+    non_postman: true
+    non_postman_reason: Covered indirectly via login flow capture
+
+  - method: GET
+    path: /v1/admin/auth/users
+    coverage: documented_skip
+    skip_reason: List requires company scope; HTTP handler passes Nil companyID and returns 400 by contract
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/users
+    coverage: documented_skip
+    skip_reason: List requires company scope; returns 400 without company context in production
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/machines/{machineId}/check-ins
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted in production; use gRPC CheckIn
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/machines/{machineId}/config-applies
+    coverage: documented_skip
+    skip_reason: Legacy machine HTTP not mounted in production
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/auth/logout
+    coverage: documented_skip
+    skip_reason: Would invalidate admin session mid-suite; verified in staging destructive suite
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/auth/mfa/totp/enroll
+    coverage: documented_skip
+    skip_reason: MFA enrollment mutates account; not enabled on E2E service account
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/auth/mfa/totp/verify
+    coverage: documented_skip
+    skip_reason: MFA verify requires enrolled secret; not on E2E service account
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/auth/mfa/totp/disable
+    coverage: documented_skip
+    skip_reason: MFA disable mutates account; not on E2E service account
+    postman: false
+    non_postman: true
+
+  - method: POST
+    path: /v1/auth/password/reset/request
+    coverage: auth_negative
+    flow_hint: Public endpoint; unauthenticated probe expects 400 without email body
+    expected_status: 400
+    postman: true
+
+  - method: POST
+    path: /v1/auth/password/reset/confirm
+    coverage: auth_negative
+    expected_status: 400
+    postman: true
+
+  - method: POST
+    path: /v1/auth/change-password
+    coverage: auth_negative
+    expected_status: 401
+    postman: true
+
+  - method: POST
+    path: /v1/auth/password/change
+    coverage: auth_negative
+    expected_status: 401
+    postman: true
+
+  - method: GET
+    path: /v1/auth/sessions
+    coverage: readonly_smoke
+    auth: bearer_admin
+    postman: true
+
+  - method: DELETE
+    path: /v1/auth/sessions
+    coverage: auth_negative
+    expected_status: 401
+    postman: true
+
+  - method: DELETE
+    path: /v1/auth/sessions/{sessionId}
+    coverage: auth_negative
+    expected_status: 401
+    postman: true

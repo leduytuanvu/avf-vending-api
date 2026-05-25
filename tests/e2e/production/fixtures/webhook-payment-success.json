@@ -1,0 +1,11 @@
+{
+  "webhook_event_id": "{{webhook_event_id}}",
+  "provider": "stripe",
+  "provider_reference": "pi_e2e_prod_{{run_id}}",
+  "status": "succeeded",
+  "amount_minor": 15000,
+  "currency": "VND",
+  "metadata": {
+    "source": "e2e_prod_manifest"
+  }
+}
