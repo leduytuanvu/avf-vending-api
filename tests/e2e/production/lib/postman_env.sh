@@ -21,7 +21,7 @@ if state_path.is_file():
 keys = [
     'runId', 'baseUrl', 'siteId', 'machineId', 'productId', 'categoryId', 'brandId',
     'tagId', 'mediaId', 'planogramId', 'planogramRevision', 'operatorSessionId',
-    'activationCodeId', 'sku',
+    'activationCodeId', 'sku', 'mqttTopicPrefix',
 ]
 doc = {'runId': os.environ.get('PROD_E2E_RUN_ID', ''), 'runPrefix': prefix, 'baseUrl': os.environ.get('BASE_URL', '')}
 for k in keys:

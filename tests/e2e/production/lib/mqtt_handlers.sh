@@ -259,6 +259,7 @@ prod_e2e_mqtt_handler_command_pipeline() {
   local recv
   recv="$(prod_e2e_mqtt_read_first_line "$sub_log")"
   if ! prod_e2e_mqtt_sub_join_ok "$sub_ec" "$sub_log" || [[ -z "$recv" ]]; then
+    export PROD_E2E_MQTT_CMD_PIPELINE_BLOCKED=1
     prod_e2e_mqtt_fail_hint "$id" "topic"
     prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "fail" "$evidence_label"
     return 1
@@ -446,8 +447,8 @@ prod_e2e_mqtt_handler_neg_duplicate_ack() {
   recv_file="${PROD_E2E_RAW_DIR}/mqtt-command-pipeline.command-received.json"
   [[ -f "$recv_file" ]] || recv_file="${PROD_E2E_RAW_DIR}/$(echo "$flow_json" | jq -r '.source_evidence // "mqtt-command-pipeline"').command-received.json"
   if [[ ! -f "$recv_file" ]]; then
-    if [[ "${PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED:-}" == "1" ]]; then
-      prod_e2e_record_skipped_flow "$flow_json" "blocked_by=MQTT-CMD-DISPATCH"
+    if [[ "${PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED:-}" == "1" || "${PROD_E2E_MQTT_CMD_PIPELINE_BLOCKED:-}" == "1" ]]; then
+      prod_e2e_record_skipped_flow "$flow_json" "blocked_by=MQTT-CMD-001"
       prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "blocked" "$evidence_label"
       return 0
     fi
