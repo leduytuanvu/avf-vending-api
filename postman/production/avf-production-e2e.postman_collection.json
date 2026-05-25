@@ -10,6 +10,69 @@
       "name": "auth",
       "item": [
         {
+          "name": "REST-AUTH-001 \u2014 POST /v1/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                  "pm.variables.set('_postman_skip_if_env_var', 'ADMIN_TOKEN');",
+                  "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('assertion 0: json_path_exists tokens.accessToken', function () {",
+                  "  const j = pm.response.json();",
+                  "  pm.expect(j.tokens.accessToken).to.not.be.undefined;",
+                  "});",
+                  "try {",
+                  "  const j = pm.response.json();",
+                  "  if (j.tokens.accessToken !== undefined) pm.environment.set('accessToken', j.tokens.accessToken);",
+                  "  if (j.tokens.refreshToken !== undefined) pm.environment.set('refreshToken', j.tokens.refreshToken);",
+                  "} catch (e) {}"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-AUTH-001"
+        },
+        {
           "name": "REST-AUTH-002 \u2014 GET /v1/auth/me",
           "request": {
             "method": "GET",
