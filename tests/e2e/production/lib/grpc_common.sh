@@ -79,6 +79,44 @@ prod_e2e_grpc_machine_token() {
   printf '%s' "${machineToken:-${MACHINE_TOKEN:-}}"
 }
 
+prod_e2e_refresh_machine_token() {
+  [[ "${PROD_E2E_DRY_RUN:-}" == "1" ]] && return 0
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key machineRefreshToken || true
+    prod_e2e_state_reload_key machineToken || true
+  fi
+  [[ -n "${machineRefreshToken:-}" ]] || {
+    echo "WARN: machine token refresh skipped (no machineRefreshToken)" >&2
+    return 1
+  }
+  if ! command -v grpcurl >/dev/null 2>&1; then
+    echo "WARN: machine token refresh skipped (grpcurl missing)" >&2
+    return 1
+  fi
+  local req_body evidence_label="${1:-mqtt-newman-refresh-token}"
+  req_body="$(jq -nc --arg rt "$machineRefreshToken" '{refreshToken:$rt}')"
+  local full_method
+  full_method="$(prod_e2e_grpc_full_method "MachineTokenService" "RefreshMachineToken")"
+  if ! prod_e2e_grpc_call_raw "$full_method" "$req_body" "$evidence_label" "none"; then
+    echo "WARN: RefreshMachineToken failed for Newman/machine auth" >&2
+    return 1
+  fi
+  local resp_file="${PROD_E2E_RAW_DIR}/${evidence_label}.response.json"
+  local at rt
+  at="$(jq -r '.accessToken // empty' "$resp_file" 2>/dev/null)"
+  rt="$(jq -r '.refreshToken // empty' "$resp_file" 2>/dev/null)"
+  [[ -n "$at" ]] || return 1
+  if declare -F prod_e2e_state_set >/dev/null 2>&1; then
+    prod_e2e_state_set machineToken "$at"
+    [[ -n "$rt" ]] && prod_e2e_state_set machineRefreshToken "$rt"
+  else
+    export machineToken="$at"
+    [[ -n "$rt" ]] && export machineRefreshToken="$rt"
+  fi
+  echo "MACHINE_TOKEN_REFRESH=OK"
+  return 0
+}
+
 prod_e2e_grpc_redact_log() {
   local in_file="$1"
   local out_file="$2"
