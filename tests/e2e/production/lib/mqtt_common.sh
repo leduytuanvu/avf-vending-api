@@ -2,11 +2,32 @@
 # shellcheck shell=bash
 # MQTT topic resolution and mosquitto client helpers for production E2E.
 
+prod_e2e_mqtt_ensure_topic_prefix() {
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key mqttTopicPrefix || true
+  fi
+  [[ -n "${mqttTopicPrefix:-}" && "${mqttTopicPrefix}" != "null" ]] && return 0
+  local claim="${PROD_E2E_RAW_DIR}/rest-activation-claim.response.json"
+  [[ -f "$claim" ]] || return 0
+  if command -v jq >/dev/null 2>&1; then
+    mqttTopicPrefix="$(jq -r '.mqtt.topicPrefix // empty' "$claim" 2>/dev/null)"
+    mqttTopicPrefix="${mqttTopicPrefix//$'\r'/}"
+    [[ -n "$mqttTopicPrefix" ]] || return 0
+    if declare -F prod_e2e_state_set >/dev/null 2>&1; then
+      prod_e2e_state_set mqttTopicPrefix "$mqttTopicPrefix"
+    else
+      export mqttTopicPrefix
+    fi
+  fi
+  return 0
+}
+
 prod_e2e_mqtt_resolve_topics() {
   if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
     prod_e2e_state_reload_key machineId || true
     prod_e2e_state_reload_key mqttTopicPrefix || true
   fi
+  prod_e2e_mqtt_ensure_topic_prefix
   local mid="${machineId:-${MACHINE_ID:-}}"
   mid="${mid//$'\r'/}"
   [[ -n "$mid" && "$mid" != "null" ]] || {
@@ -24,10 +45,16 @@ prod_e2e_mqtt_resolve_topics() {
   fi
 
   local layout prefix
-  layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
-  prefix="${MQTT_TOPIC_PREFIX:-avf/prod}"
-  prefix="$(echo "$prefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
-  prefix="${prefix//$'\r'/}"
+  if [[ -n "${mqttTopicPrefix:-}" && "${mqttTopicPrefix}" != "null" ]]; then
+    prefix="$(echo "$mqttTopicPrefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
+    prefix="${prefix//$'\r'/}"
+    layout="legacy"
+  else
+    layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
+    prefix="${MQTT_TOPIC_PREFIX:-avf/prod}"
+    prefix="$(echo "$prefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
+    prefix="${prefix//$'\r'/}"
+  fi
 
   if [[ "$layout" == "enterprise" ]]; then
     export PROD_E2E_MQTT_TOPIC_COMMAND_IN="${prefix}/machines/${mid}/commands"
