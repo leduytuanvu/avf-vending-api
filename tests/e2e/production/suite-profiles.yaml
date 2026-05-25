@@ -107,6 +107,18 @@ profiles:
       - /payments/
       - /refunds
     skip_reason: "excluded by operator request: no online payment test"
+  mqtt-after-grpc-no-online-payment:
+    description: >-
+      Reproduce full-order dependency: REST provisioning, gRPC inventory/media/cash, then MQTT command phase.
+    exclude_flow_ids:
+      - GRPC-COMM-QR-001
+    exclude_coverage_path_substrings:
+      - /payment-session
+      - /webhooks
+      - /payments/
+      - /refunds
+      - CreatePaymentSession
+    skip_reason: "excluded by operator request: no online payment test"
   grpc-token-no-online-payment:
     description: >-
       Targeted gRPC token bootstrap and refresh (activation + RefreshMachineToken + GetBootstrap).

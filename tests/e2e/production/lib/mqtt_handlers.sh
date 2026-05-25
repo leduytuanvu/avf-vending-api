@@ -70,9 +70,73 @@ prod_e2e_mqtt_handler_connect_invalid() {
   return 0
 }
 
+prod_e2e_mqtt_machine_fleet_status() {
+  local mid="$1"
+  local resp_file code st
+  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]] || return 1
+  resp_file="${PROD_E2E_RAW_DIR}/mqtt-prep-machine-status.response.json"
+  mkdir -p "${PROD_E2E_RAW_DIR}"
+  code="$(curl -sS -o "$resp_file" -w '%{http_code}' \
+    -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${PROD_E2E_BASE_URL%/}/v1/admin/machines/${mid}" 2>/dev/null || echo "000")"
+  [[ "$code" == "200" ]] || return 1
+  st="$(jq -r '.status // empty' "$resp_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+  printf '%s' "$st"
+}
+
+prod_e2e_mqtt_publish_presence() {
+  local evidence_label="${1:-mqtt-prep-presence}"
+  prod_e2e_mqtt_resolve_topics || return 1
+  local mid="${PROD_E2E_MQTT_MACHINE_ID}"
+  local eid="${PROD_E2E_PREFIX}-prep-presence"
+  local ts
+  ts="$(prod_e2e_mqtt_now_rfc3339)"
+  local hb payload
+  hb="$(jq -nc \
+    --arg mid "$mid" \
+    --arg eid "${eid}-hb" \
+    --arg ts "$ts" \
+    '{
+      schema_version: 1,
+      event_id: $eid,
+      machine_id: $mid,
+      event_type: "heartbeat",
+      occurred_at: $ts,
+      dedupe_key: $eid,
+      payload: { source: "e2e-prod-mqtt-prep", networkState: "online" }
+    }')"
+  payload="$(jq -nc \
+    --arg mid "$mid" \
+    --arg eid "$eid" \
+    --arg ts "$ts" \
+    '{
+      schema_version: 1,
+      event_id: $eid,
+      machine_id: $mid,
+      event_type: "presence",
+      occurred_at: $ts,
+      dedupe_key: $eid,
+      payload: { source: "e2e-prod-mqtt-prep", state: "online" }
+    }')"
+  prod_e2e_mqtt_publish_raw "${PROD_E2E_MQTT_TOPIC_HEARTBEAT}" "$hb" "${evidence_label}-heartbeat" || return 1
+  prod_e2e_mqtt_publish_raw "${PROD_E2E_MQTT_TOPIC_PRESENCE}" "$payload" "${evidence_label}-presence" || return 1
+  return 0
+}
+
 prod_e2e_mqtt_ensure_machine_commandable() {
   local mid="${machineId:-${PROD_E2E_MQTT_MACHINE_ID:-}}"
-  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]] || return 0
+  prod_e2e_state_reload_key machineId || true
+  prod_e2e_state_reload_key mqttTopicPrefix || true
+  mid="${machineId:-${PROD_E2E_MQTT_MACHINE_ID:-$mid}}"
+  [[ -n "$mid" && -n "${PROD_E2E_BASE_URL:-}" ]] || {
+    echo "mqtt commandability gate: missing machineId or base URL" >&2
+    return 1
+  }
+  prod_e2e_refresh_admin_token 0 || true
+  prod_e2e_state_reload_key accessToken || true
+  prod_e2e_state_reload_key ADMIN_TOKEN || true
+
   local patch_flow
   patch_flow="$(jq -nc \
     --arg mid "$mid" \
@@ -85,10 +149,38 @@ prod_e2e_mqtt_ensure_machine_commandable() {
       auth: "bearer_admin",
       evidence_label: "mqtt-prep-machine-active",
       request_template: {status: "active"},
-      expected_status: 200,
-      optional: true
+      expected_status: 200
     }')"
-  prod_e2e_rest_execute_flow "$patch_flow" || true
+  if ! prod_e2e_rest_execute_flow "$patch_flow"; then
+    prod_e2e_fail_classify "c" "MQTT-CMD-DISPATCH" "PATCH machine active failed before command dispatch"
+    return 1
+  fi
+
+  prod_e2e_mqtt_ensure_clients || return 1
+  prod_e2e_mqtt_publish_presence "mqtt-prep" || true
+
+  local deadline=$(( $(date +%s) + 45 ))
+  local st=""
+  while [[ "$(date +%s)" -lt "$deadline" ]]; do
+    st="$(prod_e2e_mqtt_machine_fleet_status "$mid")"
+    if [[ "$st" == "active" ]]; then
+      export PROD_E2E_MQTT_COMMANDABLE=1
+      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>}"
+      return 0
+    fi
+    prod_e2e_mqtt_publish_presence "mqtt-prep-retry" || true
+    sleep 2
+  done
+
+  prod_e2e_fail_classify "c" "MQTT-CMD-DISPATCH" "machine not commandable after poll (fleet status=${st:-unknown}; need active)"
+  echo "mqtt commandability gate: machine ${mid} fleet status=${st:-unknown} (need active)" >&2
+  export PROD_E2E_MQTT_COMMANDABLE=0
+  return 1
+}
+
+prod_e2e_mqtt_prepare_command_phase() {
+  prod_e2e_state_reload_key mqttTopicPrefix || true
+  prod_e2e_mqtt_ensure_machine_commandable
 }
 
 prod_e2e_mqtt_build_catalog_refresh_ack() {
@@ -141,12 +233,19 @@ prod_e2e_mqtt_handler_command_pipeline() {
   local sub_label="${evidence_label}-command-sub"
   local sub_log="${PROD_E2E_RAW_DIR}/${sub_label}.subscribe.txt"
 
+  if ! prod_e2e_mqtt_ensure_machine_commandable; then
+    export PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED=1
+    prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "fail" "$evidence_label"
+    return 1
+  fi
+
   prod_e2e_mqtt_subscribe_background "$cmd_in" 45 "$sub_label"
   sleep 2
-  prod_e2e_mqtt_ensure_machine_commandable
   prod_e2e_rest_execute_flow "$dispatch_flow" || {
+    export PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED=1
     prod_e2e_mqtt_stop_subscriber
     prod_e2e_mqtt_fail_hint "$id" "bridge"
+    prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "fail" "$evidence_label"
     return 1
   }
 
@@ -197,6 +296,7 @@ prod_e2e_mqtt_handler_command_pipeline() {
     esac
   fi
 
+  export PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED=0
   prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "pass" "$evidence_label"
   return 0
 }
@@ -342,10 +442,15 @@ prod_e2e_mqtt_handler_neg_duplicate_ack() {
   evidence_label="$(echo "$flow_json" | jq -r '.evidence_label')"
   recv_file="${PROD_E2E_RAW_DIR}/mqtt-command-pipeline.command-received.json"
   [[ -f "$recv_file" ]] || recv_file="${PROD_E2E_RAW_DIR}/$(echo "$flow_json" | jq -r '.source_evidence // "mqtt-command-pipeline"').command-received.json"
-  [[ -f "$recv_file" ]] || {
+  if [[ ! -f "$recv_file" ]]; then
+    if [[ "${PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED:-}" == "1" ]]; then
+      prod_e2e_record_skipped_flow "$flow_json" "blocked_by=MQTT-CMD-DISPATCH"
+      prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "blocked" "$evidence_label"
+      return 0
+    fi
     prod_e2e_mqtt_fail_hint "$id" "payload"
     return 1
-  }
+  fi
   prod_e2e_mqtt_resolve_topics || return 1
   local recv
   recv="$(cat "$recv_file")"

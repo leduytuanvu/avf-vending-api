@@ -3,6 +3,10 @@
 # MQTT topic resolution and mosquitto client helpers for production E2E.
 
 prod_e2e_mqtt_resolve_topics() {
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key machineId || true
+    prod_e2e_state_reload_key mqttTopicPrefix || true
+  fi
   local mid="${machineId:-${MACHINE_ID:-}}"
   mid="${mid//$'\r'/}"
   [[ -n "$mid" && "$mid" != "null" ]] || {
