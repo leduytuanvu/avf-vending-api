@@ -170,7 +170,11 @@ prod_e2e_validate_contract() {
   prod_e2e_py -m py_compile "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py"
   prod_e2e_py -m py_compile "${PROD_E2E_SCRIPT_DIR}/scripts/generate_rest_route_matrix.py"
   if [[ "${eff}" == "rest" || "${eff}" == "all" ]]; then
-    prod_e2e_route_matrix_pipeline || return 1
+    if [[ "${MODE}" == "live" ]]; then
+      prod_e2e_validate_route_matrix || return 1
+    else
+      prod_e2e_route_matrix_pipeline || return 1
+    fi
   fi
 }
 
