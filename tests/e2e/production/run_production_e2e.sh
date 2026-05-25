@@ -309,6 +309,7 @@ prod_e2e_run_newman() {
     --reporter-json-export "${PROD_E2E_RUN_DIR}/postman/newman-report.json" \
     --reporter-junit-export "${PROD_E2E_RUN_DIR}/postman/newman-junit.xml" \
     | tee "${PROD_E2E_RUN_DIR}/postman/newman-cli.log"
+  return "${PIPESTATUS[0]:-0}"
 }
 
 prod_e2e_flow_matches_suite() {
@@ -568,20 +569,38 @@ prod_e2e_write_results_report() {
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/generate_e2e_results_report.py" "${PROD_E2E_RUN_ID}" || true
 }
 
+prod_e2e_count_evidence_flow_failures() {
+  [[ -f "${PROD_E2E_RESULT_MD:-}" ]] || { echo 0; return 0; }
+  prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/count_e2e_evidence_failures.py" "${PROD_E2E_RESULT_MD}"
+}
+
+prod_e2e_count_classified_failures() {
+  local failures_file="${PROD_E2E_RUN_DIR}/failures.classification.txt"
+  [[ -f "$failures_file" ]] || { echo 0; return 0; }
+  wc -l <"$failures_file" | tr -d ' \r'
+}
+
+# Canonical fail count: evidence flow table + classified suite failures + Newman/parity gates.
+prod_e2e_resolve_final_fail_count() {
+  local newman_failed="${1:-0}"
+  local parity_failed="${2:-0}"
+  local evidence_fail classified_fail fail_count
+  evidence_fail="$(prod_e2e_count_evidence_flow_failures)"
+  classified_fail="$(prod_e2e_count_classified_failures)"
+  fail_count="$evidence_fail"
+  if [[ "${classified_fail:-0}" -gt "${fail_count:-0}" ]]; then
+    fail_count="$classified_fail"
+  fi
+  fail_count=$((fail_count + newman_failed + parity_failed))
+  echo "$fail_count"
+}
+
 prod_e2e_print_final_verdict() {
   [[ "${MODE}" != "live" ]] && return 0
-  local flow_failures="${1:-0}"
-  local failures_file="${PROD_E2E_RUN_DIR}/failures.classification.txt"
-  local fail_count=0
-  [[ -f "$failures_file" ]] && fail_count="$(wc -l <"$failures_file" | tr -d ' \r')"
-  if [[ "${flow_failures:-0}" -gt "${fail_count:-0}" ]]; then
-    fail_count="$flow_failures"
-  fi
-  if [[ "${fail_count:-0}" -eq 0 && -f "${PROD_E2E_RESULT_MD:-}" ]]; then
-    local evidence_fail=0
-    evidence_fail="$(grep -cE '\| fail \|' "${PROD_E2E_RESULT_MD}" 2>/dev/null || true)"
-    [[ "${evidence_fail:-0}" -gt 0 ]] && fail_count="$evidence_fail"
-  fi
+  local newman_failed="${1:-0}"
+  local parity_failed="${2:-0}"
+  local fail_count
+  fail_count="$(prod_e2e_resolve_final_fail_count "$newman_failed" "$parity_failed")"
   local skipped_file="${PROD_E2E_RUN_DIR}/skipped.flows.txt"
   local skipped_count=0
   [[ -f "$skipped_file" ]] && skipped_count="$(wc -l <"$skipped_file" | tr -d ' \r')"
@@ -600,6 +619,21 @@ prod_e2e_print_final_verdict() {
     echo "skipped_flows=${skipped_count}"
     echo "final_verdict=${verdict}"
   fi
+}
+
+prod_e2e_suite_runs_newman() {
+  case "${EFFECTIVE_SUITE}" in
+    grpc|mqtt|planogram-no-online-payment|route-coverage-no-online-payment|route-coverage-with-context-no-online-payment|grpc-token-no-online-payment|grpc-inventory-media-cash-no-online-payment|mqtt-command-telemetry-no-online-payment|mqtt-after-grpc-no-online-payment) return 1 ;;
+    newman-no-online-payment|all|all-no-online-payment) return 0 ;;
+    *) return 0 ;;
+  esac
+}
+
+prod_e2e_suite_runs_postman_parity() {
+  case "${EFFECTIVE_SUITE}" in
+    grpc|mqtt) return 1 ;;
+    *) return 0 ;;
+  esac
 }
 
 main() {
@@ -681,24 +715,28 @@ main() {
     trap prod_e2e_cleanup_trap EXIT
     printf '%s\n' "${MODE}" >"${PROD_E2E_RUN_DIR}/harness.mode.txt"
     printf '%s\n' "${SUITE}" >"${PROD_E2E_RUN_DIR}/suite.profile.txt"
-    local failures=0
-    prod_e2e_run_flows || failures=$?
+    local newman_failed=0
+    local parity_failed=0
+    prod_e2e_run_flows || true
     if [[ "${EFFECTIVE_SUITE}" == "newman-no-online-payment" ]]; then
       prod_e2e_state_sync_json || true
-      prod_e2e_sync_postman_env || failures=$((failures + 1))
-      prod_e2e_run_newman || failures=$((failures + 1))
-    elif [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-after-grpc-no-online-payment" ]]; then
-      prod_e2e_lock_postman_parity || failures=$((failures + 1))
-    fi
-    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-after-grpc-no-online-payment" && "${EFFECTIVE_SUITE}" != "newman-no-online-payment" ]]; then
-      prod_e2e_run_newman || failures=$((failures + 1))
+      prod_e2e_sync_postman_env || newman_failed=1
+      prod_e2e_run_newman || newman_failed=1
+    else
+      if prod_e2e_suite_runs_newman; then
+        prod_e2e_run_newman || newman_failed=1
+      fi
+      if prod_e2e_suite_runs_postman_parity; then
+        prod_e2e_lock_postman_parity || parity_failed=1
+      fi
     fi
     prod_e2e_write_postman_checksums || true
     prod_e2e_evidence_finalize
     prod_e2e_state_sync_json
     prod_e2e_write_results_report
-    prod_e2e_print_final_verdict "$failures"
-    [[ "$failures" -eq 0 ]] || exit 1
+    prod_e2e_print_final_verdict "$newman_failed" "$parity_failed"
+    final_fail_count="$(prod_e2e_resolve_final_fail_count "$newman_failed" "$parity_failed")"
+    [[ "${final_fail_count:-0}" -eq 0 ]] || exit 1
     case "${SUITE}" in
       grpc) echo "GRPC_LIVE_OK run_dir=${PROD_E2E_RUN_DIR}" ;;
       mqtt) echo "MQTT_LIVE_OK run_dir=${PROD_E2E_RUN_DIR}" ;;
