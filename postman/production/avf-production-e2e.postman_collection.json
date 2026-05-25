@@ -215,83 +215,6 @@
             }
           ],
           "_manifest_flow_id": "REST-AUTH-004"
-        },
-        {
-          "name": "REST-AUTH-005 \u2014 GET /v1/admin/categories with machine token (wrong role)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/categories?limit=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "categories"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "1"
-                }
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{machineAccessToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                ]
-              }
-            },
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
-                  "pm.variables.set('_postman_skip_if_env_var', 'SKIP_WRONG_ROLE_TEST');",
-                  "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
-                  "  pm.execution.skipRequest();",
-                  "}"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(403);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "_manifest_flow_id": "REST-AUTH-005"
         }
       ]
     },
@@ -2826,6 +2749,7 @@
                   "  const j = pm.response.json();",
                   "  if (j.machineToken !== undefined) pm.environment.set('machineAccessToken', j.machineToken);",
                   "  if (j.refreshToken !== undefined) pm.environment.set('machineRefreshToken', j.refreshToken);",
+                  "  if (j.mqtt.topicPrefix !== undefined) pm.environment.set('mqttTopicPrefix', j.mqtt.topicPrefix);",
                   "} catch (e) {}"
                 ]
               }
@@ -2905,6 +2829,83 @@
             }
           ],
           "_manifest_flow_id": "REST-MACHINE-005"
+        },
+        {
+          "name": "REST-AUTH-005 \u2014 GET /v1/admin/categories with machine token (wrong role)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/categories?limit=1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{machineAccessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                  "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                  "pm.variables.set('_postman_skip_if_env_var', 'SKIP_WRONG_ROLE_TEST');",
+                  "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('expected HTTP status (manifest)', function () {",
+                  "  pm.response.to.have.status(403);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "_manifest_flow_id": "REST-AUTH-005"
         }
       ]
     },

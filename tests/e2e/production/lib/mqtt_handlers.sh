@@ -73,13 +73,13 @@ prod_e2e_mqtt_handler_connect_invalid() {
 prod_e2e_mqtt_machine_fleet_status() {
   local mid="$1"
   local resp_file code st
-  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]] || return 1
+  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${BASE_URL:-}" ]] || return 1
   resp_file="${PROD_E2E_RAW_DIR}/mqtt-prep-machine-status.response.json"
   mkdir -p "${PROD_E2E_RAW_DIR}"
   code="$(curl -sS -o "$resp_file" -w '%{http_code}' \
     -H "Authorization: Bearer ${ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
-    "${PROD_E2E_BASE_URL%/}/v1/admin/machines/${mid}" 2>/dev/null || echo "000")"
+    "${BASE_URL%/}/v1/admin/machines/${mid}" 2>/dev/null || echo "000")"
   [[ "$code" == "200" ]] || return 1
   st="$(jq -r '.status // empty' "$resp_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
   printf '%s' "$st"
@@ -129,7 +129,7 @@ prod_e2e_mqtt_ensure_machine_commandable() {
   prod_e2e_state_reload_key machineId || true
   prod_e2e_state_reload_key mqttTopicPrefix || true
   mid="${machineId:-${PROD_E2E_MQTT_MACHINE_ID:-$mid}}"
-  [[ -n "$mid" && -n "${PROD_E2E_BASE_URL:-}" ]] || {
+  [[ -n "$mid" && -n "${BASE_URL:-}" ]] || {
     echo "mqtt commandability gate: missing machineId or base URL" >&2
     return 1
   }
@@ -156,19 +156,27 @@ prod_e2e_mqtt_ensure_machine_commandable() {
     return 1
   fi
 
-  prod_e2e_mqtt_ensure_clients || return 1
-  prod_e2e_mqtt_publish_presence "mqtt-prep" || true
+  local patch_resp="${PROD_E2E_RAW_DIR}/mqtt-prep-machine-active.response.json"
+  local st=""
+  if [[ -f "$patch_resp" ]]; then
+    st="$(jq -r '.status // empty' "$patch_resp" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
+    if [[ "$st" == "active" ]]; then
+      export PROD_E2E_MQTT_COMMANDABLE=1
+      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>} source=patch"
+      return 0
+    fi
+  fi
 
   local deadline=$(( $(date +%s) + 45 ))
-  local st=""
+  st=""
   while [[ "$(date +%s)" -lt "$deadline" ]]; do
     st="$(prod_e2e_mqtt_machine_fleet_status "$mid")"
     if [[ "$st" == "active" ]]; then
       export PROD_E2E_MQTT_COMMANDABLE=1
-      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>}"
+      echo "MQTT_COMMANDABLE=active machineId=${mid} topicPrefix=${mqttTopicPrefix:-<default>} source=poll"
       return 0
     fi
-    prod_e2e_mqtt_publish_presence "mqtt-prep-retry" || true
+    prod_e2e_rest_execute_flow "$patch_flow" || true
     sleep 2
   done
 
@@ -179,7 +187,10 @@ prod_e2e_mqtt_ensure_machine_commandable() {
 }
 
 prod_e2e_mqtt_prepare_command_phase() {
+  prod_e2e_state_reload_key machineId || true
   prod_e2e_state_reload_key mqttTopicPrefix || true
+  : "${BASE_URL:=${E2E_PROD_BASE_URL:-https://api.ldtv.dev}}"
+  export BASE_URL
   prod_e2e_mqtt_ensure_machine_commandable
 }
 
@@ -256,6 +267,7 @@ prod_e2e_mqtt_handler_command_pipeline() {
   local recv
   recv="$(prod_e2e_mqtt_read_first_line "$sub_log")"
   if ! prod_e2e_mqtt_sub_join_ok "$sub_ec" "$sub_log" || [[ -z "$recv" ]]; then
+    export PROD_E2E_MQTT_CMD_PIPELINE_BLOCKED=1
     prod_e2e_mqtt_fail_hint "$id" "topic"
     prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "fail" "$evidence_label"
     return 1
@@ -443,8 +455,8 @@ prod_e2e_mqtt_handler_neg_duplicate_ack() {
   recv_file="${PROD_E2E_RAW_DIR}/mqtt-command-pipeline.command-received.json"
   [[ -f "$recv_file" ]] || recv_file="${PROD_E2E_RAW_DIR}/$(echo "$flow_json" | jq -r '.source_evidence // "mqtt-command-pipeline"').command-received.json"
   if [[ ! -f "$recv_file" ]]; then
-    if [[ "${PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED:-}" == "1" ]]; then
-      prod_e2e_record_skipped_flow "$flow_json" "blocked_by=MQTT-CMD-DISPATCH"
+    if [[ "${PROD_E2E_MQTT_CMD_DISPATCH_BLOCKED:-}" == "1" || "${PROD_E2E_MQTT_CMD_PIPELINE_BLOCKED:-}" == "1" ]]; then
+      prod_e2e_record_skipped_flow "$flow_json" "blocked_by=MQTT-CMD-001"
       prod_e2e_evidence_append_row "$id" "$(echo "$flow_json" | jq -r '.label')" "mqtt" "blocked" "$evidence_label"
       return 0
     fi

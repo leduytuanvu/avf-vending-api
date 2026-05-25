@@ -479,6 +479,7 @@ flows:
     capture:
       machineToken: machineToken
       machineRefreshToken: refreshToken
+      mqttTopicPrefix: mqtt.topicPrefix
     cleanup: none
 
   - id: REST-MACHINE-005
@@ -496,7 +497,7 @@ flows:
 
   - id: REST-AUTH-005
     label: GET /v1/admin/categories with machine token (wrong role)
-    phase: auth
+    phase: provisioning
     protocol: rest
     evidence_label: rest-auth-wrong-role
     auth: bearer_machine
@@ -505,6 +506,7 @@ flows:
     request_template: {}
     expected_status: 403
     skip_if_env: SKIP_WRONG_ROLE_TEST
+    skip_if_empty: machineToken
     cleanup: none
 
   # --- Phase 5: Planogram / topology ---
