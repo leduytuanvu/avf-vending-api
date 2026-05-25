@@ -137,6 +137,18 @@ def load_skipped(run_dir: Path) -> dict[str, str]:
     return out
 
 
+REDACT_PATTERNS = [
+    (re.compile(r"AVF-[A-F0-9]{6}-[A-F0-9]{6}", re.I), "<redacted-activation-code>"),
+    (re.compile(r"eyJ[A-Za-z0-9_+/=-]{16,}"), "<redacted-base64>"),
+]
+
+
+def scrub_secrets(text: str) -> str:
+    for pat, repl in REDACT_PATTERNS:
+        text = pat.sub(repl, text)
+    return text
+
+
 def redacted_json(raw_dir: Path, label: str, suffix: str) -> str:
     p = raw_dir / f"{label}.{suffix}.redacted.json"
     if p.is_file():
@@ -624,9 +636,9 @@ def main() -> int:
 
     if args.write:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
-        out_manual.write_text(manual, encoding="utf-8")
-        out_trace.write_text(trace, encoding="utf-8")
-        out_parity.write_text(parity, encoding="utf-8")
+        out_manual.write_text(scrub_secrets(manual), encoding="utf-8")
+        out_trace.write_text(scrub_secrets(trace), encoding="utf-8")
+        out_parity.write_text(scrub_secrets(parity), encoding="utf-8")
         print(f"WROTE {out_manual.relative_to(REPO_ROOT)}")
         print(f"WROTE {out_trace.relative_to(REPO_ROOT)}")
         print(f"WROTE {out_parity.relative_to(REPO_ROOT)}")
