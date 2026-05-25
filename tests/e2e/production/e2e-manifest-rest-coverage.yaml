@@ -1021,44 +1021,10 @@ flows:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/commands
 - id: REST-COV-GET-0063
-  label: GET /v1/admin/reports/export (readonly_smoke)
-  phase: rest-coverage
-  protocol: rest
-  evidence_label: rest-cov-0063
-  auth: bearer_admin
-  method: GET
-  path: /v1/admin/reports/export?from={{reportFrom}}&to={{reportTo}}&limit=1
-  request_template: {}
-  expected_status:
-  - 200
-  - 404
-  optional: true
-  cleanup: none
-  route_matrix:
-    coverage: readonly_smoke
-    openapi_path: /v1/admin/reports/export
-- id: REST-COV-GET-0064
-  label: GET /v1/admin/reports/fills (readonly_smoke)
-  phase: rest-coverage
-  protocol: rest
-  evidence_label: rest-cov-0064
-  auth: bearer_admin
-  method: GET
-  path: /v1/admin/reports/fills?from={{reportFrom}}&to={{reportTo}}&limit=1
-  request_template: {}
-  expected_status:
-  - 200
-  - 404
-  optional: true
-  cleanup: none
-  route_matrix:
-    coverage: readonly_smoke
-    openapi_path: /v1/admin/reports/fills
-- id: REST-COV-GET-0065
   label: GET /v1/admin/reports/inventory (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0065
+  evidence_label: rest-cov-0063
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/inventory?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1071,11 +1037,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/inventory
-- id: REST-COV-GET-0066
+- id: REST-COV-GET-0064
   label: GET /v1/admin/reports/inventory-low-stock (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0066
+  evidence_label: rest-cov-0064
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/inventory-low-stock?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1088,11 +1054,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/inventory-low-stock
-- id: REST-COV-GET-0067
+- id: REST-COV-GET-0065
   label: GET /v1/admin/reports/machine-health (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0067
+  evidence_label: rest-cov-0065
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/machine-health?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1105,11 +1071,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/machine-health
-- id: REST-COV-GET-0068
+- id: REST-COV-GET-0066
   label: GET /v1/admin/reports/machines (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0068
+  evidence_label: rest-cov-0066
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/machines?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1122,11 +1088,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/machines
-- id: REST-COV-GET-0069
+- id: REST-COV-GET-0067
   label: GET /v1/admin/reports/payments (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0069
+  evidence_label: rest-cov-0067
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/payments?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1139,28 +1105,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/payments
-- id: REST-COV-GET-0070
-  label: GET /v1/admin/reports/products (readonly_smoke)
-  phase: rest-coverage
-  protocol: rest
-  evidence_label: rest-cov-0070
-  auth: bearer_admin
-  method: GET
-  path: /v1/admin/reports/products?from={{reportFrom}}&to={{reportTo}}&limit=1
-  request_template: {}
-  expected_status:
-  - 200
-  - 404
-  optional: true
-  cleanup: none
-  route_matrix:
-    coverage: readonly_smoke
-    openapi_path: /v1/admin/reports/products
-- id: REST-COV-GET-0071
+- id: REST-COV-GET-0068
   label: GET /v1/admin/reports/reconciliation (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0071
+  evidence_label: rest-cov-0068
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/reconciliation?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1173,11 +1122,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/reconciliation
-- id: REST-COV-GET-0072
+- id: REST-COV-GET-0069
   label: GET /v1/admin/reports/refunds (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0072
+  evidence_label: rest-cov-0069
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/refunds?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1190,11 +1139,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/refunds
-- id: REST-COV-GET-0073
+- id: REST-COV-GET-0070
   label: GET /v1/admin/reports/sales (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0073
+  evidence_label: rest-cov-0070
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/sales?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1207,11 +1156,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/sales
-- id: REST-COV-GET-0074
+- id: REST-COV-GET-0071
   label: GET /v1/admin/reports/vends (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0074
+  evidence_label: rest-cov-0071
   auth: bearer_admin
   method: GET
   path: /v1/admin/reports/vends?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1224,11 +1173,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/reports/vends
-- id: REST-COV-GET-0075
+- id: REST-COV-GET-0072
   label: GET /v1/admin/restock/suggestions (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0075
+  evidence_label: rest-cov-0072
   auth: bearer_admin
   method: GET
   path: /v1/admin/restock/suggestions?limit=1
@@ -1241,11 +1190,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/restock/suggestions
-- id: REST-COV-GET-0076
+- id: REST-COV-GET-0073
   label: GET /v1/admin/rollouts (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0076
+  evidence_label: rest-cov-0073
   auth: bearer_admin
   method: GET
   path: /v1/admin/rollouts?limit=1
@@ -1258,11 +1207,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/rollouts
-- id: REST-COV-GET-0077
+- id: REST-COV-GET-0074
   label: GET /v1/admin/sites (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0077
+  evidence_label: rest-cov-0074
   auth: bearer_admin
   method: GET
   path: /v1/admin/sites?limit=1
@@ -1275,11 +1224,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/sites
-- id: REST-COV-GET-0078
+- id: REST-COV-GET-0075
   label: GET /v1/admin/sites/{siteId} (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0078
+  evidence_label: rest-cov-0075
   auth: bearer_admin
   method: GET
   path: /v1/admin/sites/{{siteId}}
@@ -1292,11 +1241,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/sites/{siteId}
-- id: REST-COV-GET-0079
+- id: REST-COV-GET-0076
   label: GET /v1/admin/system/outbox (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0079
+  evidence_label: rest-cov-0076
   auth: bearer_admin
   method: GET
   path: /v1/admin/system/outbox?limit=1
@@ -1309,11 +1258,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/system/outbox
-- id: REST-COV-GET-0080
+- id: REST-COV-GET-0077
   label: GET /v1/admin/system/outbox/stats (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0080
+  evidence_label: rest-cov-0077
   auth: bearer_admin
   method: GET
   path: /v1/admin/system/outbox/stats?limit=1
@@ -1326,11 +1275,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/system/outbox/stats
-- id: REST-COV-GET-0081
+- id: REST-COV-GET-0078
   label: GET /v1/admin/system/retention/stats (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0081
+  evidence_label: rest-cov-0078
   auth: bearer_admin
   method: GET
   path: /v1/admin/system/retention/stats?limit=1
@@ -1343,11 +1292,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/system/retention/stats
-- id: REST-COV-GET-0082
+- id: REST-COV-GET-0079
   label: GET /v1/admin/tags (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0082
+  evidence_label: rest-cov-0079
   auth: bearer_admin
   method: GET
   path: /v1/admin/tags?limit=1
@@ -1360,11 +1309,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/tags
-- id: REST-COV-GET-0083
+- id: REST-COV-GET-0080
   label: GET /v1/admin/technician-assignments (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0083
+  evidence_label: rest-cov-0080
   auth: bearer_admin
   method: GET
   path: /v1/admin/technician-assignments?limit=1
@@ -1377,11 +1326,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/technician-assignments
-- id: REST-COV-GET-0084
+- id: REST-COV-GET-0081
   label: GET /v1/admin/technicians (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0084
+  evidence_label: rest-cov-0081
   auth: bearer_admin
   method: GET
   path: /v1/admin/technicians?limit=1
@@ -1394,11 +1343,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/admin/technicians
-- id: REST-COV-GET-0085
+- id: REST-COV-GET-0082
   label: GET /v1/auth/sessions (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0085
+  evidence_label: rest-cov-0082
   auth: bearer_admin
   method: GET
   path: /v1/auth/sessions?limit=1
@@ -1409,11 +1358,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/auth/sessions
-- id: REST-COV-GET-0086
+- id: REST-COV-GET-0083
   label: GET /v1/machines/{machineId}/commands/receipts (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0086
+  evidence_label: rest-cov-0083
   auth: bearer_admin
   method: GET
   path: /v1/machines/{{machineId}}/commands/receipts
@@ -1426,11 +1375,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/machines/{machineId}/commands/receipts
-- id: REST-COV-GET-0087
+- id: REST-COV-GET-0084
   label: GET /v1/machines/{machineId}/commands/{sequence}/status (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0087
+  evidence_label: rest-cov-0084
   auth: none
   method: GET
   path: /v1/machines/{{machineId}}/commands/00000000-0000-4000-8000-000000000099/status
@@ -1441,11 +1390,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/machines/{machineId}/commands/{sequence}/status
-- id: REST-COV-GET-0088
+- id: REST-COV-GET-0085
   label: GET /v1/operator-insights/users/action-attributions (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0088
+  evidence_label: rest-cov-0085
   auth: bearer_admin
   method: GET
   path: /v1/operator-insights/users/action-attributions?user_principal={{adminUserId}}&limit=1
@@ -1458,11 +1407,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/operator-insights/users/action-attributions
-- id: REST-COV-GET-0089
+- id: REST-COV-GET-0086
   label: GET /v1/orders (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0089
+  evidence_label: rest-cov-0086
   auth: bearer_admin
   method: GET
   path: /v1/orders?limit=1
@@ -1475,11 +1424,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/orders
-- id: REST-COV-GET-0090
+- id: REST-COV-GET-0087
   label: GET /v1/payments (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0090
+  evidence_label: rest-cov-0087
   auth: bearer_admin
   method: GET
   path: /v1/payments?limit=1
@@ -1492,11 +1441,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/payments
-- id: REST-COV-GET-0091
+- id: REST-COV-GET-0088
   label: GET /v1/reports/payments-summary (readonly_smoke)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0091
+  evidence_label: rest-cov-0088
   auth: bearer_admin
   method: GET
   path: /v1/reports/payments-summary?from={{reportFrom}}&to={{reportTo}}&limit=1
@@ -1509,11 +1458,11 @@ flows:
   route_matrix:
     coverage: readonly_smoke
     openapi_path: /v1/reports/payments-summary
-- id: REST-COV-PAT-0092
+- id: REST-COV-PAT-0089
   label: PATCH /v1/admin/auth/users/{accountId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0092
+  evidence_label: rest-cov-0089
   auth: none
   method: PATCH
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099
@@ -1525,11 +1474,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}
-- id: REST-COV-PAT-0093
+- id: REST-COV-PAT-0090
   label: PATCH /v1/admin/auth/users/{accountId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0093
+  evidence_label: rest-cov-0090
   auth: none
   method: PATCH
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/roles
@@ -1541,11 +1490,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/roles
-- id: REST-COV-PAT-0094
+- id: REST-COV-PAT-0091
   label: PATCH /v1/admin/auth/users/{accountId}/status (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0094
+  evidence_label: rest-cov-0091
   auth: none
   method: PATCH
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/status
@@ -1557,11 +1506,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/status
-- id: REST-COV-PAT-0095
+- id: REST-COV-PAT-0092
   label: PATCH /v1/admin/brands/{brandId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0095
+  evidence_label: rest-cov-0092
   auth: none
   method: PATCH
   path: /v1/admin/brands/{{brandId}}
@@ -1573,11 +1522,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/brands/{brandId}
-- id: REST-COV-PAT-0096
+- id: REST-COV-PAT-0093
   label: PATCH /v1/admin/categories/{categoryId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0096
+  evidence_label: rest-cov-0093
   auth: none
   method: PATCH
   path: /v1/admin/categories/{{categoryId}}
@@ -1589,11 +1538,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/categories/{categoryId}
-- id: REST-COV-PAT-0097
+- id: REST-COV-PAT-0094
   label: PATCH /v1/admin/feature-flags/{flagId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0097
+  evidence_label: rest-cov-0094
   auth: none
   method: PATCH
   path: /v1/admin/feature-flags/00000000-0000-4000-8000-000000000099
@@ -1605,11 +1554,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/feature-flags/{flagId}
-- id: REST-COV-PAT-0098
+- id: REST-COV-PAT-0095
   label: PATCH /v1/admin/ota/campaigns/{campaignId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0098
+  evidence_label: rest-cov-0095
   auth: none
   method: PATCH
   path: /v1/admin/ota/campaigns/00000000-0000-4000-8000-000000000099
@@ -1621,11 +1570,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns/{campaignId}
-- id: REST-COV-PAT-0099
+- id: REST-COV-PAT-0096
   label: PATCH /v1/admin/price-books/{priceBookId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0099
+  evidence_label: rest-cov-0096
   auth: none
   method: PATCH
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099
@@ -1637,11 +1586,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}
-- id: REST-COV-PAT-0100
+- id: REST-COV-PAT-0097
   label: PATCH /v1/admin/price-books/{priceBookId}/items/{productId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0100
+  evidence_label: rest-cov-0097
   auth: none
   method: PATCH
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/items/{{productId}}
@@ -1653,11 +1602,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/items/{productId}
-- id: REST-COV-PAT-0101
+- id: REST-COV-PAT-0098
   label: PATCH /v1/admin/products/{productId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0101
+  evidence_label: rest-cov-0098
   auth: none
   method: PATCH
   path: /v1/admin/products/{{productId}}
@@ -1669,11 +1618,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}
-- id: REST-COV-PAT-0102
+- id: REST-COV-PAT-0099
   label: PATCH /v1/admin/promotions/{promotionId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0102
+  evidence_label: rest-cov-0099
   auth: none
   method: PATCH
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099
@@ -1685,11 +1634,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}
-- id: REST-COV-PAT-0103
+- id: REST-COV-PAT-0100
   label: PATCH /v1/admin/sites/{siteId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0103
+  evidence_label: rest-cov-0100
   auth: none
   method: PATCH
   path: /v1/admin/sites/{{siteId}}
@@ -1701,11 +1650,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/sites/{siteId}
-- id: REST-COV-PAT-0104
+- id: REST-COV-PAT-0101
   label: PATCH /v1/admin/tags/{tagId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0104
+  evidence_label: rest-cov-0101
   auth: none
   method: PATCH
   path: /v1/admin/tags/{{tagId}}
@@ -1717,11 +1666,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/tags/{tagId}
-- id: REST-COV-PAT-0105
+- id: REST-COV-PAT-0102
   label: PATCH /v1/admin/technician-assignments/{assignmentId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0105
+  evidence_label: rest-cov-0102
   auth: none
   method: PATCH
   path: /v1/admin/technician-assignments/00000000-0000-4000-8000-000000000099
@@ -1733,11 +1682,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technician-assignments/{assignmentId}
-- id: REST-COV-PAT-0106
+- id: REST-COV-PAT-0103
   label: PATCH /v1/admin/technicians/{technicianId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0106
+  evidence_label: rest-cov-0103
   auth: none
   method: PATCH
   path: /v1/admin/technicians/00000000-0000-4000-8000-000000000099
@@ -1749,11 +1698,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technicians/{technicianId}
-- id: REST-COV-PAT-0107
+- id: REST-COV-PAT-0104
   label: PATCH /v1/admin/users/{userId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0107
+  evidence_label: rest-cov-0104
   auth: none
   method: PATCH
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099
@@ -1765,11 +1714,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}
-- id: REST-COV-PAT-0108
+- id: REST-COV-PAT-0105
   label: PATCH /v1/admin/users/{userId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0108
+  evidence_label: rest-cov-0105
   auth: none
   method: PATCH
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/roles
@@ -1781,11 +1730,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/roles
-- id: REST-COV-PAT-0109
+- id: REST-COV-PAT-0106
   label: PATCH /v1/admin/users/{userId}/status (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0109
+  evidence_label: rest-cov-0106
   auth: none
   method: PATCH
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/status
@@ -1797,11 +1746,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/status
-- id: REST-COV-POS-0110
+- id: REST-COV-POS-0107
   label: POST /v1/admin/activation-codes (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0110
+  evidence_label: rest-cov-0107
   auth: none
   method: POST
   path: /v1/admin/activation-codes
@@ -1813,11 +1762,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/activation-codes
-- id: REST-COV-POS-0111
+- id: REST-COV-POS-0108
   label: POST /v1/admin/activation-codes/{codeId}/revoke (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0111
+  evidence_label: rest-cov-0108
   auth: none
   method: POST
   path: /v1/admin/activation-codes/00000000-0000-4000-8000-000000000099/revoke
@@ -1829,11 +1778,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/activation-codes/{codeId}/revoke
-- id: REST-COV-POS-0112
+- id: REST-COV-POS-0109
   label: POST /v1/admin/anomalies/{anomalyId}/ignore (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0112
+  evidence_label: rest-cov-0109
   auth: none
   method: POST
   path: /v1/admin/anomalies/00000000-0000-4000-8000-000000000099/ignore
@@ -1845,11 +1794,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/anomalies/{anomalyId}/ignore
-- id: REST-COV-POS-0113
+- id: REST-COV-POS-0110
   label: POST /v1/admin/anomalies/{anomalyId}/resolve (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0113
+  evidence_label: rest-cov-0110
   auth: none
   method: POST
   path: /v1/admin/anomalies/00000000-0000-4000-8000-000000000099/resolve
@@ -1861,11 +1810,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/anomalies/{anomalyId}/resolve
-- id: REST-COV-POS-0114
+- id: REST-COV-POS-0111
   label: POST /v1/admin/artifacts (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0114
+  evidence_label: rest-cov-0111
   auth: none
   method: POST
   path: /v1/admin/artifacts
@@ -1877,11 +1826,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/artifacts
-- id: REST-COV-POS-0115
+- id: REST-COV-POS-0112
   label: POST /v1/admin/assignments (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0115
+  evidence_label: rest-cov-0112
   auth: none
   method: POST
   path: /v1/admin/assignments
@@ -1893,11 +1842,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/assignments
-- id: REST-COV-POS-0116
+- id: REST-COV-POS-0113
   label: POST /v1/admin/auth/users (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0116
+  evidence_label: rest-cov-0113
   auth: none
   method: POST
   path: /v1/admin/auth/users
@@ -1909,11 +1858,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users
-- id: REST-COV-POS-0117
+- id: REST-COV-POS-0114
   label: POST /v1/admin/auth/users/{accountId}/activate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0117
+  evidence_label: rest-cov-0114
   auth: none
   method: POST
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/activate
@@ -1925,11 +1874,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/activate
-- id: REST-COV-POS-0118
+- id: REST-COV-POS-0115
   label: POST /v1/admin/auth/users/{accountId}/deactivate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0118
+  evidence_label: rest-cov-0115
   auth: none
   method: POST
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/deactivate
@@ -1941,11 +1890,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/deactivate
-- id: REST-COV-POS-0119
+- id: REST-COV-POS-0116
   label: POST /v1/admin/auth/users/{accountId}/reset-password (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0119
+  evidence_label: rest-cov-0116
   auth: none
   method: POST
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/reset-password
@@ -1957,11 +1906,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/reset-password
-- id: REST-COV-POS-0120
+- id: REST-COV-POS-0117
   label: POST /v1/admin/auth/users/{accountId}/revoke-sessions (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0120
+  evidence_label: rest-cov-0117
   auth: none
   method: POST
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/revoke-sessions
@@ -1973,11 +1922,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/revoke-sessions
-- id: REST-COV-POS-0121
+- id: REST-COV-POS-0118
   label: POST /v1/admin/auth/users/{accountId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0121
+  evidence_label: rest-cov-0118
   auth: none
   method: POST
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/roles
@@ -1989,11 +1938,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/roles
-- id: REST-COV-POS-0122
+- id: REST-COV-POS-0119
   label: POST /v1/admin/commands/{commandId}/cancel (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0122
+  evidence_label: rest-cov-0119
   auth: none
   method: POST
   path: /v1/admin/commands/{{commandId}}/cancel
@@ -2006,11 +1955,11 @@ flows:
     coverage: auth_negative
     openapi_path: /v1/admin/commands/{commandId}/cancel
   skip_if_empty: commandId
-- id: REST-COV-POS-0123
+- id: REST-COV-POS-0120
   label: POST /v1/admin/commands/{commandId}/retry (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0123
+  evidence_label: rest-cov-0120
   auth: none
   method: POST
   path: /v1/admin/commands/{{commandId}}/retry
@@ -2023,11 +1972,11 @@ flows:
     coverage: auth_negative
     openapi_path: /v1/admin/commands/{commandId}/retry
   skip_if_empty: commandId
-- id: REST-COV-POS-0124
+- id: REST-COV-POS-0121
   label: POST /v1/admin/commerce/reconciliation/{caseId}/ignore (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0124
+  evidence_label: rest-cov-0121
   auth: none
   method: POST
   path: /v1/admin/commerce/reconciliation/00000000-0000-4000-8000-000000000099/ignore
@@ -2039,11 +1988,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/commerce/reconciliation/{caseId}/ignore
-- id: REST-COV-POS-0125
+- id: REST-COV-POS-0122
   label: POST /v1/admin/commerce/reconciliation/{caseId}/request-refund (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0125
+  evidence_label: rest-cov-0122
   auth: none
   method: POST
   path: /v1/admin/commerce/reconciliation/00000000-0000-4000-8000-000000000099/request-refund
@@ -2055,11 +2004,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/commerce/reconciliation/{caseId}/request-refund
-- id: REST-COV-POS-0126
+- id: REST-COV-POS-0123
   label: POST /v1/admin/commerce/reconciliation/{caseId}/resolve (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0126
+  evidence_label: rest-cov-0123
   auth: none
   method: POST
   path: /v1/admin/commerce/reconciliation/00000000-0000-4000-8000-000000000099/resolve
@@ -2071,11 +2020,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/commerce/reconciliation/{caseId}/resolve
-- id: REST-COV-POS-0127
+- id: REST-COV-POS-0124
   label: POST /v1/admin/feature-flags (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0127
+  evidence_label: rest-cov-0124
   auth: none
   method: POST
   path: /v1/admin/feature-flags
@@ -2087,11 +2036,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/feature-flags
-- id: REST-COV-POS-0128
+- id: REST-COV-POS-0125
   label: POST /v1/admin/feature-flags/{flagId}/disable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0128
+  evidence_label: rest-cov-0125
   auth: none
   method: POST
   path: /v1/admin/feature-flags/00000000-0000-4000-8000-000000000099/disable
@@ -2103,11 +2052,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/feature-flags/{flagId}/disable
-- id: REST-COV-POS-0129
+- id: REST-COV-POS-0126
   label: POST /v1/admin/feature-flags/{flagId}/enable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0129
+  evidence_label: rest-cov-0126
   auth: none
   method: POST
   path: /v1/admin/feature-flags/00000000-0000-4000-8000-000000000099/enable
@@ -2119,11 +2068,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/feature-flags/{flagId}/enable
-- id: REST-COV-POS-0130
+- id: REST-COV-POS-0127
   label: POST /v1/admin/finance/daily-close (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0130
+  evidence_label: rest-cov-0127
   auth: none
   method: POST
   path: /v1/admin/finance/daily-close
@@ -2135,11 +2084,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/finance/daily-close
-- id: REST-COV-POS-0131
+- id: REST-COV-POS-0128
   label: POST /v1/admin/inventory/anomalies/{anomalyId}/resolve (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0131
+  evidence_label: rest-cov-0128
   auth: none
   method: POST
   path: /v1/admin/inventory/anomalies/00000000-0000-4000-8000-000000000099/resolve
@@ -2151,11 +2100,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/inventory/anomalies/{anomalyId}/resolve
-- id: REST-COV-POS-0132
+- id: REST-COV-POS-0129
   label: POST /v1/admin/machine-config/rollouts (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0132
+  evidence_label: rest-cov-0129
   auth: none
   method: POST
   path: /v1/admin/machine-config/rollouts
@@ -2167,11 +2116,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machine-config/rollouts
-- id: REST-COV-POS-0133
+- id: REST-COV-POS-0130
   label: POST /v1/admin/machines/{machineId}/archive (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0133
+  evidence_label: rest-cov-0130
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/archive
@@ -2183,11 +2132,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/archive
-- id: REST-COV-POS-0134
+- id: REST-COV-POS-0131
   label: POST /v1/admin/machines/{machineId}/cash-collections (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0134
+  evidence_label: rest-cov-0131
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/cash-collections
@@ -2199,12 +2148,12 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/cash-collections
-- id: REST-COV-POS-0135
+- id: REST-COV-POS-0132
   label: POST /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close
     (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0135
+  evidence_label: rest-cov-0132
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/cash-collections/00000000-0000-4000-8000-000000000099/close
@@ -2216,11 +2165,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close
-- id: REST-COV-POS-0136
+- id: REST-COV-POS-0133
   label: POST /v1/admin/machines/{machineId}/commands (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0136
+  evidence_label: rest-cov-0133
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/commands
@@ -2232,11 +2181,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/commands
-- id: REST-COV-POS-0137
+- id: REST-COV-POS-0134
   label: POST /v1/admin/machines/{machineId}/diagnostics/requests (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0137
+  evidence_label: rest-cov-0134
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/diagnostics/requests
@@ -2248,11 +2197,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/diagnostics/requests
-- id: REST-COV-POS-0138
+- id: REST-COV-POS-0135
   label: POST /v1/admin/machines/{machineId}/disable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0138
+  evidence_label: rest-cov-0135
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/disable
@@ -2264,11 +2213,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/disable
-- id: REST-COV-POS-0139
+- id: REST-COV-POS-0136
   label: POST /v1/admin/machines/{machineId}/enable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0139
+  evidence_label: rest-cov-0136
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/enable
@@ -2280,11 +2229,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/enable
-- id: REST-COV-POS-0140
+- id: REST-COV-POS-0137
   label: POST /v1/admin/machines/{machineId}/inventory/reconcile (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0140
+  evidence_label: rest-cov-0137
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/inventory/reconcile
@@ -2296,11 +2245,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/inventory/reconcile
-- id: REST-COV-POS-0141
+- id: REST-COV-POS-0138
   label: POST /v1/admin/machines/{machineId}/mark-compromised (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0141
+  evidence_label: rest-cov-0138
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/mark-compromised
@@ -2312,11 +2261,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/mark-compromised
-- id: REST-COV-POS-0142
+- id: REST-COV-POS-0139
   label: POST /v1/admin/machines/{machineId}/resume (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0142
+  evidence_label: rest-cov-0139
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/resume
@@ -2328,11 +2277,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/resume
-- id: REST-COV-POS-0143
+- id: REST-COV-POS-0140
   label: POST /v1/admin/machines/{machineId}/retire (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0143
+  evidence_label: rest-cov-0140
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/retire
@@ -2344,11 +2293,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/retire
-- id: REST-COV-POS-0144
+- id: REST-COV-POS-0141
   label: POST /v1/admin/machines/{machineId}/revoke-credentials (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0144
+  evidence_label: rest-cov-0141
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/revoke-credentials
@@ -2360,11 +2309,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/revoke-credentials
-- id: REST-COV-POS-0145
+- id: REST-COV-POS-0142
   label: POST /v1/admin/machines/{machineId}/revoke-sessions (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0145
+  evidence_label: rest-cov-0142
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/revoke-sessions
@@ -2376,11 +2325,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/revoke-sessions
-- id: REST-COV-POS-0146
+- id: REST-COV-POS-0143
   label: POST /v1/admin/machines/{machineId}/revoke-token (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0146
+  evidence_label: rest-cov-0143
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/revoke-token
@@ -2392,11 +2341,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/revoke-token
-- id: REST-COV-POS-0147
+- id: REST-COV-POS-0144
   label: POST /v1/admin/machines/{machineId}/rotate-credential (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0147
+  evidence_label: rest-cov-0144
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/rotate-credential
@@ -2408,11 +2357,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/rotate-credential
-- id: REST-COV-POS-0148
+- id: REST-COV-POS-0145
   label: POST /v1/admin/machines/{machineId}/rotate-credentials (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0148
+  evidence_label: rest-cov-0145
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/rotate-credentials
@@ -2424,11 +2373,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/rotate-credentials
-- id: REST-COV-POS-0149
+- id: REST-COV-POS-0146
   label: POST /v1/admin/machines/{machineId}/rotate-token-version (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0149
+  evidence_label: rest-cov-0146
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/rotate-token-version
@@ -2440,11 +2389,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/rotate-token-version
-- id: REST-COV-POS-0150
+- id: REST-COV-POS-0147
   label: POST /v1/admin/machines/{machineId}/suspend (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0150
+  evidence_label: rest-cov-0147
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/suspend
@@ -2456,11 +2405,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/suspend
-- id: REST-COV-POS-0151
+- id: REST-COV-POS-0148
   label: POST /v1/admin/machines/{machineId}/sync (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0151
+  evidence_label: rest-cov-0148
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/sync
@@ -2472,11 +2421,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/sync
-- id: REST-COV-POS-0152
+- id: REST-COV-POS-0149
   label: POST /v1/admin/machines/{machineId}/technicians (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0152
+  evidence_label: rest-cov-0149
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/technicians
@@ -2488,11 +2437,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/technicians
-- id: REST-COV-POS-0153
+- id: REST-COV-POS-0150
   label: POST /v1/admin/machines/{machineId}/transfer-site (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0153
+  evidence_label: rest-cov-0150
   auth: none
   method: POST
   path: /v1/admin/machines/{{machineId}}/transfer-site
@@ -2504,11 +2453,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/machines/{machineId}/transfer-site
-- id: REST-COV-POS-0154
+- id: REST-COV-POS-0151
   label: POST /v1/admin/media/assets (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0154
+  evidence_label: rest-cov-0151
   auth: none
   method: POST
   path: /v1/admin/media/assets
@@ -2520,11 +2469,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/media/assets
-- id: REST-COV-POS-0155
+- id: REST-COV-POS-0152
   label: POST /v1/admin/media/external-images (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0155
+  evidence_label: rest-cov-0152
   auth: none
   method: POST
   path: /v1/admin/media/external-images
@@ -2536,11 +2485,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/media/external-images
-- id: REST-COV-POS-0156
+- id: REST-COV-POS-0153
   label: POST /v1/admin/media/uploads (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0156
+  evidence_label: rest-cov-0153
   auth: none
   method: POST
   path: /v1/admin/media/uploads
@@ -2552,11 +2501,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/media/uploads
-- id: REST-COV-POS-0157
+- id: REST-COV-POS-0154
   label: POST /v1/admin/media/{mediaId}/complete (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0157
+  evidence_label: rest-cov-0154
   auth: none
   method: POST
   path: /v1/admin/media/{{mediaId}}/complete
@@ -2568,11 +2517,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/media/{mediaId}/complete
-- id: REST-COV-POS-0158
+- id: REST-COV-POS-0155
   label: POST /v1/admin/ops/outbox/{outboxId}/retry (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0158
+  evidence_label: rest-cov-0155
   auth: none
   method: POST
   path: /v1/admin/ops/outbox/00000000-0000-4000-8000-000000000099/retry
@@ -2584,11 +2533,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ops/outbox/{outboxId}/retry
-- id: REST-COV-POS-0159
+- id: REST-COV-POS-0156
   label: POST /v1/admin/orders/{orderId}/refunds (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0159
+  evidence_label: rest-cov-0156
   auth: none
   method: POST
   path: /v1/admin/orders/{{orderId}}/refunds
@@ -2601,11 +2550,11 @@ flows:
     coverage: auth_negative
     openapi_path: /v1/admin/orders/{orderId}/refunds
   skip_if_empty: orderId
-- id: REST-COV-POS-0160
+- id: REST-COV-POS-0157
   label: POST /v1/admin/ota/campaigns (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0160
+  evidence_label: rest-cov-0157
   auth: none
   method: POST
   path: /v1/admin/ota/campaigns
@@ -2617,11 +2566,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns
-- id: REST-COV-POS-0161
+- id: REST-COV-POS-0158
   label: POST /v1/admin/ota/campaigns/{campaignId}/cancel (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0161
+  evidence_label: rest-cov-0158
   auth: none
   method: POST
   path: /v1/admin/ota/campaigns/00000000-0000-4000-8000-000000000099/cancel
@@ -2633,11 +2582,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns/{campaignId}/cancel
-- id: REST-COV-POS-0162
+- id: REST-COV-POS-0159
   label: POST /v1/admin/ota/campaigns/{campaignId}/pause (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0162
+  evidence_label: rest-cov-0159
   auth: none
   method: POST
   path: /v1/admin/ota/campaigns/00000000-0000-4000-8000-000000000099/pause
@@ -2649,11 +2598,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns/{campaignId}/pause
-- id: REST-COV-POS-0163
+- id: REST-COV-POS-0160
   label: POST /v1/admin/ota/campaigns/{campaignId}/resume (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0163
+  evidence_label: rest-cov-0160
   auth: none
   method: POST
   path: /v1/admin/ota/campaigns/00000000-0000-4000-8000-000000000099/resume
@@ -2665,11 +2614,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns/{campaignId}/resume
-- id: REST-COV-POS-0164
+- id: REST-COV-POS-0161
   label: POST /v1/admin/price-books (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0164
+  evidence_label: rest-cov-0161
   auth: none
   method: POST
   path: /v1/admin/price-books
@@ -2681,11 +2630,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books
-- id: REST-COV-POS-0165
+- id: REST-COV-POS-0162
   label: POST /v1/admin/price-books/{priceBookId}/activate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0165
+  evidence_label: rest-cov-0162
   auth: none
   method: POST
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/activate
@@ -2697,11 +2646,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/activate
-- id: REST-COV-POS-0166
+- id: REST-COV-POS-0163
   label: POST /v1/admin/price-books/{priceBookId}/archive (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0166
+  evidence_label: rest-cov-0163
   auth: none
   method: POST
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/archive
@@ -2713,11 +2662,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/archive
-- id: REST-COV-POS-0167
+- id: REST-COV-POS-0164
   label: POST /v1/admin/price-books/{priceBookId}/assign-target (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0167
+  evidence_label: rest-cov-0164
   auth: none
   method: POST
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/assign-target
@@ -2729,11 +2678,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/assign-target
-- id: REST-COV-POS-0168
+- id: REST-COV-POS-0165
   label: POST /v1/admin/price-books/{priceBookId}/deactivate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0168
+  evidence_label: rest-cov-0165
   auth: none
   method: POST
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/deactivate
@@ -2745,11 +2694,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/deactivate
-- id: REST-COV-POS-0169
+- id: REST-COV-POS-0166
   label: POST /v1/admin/pricing/preview (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0169
+  evidence_label: rest-cov-0166
   auth: none
   method: POST
   path: /v1/admin/pricing/preview
@@ -2761,11 +2710,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/pricing/preview
-- id: REST-COV-POS-0170
+- id: REST-COV-POS-0167
   label: POST /v1/admin/products/{productId}/image (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0170
+  evidence_label: rest-cov-0167
   auth: none
   method: POST
   path: /v1/admin/products/{{productId}}/image
@@ -2777,11 +2726,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}/image
-- id: REST-COV-POS-0171
+- id: REST-COV-POS-0168
   label: POST /v1/admin/products/{productId}/media (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0171
+  evidence_label: rest-cov-0168
   auth: none
   method: POST
   path: /v1/admin/products/{{productId}}/media
@@ -2793,11 +2742,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}/media
-- id: REST-COV-POS-0172
+- id: REST-COV-POS-0169
   label: POST /v1/admin/promotions (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0172
+  evidence_label: rest-cov-0169
   auth: none
   method: POST
   path: /v1/admin/promotions
@@ -2809,11 +2758,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions
-- id: REST-COV-POS-0173
+- id: REST-COV-POS-0170
   label: POST /v1/admin/promotions/preview (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0173
+  evidence_label: rest-cov-0170
   auth: none
   method: POST
   path: /v1/admin/promotions/preview
@@ -2825,11 +2774,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/preview
-- id: REST-COV-POS-0174
+- id: REST-COV-POS-0171
   label: POST /v1/admin/promotions/{promotionId}/activate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0174
+  evidence_label: rest-cov-0171
   auth: none
   method: POST
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099/activate
@@ -2841,11 +2790,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}/activate
-- id: REST-COV-POS-0175
+- id: REST-COV-POS-0172
   label: POST /v1/admin/promotions/{promotionId}/archive (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0175
+  evidence_label: rest-cov-0172
   auth: none
   method: POST
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099/archive
@@ -2857,11 +2806,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}/archive
-- id: REST-COV-POS-0176
+- id: REST-COV-POS-0173
   label: POST /v1/admin/promotions/{promotionId}/assign-target (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0176
+  evidence_label: rest-cov-0173
   auth: none
   method: POST
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099/assign-target
@@ -2873,11 +2822,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}/assign-target
-- id: REST-COV-POS-0177
+- id: REST-COV-POS-0174
   label: POST /v1/admin/promotions/{promotionId}/deactivate (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0177
+  evidence_label: rest-cov-0174
   auth: none
   method: POST
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099/deactivate
@@ -2889,11 +2838,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}/deactivate
-- id: REST-COV-POS-0178
+- id: REST-COV-POS-0175
   label: POST /v1/admin/promotions/{promotionId}/pause (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0178
+  evidence_label: rest-cov-0175
   auth: none
   method: POST
   path: /v1/admin/promotions/00000000-0000-4000-8000-000000000099/pause
@@ -2905,11 +2854,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/promotions/{promotionId}/pause
-- id: REST-COV-POS-0179
+- id: REST-COV-POS-0176
   label: POST /v1/admin/provisioning/machines/bulk (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0179
+  evidence_label: rest-cov-0176
   auth: none
   method: POST
   path: /v1/admin/provisioning/machines/bulk
@@ -2921,11 +2870,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/provisioning/machines/bulk
-- id: REST-COV-POS-0180
+- id: REST-COV-POS-0177
   label: POST /v1/admin/rollouts (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0180
+  evidence_label: rest-cov-0177
   auth: none
   method: POST
   path: /v1/admin/rollouts
@@ -2937,11 +2886,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts
-- id: REST-COV-POS-0181
+- id: REST-COV-POS-0178
   label: POST /v1/admin/rollouts/{rolloutId}/cancel (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0181
+  evidence_label: rest-cov-0178
   auth: none
   method: POST
   path: /v1/admin/rollouts/00000000-0000-4000-8000-000000000099/cancel
@@ -2953,11 +2902,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts/{rolloutId}/cancel
-- id: REST-COV-POS-0182
+- id: REST-COV-POS-0179
   label: POST /v1/admin/rollouts/{rolloutId}/pause (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0182
+  evidence_label: rest-cov-0179
   auth: none
   method: POST
   path: /v1/admin/rollouts/00000000-0000-4000-8000-000000000099/pause
@@ -2969,11 +2918,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts/{rolloutId}/pause
-- id: REST-COV-POS-0183
+- id: REST-COV-POS-0180
   label: POST /v1/admin/rollouts/{rolloutId}/resume (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0183
+  evidence_label: rest-cov-0180
   auth: none
   method: POST
   path: /v1/admin/rollouts/00000000-0000-4000-8000-000000000099/resume
@@ -2985,11 +2934,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts/{rolloutId}/resume
-- id: REST-COV-POS-0184
+- id: REST-COV-POS-0181
   label: POST /v1/admin/rollouts/{rolloutId}/rollback (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0184
+  evidence_label: rest-cov-0181
   auth: none
   method: POST
   path: /v1/admin/rollouts/00000000-0000-4000-8000-000000000099/rollback
@@ -3001,11 +2950,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts/{rolloutId}/rollback
-- id: REST-COV-POS-0185
+- id: REST-COV-POS-0182
   label: POST /v1/admin/rollouts/{rolloutId}/start (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0185
+  evidence_label: rest-cov-0182
   auth: none
   method: POST
   path: /v1/admin/rollouts/00000000-0000-4000-8000-000000000099/start
@@ -3017,11 +2966,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/rollouts/{rolloutId}/start
-- id: REST-COV-POS-0186
+- id: REST-COV-POS-0183
   label: POST /v1/admin/sites/{siteId}/archive (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0186
+  evidence_label: rest-cov-0183
   auth: none
   method: POST
   path: /v1/admin/sites/{{siteId}}/archive
@@ -3033,11 +2982,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/sites/{siteId}/archive
-- id: REST-COV-POS-0187
+- id: REST-COV-POS-0184
   label: POST /v1/admin/sites/{siteId}/disable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0187
+  evidence_label: rest-cov-0184
   auth: none
   method: POST
   path: /v1/admin/sites/{{siteId}}/disable
@@ -3049,11 +2998,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/sites/{siteId}/disable
-- id: REST-COV-POS-0188
+- id: REST-COV-POS-0185
   label: POST /v1/admin/system/outbox/{eventId}/mark-dlq (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0188
+  evidence_label: rest-cov-0185
   auth: none
   method: POST
   path: /v1/admin/system/outbox/00000000-0000-4000-8000-000000000099/mark-dlq
@@ -3065,11 +3014,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/system/outbox/{eventId}/mark-dlq
-- id: REST-COV-POS-0189
+- id: REST-COV-POS-0186
   label: POST /v1/admin/system/outbox/{eventId}/replay (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0189
+  evidence_label: rest-cov-0186
   auth: none
   method: POST
   path: /v1/admin/system/outbox/00000000-0000-4000-8000-000000000099/replay
@@ -3081,11 +3030,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/system/outbox/{eventId}/replay
-- id: REST-COV-POS-0190
+- id: REST-COV-POS-0187
   label: POST /v1/admin/technician-assignments (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0190
+  evidence_label: rest-cov-0187
   auth: none
   method: POST
   path: /v1/admin/technician-assignments
@@ -3097,11 +3046,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technician-assignments
-- id: REST-COV-POS-0191
+- id: REST-COV-POS-0188
   label: POST /v1/admin/technician-assignments/{assignmentId}/cancel (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0191
+  evidence_label: rest-cov-0188
   auth: none
   method: POST
   path: /v1/admin/technician-assignments/00000000-0000-4000-8000-000000000099/cancel
@@ -3113,11 +3062,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technician-assignments/{assignmentId}/cancel
-- id: REST-COV-POS-0192
+- id: REST-COV-POS-0189
   label: POST /v1/admin/technicians (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0192
+  evidence_label: rest-cov-0189
   auth: none
   method: POST
   path: /v1/admin/technicians
@@ -3129,11 +3078,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technicians
-- id: REST-COV-POS-0193
+- id: REST-COV-POS-0190
   label: POST /v1/admin/technicians/{technicianId}/disable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0193
+  evidence_label: rest-cov-0190
   auth: none
   method: POST
   path: /v1/admin/technicians/00000000-0000-4000-8000-000000000099/disable
@@ -3145,11 +3094,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technicians/{technicianId}/disable
-- id: REST-COV-POS-0194
+- id: REST-COV-POS-0191
   label: POST /v1/admin/technicians/{technicianId}/enable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0194
+  evidence_label: rest-cov-0191
   auth: none
   method: POST
   path: /v1/admin/technicians/00000000-0000-4000-8000-000000000099/enable
@@ -3161,11 +3110,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/technicians/{technicianId}/enable
-- id: REST-COV-POS-0195
+- id: REST-COV-POS-0192
   label: POST /v1/admin/users (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0195
+  evidence_label: rest-cov-0192
   auth: none
   method: POST
   path: /v1/admin/users
@@ -3177,11 +3126,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users
-- id: REST-COV-POS-0196
+- id: REST-COV-POS-0193
   label: POST /v1/admin/users/{userId}/disable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0196
+  evidence_label: rest-cov-0193
   auth: none
   method: POST
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/disable
@@ -3193,11 +3142,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/disable
-- id: REST-COV-POS-0197
+- id: REST-COV-POS-0194
   label: POST /v1/admin/users/{userId}/enable (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0197
+  evidence_label: rest-cov-0194
   auth: none
   method: POST
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/enable
@@ -3209,11 +3158,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/enable
-- id: REST-COV-POS-0198
+- id: REST-COV-POS-0195
   label: POST /v1/admin/users/{userId}/reset-password (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0198
+  evidence_label: rest-cov-0195
   auth: none
   method: POST
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/reset-password
@@ -3225,11 +3174,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/reset-password
-- id: REST-COV-POS-0199
+- id: REST-COV-POS-0196
   label: POST /v1/admin/users/{userId}/revoke-sessions (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0199
+  evidence_label: rest-cov-0196
   auth: none
   method: POST
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/revoke-sessions
@@ -3241,11 +3190,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/revoke-sessions
-- id: REST-COV-POS-0200
+- id: REST-COV-POS-0197
   label: POST /v1/admin/users/{userId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0200
+  evidence_label: rest-cov-0197
   auth: none
   method: POST
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/roles
@@ -3257,11 +3206,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/users/{userId}/roles
-- id: REST-COV-POS-0201
+- id: REST-COV-POS-0198
   label: POST /v1/auth/change-password (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0201
+  evidence_label: rest-cov-0198
   auth: none
   method: POST
   path: /v1/auth/change-password
@@ -3273,11 +3222,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/auth/change-password
-- id: REST-COV-POS-0202
+- id: REST-COV-POS-0199
   label: POST /v1/auth/password/change (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0202
+  evidence_label: rest-cov-0199
   auth: none
   method: POST
   path: /v1/auth/password/change
@@ -3289,11 +3238,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/auth/password/change
-- id: REST-COV-POS-0203
+- id: REST-COV-POS-0200
   label: POST /v1/auth/password/reset/confirm (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0203
+  evidence_label: rest-cov-0200
   auth: none
   method: POST
   path: /v1/auth/password/reset/confirm
@@ -3305,11 +3254,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/auth/password/reset/confirm
-- id: REST-COV-POS-0204
+- id: REST-COV-POS-0201
   label: POST /v1/auth/password/reset/request (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0204
+  evidence_label: rest-cov-0201
   auth: none
   method: POST
   path: /v1/auth/password/reset/request
@@ -3321,11 +3270,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/auth/password/reset/request
-- id: REST-COV-PUT-0205
+- id: REST-COV-PUT-0202
   label: PUT /v1/admin/artifacts/{artifactId}/content (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0205
+  evidence_label: rest-cov-0202
   auth: none
   method: PUT
   path: /v1/admin/artifacts/00000000-0000-4000-8000-000000000099/content
@@ -3337,11 +3286,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/artifacts/{artifactId}/content
-- id: REST-COV-PUT-0206
+- id: REST-COV-PUT-0203
   label: PUT /v1/admin/auth/users/{accountId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0206
+  evidence_label: rest-cov-0203
   auth: none
   method: PUT
   path: /v1/admin/auth/users/00000000-0000-4000-8000-000000000099/roles
@@ -3353,11 +3302,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/auth/users/{accountId}/roles
-- id: REST-COV-PUT-0207
+- id: REST-COV-PUT-0204
   label: PUT /v1/admin/brands/{brandId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0207
+  evidence_label: rest-cov-0204
   auth: none
   method: PUT
   path: /v1/admin/brands/{{brandId}}
@@ -3369,11 +3318,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/brands/{brandId}
-- id: REST-COV-PUT-0208
+- id: REST-COV-PUT-0205
   label: PUT /v1/admin/categories/{categoryId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0208
+  evidence_label: rest-cov-0205
   auth: none
   method: PUT
   path: /v1/admin/categories/{{categoryId}}
@@ -3385,11 +3334,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/categories/{categoryId}
-- id: REST-COV-PUT-0209
+- id: REST-COV-PUT-0206
   label: PUT /v1/admin/feature-flags/{flagId}/targets (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0209
+  evidence_label: rest-cov-0206
   auth: none
   method: PUT
   path: /v1/admin/feature-flags/00000000-0000-4000-8000-000000000099/targets
@@ -3401,11 +3350,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/feature-flags/{flagId}/targets
-- id: REST-COV-PUT-0210
+- id: REST-COV-PUT-0207
   label: PUT /v1/admin/ota/campaigns/{campaignId}/targets (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0210
+  evidence_label: rest-cov-0207
   auth: none
   method: PUT
   path: /v1/admin/ota/campaigns/00000000-0000-4000-8000-000000000099/targets
@@ -3417,11 +3366,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/ota/campaigns/{campaignId}/targets
-- id: REST-COV-PUT-0211
+- id: REST-COV-PUT-0208
   label: PUT /v1/admin/price-books/{priceBookId}/items (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0211
+  evidence_label: rest-cov-0208
   auth: none
   method: PUT
   path: /v1/admin/price-books/00000000-0000-4000-8000-000000000099/items
@@ -3433,11 +3382,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/price-books/{priceBookId}/items
-- id: REST-COV-PUT-0212
+- id: REST-COV-PUT-0209
   label: PUT /v1/admin/products/{productId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0212
+  evidence_label: rest-cov-0209
   auth: none
   method: PUT
   path: /v1/admin/products/{{productId}}
@@ -3449,11 +3398,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}
-- id: REST-COV-PUT-0213
+- id: REST-COV-PUT-0210
   label: PUT /v1/admin/products/{productId}/image (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0213
+  evidence_label: rest-cov-0210
   auth: none
   method: PUT
   path: /v1/admin/products/{{productId}}/image
@@ -3465,11 +3414,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}/image
-- id: REST-COV-PUT-0214
+- id: REST-COV-PUT-0211
   label: PUT /v1/admin/products/{productId}/media (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0214
+  evidence_label: rest-cov-0211
   auth: none
   method: PUT
   path: /v1/admin/products/{{productId}}/media
@@ -3481,11 +3430,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/products/{productId}/media
-- id: REST-COV-PUT-0215
+- id: REST-COV-PUT-0212
   label: PUT /v1/admin/tags/{tagId} (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0215
+  evidence_label: rest-cov-0212
   auth: none
   method: PUT
   path: /v1/admin/tags/{{tagId}}
@@ -3497,11 +3446,11 @@ flows:
   route_matrix:
     coverage: auth_negative
     openapi_path: /v1/admin/tags/{tagId}
-- id: REST-COV-PUT-0216
+- id: REST-COV-PUT-0213
   label: PUT /v1/admin/users/{userId}/roles (auth_negative)
   phase: rest-coverage
   protocol: rest
-  evidence_label: rest-cov-0216
+  evidence_label: rest-cov-0213
   auth: none
   method: PUT
   path: /v1/admin/users/00000000-0000-4000-8000-000000000099/roles
