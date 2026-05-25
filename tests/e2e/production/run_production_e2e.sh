@@ -226,7 +226,8 @@ prod_e2e_generate_postman() {
 }
 
 prod_e2e_validate_postman_parity() {
-  prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py" || {
+  local coll="${1:-${PROD_E2E_REPO_ROOT}/postman/production/avf-production-e2e.postman_collection.json}"
+  prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py" --collection "$coll" || {
     prod_e2e_fail_classify "c" "POSTMAN-PARITY-000" "shell REST and Postman collection diverged — regenerate from e2e-manifest.yaml"
     return 1
   }
@@ -237,8 +238,14 @@ prod_e2e_lock_postman_parity() {
     grpc|mqtt) return 0 ;;
   esac
   echo "== Postman parity lock (e2e-manifest.yaml) =="
-  prod_e2e_generate_postman || return 1
-  prod_e2e_validate_postman_parity || return 1
+  local coll="${PROD_E2E_REPO_ROOT}/postman/production/avf-production-e2e.postman_collection.json"
+  if [[ "${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}" == "1" ]]; then
+    prod_e2e_generate_postman_runtime_collection || return 1
+    coll="${PROD_E2E_RUN_DIR}/postman/runtime.postman_collection.json"
+  else
+    prod_e2e_generate_postman || return 1
+  fi
+  prod_e2e_validate_postman_parity "$coll" || return 1
 }
 
 prod_e2e_write_postman_checksums() {
@@ -373,7 +380,7 @@ prod_e2e_flow_matches_suite() {
       fi
       if [[ "$protocol" == "grpc" ]]; then
         case "$phase" in
-          grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
+          grpc-auth|grpc-bootstrap|grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
           *) return 1 ;;
         esac
       fi
@@ -382,7 +389,7 @@ prod_e2e_flow_matches_suite() {
     grpc-inventory-media-cash-no-online-payment)
       if [[ "$protocol" == "grpc" ]]; then
         case "$phase" in
-          grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
+          grpc-auth|grpc-bootstrap|grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
           *) return 1 ;;
         esac
       fi
@@ -631,7 +638,8 @@ prod_e2e_suite_runs_newman() {
 
 prod_e2e_suite_runs_postman_parity() {
   case "${EFFECTIVE_SUITE}" in
-    grpc|mqtt) return 1 ;;
+    grpc|mqtt|planogram-no-online-payment|route-coverage-no-online-payment|route-coverage-with-context-no-online-payment|grpc-token-no-online-payment|grpc-inventory-media-cash-no-online-payment|mqtt-command-telemetry-no-online-payment|mqtt-after-grpc-no-online-payment|newman-no-online-payment) return 1 ;;
+    all|all-no-online-payment) return 0 ;;
     *) return 0 ;;
   esac
 }
