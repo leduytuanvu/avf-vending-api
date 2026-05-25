@@ -73,13 +73,13 @@ prod_e2e_mqtt_handler_connect_invalid() {
 prod_e2e_mqtt_machine_fleet_status() {
   local mid="$1"
   local resp_file code st
-  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${PROD_E2E_BASE_URL:-}" ]] || return 1
+  [[ -n "$mid" && -n "${ADMIN_TOKEN:-}" && -n "${BASE_URL:-}" ]] || return 1
   resp_file="${PROD_E2E_RAW_DIR}/mqtt-prep-machine-status.response.json"
   mkdir -p "${PROD_E2E_RAW_DIR}"
   code="$(curl -sS -o "$resp_file" -w '%{http_code}' \
     -H "Authorization: Bearer ${ADMIN_TOKEN}" \
     -H "Content-Type: application/json" \
-    "${PROD_E2E_BASE_URL%/}/v1/admin/machines/${mid}" 2>/dev/null || echo "000")"
+    "${BASE_URL%/}/v1/admin/machines/${mid}" 2>/dev/null || echo "000")"
   [[ "$code" == "200" ]] || return 1
   st="$(jq -r '.status // empty' "$resp_file" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
   printf '%s' "$st"
@@ -129,7 +129,7 @@ prod_e2e_mqtt_ensure_machine_commandable() {
   prod_e2e_state_reload_key machineId || true
   prod_e2e_state_reload_key mqttTopicPrefix || true
   mid="${machineId:-${PROD_E2E_MQTT_MACHINE_ID:-$mid}}"
-  [[ -n "$mid" && -n "${PROD_E2E_BASE_URL:-}" ]] || {
+  [[ -n "$mid" && -n "${BASE_URL:-}" ]] || {
     echo "mqtt commandability gate: missing machineId or base URL" >&2
     return 1
   }
@@ -179,7 +179,10 @@ prod_e2e_mqtt_ensure_machine_commandable() {
 }
 
 prod_e2e_mqtt_prepare_command_phase() {
+  prod_e2e_state_reload_key machineId || true
   prod_e2e_state_reload_key mqttTopicPrefix || true
+  : "${BASE_URL:=${E2E_PROD_BASE_URL:-https://api.ldtv.dev}}"
+  export BASE_URL
   prod_e2e_mqtt_ensure_machine_commandable
 }
 
