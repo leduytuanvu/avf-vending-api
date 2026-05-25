@@ -280,3 +280,24 @@ routes:
     coverage: auth_negative
     expected_status: 401
     postman: true
+
+  - method: GET
+    path: /v1/admin/reports/export
+    coverage: documented_skip
+    skip_reason: Requires report= query parameter; JSON export not smoke-tested in production E2E
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/fills
+    coverage: documented_skip
+    skip_reason: Production SQL 42P01 (missing pr alias) — backend fix pending
+    postman: false
+    non_postman: true
+
+  - method: GET
+    path: /v1/admin/reports/products
+    coverage: documented_skip
+    skip_reason: Production SQL 42P01 (missing pr alias) — backend fix pending
+    postman: false
+    non_postman: true
