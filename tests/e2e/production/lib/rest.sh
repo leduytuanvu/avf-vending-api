@@ -93,6 +93,9 @@ prod_e2e_rest_execute_flow() {
       fi
       ;;
     bearer_machine)
+      if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+        prod_e2e_state_reload_key machineToken || true
+      fi
       curl_opts+=(-H "Authorization: Bearer ${machineToken:-}")
       ;;
     webhook_hmac)

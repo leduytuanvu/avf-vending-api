@@ -401,6 +401,24 @@ prod_e2e_flow_matches_suite() {
       fi
       return 1
       ;;
+    mqtt-after-grpc-no-online-payment)
+      if [[ "$protocol" == "mqtt" ]]; then
+        return 0
+      fi
+      if [[ "$protocol" == "grpc" ]]; then
+        case "$phase" in
+          grpc-auth|grpc-bootstrap|grpc-inventory|grpc-media|grpc-commerce) return 0 ;;
+          *) return 1 ;;
+        esac
+      fi
+      if [[ "$protocol" == "rest" ]]; then
+        case "$phase" in
+          preflight|auth|catalog|media|provisioning|planogram|operator) return 0 ;;
+          *) return 1 ;;
+        esac
+      fi
+      return 1
+      ;;
     grpc-token-no-online-payment)
       if [[ "$protocol" == "grpc" ]]; then
         case "$phase" in
@@ -462,6 +480,10 @@ prod_e2e_run_flows_from_manifest() {
     if [[ "$phase" == "planogram" && "$last_phase" != "planogram" ]]; then
       prod_e2e_refresh_admin_token 0 || true
     fi
+    if [[ "$phase" == "mqtt-command" && "$last_phase" != "mqtt-command" ]]; then
+      prod_e2e_refresh_admin_token 0 || true
+      prod_e2e_mqtt_prepare_command_phase || failures=$((failures + 1))
+    fi
     if [[ "$phase" == "rest-coverage" ]]; then
       PROD_E2E_REST_COV_INDEX="${PROD_E2E_REST_COV_INDEX:-0}"
       PROD_E2E_REST_COV_INDEX=$((PROD_E2E_REST_COV_INDEX + 1))
@@ -521,11 +543,11 @@ prod_e2e_run_flows() {
   if [[ "${eff}" != "route-coverage-no-online-payment" ]]; then
     prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest.yaml" || failures=$?
   fi
-  if [[ "${eff}" == "grpc" || "${eff}" == "all" || "${eff}" == "grpc-token-no-online-payment" || "${eff}" == "grpc-inventory-media-cash-no-online-payment" || "${eff}" == "route-coverage-with-context-no-online-payment" ]]; then
+  if [[ "${eff}" == "grpc" || "${eff}" == "all" || "${eff}" == "grpc-token-no-online-payment" || "${eff}" == "grpc-inventory-media-cash-no-online-payment" || "${eff}" == "route-coverage-with-context-no-online-payment" || "${eff}" == "mqtt-after-grpc-no-online-payment" ]]; then
     prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-grpc.yaml" || gf=$?
     failures=$((failures + gf))
   fi
-  if [[ "${eff}" == "mqtt" || "${eff}" == "all" || "${eff}" == "mqtt-command-telemetry-no-online-payment" ]]; then
+  if [[ "${eff}" == "mqtt" || "${eff}" == "all" || "${eff}" == "mqtt-command-telemetry-no-online-payment" || "${eff}" == "mqtt-after-grpc-no-online-payment" ]]; then
     prod_e2e_refresh_admin_token 0 || true
     prod_e2e_run_flows_from_manifest "${PROD_E2E_SCRIPT_DIR}/e2e-manifest-mqtt.yaml" || mf=$?
     failures=$((failures + mf))
@@ -563,7 +585,7 @@ prod_e2e_print_final_verdict() {
   if [[ "${fail_count:-0}" -eq 0 ]]; then
     verdict="PRODUCTION_E2E_NO_ONLINE_PAYMENT_100_PERCENT_PASS"
   fi
-  if [[ "${SUITE}" == "all-no-online-payment" || "${SUITE}" == "planogram-no-online-payment" || "${SUITE}" == "route-coverage-no-online-payment" || "${SUITE}" == "route-coverage-with-context-no-online-payment" || "${SUITE}" == "grpc-token-no-online-payment" || "${SUITE}" == "grpc-inventory-media-cash-no-online-payment" || "${SUITE}" == "mqtt-command-telemetry-no-online-payment" || "${SUITE}" == "newman-no-online-payment" ]]; then
+  if [[ "${SUITE}" == "all-no-online-payment" || "${SUITE}" == "planogram-no-online-payment" || "${SUITE}" == "route-coverage-no-online-payment" || "${SUITE}" == "route-coverage-with-context-no-online-payment" || "${SUITE}" == "grpc-token-no-online-payment" || "${SUITE}" == "grpc-inventory-media-cash-no-online-payment" || "${SUITE}" == "mqtt-command-telemetry-no-online-payment" || "${SUITE}" == "mqtt-after-grpc-no-online-payment" || "${SUITE}" == "newman-no-online-payment" ]]; then
     echo ""
     echo "== FINAL VERDICT =="
     echo "RUN_ID=${PROD_E2E_RUN_ID}"
@@ -629,7 +651,7 @@ main() {
       echo "FATAL: live mode requires ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD (or E2E_PROD_* CI secrets)" >&2
       exit 2
     }
-    if [[ "${EFFECTIVE_SUITE}" == "mqtt" || "${EFFECTIVE_SUITE}" == "all" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" == "mqtt" || "${EFFECTIVE_SUITE}" == "all" || "${EFFECTIVE_SUITE}" == "mqtt-command-telemetry-no-online-payment" || "${EFFECTIVE_SUITE}" == "mqtt-after-grpc-no-online-payment" ]]; then
       [[ -n "${MQTT_HOST:-}" && -n "${MQTT_USERNAME:-}" && -n "${MQTT_PASSWORD:-}" ]] || {
         prod_e2e_fail_classify "d" "MQTT-CONN-000" "live MQTT suite requires E2E_PROD_MQTT_HOST/USERNAME/PASSWORD (or .env.production.e2e.local)"
         echo "FATAL: live MQTT suite requires MQTT_HOST, MQTT_USERNAME, MQTT_PASSWORD (map from E2E_PROD_MQTT_*)" >&2
@@ -645,7 +667,7 @@ main() {
         exit 2
       }
     fi
-    if [[ "${EFFECTIVE_SUITE}" == "grpc" || "${EFFECTIVE_SUITE}" == "all" || "${EFFECTIVE_SUITE}" == "grpc-token-no-online-payment" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" == "grpc" || "${EFFECTIVE_SUITE}" == "all" || "${EFFECTIVE_SUITE}" == "grpc-token-no-online-payment" || "${EFFECTIVE_SUITE}" == "grpc-inventory-media-cash-no-online-payment" || "${EFFECTIVE_SUITE}" == "mqtt-after-grpc-no-online-payment" ]]; then
       [[ -n "${GRPC_ADDR:-}" || -n "${E2E_PROD_GRPC_TARGET:-}" ]] || {
         echo "FATAL: live gRPC suite requires E2E_PROD_GRPC_TARGET (or GRPC_ADDR)" >&2
         exit 2
@@ -661,10 +683,10 @@ main() {
       prod_e2e_state_sync_json || true
       prod_e2e_sync_postman_env || failures=$((failures + 1))
       prod_e2e_run_newman || failures=$((failures + 1))
-    elif [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" ]]; then
+    elif [[ "$failures" -eq 0 && "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-after-grpc-no-online-payment" ]]; then
       prod_e2e_lock_postman_parity || failures=$((failures + 1))
     fi
-    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" && "${EFFECTIVE_SUITE}" != "newman-no-online-payment" ]]; then
+    if [[ "${EFFECTIVE_SUITE}" != "grpc" && "${EFFECTIVE_SUITE}" != "mqtt" && "${EFFECTIVE_SUITE}" != "planogram-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-no-online-payment" && "${EFFECTIVE_SUITE}" != "route-coverage-with-context-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-token-no-online-payment" && "${EFFECTIVE_SUITE}" != "grpc-inventory-media-cash-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-command-telemetry-no-online-payment" && "${EFFECTIVE_SUITE}" != "mqtt-after-grpc-no-online-payment" && "${EFFECTIVE_SUITE}" != "newman-no-online-payment" ]]; then
       prod_e2e_run_newman || failures=$((failures + 1))
     fi
     prod_e2e_write_postman_checksums || true

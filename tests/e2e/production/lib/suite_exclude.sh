@@ -5,7 +5,7 @@
 prod_e2e_suite_profile_init() {
   PROD_E2E_SUITE_PROFILE="${PROD_E2E_SUITE_PROFILE:-}"
   case "${SUITE}" in
-    all-no-online-payment|planogram-no-online-payment|route-coverage-no-online-payment|route-coverage-with-context-no-online-payment|grpc-token-no-online-payment|grpc-inventory-media-cash-no-online-payment|mqtt-command-telemetry-no-online-payment|newman-no-online-payment)
+    all-no-online-payment|planogram-no-online-payment|route-coverage-no-online-payment|route-coverage-with-context-no-online-payment|grpc-token-no-online-payment|grpc-inventory-media-cash-no-online-payment|mqtt-command-telemetry-no-online-payment|mqtt-after-grpc-no-online-payment|newman-no-online-payment)
       export PROD_E2E_SUITE_PROFILE="${SUITE}"
       export PROD_E2E_EXCLUDE_ONLINE_PAYMENT=1
       export SKIP_GRPC_QR_WEBHOOK=1
@@ -21,6 +21,7 @@ prod_e2e_suite_effective() {
     route-coverage-with-context-no-online-payment) echo route-coverage-with-context-no-online-payment ;;
     grpc-inventory-media-cash-no-online-payment) echo grpc-inventory-media-cash-no-online-payment ;;
     mqtt-command-telemetry-no-online-payment) echo mqtt-command-telemetry-no-online-payment ;;
+    mqtt-after-grpc-no-online-payment) echo mqtt-after-grpc-no-online-payment ;;
     grpc-token-no-online-payment) echo grpc-token-no-online-payment ;;
     newman-no-online-payment) echo newman-no-online-payment ;;
     *) echo "${SUITE}" ;;

@@ -46,6 +46,10 @@ prod_e2e_sync_postman_env() {
     prod_e2e_state_reload_key machineToken || true
     prod_e2e_state_reload_key machineRefreshToken || true
   fi
+  if declare -F prod_e2e_refresh_machine_token >/dev/null 2>&1; then
+    prod_e2e_refresh_machine_token "postman-machine-token-refresh" || true
+    prod_e2e_state_reload_key machineToken || true
+  fi
   prod_e2e_export_postman_runtime_state || true
   export src dst
   export PROD_E2E_STATE_JSON="${PROD_E2E_STATE_JSON:-${PROD_E2E_RUN_DIR}/state.json}"
