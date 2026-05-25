@@ -141,6 +141,7 @@ REDACT_PATTERNS = [
     (re.compile(r"AVF-[A-F0-9]{6}-[A-F0-9]{6}", re.I), "<redacted-activation-code>"),
     (re.compile(r"eyJ[A-Za-z0-9_+/=-]{16,}"), "<redacted-base64>"),
     (re.compile(r"admin@ldtv\.dev", re.I), "<admin-email>"),
+    (re.compile(r'"idempotencyKey"\s*:\s*"[^"]{20,}"'), '"idempotencyKey": "<redacted>"'),
 ]
 
 
