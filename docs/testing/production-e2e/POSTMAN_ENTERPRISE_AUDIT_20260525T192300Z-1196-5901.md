@@ -1,8 +1,8 @@
 # Postman enterprise full surface audit (20260525T192300Z-1196-5901)
 
 - Branch: `postman/production-enterprise-project`
-- SHA: `bf5816cfb1260abcdf8dd3aae7010e925db9cf10`
-- Generated: 2026-05-26T16:37:41Z
+- SHA: `acc771e86e36fd161f5f9280a5ad11a00a2f2d96`
+- Generated: 2026-05-26T16:47:00Z
 
 ## Sources scanned
 
@@ -22,7 +22,7 @@
 | REST OpenAPI routes | 329 |
 | REST covered / skipped | 244 / 85 |
 | REST missing (runnable) | 0 |
-| REST enterprise requests | 264 |
+| REST enterprise requests | 290 |
 | gRPC proto RPCs | 69 |
 | gRPC registered services | 13 |
 | gRPC implemented (unique) | 82 |

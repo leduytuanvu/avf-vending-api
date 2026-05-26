@@ -102,6 +102,18 @@ ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
     ("zalopayEnabled", "false"),
     ("vietqrEnabled", "false"),
     ("newmanReuseShellState", "false"),
+    ("mqttTopicPrefix", "avf/prod"),
+    ("technicianId", ""),
+    ("telemetryEventId", ""),
+    ("confirmOnlinePayment", ""),
+    ("paymentConfirmPhrase", "I_UNDERSTAND_ONLINE_PAYMENT_TO_PRODUCTION"),
+    ("run_prefix", "E2E-PROD-{{runId}}"),
+    ("run_id", "{{runId}}"),
+    ("admin_email", "{{adminEmail}}"),
+    ("admin_password", "{{adminPassword}}"),
+    ("admin_email_invalid_test", "invalid@example.com"),
+    ("adminEmailInvalidTest", "invalid@example.com"),
+    ("media_sha256", "{{mediaSha256}}"),
 ]
 
 COLLECTION_PREREQUEST = [
@@ -180,46 +192,9 @@ def classify_rest_flow(flow: dict[str, Any], repo_root: Path) -> str:
 
 
 def enterprise_folder(flow: dict[str, Any], classification: str) -> str:
-    phase = flow.get("phase") or "misc"
-    fid = str(flow.get("id") or "")
-    if classification == "ONLINE_PAYMENT_EXCLUDED":
-        return "08 - Commerce No-Online-Payment/Payment Excluded Contract"
-    if phase == "preflight":
-        return "01 - Health & Version"
-    if phase == "auth":
-        if "login" in fid or fid == "REST-AUTH-001":
-            return "02 - Auth/02.01 Login"
-        if fid in ("REST-AUTH-002",):
-            return "02 - Auth/02.02 Current User"
-        return "02 - Auth/02.99 Negative Auth"
-    if phase == "catalog":
-        label = str(flow.get("label") or "").lower()
-        if "categor" in label:
-            return "03 - Admin Catalog/Categories"
-        if "brand" in label:
-            return "03 - Admin Catalog/Brands"
-        if "tag" in label:
-            return "03 - Admin Catalog/Tags"
-        return "03 - Admin Catalog/Products"
-    if phase == "media":
-        return "04 - Admin Media/Cloudinary / Direct Backend Upload"
-    if phase in ("machine", "site", "activation"):
-        return "05 - Admin Sites & Machines/Machines"
-    if phase in ("topology", "planogram", "stock", "operator"):
-        return "06 - Topology / Planogram / Stock/Planogram Draft"
-    if phase == "report":
-        return "07 - Reports/Fleet"
-    if phase == "commerce":
-        return "08 - Commerce No-Online-Payment/Cash / Manual Vend"
-    if phase == "rest-coverage":
-        return "09 - Route Coverage Smoke"
-    if phase == "negative":
-        return "10 - Negative Tests"
-    if phase == "cleanup":
-        return "99 - Cleanup"
-    if fid.startswith("REST-FLOW-"):
-        return "90 - Full Business Flows/Flow A - Admin Catalog Setup"
-    return f"09 - Route Coverage Smoke/{phase}"
+    from enterprise_actor_lib import market_folder  # noqa: WPS433
+
+    return market_folder(flow, classification)
 
 
 def nested_folder_items(paths: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
@@ -265,6 +240,49 @@ def nested_folder_items(paths: dict[str, list[dict[str, Any]]]) -> list[dict[str
     return out
 
 
+def _readme_stub(title: str, body: str) -> dict[str, Any]:
+    return {
+        "name": title,
+        "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/health/live", "host": ["{{baseUrl}}"], "path": ["health", "live"]},
+            "description": body + "\n\nRegenerate: python postman/production-enterprise/generate_enterprise_postman_project.py",
+        },
+    }
+
+
+def _build_market_release_flow_stubs() -> dict[str, list[dict[str, Any]]]:
+    from enterprise_actor_lib import MARKET_RELEASE_FLOWS  # noqa: WPS433
+
+    out: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for mf in MARKET_RELEASE_FLOWS:
+        folder = f"90 - Full Market Release Flows/Flow {mf['id']} {mf['title']}"
+        desc = "\n".join(
+            [
+                f"# Market flow {mf['id']}: {mf['title']}",
+                f"**Actors:** {mf['actors']}",
+                f"**REST flows:** {mf['rest']}",
+                f"**gRPC flows:** {mf['grpc'] or '—'}",
+                f"**MQTT flows:** {mf['mqtt'] or '—'}",
+                "",
+                "Execute linked requests in folders 02–19 and 12–13 (gRPC/MQTT docs).",
+            ]
+        )
+        out[folder].append(
+            {
+                "name": f"[RELEASE] Flow {mf['id']} — {mf['title']}",
+                "request": {
+                    "method": "GET",
+                    "header": [],
+                    "url": {"raw": "{{baseUrl}}/version", "host": ["{{baseUrl}}"], "path": ["version"]},
+                    "description": desc,
+                },
+            }
+        )
+    return out
+
+
 def _enterprise_flow_id(flow: dict[str, Any]) -> str:
     fid = str(flow.get("id") or parity_key(flow))
     path = str(flow.get("path") or "")
@@ -282,20 +300,15 @@ def flow_to_postman_item(
     manifest_dir: Path,
     classification: str,
 ) -> dict[str, Any]:
+    from enterprise_actor_lib import build_flow_description, request_display_name  # noqa: WPS433
+
     fid = _enterprise_flow_id(flow)
     events = build_postman_events(flow, manifest) or []
     if classification == "ONLINE_PAYMENT_EXCLUDED":
         events = [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": ONLINE_PAYMENT_PREREQUEST}}] + events
-    desc = (
-        f"Flow ID: {fid}\n"
-        f"Classification: {classification}\n"
-        f"Phase: {flow.get('phase')}\n"
-        f"Source: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\n"
-        f"Expected: {flow.get('expected_status', 200)}\n"
-        f"Auth: {flow.get('auth', 'none')}\n"
-    )
+    desc = build_flow_description(flow, classification, fid, manifest_dir)
     return {
-        "name": f"{fid} — {flow.get('label', fid)}",
+        "name": request_display_name(flow, classification, fid),
         "request": build_postman_request(flow, manifest_dir),
         "event": events or None,
         "description": desc,
@@ -331,27 +344,50 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
         folder = enterprise_folder(flow, cls)
         paths[folder].append(flow_to_postman_item(flow, manifest, manifest_dir, cls))
 
-    readme_item = {
-        "name": "README — Safety & Write Gate",
-        "request": {
-            "method": "GET",
-            "header": [],
-            "url": {"raw": "{{baseUrl}}/health/live", "host": ["{{baseUrl}}"], "path": ["health", "live"]},
-            "description": (
-                "Enterprise production REST collection. Placeholders only in git.\n"
-                "Writes require allowGatedWrites=true and confirmProductionWrites.\n"
-                "Online payment flows excluded unless onlinePaymentEnabled=true.\n"
-                "Regenerate: python postman/production-enterprise/generate_enterprise_postman_project.py"
-            ),
-        },
-    }
-    paths["00 - README & Safety"].append(readme_item)
+    paths["00 - README Safety Runbook/How to use this project"].append(
+        _readme_stub(
+            "How to use this project",
+            "Import REST collection + placeholder env. Copy private template locally for credentials.",
+        )
+    )
+    paths["00 - README Safety Runbook/Production write safety"].append(
+        _readme_stub(
+            "Production write safety",
+            "allowGatedWrites=true AND confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. E2E-PROD-{{runId}} only.",
+        )
+    )
+    paths["00 - README Safety Runbook/Actor map"].append(
+        _readme_stub("Actor map", "See docs/testing/production-e2e/POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
+    )
+    paths["00 - README Safety Runbook/Online payment exclusion"].append(
+        _readme_stub(
+            "Online payment exclusion",
+            "Folder 97 guarded. onlinePaymentEnabled=false by default. No MoMo/ZaloPay/VietQR unless operator confirms.",
+        )
+    )
+    for folder, stubs in _build_market_release_flow_stubs().items():
+        paths[folder].extend(stubs)
+    paths["12 - Vending Machine App gRPC Runtime/README"].append(
+        _readme_stub(
+            "gRPC catalog (Postman Desktop + grpcurl)",
+            "All machine gRPC methods: postman/production-enterprise/AVF_PRODUCTION_GRPC_REQUESTS.md",
+        )
+    )
+    paths["13 - MQTT Command Telemetry Logs/README"].append(
+        _readme_stub(
+            "MQTT catalog (Postman Desktop + mosquitto)",
+            "All MQTT topics: postman/production-enterprise/AVF_PRODUCTION_MQTT_REQUESTS.md",
+        )
+    )
+    paths["99 - Internal Metadata/Coverage summary"].append(
+        _readme_stub("Coverage summary", "Run: python postman/production-enterprise/check_enterprise_postman_completeness.py")
+    )
 
     items = nested_folder_items(paths)
     collection = {
         "info": {
             "_postman_id": stable_uuid("collection:avf-production-enterprise-rest-v1"),
-            "name": "AVF Production Enterprise REST",
+            "name": "AVF Production Enterprise",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "description": "Generated enterprise production REST — manifest + route coverage. No secrets in repo.",
         },
@@ -453,6 +489,7 @@ def _walk_grpc_flow_nodes(obj: Any, out: list[dict[str, Any]]) -> None:
 
 def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from enterprise_actor_lib import grpc_method_meta  # noqa: E402
     from enterprise_surface_lib import (  # noqa: E402
         GRPC_RPC_ALIASES,
         build_grpc_inventory,
@@ -484,8 +521,8 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
         "Catalog generated from `proto/avf/machine/v1` + `RegisterMachineGRPCServices` (machine edge only).",
         "E2E-verified flows reference `tests/e2e/production/e2e-manifest-grpc.yaml`. Newman does not run gRPC.",
         "",
-        "| Service | RPC | E2E flow | Verdict | Notes |",
-        "|---------|-----|----------|---------|-------|",
+        "| Service | RPC | Actor | E2E flow | Verdict | Notes |",
+        "|---------|-----|-------|----------|---------|-------|",
     ]
     for g in sorted(prod, key=lambda x: (x.service, x.method)):
         e2e = e2e_by_rpc.get((g.service, g.method))
@@ -495,8 +532,9 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
         notes = g.skip_reason or ""
         if (g.service, g.method) in GRPC_RPC_ALIASES and g.method != g.canonical_method:
             notes = notes or f"Alias of {g.canonical_method}"
+        gm = grpc_method_meta(g.service, g.method, flow_id)
         lines.append(
-            f"| {g.service} | {g.method} | {flow_id or '—'} | {g.verdict} | {notes} |"
+            f"| {g.service} | {g.method} | {gm.actor_tag} | {flow_id or '—'} | {g.verdict} | {notes} |"
         )
 
     lines += ["", "## E2E flow reference (grpcurl)", ""]
@@ -525,8 +563,12 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
     for g in sorted(prod, key=lambda x: (x.service, x.method)):
         if e2e_by_rpc.get((g.service, g.method)):
             continue
+        gm = grpc_method_meta(g.service, g.method)
         lines.append(f"### {g.service}/{g.method}")
         lines.append("")
+        lines.append(f"- **Used by:** {gm.used_by}")
+        lines.append(f"- **Primary actor:** {gm.primary_actor}")
+        lines.append(f"- **Purpose:** {gm.purpose}")
         lines.append(f"- Proto: `{g.proto_file}` — verdict: **{g.verdict}**")
         if g.skip_reason:
             lines.append(f"- Note: {g.skip_reason}")
@@ -543,6 +585,7 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
 
 def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from enterprise_actor_lib import mqtt_topic_meta  # noqa: E402
     from enterprise_surface_lib import MQTT_REL_TOPICS, build_mqtt_inventory, enterprise_mqtt_pattern  # noqa: E402
 
     inv = build_mqtt_inventory()
@@ -555,12 +598,13 @@ def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
         "",
         "## Canonical topic catalog (production enterprise layout)",
         "",
-        "| Rel topic | Direction | Actor | E2E | Pattern |",
-        "|-----------|-----------|-------|-----|---------|",
+        "| Rel topic | Direction | Actor tag | Used by | E2E | Pattern |",
+        "|-----------|-----------|-----------|---------|-----|---------|",
     ]
     for row in inv:
+        mm = mqtt_topic_meta(row.rel_topic, row.direction)
         lines.append(
-            f"| `{row.rel_topic}` | {row.direction} | {row.actor} | {row.e2e_present} | `{row.enterprise_pattern}` |"
+            f"| `{row.rel_topic}` | {row.direction} | {mm.actor_tag} | {mm.used_by} | {row.e2e_present} | `{row.enterprise_pattern}` |"
         )
     lines += [
         "",
@@ -595,6 +639,18 @@ def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
         '  -u "$E2E_PROD_MQTT_USERNAME" -P "$E2E_PROD_MQTT_PASSWORD" \\',
         "  -t 'avf/prod/machines/$MACHINE_ID/commands/ack' -m '{\"command_id\":\"...\",\"status\":\"completed\"}' -q 1",
         "```",
+        "",
+        "```bash",
+        "mosquitto_sub -h mqtt.ldtv.dev -p 8883 --capath /etc/ssl/certs \\",
+        '  -u "$E2E_PROD_MQTT_USERNAME" -P "$E2E_PROD_MQTT_PASSWORD" \\',
+        "  -t 'avf/prod/machines/$MACHINE_ID/commands' -q 1",
+        "```",
+        "",
+        "## Postman Desktop MQTT",
+        "",
+        "1. New → MQTT → Host `mqtt.ldtv.dev` Port `8883` TLS on",
+        "2. Username/password from local private env (never commit)",
+        "3. Subscribe `{{mqttTopicPrefix}}/machines/{{machineId}}/commands` before REST dispatch",
     ]
     for rel, direction, actor in MQTT_REL_TOPICS:
         if rel in ("commands", "telemetry"):
@@ -603,27 +659,114 @@ def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def write_actor_flow_matrix(
+    rest_flows: list[dict[str, Any]],
+    grpc_flows: list[dict[str, Any]],
+    mqtt_flows: list[dict[str, Any]],
+) -> None:
+    from enterprise_actor_lib import (  # noqa: WPS433
+        MARKET_RELEASE_FLOWS,
+        build_flow_description,
+        grpc_method_meta,
+        market_folder,
+        mqtt_topic_meta,
+        rest_endpoint_meta,
+    )
+    from enterprise_surface_lib import MQTT_REL_TOPICS, build_grpc_inventory  # noqa: WPS433
+
+    lines = [
+        "# Postman enterprise actor & market flow matrix",
+        "",
+        f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        "",
+        "## Market release flows (folder 90)",
+        "",
+        "| ID | Title | Actors | REST | gRPC | MQTT |",
+        "|----|-------|--------|------|------|------|",
+    ]
+    for mf in MARKET_RELEASE_FLOWS:
+        lines.append(f"| {mf['id']} | {mf['title']} | {mf['actors']} | {mf['rest']} | {mf['grpc']} | {mf['mqtt']} |")
+
+    lines += ["", "## REST actor map (sample)", "", "| Flow | Actor | Used by | Market | Folder |", "|------|-------|---------|--------|--------|"]
+    repo_root = REPO_ROOT
+    for flow in sorted(rest_flows, key=lambda f: str(f.get("id")))[:80]:
+        cls = classify_rest_flow(flow, repo_root)
+        m = rest_endpoint_meta(flow, cls)
+        lines.append(
+            f"| {flow.get('id')} | {m.actor_tag} | {m.used_by} | {m.market_relevance} | {market_folder(flow, cls)} |"
+        )
+    lines.extend(["", "## gRPC actor map", "", "| Service | RPC | Actor | E2E |", "|---------|-----|-------|-----|"])
+    for g in build_grpc_inventory():
+        if g.server_registered != "YES" or g.service == "MachineSaleService":
+            continue
+        gm = grpc_method_meta(g.service, g.method)
+        lines.append(f"| {g.service} | {g.method} | {gm.actor_tag} | {g.e2e_present} |")
+    lines.extend(["", "## MQTT actor map", "", "| Topic | Actor | Direction |", "|-------|-------|-----------|"])
+    for rel, direction, actor in MQTT_REL_TOPICS:
+        mm = mqtt_topic_meta(rel, direction)
+        lines.append(f"| `{rel}` | {mm.actor_tag} | {direction} |")
+    (DOCS_DIR / "POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_full_recheck(stats: dict[str, int], rest_count: int) -> None:
+    path = DOCS_DIR / "POSTMAN_ENTERPRISE_FULL_RECHECK.md"
+    path.write_text(
+        "\n".join(
+            [
+                "# Postman enterprise full recheck",
+                "",
+                f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+                "",
+                "## Production targets",
+                "- REST: https://api.ldtv.dev",
+                "- gRPC: machine-api.ldtv.dev:443",
+                "- MQTT: mqtt.ldtv.dev:8883",
+                "",
+                "## Structural counts",
+                f"- REST collection requests: {stats.get('REST_TOTAL', rest_count)}",
+                f"- Market release flow stubs: 20 (folder 90)",
+                f"- Classifications: {json.dumps(stats)}",
+                "",
+                "## Checker",
+                "```bash",
+                "python postman/production-enterprise/check_enterprise_postman_completeness.py",
+                "```",
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 def write_readme() -> None:
-    text = """# AVF Production Enterprise Postman
+    text = """# AVF Production Enterprise Postman (market-ready)
 
 ## Import
 
 1. Import `AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json`
 2. Import `AVF_PRODUCTION_ENTERPRISE.postman_environment.json`
-3. Copy `AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json` locally; fill secrets
-4. Set `allowGatedWrites=true` and `confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION` for CRUD
+3. Copy `AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json` → `*LOCAL*.postman_environment.json` (gitignored)
+4. Set `allowGatedWrites=true` and `confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`
 
-## Scope
+## Folder tree
 
-- Default gate: **no online payment** (MoMo/ZaloPay/VietQR/webhooks excluded)
-- REST: Newman-runnable collection from E2E manifests
-- gRPC/MQTT: see `AVF_PRODUCTION_GRPC_REQUESTS.md`, `AVF_PRODUCTION_MQTT_REQUESTS.md`, and manual guide
+- **00** Safety runbook — write gates, actors, payment exclusion
+- **01–19** Market-ready REST coverage by business domain
+- **12–13** gRPC/MQTT reference (see sibling `.md` catalogs + manual guide)
+- **90** Full market release flows (20 end-to-end scenarios)
+- **97** Online payment guarded (disabled by default)
+- **98** Contract-disabled optional APIs
 
 ## Regenerate
 
 ```bash
 python postman/production-enterprise/generate_enterprise_postman_project.py
+python postman/production-enterprise/check_enterprise_postman_completeness.py
 ```
+
+## ZIP
+
+`AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip` (generated locally; may be gitignored)
 """
     (OUT_DIR / "AVF_PRODUCTION_POSTMAN_ENTERPRISE_README.md").write_text(text, encoding="utf-8")
 
@@ -654,7 +797,7 @@ REST is importable as Postman Collection v2.1. **gRPC and MQTT are not faked in 
 
 
 def create_zip(run_id: str) -> Path:
-    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_POSTMAN_PROJECT.zip"
+    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in [
             "AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json",
@@ -668,8 +811,11 @@ def create_zip(run_id: str) -> Path:
             p = OUT_DIR / name
             if p.is_file():
                 zf.write(p, arcname=name)
-        for doc in DOCS_DIR.glob(f"POSTMAN_ENTERPRISE_*{run_id}*"):
+        for doc in DOCS_DIR.glob("POSTMAN_ENTERPRISE_*.md"):
             zf.write(doc, arcname=f"docs/testing/production-e2e/{doc.name}")
+        csv = DOCS_DIR / "POSTMAN_ENTERPRISE_COVERAGE_MATRIX.csv"
+        if csv.is_file():
+            zf.write(csv, arcname=f"docs/testing/production-e2e/{csv.name}")
     return zip_path
 
 
@@ -697,10 +843,17 @@ def main() -> int:
     mqtt_flows = list(mqtt_data.get("flows") or [])
 
     write_inventory(rest_flows, grpc_flows, mqtt_flows, stats)
+    write_actor_flow_matrix(rest_flows, grpc_flows, mqtt_flows)
+    write_full_recheck(stats, len(rest_flows))
     (OUT_DIR / "AVF_PRODUCTION_GRPC_REQUESTS.md").write_text(grpc_catalog_md(grpc_flows), encoding="utf-8")
     (OUT_DIR / "AVF_PRODUCTION_MQTT_REQUESTS.md").write_text(mqtt_catalog_md(mqtt_flows), encoding="utf-8")
     write_readme()
     write_grpc_mqtt_guide()
+
+    sys.path.insert(0, str(OUT_DIR))
+    import check_enterprise_api_coverage as cov  # noqa: WPS433
+
+    cov.main()
 
     audit = DOCS_DIR / f"POSTMAN_ENTERPRISE_AUDIT_{run_id}.md"
     audit.write_text(

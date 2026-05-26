@@ -7,70 +7,70 @@ Postman Desktop: New → gRPC → server URL → import proto from `proto/avf/ma
 Catalog generated from `proto/avf/machine/v1` + `RegisterMachineGRPCServices` (machine edge only).
 E2E-verified flows reference `tests/e2e/production/e2e-manifest-grpc.yaml`. Newman does not run gRPC.
 
-| Service | RPC | E2E flow | Verdict | Notes |
-|---------|-----|----------|---------|-------|
-| MachineActivationService | ClaimActivation | — | COVERED |  |
-| MachineAuthService | ActivateMachine | — | COVERED | Alias of ClaimActivation |
-| MachineAuthService | ClaimActivation | — | COVERED |  |
-| MachineAuthService | RefreshMachineToken | — | COVERED |  |
-| MachineBootstrapService | AckConfigVersion | — | COVERED |  |
-| MachineBootstrapService | CheckForUpdates | — | COVERED |  |
-| MachineBootstrapService | CheckIn | GRPC-BOOT-002 | COVERED |  |
-| MachineBootstrapService | GetBootstrap | GRPC-BOOT-001 | COVERED |  |
-| MachineCatalogService | AckCatalogVersion | GRPC-CAT-003 | COVERED |  |
-| MachineCatalogService | GetCatalogDelta | GRPC-CAT-002 | COVERED |  |
-| MachineCatalogService | GetCatalogSnapshot | — | COVERED |  |
-| MachineCatalogService | GetMediaManifest | — | COVERED |  |
-| MachineCatalogService | GetSaleCatalog | GRPC-CAT-001-inner | COVERED | Alias of GetCatalogSnapshot |
-| MachineCatalogService | SyncCatalogBundle | — | COVERED |  |
-| MachineCatalogService | SyncSaleCatalog | — | COVERED | Alias of GetCatalogSnapshot |
-| MachineCommandService | AckCommand | — | COVERED |  |
-| MachineCommandService | GetAssignedUpdate | — | COVERED |  |
-| MachineCommandService | GetPendingCommands | — | COVERED |  |
-| MachineCommandService | RejectCommand | — | COVERED |  |
-| MachineCommandService | ReportDiagnosticBundleResult | — | COVERED |  |
-| MachineCommandService | ReportUpdateStatus | — | COVERED |  |
-| MachineCommerceService | AttachPaymentResult | — | COVERED | Alias of CreatePaymentSession |
-| MachineCommerceService | CancelOrder | — | COVERED |  |
-| MachineCommerceService | ConfirmCashPayment | — | COVERED |  |
-| MachineCommerceService | ConfirmVendSuccess | — | COVERED | Alias of ReportVendSuccess |
-| MachineCommerceService | CreateCashCheckout | — | COVERED | Alias of ConfirmCashPayment |
-| MachineCommerceService | CreateOrder | — | COVERED |  |
-| MachineCommerceService | CreatePaymentSession | — | COVERED |  |
-| MachineCommerceService | GetOrder | — | COVERED |  |
-| MachineCommerceService | GetOrderStatus | — | COVERED |  |
-| MachineCommerceService | ReportVendFailure | — | COVERED |  |
-| MachineCommerceService | ReportVendSuccess | — | COVERED |  |
-| MachineCommerceService | StartVend | — | COVERED |  |
-| MachineInventoryService | AckInventorySync | GRPC-INV-002 | COVERED |  |
-| MachineInventoryService | GetInventorySnapshot | GRPC-INV-001 | COVERED |  |
-| MachineInventoryService | GetPlanogram | — | COVERED |  |
-| MachineInventoryService | PushInventoryDelta | — | COVERED |  |
-| MachineInventoryService | SubmitFillReport | — | COVERED | Alias of SubmitFillResult |
-| MachineInventoryService | SubmitFillResult | — | COVERED |  |
-| MachineInventoryService | SubmitInventoryAdjustment | — | COVERED |  |
-| MachineInventoryService | SubmitRestock | — | COVERED |  |
-| MachineInventoryService | SubmitStockAdjustment | — | COVERED | Alias of SubmitInventoryAdjustment |
-| MachineInventoryService | SubmitStockSnapshot | — | COVERED |  |
-| MachineMediaService | AckMediaVersion | GRPC-MED-003-inner | COVERED |  |
-| MachineMediaService | GetMediaDelta | GRPC-MED-002-inner | COVERED |  |
-| MachineMediaService | GetMediaManifest | GRPC-MED-001-inner | COVERED |  |
-| MachineOfflineSyncService | GetSyncCursor | — | COVERED |  |
-| MachineOfflineSyncService | PushOfflineEvents | — | COVERED |  |
-| MachineOperatorService | CloseOperatorSession | — | COVERED |  |
-| MachineOperatorService | HeartbeatOperatorSession | — | COVERED |  |
-| MachineOperatorService | LoginOperator | — | COVERED |  |
-| MachineOperatorService | LogoutOperator | — | COVERED |  |
-| MachineOperatorService | OpenOperatorSession | — | COVERED |  |
-| MachineOperatorService | SubmitFillReport | — | COVERED | Alias of SubmitFillResult |
-| MachineOperatorService | SubmitStockAdjustment | — | COVERED | Alias of SubmitInventoryAdjustment |
-| MachineTelemetryService | CheckIn | — | COVERED |  |
-| MachineTelemetryService | GetEventStatus | — | COVERED |  |
-| MachineTelemetryService | PushCriticalEvent | — | COVERED |  |
-| MachineTelemetryService | PushTelemetryBatch | — | COVERED |  |
-| MachineTelemetryService | ReconcileEvents | — | COVERED |  |
-| MachineTelemetryService | SubmitTelemetryBatch | — | COVERED |  |
-| MachineTokenService | RefreshMachineToken | GRPC-TOKEN-001 | COVERED |  |
+| Service | RPC | Actor | E2E flow | Verdict | Notes |
+|---------|-----|-------|----------|---------|-------|
+| MachineActivationService | ClaimActivation | MACHINE_APP | — | COVERED |  |
+| MachineAuthService | ActivateMachine | MACHINE_APP | — | COVERED | Alias of ClaimActivation |
+| MachineAuthService | ClaimActivation | MACHINE_APP | — | COVERED |  |
+| MachineAuthService | RefreshMachineToken | MACHINE_APP | — | COVERED |  |
+| MachineBootstrapService | AckConfigVersion | MACHINE_APP | — | COVERED |  |
+| MachineBootstrapService | CheckForUpdates | MACHINE_APP | — | COVERED |  |
+| MachineBootstrapService | CheckIn | MACHINE_APP | GRPC-BOOT-002 | COVERED |  |
+| MachineBootstrapService | GetBootstrap | MACHINE_APP | GRPC-BOOT-001 | COVERED |  |
+| MachineCatalogService | AckCatalogVersion | MACHINE_APP | GRPC-CAT-003 | COVERED |  |
+| MachineCatalogService | GetCatalogDelta | MACHINE_APP | GRPC-CAT-002 | COVERED |  |
+| MachineCatalogService | GetCatalogSnapshot | MACHINE_APP | — | COVERED |  |
+| MachineCatalogService | GetMediaManifest | MACHINE_APP | — | COVERED |  |
+| MachineCatalogService | GetSaleCatalog | MACHINE_APP | GRPC-CAT-001-inner | COVERED | Alias of GetCatalogSnapshot |
+| MachineCatalogService | SyncCatalogBundle | MACHINE_APP | — | COVERED |  |
+| MachineCatalogService | SyncSaleCatalog | MACHINE_APP | — | COVERED | Alias of GetCatalogSnapshot |
+| MachineCommandService | AckCommand | MACHINE_APP | — | COVERED |  |
+| MachineCommandService | GetAssignedUpdate | MACHINE_APP | — | COVERED |  |
+| MachineCommandService | GetPendingCommands | MACHINE_APP | — | COVERED |  |
+| MachineCommandService | RejectCommand | MACHINE_APP | — | COVERED |  |
+| MachineCommandService | ReportDiagnosticBundleResult | MACHINE_APP | — | COVERED |  |
+| MachineCommandService | ReportUpdateStatus | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | AttachPaymentResult | PAYMENT | — | COVERED | Alias of CreatePaymentSession |
+| MachineCommerceService | CancelOrder | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | ConfirmCashPayment | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | ConfirmVendSuccess | MACHINE_APP | — | COVERED | Alias of ReportVendSuccess |
+| MachineCommerceService | CreateCashCheckout | MACHINE_APP | — | COVERED | Alias of ConfirmCashPayment |
+| MachineCommerceService | CreateOrder | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | CreatePaymentSession | PAYMENT | — | COVERED |  |
+| MachineCommerceService | GetOrder | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | GetOrderStatus | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | ReportVendFailure | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | ReportVendSuccess | MACHINE_APP | — | COVERED |  |
+| MachineCommerceService | StartVend | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | AckInventorySync | MACHINE_APP | GRPC-INV-002 | COVERED |  |
+| MachineInventoryService | GetInventorySnapshot | MACHINE_APP | GRPC-INV-001 | COVERED |  |
+| MachineInventoryService | GetPlanogram | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | PushInventoryDelta | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | SubmitFillReport | MACHINE_APP | — | COVERED | Alias of SubmitFillResult |
+| MachineInventoryService | SubmitFillResult | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | SubmitInventoryAdjustment | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | SubmitRestock | MACHINE_APP | — | COVERED |  |
+| MachineInventoryService | SubmitStockAdjustment | MACHINE_APP | — | COVERED | Alias of SubmitInventoryAdjustment |
+| MachineInventoryService | SubmitStockSnapshot | MACHINE_APP | — | COVERED |  |
+| MachineMediaService | AckMediaVersion | MACHINE_APP | GRPC-MED-003-inner | COVERED |  |
+| MachineMediaService | GetMediaDelta | MACHINE_APP | GRPC-MED-002-inner | COVERED |  |
+| MachineMediaService | GetMediaManifest | MACHINE_APP | GRPC-MED-001-inner | COVERED |  |
+| MachineOfflineSyncService | GetSyncCursor | MACHINE_APP | — | COVERED |  |
+| MachineOfflineSyncService | PushOfflineEvents | MACHINE_APP | — | COVERED |  |
+| MachineOperatorService | CloseOperatorSession | TECHNICIAN | — | COVERED |  |
+| MachineOperatorService | HeartbeatOperatorSession | TECHNICIAN | — | COVERED |  |
+| MachineOperatorService | LoginOperator | TECHNICIAN | — | COVERED |  |
+| MachineOperatorService | LogoutOperator | TECHNICIAN | — | COVERED |  |
+| MachineOperatorService | OpenOperatorSession | TECHNICIAN | — | COVERED |  |
+| MachineOperatorService | SubmitFillReport | TECHNICIAN | — | COVERED | Alias of SubmitFillResult |
+| MachineOperatorService | SubmitStockAdjustment | TECHNICIAN | — | COVERED | Alias of SubmitInventoryAdjustment |
+| MachineTelemetryService | CheckIn | MACHINE_APP | — | COVERED |  |
+| MachineTelemetryService | GetEventStatus | MACHINE_APP | — | COVERED |  |
+| MachineTelemetryService | PushCriticalEvent | MACHINE_APP | — | COVERED |  |
+| MachineTelemetryService | PushTelemetryBatch | MACHINE_APP | — | COVERED |  |
+| MachineTelemetryService | ReconcileEvents | MACHINE_APP | — | COVERED |  |
+| MachineTelemetryService | SubmitTelemetryBatch | MACHINE_APP | — | COVERED |  |
+| MachineTokenService | RefreshMachineToken | MACHINE_APP | GRPC-TOKEN-001 | COVERED |  |
 
 ## E2E flow reference (grpcurl)
 
@@ -214,6 +214,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} None.No
 
 ### MachineActivationService/ClaimActivation
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineActivationService/ClaimActivation
 - Proto: `machine_activation.proto` — verdict: **COVERED**
 
 ```bash
@@ -222,6 +225,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineAuthService/ActivateMachine
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineAuthService/ActivateMachine
 - Proto: `auth.proto` — verdict: **COVERED**
 - Note: Alias of ClaimActivation
 
@@ -231,6 +237,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineAuthService/ClaimActivation
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineAuthService/ClaimActivation
 - Proto: `auth.proto` — verdict: **COVERED**
 
 ```bash
@@ -239,6 +248,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineAuthService/RefreshMachineToken
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineAuthService/RefreshMachineToken
 - Proto: `auth.proto` — verdict: **COVERED**
 
 ```bash
@@ -247,6 +259,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineBootstrapService/AckConfigVersion
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineBootstrapService/AckConfigVersion
 - Proto: `bootstrap.proto` — verdict: **COVERED**
 
 ```bash
@@ -255,6 +270,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineBootstrapService/CheckForUpdates
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineBootstrapService/CheckForUpdates
 - Proto: `bootstrap.proto` — verdict: **COVERED**
 
 ```bash
@@ -263,6 +281,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCatalogService/GetCatalogSnapshot
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCatalogService/GetCatalogSnapshot
 - Proto: `catalog.proto` — verdict: **COVERED**
 
 ```bash
@@ -271,6 +292,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCatalogService/GetMediaManifest
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCatalogService/GetMediaManifest
 - Proto: `catalog.proto` — verdict: **COVERED**
 
 ```bash
@@ -279,6 +303,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCatalogService/SyncCatalogBundle
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCatalogService/SyncCatalogBundle
 - Proto: `catalog.proto` — verdict: **COVERED**
 
 ```bash
@@ -287,6 +314,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCatalogService/SyncSaleCatalog
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCatalogService/SyncSaleCatalog
 - Proto: `catalog.proto` — verdict: **COVERED**
 - Note: Alias of GetCatalogSnapshot
 
@@ -296,6 +326,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/AckCommand
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/AckCommand
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -304,6 +337,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/GetAssignedUpdate
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/GetAssignedUpdate
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -312,6 +348,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/GetPendingCommands
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/GetPendingCommands
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -320,6 +359,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/RejectCommand
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/RejectCommand
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -328,6 +370,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/ReportDiagnosticBundleResult
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/ReportDiagnosticBundleResult
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -336,6 +381,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommandService/ReportUpdateStatus
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommandService/ReportUpdateStatus
 - Proto: `command.proto` — verdict: **COVERED**
 
 ```bash
@@ -344,6 +392,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/AttachPaymentResult
 
+- **Used by:** Payment Provider / Webhook Provider
+- **Primary actor:** payment provider
+- **Purpose:** Online payment session (phase 2)
 - Proto: `commerce.proto` — verdict: **COVERED**
 - Note: Alias of CreatePaymentSession
 
@@ -353,6 +404,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/CancelOrder
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/CancelOrder
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -361,6 +415,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/ConfirmCashPayment
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/ConfirmCashPayment
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -369,6 +426,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/ConfirmVendSuccess
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/ConfirmVendSuccess
 - Proto: `commerce.proto` — verdict: **COVERED**
 - Note: Alias of ReportVendSuccess
 
@@ -378,6 +438,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/CreateCashCheckout
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/CreateCashCheckout
 - Proto: `commerce.proto` — verdict: **COVERED**
 - Note: Alias of ConfirmCashPayment
 
@@ -387,6 +450,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/CreateOrder
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/CreateOrder
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -395,6 +461,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/CreatePaymentSession
 
+- **Used by:** Payment Provider / Webhook Provider
+- **Primary actor:** payment provider
+- **Purpose:** Online payment session (phase 2)
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -403,6 +472,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/GetOrder
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/GetOrder
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -411,6 +483,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/GetOrderStatus
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/GetOrderStatus
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -419,6 +494,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/ReportVendFailure
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/ReportVendFailure
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -427,6 +505,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/ReportVendSuccess
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/ReportVendSuccess
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -435,6 +516,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineCommerceService/StartVend
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineCommerceService/StartVend
 - Proto: `commerce.proto` — verdict: **COVERED**
 
 ```bash
@@ -443,6 +527,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/GetPlanogram
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/GetPlanogram
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -451,6 +538,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/PushInventoryDelta
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/PushInventoryDelta
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -459,6 +549,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitFillReport
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitFillReport
 - Proto: `inventory.proto` — verdict: **COVERED**
 - Note: Alias of SubmitFillResult
 
@@ -468,6 +561,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitFillResult
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitFillResult
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -476,6 +572,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitInventoryAdjustment
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitInventoryAdjustment
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -484,6 +583,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitRestock
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitRestock
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -492,6 +594,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitStockAdjustment
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitStockAdjustment
 - Proto: `inventory.proto` — verdict: **COVERED**
 - Note: Alias of SubmitInventoryAdjustment
 
@@ -501,6 +606,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineInventoryService/SubmitStockSnapshot
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineInventoryService/SubmitStockSnapshot
 - Proto: `inventory.proto` — verdict: **COVERED**
 
 ```bash
@@ -509,6 +617,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOfflineSyncService/GetSyncCursor
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineOfflineSyncService/GetSyncCursor
 - Proto: `offline_sync.proto` — verdict: **COVERED**
 
 ```bash
@@ -517,6 +628,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOfflineSyncService/PushOfflineEvents
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineOfflineSyncService/PushOfflineEvents
 - Proto: `offline_sync.proto` — verdict: **COVERED**
 
 ```bash
@@ -525,6 +639,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/CloseOperatorSession
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/CloseOperatorSession
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 
 ```bash
@@ -533,6 +650,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/HeartbeatOperatorSession
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/HeartbeatOperatorSession
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 
 ```bash
@@ -541,6 +661,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/LoginOperator
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/LoginOperator
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 
 ```bash
@@ -549,6 +672,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/LogoutOperator
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/LogoutOperator
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 
 ```bash
@@ -557,6 +683,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/OpenOperatorSession
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/OpenOperatorSession
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 
 ```bash
@@ -565,6 +694,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/SubmitFillReport
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/SubmitFillReport
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 - Note: Alias of SubmitFillResult
 
@@ -574,6 +706,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineOperatorService/SubmitStockAdjustment
 
+- **Used by:** Technician App / Operator
+- **Primary actor:** technician
+- **Purpose:** Operator workflow via MachineOperatorService/SubmitStockAdjustment
 - Proto: `operator_grpc.proto` — verdict: **COVERED**
 - Note: Alias of SubmitInventoryAdjustment
 
@@ -583,6 +718,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/CheckIn
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/CheckIn
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
@@ -591,6 +729,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/GetEventStatus
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/GetEventStatus
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
@@ -599,6 +740,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/PushCriticalEvent
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/PushCriticalEvent
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
@@ -607,6 +751,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/PushTelemetryBatch
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/PushTelemetryBatch
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
@@ -615,6 +762,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/ReconcileEvents
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/ReconcileEvents
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
@@ -623,6 +773,9 @@ grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{}' {{grpcTarget}} Machine
 
 ### MachineTelemetryService/SubmitTelemetryBatch
 
+- **Used by:** Vending Machine App
+- **Primary actor:** machine app
+- **Purpose:** Machine runtime: MachineTelemetryService/SubmitTelemetryBatch
 - Proto: `telemetry.proto` — verdict: **COVERED**
 
 ```bash
