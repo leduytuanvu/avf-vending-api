@@ -21,6 +21,12 @@ paths = [
 ]
 
 [[allowlists]]
+description = "Production E2E manual retest docs (redacted operator guides and API traces)"
+paths = [
+  '''^docs/testing/production-e2e/(MANUAL_RETEST_GUIDE|API_TRACE|POSTMAN_IMPORT_PARITY)_.*\.md$'''
+]
+
+[[allowlists]]
 description = "Known false positives in release/runtime helper and generated OpenAPI artifacts"
 paths = [
   '''^deployments/prod/scripts/release\.sh$''',
