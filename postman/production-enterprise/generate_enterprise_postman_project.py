@@ -181,7 +181,8 @@ COLLECTION_PREREQUEST = [
     "}",
     "const authMode = pm.variables.get('_enterprise_auth_mode') || '';",
     "const tok = pm.environment.get('accessToken');",
-    "if (tok && !isLogin && (authMode === 'bearer_admin' || (!authMode && urlStr.includes('/v1/admin')))) {",
+    "const needsAdminBearer = authMode === 'bearer_admin' || (!authMode && (urlStr.includes('/v1/admin') || urlStr.includes('/v1/auth/me') || urlStr.includes('/v1/auth/logout')));",
+    "if (tok && !isLogin && !isRefresh && needsAdminBearer) {",
     "  if (!pm.request.headers.get('Authorization')) {",
     "    pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + tok });",
     "  }",
@@ -493,6 +494,16 @@ def flow_to_postman_item(
 
     fid = _enterprise_flow_id(flow)
     events = _strip_per_request_write_gate(build_postman_events(flow, manifest))
+    if fid == "REST-AUTH-001":
+        # Enterprise: always run login so stale accessToken in env is replaced.
+        events = [
+            ev
+            for ev in (events or [])
+            if not (
+                ev.get("listen") == "prerequest"
+                and "_postman_skip_if_env_key" in "\n".join((ev.get("script") or {}).get("exec") or [])
+            )
+        ] or None
     auth_mode = str(flow.get("auth") or "none")
     prereq_meta = [
         {
