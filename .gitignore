@@ -126,7 +126,16 @@ reports/newman/
 # Local deploy pipeline / build metadata scratch (gh run download, phase evidence)
 .tmp-phase*/
 .tmp-image-metadata/
+.tmp-*/
+.tmp-*
 .go-tmp/
+.cache/
+
+# Local Postman desktop exports / token-bearing env (canonical JSON under postman/production/ stays tracked)
+postman/environments/*.yaml
+postman/environments/*.local.json
+*.postman_environment.local.json
+manual-import-parity-newman-report.json
 
 # Local full-system verification run output in docs tree
 docs/testing/_verify*.txt
