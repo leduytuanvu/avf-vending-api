@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "generated_at": "2026-05-25T07:22:46Z",
-  "swagger_source": ".tmp-swagger-prod.json",
+  "generated_at": "2026-05-26T16:32:20Z",
+  "swagger_source": "docs\\swagger\\swagger.json",
   "total_routes": 330,
   "routes": {
     "DELETE /v1/admin/artifacts/{artifactId}": {

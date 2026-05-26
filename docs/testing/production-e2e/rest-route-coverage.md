@@ -1,7 +1,7 @@
 # Production REST route coverage
 
-- **Generated:** `2026-05-25T07:22:46Z`
-- **Swagger source:** `.tmp-swagger-prod.json`
+- **Generated:** `2026-05-26T16:32:20Z`
+- **Swagger source:** `docs\swagger\swagger.json`
 - **Total routes:** 330
 - **Coverage buckets:** `{'readonly_smoke': 70, 'documented_skip': 75, 'auth_negative': 146, 'success': 38, 'permission_negative': 1}`
 - **Matrix JSON:** [`tests/e2e/production/generated/rest-route-matrix.json`](../../../tests/e2e/production/generated/rest-route-matrix.json)

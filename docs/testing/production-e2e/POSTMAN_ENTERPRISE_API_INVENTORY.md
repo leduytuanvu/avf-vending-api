@@ -1,6 +1,6 @@
 # Postman enterprise API inventory
 
-Generated: 2026-05-26T15:15:44Z
+Generated: 2026-05-26T16:37:21Z
 Repository SHA: `local`
 
 ## Summary

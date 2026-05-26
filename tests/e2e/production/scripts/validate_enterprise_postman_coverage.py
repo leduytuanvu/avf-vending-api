@@ -45,10 +45,14 @@ def main() -> int:
 
     def find_postman(flow: dict) -> dict | None:
         spec = flow_request_spec(flow, manifest_dir)
+        fid = str(flow.get("id") or "")
         for pm in postman_reqs:
-            if pm.get("flow_id") != flow.get("id"):
+            if pm.get("method") != spec["method"] or pm.get("path") != spec["path"]:
                 continue
-            if pm.get("method") == spec["method"] and pm.get("path") == spec["path"]:
+            pm_fid = str(pm.get("flow_id") or "")
+            if pm_fid == fid:
+                return pm
+            if fid == "REST-MEDIA-INIT" and pm_fid.startswith("REST-MEDIA-INIT"):
                 return pm
         return None
 

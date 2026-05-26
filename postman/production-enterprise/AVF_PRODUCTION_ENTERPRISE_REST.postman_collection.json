@@ -2512,7 +2512,7 @@
           "name": "misc",
           "item": [
             {
-              "name": "REST-MEDIA-INIT \u2014 POST /v1/admin/media/uploads/init",
+              "name": "REST-MEDIA-INIT-PRESIGNED \u2014 POST /v1/admin/media/uploads/init",
               "request": {
                 "method": "POST",
                 "header": [
@@ -2581,8 +2581,8 @@
                   }
                 }
               ],
-              "description": "Flow ID: REST-MEDIA-INIT\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
-              "_manifest_flow_id": "REST-MEDIA-INIT",
+              "description": "Flow ID: REST-MEDIA-INIT-PRESIGNED\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-INIT-PRESIGNED",
               "_classification": "RUNNABLE"
             },
             {
@@ -2660,7 +2660,7 @@
               "_classification": "RUNNABLE"
             },
             {
-              "name": "REST-MEDIA-INIT \u2014 POST /v1/admin/product-images",
+              "name": "REST-MEDIA-INIT-CLOUDINARY \u2014 POST /v1/admin/product-images",
               "request": {
                 "method": "POST",
                 "header": [
@@ -2734,8 +2734,8 @@
                   }
                 }
               ],
-              "description": "Flow ID: REST-MEDIA-INIT\nClassification: CONFIG_REQUIRED\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 201\nAuth: bearer_admin\n",
-              "_manifest_flow_id": "REST-MEDIA-INIT",
+              "description": "Flow ID: REST-MEDIA-INIT-CLOUDINARY\nClassification: CONFIG_REQUIRED\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 201\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-INIT-CLOUDINARY",
               "_classification": "CONFIG_REQUIRED"
             }
           ]

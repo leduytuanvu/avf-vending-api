@@ -265,13 +265,24 @@ def nested_folder_items(paths: dict[str, list[dict[str, Any]]]) -> list[dict[str
     return out
 
 
+def _enterprise_flow_id(flow: dict[str, Any]) -> str:
+    fid = str(flow.get("id") or parity_key(flow))
+    path = str(flow.get("path") or "")
+    if fid == "REST-MEDIA-INIT":
+        if "/media/uploads/" in path:
+            return "REST-MEDIA-INIT-PRESIGNED"
+        if "product-images" in path:
+            return "REST-MEDIA-INIT-CLOUDINARY"
+    return fid
+
+
 def flow_to_postman_item(
     flow: dict[str, Any],
     manifest: dict[str, Any],
     manifest_dir: Path,
     classification: str,
 ) -> dict[str, Any]:
-    fid = flow.get("id") or parity_key(flow)
+    fid = _enterprise_flow_id(flow)
     events = build_postman_events(flow, manifest) or []
     if classification == "ONLINE_PAYMENT_EXCLUDED":
         events = [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": ONLINE_PAYMENT_PREREQUEST}}] + events
@@ -429,7 +440,40 @@ def write_inventory(
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def _walk_grpc_flow_nodes(obj: Any, out: list[dict[str, Any]]) -> None:
+    if isinstance(obj, dict):
+        if obj.get("service") and obj.get("rpc"):
+            out.append(obj)
+        for v in obj.values():
+            _walk_grpc_flow_nodes(v, out)
+    elif isinstance(obj, list):
+        for item in obj:
+            _walk_grpc_flow_nodes(item, out)
+
+
 def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from enterprise_surface_lib import (  # noqa: E402
+        GRPC_RPC_ALIASES,
+        build_grpc_inventory,
+        collect_e2e_grpc_methods,
+    )
+
+    e2e_nodes: list[dict[str, Any]] = []
+    _walk_grpc_flow_nodes(flows, e2e_nodes)
+    e2e_by_rpc: dict[tuple[str, str], dict[str, Any]] = {}
+    for n in e2e_nodes:
+        e2e_by_rpc[(str(n["service"]), str(n["rpc"]))] = n
+
+    inv = build_grpc_inventory()
+    prod = [
+        g
+        for g in inv
+        if g.server_registered == "YES"
+        and g.verdict not in ("PROTO_ONLY", "SERVER_NOT_REGISTERED")
+        and not (g.service == "MachineSaleService")
+    ]
+
     lines = [
         "# AVF Production gRPC requests",
         "",
@@ -437,11 +481,25 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
         "",
         "Postman Desktop: New → gRPC → server URL → import proto from `proto/avf/machine/v1/` → invoke.",
         "",
-        "Verified with **grpcurl** in production E2E; Newman does not run gRPC.",
+        "Catalog generated from `proto/avf/machine/v1` + `RegisterMachineGRPCServices` (machine edge only).",
+        "E2E-verified flows reference `tests/e2e/production/e2e-manifest-grpc.yaml`. Newman does not run gRPC.",
         "",
-        "| Flow ID | Service | RPC | Metadata | Request (redacted) |",
-        "|---------|---------|-----|----------|-------------------|",
+        "| Service | RPC | E2E flow | Verdict | Notes |",
+        "|---------|-----|----------|---------|-------|",
     ]
+    for g in sorted(prod, key=lambda x: (x.service, x.method)):
+        e2e = e2e_by_rpc.get((g.service, g.method))
+        flow_id = e2e.get("id", "") if e2e else ""
+        if not flow_id and (g.service, g.method) in collect_e2e_grpc_methods():
+            flow_id = "(handler bundle)"
+        notes = g.skip_reason or ""
+        if (g.service, g.method) in GRPC_RPC_ALIASES and g.method != g.canonical_method:
+            notes = notes or f"Alias of {g.canonical_method}"
+        lines.append(
+            f"| {g.service} | {g.method} | {flow_id or '—'} | {g.verdict} | {notes} |"
+        )
+
+    lines += ["", "## E2E flow reference (grpcurl)", ""]
     for f in flows:
         req = json.dumps(f.get("request_template") or {}, indent=0)[:120]
         meta = "authorization: Bearer <machineAccessToken>"
@@ -449,15 +507,34 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
             meta = "(none)"
         if f.get("idempotency_key"):
             meta += "; idempotency-key"
-        lines.append(f"| {f.get('id')} | {f.get('service','')} | {f.get('rpc','')} | {meta} | `{req}...` |")
-        lines.append("")
         lines.append(f"### {f.get('id')} — {f.get('label')}")
+        lines.append("")
+        lines.append(f"- Service: `{f.get('service','')}` RPC: `{f.get('rpc','')}`")
+        lines.append(f"- Metadata: {meta}")
         lines.append("")
         lines.append("```bash")
         lines.append(
             f"grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' "
             f"-d '{json.dumps(f.get('request_template') or {})}' "
-            f"{{grpcTarget}} {f.get('service')}.{f.get('rpc')}"
+            f"{{{{grpcTarget}}}} {f.get('service')}.{f.get('rpc')}"
+        )
+        lines.append("```")
+        lines.append("")
+
+    lines += ["", "## Reference RPC (all production-registered)", ""]
+    for g in sorted(prod, key=lambda x: (x.service, x.method)):
+        if e2e_by_rpc.get((g.service, g.method)):
+            continue
+        lines.append(f"### {g.service}/{g.method}")
+        lines.append("")
+        lines.append(f"- Proto: `{g.proto_file}` — verdict: **{g.verdict}**")
+        if g.skip_reason:
+            lines.append(f"- Note: {g.skip_reason}")
+        lines.append("")
+        lines.append("```bash")
+        lines.append(
+            f"grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{{}}' "
+            f"{{{{grpcTarget}}}} {g.service}/{g.method}"
         )
         lines.append("```")
         lines.append("")
@@ -465,32 +542,64 @@ def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
 
 
 def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from enterprise_surface_lib import MQTT_REL_TOPICS, build_mqtt_inventory, enterprise_mqtt_pattern  # noqa: E402
+
+    inv = build_mqtt_inventory()
     lines = [
         "# AVF Production MQTT requests",
         "",
         "Broker: `mqtts://{{mqttHost}}:{{mqttPort}}` TLS. Credentials: fill locally (never commit).",
         "",
-        "Topic layout (enterprise): `avf/prod/machines/{machineId}/...` — see `tests/e2e/production/lib/mqtt_common.sh`.",
+        "Topic layout (enterprise): `{{mqttTopicPrefix}}/machines/{{machineId}}/...` — see `internal/platform/mqtt/topics.go`.",
+        "",
+        "## Canonical topic catalog (production enterprise layout)",
+        "",
+        "| Rel topic | Direction | Actor | E2E | Pattern |",
+        "|-----------|-----------|-------|-----|---------|",
+    ]
+    for row in inv:
+        lines.append(
+            f"| `{row.rel_topic}` | {row.direction} | {row.actor} | {row.e2e_present} | `{row.enterprise_pattern}` |"
+        )
+    lines += [
+        "",
+        "## E2E flows (mosquitto / Postman Desktop MQTT)",
         "",
         "| Flow ID | Direction | Topic pattern | QoS |",
         "|---------|-----------|---------------|-----|",
     ]
     topic_map = {
-        "heartbeat": "`{prefix}/machines/{machineId}/state/heartbeat`",
-        "presence": "`{prefix}/machines/{machineId}/presence`",
-        "snapshot": "`{prefix}/machines/{machineId}/telemetry/snapshot`",
-        "inventory": "`{prefix}/machines/{machineId}/events/inventory`",
+        "heartbeat": enterprise_mqtt_pattern("state/heartbeat"),
+        "presence": enterprise_mqtt_pattern("presence"),
+        "snapshot": enterprise_mqtt_pattern("telemetry/snapshot"),
+        "inventory": enterprise_mqtt_pattern("events/inventory"),
+        "command_pipeline": enterprise_mqtt_pattern("commands") + " + ack",
     }
     for f in flows:
         tk = f.get("topic_key") or f.get("handler") or ""
-        topic = topic_map.get(str(tk), "commands/ack/telemetry per mqtt_common.sh")
-        lines.append(f"| {f.get('id')} | pub/sub | {topic} | 1 |")
-    lines.append("")
-    lines.append("```bash")
-    lines.append("mosquitto_pub -h mqtt.ldtv.dev -p 8883 --capath /etc/ssl/certs \\")
-    lines.append("  -u \"$E2E_PROD_MQTT_USERNAME\" -P \"$E2E_PROD_MQTT_PASSWORD\" \\")
-    lines.append("  -t 'avf/prod/machines/$MACHINE_ID/state/heartbeat' -m '{}' -q 1")
-    lines.append("```")
+        topic = topic_map.get(str(tk), enterprise_mqtt_pattern("telemetry"))
+        lines.append(f"| {f.get('id')} | pub/sub | `{topic}` | 1 |")
+    lines += [
+        "",
+        "## mosquitto examples",
+        "",
+        "```bash",
+        "mosquitto_pub -h mqtt.ldtv.dev -p 8883 --capath /etc/ssl/certs \\",
+        '  -u "$E2E_PROD_MQTT_USERNAME" -P "$E2E_PROD_MQTT_PASSWORD" \\',
+        "  -t 'avf/prod/machines/$MACHINE_ID/state/heartbeat' -m '{}' -q 1",
+        "```",
+        "",
+        "```bash",
+        "mosquitto_pub -h mqtt.ldtv.dev -p 8883 --capath /etc/ssl/certs \\",
+        '  -u "$E2E_PROD_MQTT_USERNAME" -P "$E2E_PROD_MQTT_PASSWORD" \\',
+        "  -t 'avf/prod/machines/$MACHINE_ID/commands/ack' -m '{\"command_id\":\"...\",\"status\":\"completed\"}' -q 1",
+        "```",
+    ]
+    for rel, direction, actor in MQTT_REL_TOPICS:
+        if rel in ("commands", "telemetry"):
+            continue
+        lines.append(f"- **{rel}** ({direction}, {actor}): `{enterprise_mqtt_pattern(rel)}`")
     return "\n".join(lines)
 
 
