@@ -117,6 +117,30 @@ def market_folder(flow: dict[str, Any], classification: str) -> str:
         return "08 - Site/" + _crud_folder("Site", method, has_id=has_id).split("/", 1)[1]
 
     if "/admin/machines" in path:
+        if "topology" in path or phase == "topology":
+            if method in ("PUT", "POST"):
+                return "11 - Topology/Create Update Topology"
+            return "11 - Topology/Get Topology"
+        if "planogram" in path or phase == "planogram":
+            if "draft" in path:
+                return "12 - Planogram/Create Planogram Draft"
+            if "publish" in path:
+                return "12 - Planogram/Publish Planogram"
+            if method == "GET":
+                return "12 - Planogram/Get Planogram"
+            return "12 - Planogram/Assign Product To Slot"
+        if "stock-adjustment" in path or "/slots" in path or phase == "stock":
+            if "low-stock" in path:
+                return "13 - Stock Inventory/Low Stock Out Of Stock"
+            if method == "GET":
+                return "13 - Stock Inventory/Inventory Readback"
+            if "cycle" in label:
+                return "13 - Stock Inventory/Cycle Count"
+            return "13 - Stock Inventory/Restock"
+        if "operator-sessions" in path or phase == "operator":
+            if "logout" in path or "end" in path:
+                return "14 - Operator Technician/Operator Session End Logout"
+            return "14 - Operator Technician/Operator Session Start"
         if "activation-codes" in path:
             return "10 - Activation/Create Activation Code"
         if "commands" in path:
@@ -128,12 +152,12 @@ def market_folder(flow: dict[str, Any], classification: str) -> str:
     if "/setup/activation" in path or "activation-codes/claim" in path:
         return "10 - Activation/Claim Activation"
 
-    if "topology" in path:
+    if "topology" in path or phase == "topology":
         if method in ("PUT", "POST"):
             return "11 - Topology/Create Update Topology"
         return "11 - Topology/Get Topology"
 
-    if "planogram" in path:
+    if "planogram" in path or phase == "planogram":
         if "draft" in path:
             return "12 - Planogram/Create Planogram Draft"
         if "publish" in path:
@@ -150,11 +174,6 @@ def market_folder(flow: dict[str, Any], classification: str) -> str:
         if "cycle" in label:
             return "13 - Stock Inventory/Cycle Count"
         return "13 - Stock Inventory/Restock"
-
-    if "operator-sessions" in path or phase == "operator":
-        if "logout" in path or "end" in path:
-            return "14 - Operator Technician/Operator Session End Logout"
-        return "14 - Operator Technician/Operator Session Start"
 
     if phase == "commerce" or path.startswith("/v1/commerce"):
         if "webhook" in path:

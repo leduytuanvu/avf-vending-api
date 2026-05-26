@@ -223,6 +223,8 @@ def check_module_folders(coll: dict) -> list[str]:
         "03 - Category",
         "06 - Product",
         "07 - Media",
+        "11 - Topology",
+        "12 - Planogram",
         "20 - gRPC Reference",
         "21 - MQTT Reference",
         "90 - Full Business Flows",

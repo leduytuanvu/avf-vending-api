@@ -11,7 +11,7 @@
 | gRPC missing from docs | 0 |
 | MQTT source flows | 13 |
 | MQTT missing from docs | 0 |
-| Collection folders | 115 |
+| Collection folders | 118 |
 | Environment missing keys | 0 |
 | Actor/metadata issues | 0 |
 | Market flow missing | 0 |

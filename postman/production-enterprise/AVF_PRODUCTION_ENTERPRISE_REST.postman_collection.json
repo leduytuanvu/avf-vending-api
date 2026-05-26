@@ -3147,79 +3147,6 @@
               "_classification": "RUNNABLE"
             },
             {
-              "name": "[ADMIN_WEB] REST-PLANO-001 \u2014 POST /v1/admin/machines/{id}/operator-sessions/start",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-PLANO-001"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/operator-sessions/start",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "operator-sessions",
-                    "start"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"force_admin_takeover\": true,\n  \"auth_method\": \"oidc\"\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "try {",
-                      "  const j = pm.response.json();",
-                      "  if (j.session.id !== undefined) pm.environment.set('operatorSessionId', j.session.id);",
-                      "} catch (e) {}"
-                    ]
-                  }
-                }
-              ],
-              "description": "## [ADMIN_WEB] REST-PLANO-001\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/operator-sessions/start\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"force_admin_takeover\": true,\n  \"auth_method\": \"oidc\"\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** operatorSessionId\u2192session.id\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
-              "_manifest_flow_id": "REST-PLANO-001",
-              "_classification": "RUNNABLE"
-            },
-            {
               "name": "[ADMIN_WEB] REST-COV-POS-0139 \u2014 POST /v1/admin/machines/{machineId}/resume (auth_negative)",
               "request": {
                 "method": "POST",
@@ -3652,142 +3579,6 @@
               "_classification": "RUNNABLE"
             },
             {
-              "name": "[ADMIN_WEB] REST-OP-001 \u2014 POST /v1/admin/machines/{{machineId}}/stock-adjustments",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-OP-001"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "stock-adjustments"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "## [ADMIN_WEB] REST-OP-001\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/stock-adjustments\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
-              "_manifest_flow_id": "REST-OP-001",
-              "_classification": "RUNNABLE"
-            },
-            {
-              "name": "[ADMIN_WEB] REST-PLANO-005 \u2014 POST /v1/admin/machines/{id}/stock-adjustments",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-PLANO-005"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "stock-adjustments"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 0,\n      \"quantityAfter\": 8\n    }\n  ]\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "## [ADMIN_WEB] REST-PLANO-005\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/stock-adjustments\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 0,\n      \"quantityAfter\": 8\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
-              "_manifest_flow_id": "REST-PLANO-005",
-              "_classification": "RUNNABLE"
-            },
-            {
               "name": "[ADMIN_WEB] REST-COV-POS-0147 \u2014 POST /v1/admin/machines/{machineId}/suspend (auth_negative)",
               "request": {
                 "method": "POST",
@@ -4069,66 +3860,6 @@
               "description": "## [ADMIN_WEB] REST-INV-001\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** read\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** GET\n- **Path:** /v1/admin/machines/{{machineId}}/inventory\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n(empty or from template file)\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
               "_manifest_flow_id": "REST-INV-001",
               "_classification": "RUNNABLE"
-            },
-            {
-              "name": "[ADMIN_WEB] REST-PLANO-006 \u2014 GET /v1/admin/machines/{id}/slots",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/slots",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "slots"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "## [ADMIN_WEB] REST-PLANO-006\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** read\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** GET\n- **Path:** /v1/admin/machines/{{machineId}}/slots\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n(empty or from template file)\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
-              "_manifest_flow_id": "REST-PLANO-006",
-              "_classification": "RUNNABLE"
             }
           ]
         },
@@ -4255,70 +3986,6 @@
               ],
               "description": "## [ADMIN_WEB] REST-MACHINE-002\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** update\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** PATCH\n- **Path:** /v1/admin/machines/{{machineId}}\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"status\": \"active\"\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
               "_manifest_flow_id": "REST-MACHINE-002",
-              "_classification": "RUNNABLE"
-            },
-            {
-              "name": "[ADMIN_WEB] REST-PLANO-002 \u2014 PUT /v1/admin/machines/{id}/topology",
-              "request": {
-                "method": "PUT",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/topology",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "machines",
-                    "{{machineId}}",
-                    "topology"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"published\"\n    }\n  ]\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(204);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "## [ADMIN_WEB] REST-PLANO-002\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** update\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** PUT\n- **Path:** /v1/admin/machines/{{machineId}}/topology\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"published\"\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 204\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
-              "_manifest_flow_id": "REST-PLANO-002",
               "_classification": "RUNNABLE"
             }
           ]
@@ -4464,11 +4131,291 @@
       ]
     },
     {
+      "name": "11 - Topology",
+      "item": [
+        {
+          "name": "Create Update Topology",
+          "item": [
+            {
+              "name": "[ADMIN_WEB] REST-PLANO-002 \u2014 PUT /v1/admin/machines/{id}/topology",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/topology",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "topology"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"published\"\n    }\n  ]\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(204);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "## [ADMIN_WEB] REST-PLANO-002\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** update\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** PUT\n- **Path:** /v1/admin/machines/{{machineId}}/topology\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"cabinets\": [\n    {\n      \"code\": \"A\",\n      \"title\": \"Cabinet A\",\n      \"sortOrder\": 1,\n      \"metadata\": {}\n    }\n  ],\n  \"layouts\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"layoutKey\": \"grid-4x6\",\n      \"revision\": 1,\n      \"layoutSpec\": {\n        \"rows\": 4,\n        \"cols\": 6\n      },\n      \"status\": \"published\"\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 204\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+              "_manifest_flow_id": "REST-PLANO-002",
+              "_classification": "RUNNABLE"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "12 - Planogram",
       "item": [
         {
+          "name": "Assign Product To Slot",
+          "item": [
+            {
+              "name": "[ADMIN_WEB] REST-PLANO-001 \u2014 POST /v1/admin/machines/{id}/operator-sessions/start",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-PLANO-001"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/operator-sessions/start",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "operator-sessions",
+                    "start"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"force_admin_takeover\": true,\n  \"auth_method\": \"oidc\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "try {",
+                      "  const j = pm.response.json();",
+                      "  if (j.session.id !== undefined) pm.environment.set('operatorSessionId', j.session.id);",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ],
+              "description": "## [ADMIN_WEB] REST-PLANO-001\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/operator-sessions/start\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"force_admin_takeover\": true,\n  \"auth_method\": \"oidc\"\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** operatorSessionId\u2192session.id\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+              "_manifest_flow_id": "REST-PLANO-001",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "[ADMIN_WEB] REST-PLANO-005 \u2014 POST /v1/admin/machines/{id}/stock-adjustments",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-PLANO-005"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "stock-adjustments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 0,\n      \"quantityAfter\": 8\n    }\n  ]\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "## [ADMIN_WEB] REST-PLANO-005\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/stock-adjustments\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 0,\n      \"quantityAfter\": 8\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+              "_manifest_flow_id": "REST-PLANO-005",
+              "_classification": "RUNNABLE"
+            }
+          ]
+        },
+        {
           "name": "Get Planogram",
           "item": [
+            {
+              "name": "[ADMIN_WEB] REST-PLANO-006 \u2014 GET /v1/admin/machines/{id}/slots",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/slots",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "slots"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "## [ADMIN_WEB] REST-PLANO-006\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** read\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** GET\n- **Path:** /v1/admin/machines/{{machineId}}/slots\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n(empty or from template file)\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+              "_manifest_flow_id": "REST-PLANO-006",
+              "_classification": "RUNNABLE"
+            },
             {
               "name": "[ADMIN_WEB] REST-PLANO-000 \u2014 GET /v1/admin/planograms",
               "request": {
@@ -4596,6 +4543,74 @@
               ],
               "description": "## [ADMIN_WEB] REST-COV-POS-0128\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** technician\n**Production purpose:** Stock refill, cycle count, inventory adjustment\n**Market release relevance:** critical\n**Auth:** public / none\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/inventory/anomalies/00000000-0000-4000-8000-000000000099/resolve\n- **Headers:** No Authorization (negative/public)\n- **Body template:**\n```json\n{\n  \"probe\": \"auth-negative\"\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 401\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
               "_manifest_flow_id": "REST-COV-POS-0128",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "[ADMIN_WEB] REST-OP-001 \u2014 POST /v1/admin/machines/{{machineId}}/stock-adjustments",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-OP-001"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "machines",
+                    "{{machineId}}",
+                    "stock-adjustments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_auth_mode', 'bearer_admin');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "## [ADMIN_WEB] REST-OP-001\n\n**Used by:** Admin Web, Technician App / Operator\n**Primary actor:** human admin\n**Production purpose:** Site and machine provisioning for field deployment\n**Market release relevance:** critical\n**Auth:** admin JWT\n**CRUD:** create\n**Data mutation:** E2E-only\n**Safe to run by default:** NO\n**Requires write confirmation:** YES\n**Requires online payment confirmation:** NO\n**Test status:** automated pass\n\n### Request\n- **Method:** POST\n- **Path:** /v1/admin/machines/{{machineId}}/stock-adjustments\n- **Headers:** Content-Type: application/json (when body present); Authorization: Bearer {{accessToken}} (admin)\n- **Body template:**\n```json\n{\n  \"operator_session_id\": \"{{operatorSessionId}}\",\n  \"reason\": \"restock\",\n  \"items\": [\n    {\n      \"cabinetCode\": \"A\",\n      \"slotCode\": \"A1\",\n      \"slotIndex\": 1,\n      \"productId\": \"{{productId}}\",\n      \"planogramId\": \"{{planogramId}}\",\n      \"quantityBefore\": 8,\n      \"quantityAfter\": 10\n    }\n  ]\n}\n```\n- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)\n\n### Response\n- **Expected status:** 200\n- **Shape:** JSON API envelope per OpenAPI\n\n### Dependencies\n- Prior flows in same folder / manifest order\n- **Captured variables:** none\n\n### Safety\n- E2E-PROD-{{runId}} prefix on writes; production write gate on mutations\n- **Classification:** RUNNABLE\n- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+              "_manifest_flow_id": "REST-OP-001",
               "_classification": "RUNNABLE"
             }
           ]
