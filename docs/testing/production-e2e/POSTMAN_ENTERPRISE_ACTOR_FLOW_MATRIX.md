@@ -1,6 +1,6 @@
 # Postman enterprise actor & market flow matrix
 
-Generated: 2026-05-26T16:46:58Z
+Generated: 2026-05-26T20:03:01Z
 
 ## Market release flows (folder 90)
 
@@ -31,86 +31,86 @@ Generated: 2026-05-26T16:46:58Z
 
 | Flow | Actor | Used by | Market | Folder |
 |------|-------|---------|--------|--------|
-| REST-AUDIT-001 | ADMIN_WEB | Admin Web | important | 16 - Audit Events Logs Diagnostics/Admin audit logs |
-| REST-AUTH-001 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-AUTH-002 | ADMIN_WEB | Admin Web | critical | 02 - Auth Session RBAC/Admin current user |
-| REST-AUTH-003 | ADMIN_WEB | Admin Web | critical | 02 - Auth Session RBAC/Admin login |
-| REST-AUTH-004 | ADMIN_WEB | Admin Web | critical | 02 - Auth Session RBAC/Negative auth |
-| REST-AUTH-005 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-CATALOG-001 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-CATALOG-002 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-CATALOG-003 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-CATALOG-004 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-CATALOG-005 | ADMIN_WEB | Admin Web | critical | 05 - Admin Product Lifecycle/Product CRUD |
-| REST-COMMERCE-001 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment reconciliation guarded |
-| REST-COMMERCE-002 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment reconciliation guarded |
-| REST-COMMERCE-003 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment webhook guarded |
-| REST-COMMERCE-003-DUP | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment webhook guarded |
-| REST-COMMERCE-004 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment reconciliation guarded |
-| REST-COMMERCE-005 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment reconciliation guarded |
-| REST-COMMERCE-006 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment reconciliation guarded |
-| REST-COV-DEL-0001 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0002 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0003 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0004 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0005 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0006 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0007 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0008 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0009 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0010 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0011 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0012 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0013 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0014 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0015 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0016 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0017 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0018 | PUBLIC | Security QA | important | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0019 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-DEL-0020 | ADMIN_WEB | Admin Web | critical | 18 - Security Negative Abuse/Wrong role |
-| REST-COV-GET-0021 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0022 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0023 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0024 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0025 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0026 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0027 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0028 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0029 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0030 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0031 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0032 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0033 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0034 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0035 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0036 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0037 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0038 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0039 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0040 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0041 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0042 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0043 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0044 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0045 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0046 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0047 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0048 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0049 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0050 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0051 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0052 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0053 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0054 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0055 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0056 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0057 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0058 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0059 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0060 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0061 | ADMIN_WEB | Admin Web, Support / Customer Service | important | 98 - Optional Contract Disabled/Config-required features |
-| REST-COV-GET-0062 | ADMIN_WEB | Admin Web, Support / Customer Service | important | 98 - Optional Contract Disabled/Config-required features |
+| REST-AUDIT-001 | ADMIN_WEB | Admin Web | important | 17 - Audit Logs Diagnostics/Admin Audit Logs |
+| REST-AUTH-001 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-AUTH-002 | ADMIN_WEB | Admin Web | critical | 02 - Auth/02 Current User |
+| REST-AUTH-003 | ADMIN_WEB | Admin Web | critical | 02 - Auth/04 Negative Auth |
+| REST-AUTH-004 | ADMIN_WEB | Admin Web | critical | 02 - Auth/02 Current User |
+| REST-AUTH-005 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-AUTH-LOGOUT | ADMIN_WEB | Admin Web | critical | 02 - Auth/05 Logout Revoke |
+| REST-AUTH-REFRESH | ADMIN_WEB | Admin Web | critical | 02 - Auth/03 Refresh Token |
+| REST-CATALOG-001 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-CATALOG-002 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-CATALOG-003 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-CATALOG-004 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-CATALOG-005 | ADMIN_WEB | Admin Web | critical | 06 - Product/Get Product |
+| REST-COMMERCE-001 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment Reconciliation Guarded |
+| REST-COMMERCE-002 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment Reconciliation Guarded |
+| REST-COMMERCE-003 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Webhook Guarded |
+| REST-COMMERCE-003-DUP | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Webhook Guarded |
+| REST-COMMERCE-004 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment Reconciliation Guarded |
+| REST-COMMERCE-005 | PAYMENT | Payment Provider / Webhook Provider | payment-phase-2 | 97 - Online Payment Guarded/Payment Reconciliation Guarded |
+| REST-COMMERCE-006 | ADMIN_WEB | Admin Web | important | 97 - Online Payment Guarded/Payment Reconciliation Guarded |
+| REST-COV-DEL-0001 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0002 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0003 | ADMIN_WEB | Admin Web | critical | 04 - Brand/Delete Archive Brand |
+| REST-COV-DEL-0004 | ADMIN_WEB | Admin Web | critical | 03 - Category/Delete Archive Category |
+| REST-COV-DEL-0005 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 10 - Activation/Create Activation Code |
+| REST-COV-DEL-0006 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 09 - Machine/Delete Archive Machine |
+| REST-COV-DEL-0007 | ADMIN_WEB | Admin Web | critical | 07 - Media/Media Detail |
+| REST-COV-DEL-0008 | ADMIN_WEB | Admin Web | critical | 07 - Media/Media Detail |
+| REST-COV-DEL-0009 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0010 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0011 | ADMIN_WEB | Admin Web | critical | 06 - Product/Delete Archive Product |
+| REST-COV-DEL-0012 | ADMIN_WEB | Admin Web | critical | 06 - Product/Product Image Attach |
+| REST-COV-DEL-0013 | ADMIN_WEB | Admin Web | critical | 06 - Product/Product Image Attach |
+| REST-COV-DEL-0014 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0015 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 08 - Site/Delete Archive Site |
+| REST-COV-DEL-0016 | ADMIN_WEB | Admin Web | critical | 05 - Tag/Delete Archive Tag |
+| REST-COV-DEL-0017 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0018 | PUBLIC | Security QA | important | 18 - Route Coverage Smoke/Public Smoke |
+| REST-COV-DEL-0019 | ADMIN_WEB | Admin Web | critical | 02 - Auth/04 Negative Auth |
+| REST-COV-DEL-0020 | ADMIN_WEB | Admin Web | critical | 02 - Auth/04 Negative Auth |
+| REST-COV-GET-0021 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0022 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0023 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0024 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0025 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0026 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0027 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0028 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0029 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0030 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0031 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0032 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0033 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0034 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0035 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0036 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0037 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0038 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0039 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0040 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0041 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0042 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0043 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0044 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0045 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0046 | ADMIN_WEB | Admin Web, Technician App / Operator | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0047 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0048 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0049 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0050 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0051 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0052 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0053 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0054 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0055 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0056 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0057 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0058 | ADMIN_WEB | Admin Web | critical | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0059 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
+| REST-COV-GET-0060 | ADMIN_WEB | Admin Web | important | 98 - Optional Contract Disabled/Config Required Features |
 
 ## gRPC actor map
 

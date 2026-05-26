@@ -9,12 +9,13 @@
 
 ## Folder tree
 
-- **00** Safety runbook — write gates, actors, payment exclusion
-- **01–19** Market-ready REST coverage by business domain
-- **12–13** gRPC/MQTT reference (see sibling `.md` catalogs + manual guide)
-- **90** Full market release flows (20 end-to-end scenarios)
+- **00** README Safety (how-to, write gate, actors, variables)
+- **01–19** REST by module (Auth, Category, Brand, Tag, Product, Media, Site, Machine, …)
+- **20–21** gRPC/MQTT reference stubs + `.md` catalogs
+- **90** Full business flows (20 scenarios)
 - **97** Online payment guarded (disabled by default)
 - **98** Contract-disabled optional APIs
+- **99** Cleanup
 
 ## Regenerate
 

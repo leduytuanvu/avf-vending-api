@@ -53,6 +53,35 @@ PAYMENT_FLOW_IDS = {
     "GRPC-COMM-QR-001",
 }
 
+SUPPLEMENTAL_AUTH_FLOWS: list[dict[str, Any]] = [
+    {
+        "id": "REST-AUTH-REFRESH",
+        "label": "POST /v1/auth/refresh",
+        "phase": "auth",
+        "protocol": "rest",
+        "method": "POST",
+        "path": "/v1/auth/refresh",
+        "auth": "none",
+        "headers": {"Content-Type": "application/json"},
+        "request_template": {"refreshToken": "{{refreshToken}}"},
+        "expected_status": 200,
+        "assertions": [{"type": "json_path_exists", "path": "tokens.accessToken"}],
+        "capture": {"accessToken": "tokens.accessToken", "refreshToken": "tokens.refreshToken"},
+    },
+    {
+        "id": "REST-AUTH-LOGOUT",
+        "label": "POST /v1/auth/logout",
+        "phase": "auth",
+        "protocol": "rest",
+        "method": "POST",
+        "path": "/v1/auth/logout",
+        "auth": "bearer_admin",
+        "headers": {"Content-Type": "application/json"},
+        "request_template": {"refreshToken": "{{refreshToken}}"},
+        "expected_status": 200,
+    },
+]
+
 ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
     ("baseUrl", "https://api.ldtv.dev"),
     ("grpcTarget", "machine-api.ldtv.dev:443"),
@@ -64,6 +93,7 @@ ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
     ("accessToken", ""),
     ("refreshToken", ""),
     ("adminUserId", ""),
+    ("adminAccountId", ""),
     ("runId", ""),
     ("e2ePrefix", "E2E-PROD-{{runId}}"),
     ("runPrefix", "E2E-PROD-{{runId}}"),
@@ -105,6 +135,7 @@ ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
     ("mqttTopicPrefix", "avf/prod"),
     ("technicianId", ""),
     ("telemetryEventId", ""),
+    ("confirmOnlinePaymentTesting", ""),
     ("confirmOnlinePayment", ""),
     ("paymentConfirmPhrase", "I_UNDERSTAND_ONLINE_PAYMENT_TO_PRODUCTION"),
     ("run_prefix", "E2E-PROD-{{runId}}"),
@@ -118,6 +149,7 @@ ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
 
 COLLECTION_PREREQUEST = [
     "const method = (pm.request.method || 'GET').toUpperCase();",
+    "const urlStr = pm.request.url ? String(pm.request.url) : '';",
     "if (!pm.environment.get('runId')) {",
     "  const ts = new Date().toISOString().replace(/[-:]/g,'').replace(/\\.\\d{3}Z$/,'Z').slice(0,15);",
     "  const rnd = Math.random().toString(36).slice(2,8);",
@@ -134,8 +166,9 @@ COLLECTION_PREREQUEST = [
     "  pm.environment.set('reportFrom', d.toISOString());",
     "}",
     "const safe = ['GET','HEAD','OPTIONS'];",
-    "const isLogin = pm.request.url && String(pm.request.url).includes('/v1/auth/login');",
-    "if (!safe.includes(method) && !isLogin) {",
+    "const isLogin = urlStr.includes('/v1/auth/login');",
+    "const isRefresh = urlStr.includes('/v1/auth/refresh');",
+    "if (!safe.includes(method) && !isLogin && !isRefresh) {",
     "  const allow = String(pm.environment.get('allowGatedWrites')).toLowerCase() === 'true';",
     "  const confirm = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
     "  if (!allow || !confirm) { throw new Error('Production write gate: set allowGatedWrites=true and confirmProductionWrites'); }",
@@ -143,13 +176,41 @@ COLLECTION_PREREQUEST = [
     "const payPath = pm.variables.get('_enterprise_payment_excluded');",
     "if (payPath === 'true') {",
     "  const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-    "  if (!op) { throw new Error('ONLINE_PAYMENT_EXCLUDED: enable onlinePaymentEnabled only with explicit operator confirmation'); }",
+    "  const payConfirm = pm.environment.get('confirmOnlinePaymentTesting') === 'I_UNDERSTAND_THIS_CAN_CREATE_REAL_PAYMENT_TRANSACTIONS';",
+    "  if (!op || !payConfirm) { throw new Error('ONLINE_PAYMENT_EXCLUDED: set onlinePaymentEnabled and confirmOnlinePaymentTesting'); }",
     "}",
-    "if (pm.environment.get('accessToken') && !isLogin) {",
-    "  const authHdr = pm.request.headers.get('Authorization');",
-    "  if (!authHdr && pm.request.auth && pm.request.auth.type === 'bearer') { /* collection auth */ }",
+    "const authMode = pm.variables.get('_enterprise_auth_mode') || '';",
+    "const tok = pm.environment.get('accessToken');",
+    "if (tok && !isLogin && (authMode === 'bearer_admin' || (!authMode && urlStr.includes('/v1/admin')))) {",
+    "  if (!pm.request.headers.get('Authorization')) {",
+    "    pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + tok });",
+    "  }",
+    "}",
+    "const mtok = pm.environment.get('machineAccessToken') || pm.environment.get('machineToken');",
+    "if (mtok && authMode === 'bearer_machine') {",
+    "  pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + mtok });",
     "}",
     "pm.request.headers.upsert({ key: 'X-Request-ID', value: 'e2e-' + rid + '-' + Math.random().toString(36).slice(2,10) });",
+    "pm.request.headers.upsert({ key: 'X-Correlation-ID', value: 'e2e-' + rid });",
+]
+
+LOGIN_CAPTURE_TESTS = [
+    "pm.test('login returns accessToken', function () {",
+    "  const j = pm.response.json();",
+    "  pm.expect(j.tokens && j.tokens.accessToken).to.be.ok;",
+    "  pm.environment.set('accessToken', j.tokens.accessToken);",
+    "  if (j.tokens.refreshToken) pm.environment.set('refreshToken', j.tokens.refreshToken);",
+    "  if (j.accountId) { pm.environment.set('adminAccountId', j.accountId); pm.environment.set('adminUserId', j.accountId); }",
+    "  if (j.email) pm.environment.set('adminEmailResolved', j.email);",
+    "  if (j.roles) pm.environment.set('adminRoles', JSON.stringify(j.roles));",
+    "});",
+]
+
+ME_ASSERT_TESTS = [
+    "pm.test('auth/me returns email', function () {",
+    "  const j = pm.response.json();",
+    "  pm.expect(j.email).to.be.ok;",
+    "});",
 ]
 
 ONLINE_PAYMENT_PREREQUEST = [
@@ -252,12 +313,113 @@ def _readme_stub(title: str, body: str) -> dict[str, Any]:
     }
 
 
+def _build_grpc_reference_stubs() -> list[dict[str, Any]]:
+    from enterprise_actor_lib import grpc_method_meta  # noqa: WPS433
+    from enterprise_surface_lib import build_grpc_inventory  # noqa: WPS433
+
+    out: list[dict[str, Any]] = []
+    for g in sorted(build_grpc_inventory(), key=lambda x: (x.service, x.method)):
+        if g.server_registered != "YES" or g.service == "MachineSaleService":
+            continue
+        gm = grpc_method_meta(g.service, g.method, g.e2e_present if g.e2e_present != "NO" else "")
+        folder = f"20 - gRPC Reference/{g.service}"
+        desc = "\n".join(
+            [
+                f"## gRPC {g.service}/{g.method}",
+                f"**Used by:** {gm.used_by}",
+                f"**Proto:** `{g.proto_file}`",
+                f"**Auth:** machine JWT (unless RefreshMachineToken)",
+                "",
+                "See `AVF_PRODUCTION_GRPC_REQUESTS.md` for grpcurl command and request JSON.",
+                "",
+                f"```bash",
+                f"grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' -d '{{}}' {{{{grpcTarget}}}} avf.machine.v1.{g.service}/{g.method}",
+                f"```",
+            ]
+        )
+        out.append(
+            {
+                "folder": folder,
+                "item": {
+                    "name": f"[{gm.actor_tag}] {g.service}/{g.method}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {"raw": "{{baseUrl}}/version", "host": ["{{baseUrl}}"], "path": ["version"]},
+                        "description": desc,
+                    },
+                },
+            }
+        )
+    return out
+
+
+def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
+    from enterprise_actor_lib import mqtt_topic_meta  # noqa: WPS433
+    from enterprise_surface_lib import MQTT_REL_TOPICS, build_mqtt_inventory, enterprise_mqtt_pattern  # noqa: WPS433
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in build_mqtt_inventory():
+        if row.rel_topic in seen:
+            continue
+        seen.add(row.rel_topic)
+        mm = mqtt_topic_meta(row.rel_topic, row.direction)
+        folder = "21 - MQTT Reference/" + ("Command Topics" if row.direction == "subscribe" else "Telemetry Topics")
+        pattern = row.enterprise_pattern
+        desc = "\n".join(
+            [
+                f"## MQTT `{row.rel_topic}` ({row.direction})",
+                f"**Used by:** {mm.used_by}",
+                f"**Pattern:** `{pattern}`",
+                "**QoS:** 1",
+                "",
+                "See `AVF_PRODUCTION_MQTT_REQUESTS.md` for mosquitto_pub/sub examples.",
+            ]
+        )
+        out.append(
+            {
+                "folder": folder,
+                "item": {
+                    "name": f"[{mm.actor_tag}] {row.rel_topic}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {"raw": "{{baseUrl}}/version", "host": ["{{baseUrl}}"], "path": ["version"]},
+                        "description": desc,
+                    },
+                },
+            }
+        )
+    for rel, direction, _actor in MQTT_REL_TOPICS:
+        if rel in seen:
+            continue
+        mm = mqtt_topic_meta(rel, direction)
+        folder = "21 - MQTT Reference/" + ("Command Topics" if direction == "subscribe" else "Telemetry Topics")
+        pattern = enterprise_mqtt_pattern(rel)
+        out.append(
+            {
+                "folder": folder,
+                "item": {
+                    "name": f"[{mm.actor_tag}] {rel}",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {"raw": "{{baseUrl}}/version", "host": ["{{baseUrl}}"], "path": ["version"]},
+                        "description": f"MQTT topic `{rel}` — pattern `{pattern}`. See AVF_PRODUCTION_MQTT_REQUESTS.md",
+                    },
+                },
+            }
+        )
+    return out
+
+
 def _build_market_release_flow_stubs() -> dict[str, list[dict[str, Any]]]:
     from enterprise_actor_lib import MARKET_RELEASE_FLOWS  # noqa: WPS433
 
     out: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for mf in MARKET_RELEASE_FLOWS:
-        folder = f"90 - Full Market Release Flows/Flow {mf['id']} {mf['title']}"
+        folder = f"90 - Full Business Flows/Flow {mf['id']} {mf['title']}"
         desc = "\n".join(
             [
                 f"# Market flow {mf['id']}: {mf['title']}",
@@ -294,6 +456,33 @@ def _enterprise_flow_id(flow: dict[str, Any]) -> str:
     return fid
 
 
+def _strip_per_request_write_gate(events: list[dict[str, Any]] | None) -> list[dict[str, Any]] | None:
+    if not events:
+        return None
+    kept: list[dict[str, Any]] = []
+    for ev in events:
+        if ev.get("listen") == "prerequest":
+            exec_lines = (ev.get("script") or {}).get("exec") or []
+            blob = "\n".join(exec_lines)
+            if "Gated write blocked" in blob or (
+                "allowGatedWrites" in blob and "confirmProductionWrites" in blob and len(exec_lines) <= 4
+            ):
+                continue
+        kept.append(ev)
+    return kept or None
+
+
+def _merge_test_events(events: list[dict[str, Any]] | None, extra: list[str]) -> list[dict[str, Any]]:
+    base = list(events or [])
+    for ev in base:
+        if ev.get("listen") == "test":
+            script = ev.setdefault("script", {"type": "text/javascript", "exec": []})
+            script["exec"] = list(script.get("exec") or []) + extra
+            return base
+    base.append({"listen": "test", "script": {"type": "text/javascript", "exec": extra}})
+    return base
+
+
 def flow_to_postman_item(
     flow: dict[str, Any],
     manifest: dict[str, Any],
@@ -303,13 +492,29 @@ def flow_to_postman_item(
     from enterprise_actor_lib import build_flow_description, request_display_name  # noqa: WPS433
 
     fid = _enterprise_flow_id(flow)
-    events = build_postman_events(flow, manifest) or []
+    events = _strip_per_request_write_gate(build_postman_events(flow, manifest))
+    auth_mode = str(flow.get("auth") or "none")
+    prereq_meta = [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [f"pm.variables.set('_enterprise_auth_mode', '{auth_mode}');"],
+            },
+        }
+    ]
+    events = prereq_meta + (events or [])
     if classification == "ONLINE_PAYMENT_EXCLUDED":
         events = [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": ONLINE_PAYMENT_PREREQUEST}}] + events
+    if fid == "REST-AUTH-001":
+        events = _merge_test_events(events, LOGIN_CAPTURE_TESTS)
+    elif fid == "REST-AUTH-002":
+        events = _merge_test_events(events, ME_ASSERT_TESTS)
     desc = build_flow_description(flow, classification, fid, manifest_dir)
+    req = build_postman_request(flow, manifest_dir)
     return {
         "name": request_display_name(flow, classification, fid),
-        "request": build_postman_request(flow, manifest_dir),
+        "request": req,
         "event": events or None,
         "description": desc,
         "_manifest_flow_id": fid,
@@ -329,7 +534,7 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
     seen: set[str] = set()
     all_flows: list[dict[str, Any]] = []
     # Prefer cloudinary product-images over presigned init when IDs collide (REST-MEDIA-INIT).
-    for f in sorted(flows_main + flows_cov, key=lambda x: (str(x.get("path") or ""), str(x.get("id") or ""))):
+    for f in sorted(flows_main + flows_cov + SUPPLEMENTAL_AUTH_FLOWS, key=lambda x: (str(x.get("path") or ""), str(x.get("id") or ""))):
         key = flow_key(f)
         if key in seen:
             continue
@@ -344,42 +549,49 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
         folder = enterprise_folder(flow, cls)
         paths[folder].append(flow_to_postman_item(flow, manifest, manifest_dir, cls))
 
-    paths["00 - README Safety Runbook/How to use this project"].append(
+    paths["00 - README Safety/00.01 How To Use"].append(
         _readme_stub(
-            "How to use this project",
-            "Import REST collection + placeholder env. Copy private template locally for credentials.",
+            "00.01 How To Use",
+            "Import AVF_PRODUCTION_ENTERPRISE_REST + placeholder env. Copy PRIVATE template to *LOCAL* (gitignored). Run folder 02 - Auth first.",
         )
     )
-    paths["00 - README Safety Runbook/Production write safety"].append(
+    paths["00 - README Safety/00.02 Production Write Gate"].append(
         _readme_stub(
-            "Production write safety",
+            "00.02 Production Write Gate",
             "allowGatedWrites=true AND confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. E2E-PROD-{{runId}} only.",
         )
     )
-    paths["00 - README Safety Runbook/Actor map"].append(
-        _readme_stub("Actor map", "See docs/testing/production-e2e/POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
+    paths["00 - README Safety/00.03 Actor Map"].append(
+        _readme_stub("00.03 Actor Map", "See docs/testing/production-e2e/POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
     )
-    paths["00 - README Safety Runbook/Online payment exclusion"].append(
+    paths["00 - README Safety/00.04 Variable Map"].append(
+        _readme_stub("00.04 Variable Map", "See AVF_PRODUCTION_ENTERPRISE.postman_environment.json keys.")
+    )
+    paths["00 - README Safety/00.05 Release Scope"].append(
         _readme_stub(
-            "Online payment exclusion",
-            "Folder 97 guarded. onlinePaymentEnabled=false by default. No MoMo/ZaloPay/VietQR unless operator confirms.",
+            "00.05 Release Scope",
+            "Folder 97 online payment guarded. Folder 98 optional/disabled. gRPC/MQTT in folders 20-21 + markdown catalogs.",
         )
     )
     for folder, stubs in _build_market_release_flow_stubs().items():
         paths[folder].extend(stubs)
-    paths["12 - Vending Machine App gRPC Runtime/README"].append(
+    for stub in _build_grpc_reference_stubs():
+        paths[stub["folder"]].append(stub["item"])
+    for stub in _build_mqtt_reference_stubs():
+        paths[stub["folder"]].append(stub["item"])
+    paths["20 - gRPC Reference/README"].append(
         _readme_stub(
             "gRPC catalog (Postman Desktop + grpcurl)",
             "All machine gRPC methods: postman/production-enterprise/AVF_PRODUCTION_GRPC_REQUESTS.md",
         )
     )
-    paths["13 - MQTT Command Telemetry Logs/README"].append(
+    paths["21 - MQTT Reference/README"].append(
         _readme_stub(
             "MQTT catalog (Postman Desktop + mosquitto)",
             "All MQTT topics: postman/production-enterprise/AVF_PRODUCTION_MQTT_REQUESTS.md",
         )
     )
-    paths["99 - Internal Metadata/Coverage summary"].append(
+    paths["99 - Cleanup/Verify Cleanup"].append(
         _readme_stub("Coverage summary", "Run: python postman/production-enterprise/check_enterprise_postman_completeness.py")
     )
 
@@ -387,7 +599,7 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
     collection = {
         "info": {
             "_postman_id": stable_uuid("collection:avf-production-enterprise-rest-v1"),
-            "name": "AVF Production Enterprise",
+            "name": "AVF Production Enterprise API",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
             "description": "Generated enterprise production REST — manifest + route coverage. No secrets in repo.",
         },
@@ -407,10 +619,17 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
 def build_environment(*, private_template: bool = False) -> dict[str, Any]:
     values = list(ENTERPRISE_ENV_KEYS)
     if private_template:
-        values = [(k, v) for k, v in values]
         values = [
-            (k, "I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" if k == "confirmProductionWrites" else
-             "true" if k == "allowGatedWrites" else v)
+            (
+                k,
+                "I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION"
+                if k == "confirmProductionWrites"
+                else "true"
+                if k == "allowGatedWrites"
+                else "<fill locally>"
+                if k in ("adminEmail", "adminPassword")
+                else v,
+            )
             for k, v in values
         ]
     return {
@@ -750,12 +969,13 @@ def write_readme() -> None:
 
 ## Folder tree
 
-- **00** Safety runbook — write gates, actors, payment exclusion
-- **01–19** Market-ready REST coverage by business domain
-- **12–13** gRPC/MQTT reference (see sibling `.md` catalogs + manual guide)
-- **90** Full market release flows (20 end-to-end scenarios)
+- **00** README Safety (how-to, write gate, actors, variables)
+- **01–19** REST by module (Auth, Category, Brand, Tag, Product, Media, Site, Machine, …)
+- **20–21** gRPC/MQTT reference stubs + `.md` catalogs
+- **90** Full business flows (20 scenarios)
 - **97** Online payment guarded (disabled by default)
 - **98** Contract-disabled optional APIs
+- **99** Cleanup
 
 ## Regenerate
 
@@ -797,7 +1017,8 @@ REST is importable as Postman Collection v2.1. **gRPC and MQTT are not faked in 
 
 
 def create_zip(run_id: str) -> Path:
-    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip"
+    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_REORG_POSTMAN_PROJECT.zip"
+    legacy = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in [
             "AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json",
@@ -816,6 +1037,11 @@ def create_zip(run_id: str) -> Path:
         csv = DOCS_DIR / "POSTMAN_ENTERPRISE_COVERAGE_MATRIX.csv"
         if csv.is_file():
             zf.write(csv, arcname=f"docs/testing/production-e2e/{csv.name}")
+    if legacy != zip_path and legacy.is_file():
+        try:
+            legacy.unlink()
+        except OSError:
+            pass
     return zip_path
 
 

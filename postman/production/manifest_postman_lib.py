@@ -430,7 +430,17 @@ def build_postman_events(flow: dict[str, Any], manifest: dict[str, Any]) -> list
     exclude = postman_exclude_phases(manifest)
     gate_phases = ("preflight", "negative", "rest-coverage")
     needs_gate = auth not in ("none", "webhook_hmac", "webhook_hmac_invalid", "webhook_hmac_stale")
-    if needs_gate and phase not in gate_phases and phase not in exclude:
+    method = str(flow.get("method") or "GET").upper()
+    path_only = str(flow.get("path") or "").split("?")[0]
+    is_safe_read = method in ("GET", "HEAD", "OPTIONS")
+    is_login = path_only in ("/v1/auth/login", "/v1/auth/refresh") or path_only.endswith("/auth/login")
+    if (
+        needs_gate
+        and not is_safe_read
+        and not is_login
+        and phase not in gate_phases
+        and phase not in exclude
+    ):
         events.append({"listen": "prerequest", "script": {"type": "text/javascript", "exec": GATED_PREREQUEST}})
     skip_env = flow.get("postman_skip_if_env")
     if skip_env:

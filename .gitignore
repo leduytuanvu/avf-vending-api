@@ -137,6 +137,7 @@ postman/environments/*.local.json
 *.postman_environment.local.json
 manual-import-parity-newman-report.json
 postman/production-enterprise/*LOCAL*.postman_environment.json
+postman/production-enterprise/*.local.postman_environment.json
 postman/production-enterprise/AVF_PRODUCTION_ENTERPRISE_IMPORT.zip
 
 # Local full-system verification run output in docs tree
