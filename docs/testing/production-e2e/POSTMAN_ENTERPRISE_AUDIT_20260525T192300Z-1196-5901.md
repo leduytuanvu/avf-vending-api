@@ -1,8 +1,8 @@
 # Postman enterprise full surface audit (20260525T192300Z-1196-5901)
 
 - Branch: `postman/production-enterprise-project`
-- SHA: `775e51caae904717ad667aeb6e288d2e8912957f`
-- Generated: 2026-05-26T20:07:30Z
+- SHA: `6d31c26867fd6eb1f8d86514a8bb4eda1c6f88cd`
+- Generated: 2026-05-26T20:08:42Z
 
 ## Sources scanned
 

@@ -1,6 +1,6 @@
 # Postman enterprise API inventory
 
-Generated: 2026-05-26T20:07:28Z
+Generated: 2026-05-26T20:08:39Z
 Repository SHA: `local`
 
 ## Summary
@@ -270,15 +270,15 @@ Repository SHA: `local`
 | REST-MEDIA-INIT | POST | `/v1/admin/product-images` | bearer_admin | 98 - Optional Contract Disabled/Config Required Features | CONFIG_REQUIRED |
 | REST-NEG-002 | POST | `/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks` | webhook_hmac_invalid | 97 - Online Payment Guarded/Webhook Guarded | ONLINE_PAYMENT_EXCLUDED |
 | REST-NEG-003 | POST | `/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks` | webhook_hmac_stale | 97 - Online Payment Guarded/Webhook Guarded | ONLINE_PAYMENT_EXCLUDED |
-| REST-OP-001 | POST | `/v1/admin/machines/{{machineId}}/stock-adjustments` | bearer_admin | 13 - Stock Inventory/Restock | RUNNABLE |
+| REST-OP-001 | POST | `/v1/admin/machines/{{machineId}}/stock-adjustments` | bearer_admin | 14 - Operator Technician/Operator Session Start | RUNNABLE |
 | REST-OP-002 | POST | `/v1/machines/{{machineId}}/operator-sessions/logout` | bearer_admin | 98 - Optional Contract Disabled/Legacy Machine HTTP | CONFIG_REQUIRED |
 | REST-PLANO-000 | GET | `/v1/admin/planograms?limit=20` | bearer_admin | 12 - Planogram/Get Planogram | RUNNABLE |
-| REST-PLANO-001 | POST | `/v1/admin/machines/{{machineId}}/operator-sessions/start` | bearer_admin | 12 - Planogram/Assign Product To Slot | RUNNABLE |
+| REST-PLANO-001 | POST | `/v1/admin/machines/{{machineId}}/operator-sessions/start` | bearer_admin | 14 - Operator Technician/Operator Session Start | RUNNABLE |
 | REST-PLANO-002 | PUT | `/v1/admin/machines/{{machineId}}/topology` | bearer_admin | 11 - Topology/Create Update Topology | RUNNABLE |
 | REST-PLANO-003 | PUT | `/v1/admin/machines/{{machineId}}/planograms/draft` | bearer_admin | 98 - Optional Contract Disabled/Config Required Features | CONFIG_REQUIRED |
 | REST-PLANO-004 | POST | `/v1/admin/machines/{{machineId}}/planograms/publish` | bearer_admin | 98 - Optional Contract Disabled/Config Required Features | CONFIG_REQUIRED |
-| REST-PLANO-005 | POST | `/v1/admin/machines/{{machineId}}/stock-adjustments` | bearer_admin | 12 - Planogram/Assign Product To Slot | RUNNABLE |
-| REST-PLANO-006 | GET | `/v1/admin/machines/{{machineId}}/slots` | bearer_admin | 12 - Planogram/Get Planogram | RUNNABLE |
+| REST-PLANO-005 | POST | `/v1/admin/machines/{{machineId}}/stock-adjustments` | bearer_admin | 13 - Stock Inventory/Restock | RUNNABLE |
+| REST-PLANO-006 | GET | `/v1/admin/machines/{{machineId}}/slots` | bearer_admin | 13 - Stock Inventory/Inventory Readback | RUNNABLE |
 | REST-PREFLIGHT-001 | GET | `/health/live` | none | 01 - Health Version/Health Live | RUNNABLE |
 | REST-PREFLIGHT-002 | GET | `/health/ready` | none | 01 - Health Version/Health Ready | RUNNABLE |
 | REST-PREFLIGHT-003 | GET | `/version` | none | 01 - Health Version/Version | RUNNABLE |

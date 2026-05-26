@@ -121,7 +121,11 @@ def market_folder(flow: dict[str, Any], classification: str) -> str:
             if method in ("PUT", "POST"):
                 return "11 - Topology/Create Update Topology"
             return "11 - Topology/Get Topology"
-        if "planogram" in path or phase == "planogram":
+        if "operator-sessions" in path or phase == "operator":
+            if "logout" in path or "end" in path:
+                return "14 - Operator Technician/Operator Session End Logout"
+            return "14 - Operator Technician/Operator Session Start"
+        if "planogram" in path:
             if "draft" in path:
                 return "12 - Planogram/Create Planogram Draft"
             if "publish" in path:
@@ -137,10 +141,6 @@ def market_folder(flow: dict[str, Any], classification: str) -> str:
             if "cycle" in label:
                 return "13 - Stock Inventory/Cycle Count"
             return "13 - Stock Inventory/Restock"
-        if "operator-sessions" in path or phase == "operator":
-            if "logout" in path or "end" in path:
-                return "14 - Operator Technician/Operator Session End Logout"
-            return "14 - Operator Technician/Operator Session Start"
         if "activation-codes" in path:
             return "10 - Activation/Create Activation Code"
         if "commands" in path:
