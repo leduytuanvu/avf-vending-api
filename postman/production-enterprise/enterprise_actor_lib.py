@@ -42,9 +42,9 @@ MARKET_RELEASE_FLOWS: list[dict[str, str]] = [
     {"id": "90.15", "title": "Technician restocks and cycle-counts", "actors": "Technician App", "rest": "REST-OP-001,REST-OP-002", "grpc": "GRPC-INV-001", "mqtt": ""},
     {"id": "90.16", "title": "Admin reads sales/fleet/inventory reports", "actors": "Admin Web,Operations", "rest": "REST-REPORT-001..005", "grpc": "", "mqtt": "MQTT-READ-001"},
     {"id": "90.17", "title": "Vend failure and reconciliation", "actors": "Vending Machine App,Support", "rest": "", "grpc": "GRPC-COMM-FAIL-001,GRPC-COMM-CANCEL-001", "mqtt": ""},
-    {"id": "90.18", "title": "Offline queue replay and idempotency", "actors": "Vending Machine App", "rest": "", "grpc": "GRPC-OFFLINE-001,GRPC-IDEM-001", "mqtt": ""},
-    {"id": "90.19", "title": "Cleanup E2E production data", "actors": "E2E automation,Admin Web", "rest": "REST-CLEANUP flows in manifest", "grpc": "", "mqtt": ""},
-    {"id": "90.20", "title": "Final market release checklist", "actors": "QA,Release Manager", "rest": "All folders 01-19 + 97/98 documented", "grpc": "12 Vending Machine App gRPC catalog", "mqtt": "13 canonical MQTT topics"},
+    {"id": "90.18", "title": "Offline Queue Replay And Idempotency", "actors": "Vending Machine App", "rest": "", "grpc": "GRPC-OFFLINE-001,GRPC-IDEM-001", "mqtt": ""},
+    {"id": "90.19", "title": "Cleanup E2E Data", "actors": "E2E automation,Admin Web", "rest": "REST-CLEANUP flows in manifest", "grpc": "", "mqtt": ""},
+    {"id": "90.20", "title": "Final Market Release Checklist", "actors": "QA,Release Manager", "rest": "All happy-case folders documented", "grpc": "gRPC Reference catalog", "mqtt": "MQTT Reference catalog"},
 ]
 
 
@@ -327,47 +327,38 @@ def build_flow_description(
 
     return "\n".join(
         [
-            f"## [{meta.actor_tag}] {fid}",
+            f"## {crud_action_label(flow)}",
             "",
             f"**Used by:** {meta.used_by}",
-            f"**Primary actor:** {meta.primary_actor}",
-            f"**Production purpose:** {meta.purpose}",
-            f"**Market release relevance:** {meta.market_relevance}",
+            f"**Purpose:** {meta.purpose}",
             f"**Auth:** {meta.auth}",
-            f"**CRUD:** {meta.crud or _crud_from_method(method, path)}",
-            f"**Data mutation:** {meta.data_mutation}",
-            f"**Safe to run by default:** {meta.safe_default}",
-            f"**Requires write confirmation:** {meta.requires_write_confirm}",
-            f"**Requires online payment confirmation:** {meta.requires_online_payment}",
-            f"**Test status:** {meta.test_status}",
+            f"**CRUD action:** {crud_action_label(flow)}",
+            f"**Source file:** tests/e2e/production/e2e-manifest.yaml or e2e-manifest-rest-coverage.yaml",
+            f"**Expected happy-case status:** {flow.get('expected_status', 200)}",
+            f"**Variables captured:** {cap_s or meta.captured_vars or 'none'}",
+            f"**Production safety:** {meta.safety_notes or 'E2E-PROD-{{runId}} prefix; write gate on POST/PUT/PATCH/DELETE'}",
+            f"**Dependencies:** {meta.dependencies or 'Prior flows in same module folder'}",
+            f"**Classification:** {classification}",
             "",
             "### Request",
             f"- **Method:** {method}",
             f"- **Path:** {path}",
             f"- **Headers:** " + "; ".join(headers),
             f"- **Body template:**\n```json\n{body}\n```",
-            f"- **Path/query vars:** resolved via Postman environment (e2ePrefix, ids)",
             "",
-            "### Response",
-            f"- **Expected status:** {flow.get('expected_status', 200)}",
-            f"- **Shape:** {meta.response_shape or 'JSON API envelope per OpenAPI'}",
-            "",
-            "### Dependencies",
-            f"- {meta.dependencies or 'Prior flows in same folder / manifest order'}",
-            f"- **Captured variables:** {cap_s or meta.captured_vars or 'none'}",
-            "",
-            "### Safety",
-            f"- {meta.safety_notes or 'E2E-PROD-{{runId}} prefix on writes; production write gate on mutations'}",
-            f"- **Classification:** {classification}",
-            f"- **Source:** tests/e2e/production/e2e-manifest.yaml or rest-coverage",
+            "### Response shape",
+            meta.response_shape or "JSON API envelope per OpenAPI",
         ]
     )
 
 
+def crud_action_label(flow: dict[str, Any]) -> str:
+    from enterprise_happy_case_lib import crud_action_label as _crud  # noqa: WPS433
+
+    return _crud(flow)
+
+
 def request_display_name(flow: dict[str, Any], classification: str, fid: str) -> str:
-    meta = rest_endpoint_meta(flow, classification)
-    method = str(flow.get("method") or "")
-    path = str(flow.get("path") or "").split("?")[0]
-    label = str(flow.get("label") or fid)
-    short = label if len(label) < 60 else f"{method} {path}"
-    return f"[{meta.actor_tag}] {fid} — {short}"
+    from enterprise_happy_case_lib import happy_request_name  # noqa: WPS433
+
+    return happy_request_name(flow, classification)

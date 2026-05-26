@@ -1,6 +1,6 @@
 # Postman enterprise missing gaps
 
-Generated: 2026-05-26T20:08:42Z
+Generated: 2026-05-26T20:49:39Z
 
 ## 1. REST missing from Enterprise Postman
 

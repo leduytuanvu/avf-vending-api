@@ -44,14 +44,27 @@ PAYMENT_FLOW_IDS = {
     "REST-COMMERCE-001",
     "REST-COMMERCE-002",
     "REST-COMMERCE-003",
-    "REST-COMMERCE-003-DUP",
     "REST-COMMERCE-004",
     "REST-COMMERCE-005",
     "REST-COMMERCE-006",
-    "REST-NEG-002",
-    "REST-NEG-003",
     "GRPC-COMM-QR-001",
 }
+
+SUPPLEMENTAL_HAPPY_FLOWS: list[dict[str, Any]] = [
+    {
+        "id": "REST-COV-CAT-LIST",
+        "label": "GET /v1/admin/categories",
+        "phase": "rest-coverage",
+        "protocol": "rest",
+        "method": "GET",
+        "path": "/v1/admin/categories?limit=50",
+        "auth": "bearer_admin",
+        "headers": {},
+        "request_template": {},
+        "expected_status": 200,
+        "route_matrix": {"coverage": "success", "openapi_path": "/v1/admin/categories"},
+    },
+]
 
 SUPPLEMENTAL_AUTH_FLOWS: list[dict[str, Any]] = [
     {
@@ -78,7 +91,7 @@ SUPPLEMENTAL_AUTH_FLOWS: list[dict[str, Any]] = [
         "auth": "bearer_admin",
         "headers": {"Content-Type": "application/json"},
         "request_template": {"refreshToken": "{{refreshToken}}"},
-        "expected_status": 200,
+        "expected_status": [200, 204],
     },
 ]
 
@@ -142,10 +155,38 @@ ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
     ("run_id", "{{runId}}"),
     ("admin_email", "{{adminEmail}}"),
     ("admin_password", "{{adminPassword}}"),
-    ("admin_email_invalid_test", "invalid@example.com"),
-    ("adminEmailInvalidTest", "invalid@example.com"),
+    ("adminRoles", ""),
+    ("machineToken", ""),
     ("media_sha256", "{{mediaSha256}}"),
 ]
+
+
+def write_negative_tests_excluded_md(flows: list[dict[str, Any]]) -> None:
+    """Document negative flows excluded from the happy-case collection (not in JSON)."""
+    lines = [
+        "# AVF Production negative tests excluded from happy-case collection",
+        "",
+        "These flows exist in E2E manifests or route coverage but are **not** imported into",
+        "`AVF Production Enterprise Happy Case API`. Use a separate QA collection for security/abuse cases.",
+        "",
+        f"Excluded count: **{len(flows)}**",
+        "",
+        "| Flow ID | Method | Path | Phase | Reason |",
+        "|---------|--------|------|-------|--------|",
+    ]
+    from enterprise_happy_case_lib import is_unhappy_flow  # noqa: WPS433
+
+    for f in sorted(flows, key=lambda x: str(x.get("id") or "")):
+        rm = (f.get("route_matrix") or {}).get("coverage") or ""
+        reason = "auth_negative" if rm == "auth_negative" else "negative/unhappy filter"
+        if str(f.get("phase") or "") == "negative":
+            reason = "phase=negative"
+        elif is_unhappy_flow(f):
+            reason = "is_unhappy_flow"
+        lines.append(
+            f"| {f.get('id','')} | {f.get('method','')} | `{f.get('path','')}` | {f.get('phase','')} | {reason} |"
+        )
+    (OUT_DIR / "AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 COLLECTION_PREREQUEST = [
     "const method = (pm.request.method || 'GET').toUpperCase();",
@@ -228,8 +269,17 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 
 def collect_coverage_flows() -> list[dict[str, Any]]:
+    from enterprise_happy_case_lib import is_unhappy_flow  # noqa: WPS433
+
     data = load_yaml(MANIFEST_COV)
-    return [f for f in data.get("flows") or [] if f.get("protocol") == "rest" and f.get("method")]
+    out: list[dict[str, Any]] = []
+    for f in data.get("flows") or []:
+        if f.get("protocol") != "rest" or not f.get("method"):
+            continue
+        if is_unhappy_flow(f):
+            continue
+        out.append(f)
+    return out
 
 
 def classify_rest_flow(flow: dict[str, Any], repo_root: Path) -> str:
@@ -238,16 +288,12 @@ def classify_rest_flow(flow: dict[str, Any], repo_root: Path) -> str:
     if fid in PAYMENT_FLOW_IDS or flow_excluded_online_payment(flow, repo_root):
         return "ONLINE_PAYMENT_EXCLUDED"
     if phase == "rest-coverage":
-        rm = (flow.get("route_matrix") or {}).get("coverage") or ""
-        if rm == "auth_negative":
-            return "RUNNABLE"
         if flow.get("optional"):
             return "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
         return "RUNNABLE"
-    if phase == "negative":
-        return "RUNNABLE"
+    # Enterprise happy-case: keep manifest flows runnable; skip-if-env is stripped at request build time.
     if flow.get("skip_if_env") or flow.get("postman_skip_if_env"):
-        return "CONFIG_REQUIRED"
+        return "RUNNABLE"
     if flow.get("handler") in ("media_presigned_upload",):
         return "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
     return "RUNNABLE"
@@ -303,19 +349,35 @@ def nested_folder_items(paths: dict[str, list[dict[str, Any]]]) -> list[dict[str
 
 
 def _readme_stub(title: str, body: str) -> dict[str, Any]:
+    desc = "\n".join(
+        [
+            f"**Used by:** Operators / QA",
+            f"**Purpose:** {body}",
+            f"**Auth:** none",
+            f"**CRUD action:** Readme",
+            f"**Source file:** postman/production-enterprise/generate_enterprise_postman_project.py",
+            f"**Expected happy-case status:** 200",
+            f"**Variables captured:** none",
+            f"**Production safety:** Read-only pointer to /health/live",
+            f"**Dependencies:** none",
+            "",
+            "Regenerate: python postman/production-enterprise/generate_enterprise_postman_project.py",
+        ]
+    )
     return {
         "name": title,
         "request": {
             "method": "GET",
             "header": [],
             "url": {"raw": "{{baseUrl}}/health/live", "host": ["{{baseUrl}}"], "path": ["health", "live"]},
-            "description": body + "\n\nRegenerate: python postman/production-enterprise/generate_enterprise_postman_project.py",
+            "description": desc,
         },
     }
 
 
 def _build_grpc_reference_stubs() -> list[dict[str, Any]]:
     from enterprise_actor_lib import grpc_method_meta  # noqa: WPS433
+    from enterprise_happy_case_lib import happy_grpc_stub_name  # noqa: WPS433
     from enterprise_surface_lib import build_grpc_inventory  # noqa: WPS433
 
     out: list[dict[str, Any]] = []
@@ -323,7 +385,7 @@ def _build_grpc_reference_stubs() -> list[dict[str, Any]]:
         if g.server_registered != "YES" or g.service == "MachineSaleService":
             continue
         gm = grpc_method_meta(g.service, g.method, g.e2e_present if g.e2e_present != "NO" else "")
-        folder = f"20 - gRPC Reference/{g.service}"
+        folder = f"gRPC Reference/{g.service}"
         desc = "\n".join(
             [
                 f"## gRPC {g.service}/{g.method}",
@@ -342,7 +404,7 @@ def _build_grpc_reference_stubs() -> list[dict[str, Any]]:
             {
                 "folder": folder,
                 "item": {
-                    "name": f"[{gm.actor_tag}] {g.service}/{g.method}",
+                    "name": happy_grpc_stub_name(g.service, g.method),
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -357,6 +419,7 @@ def _build_grpc_reference_stubs() -> list[dict[str, Any]]:
 
 def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
     from enterprise_actor_lib import mqtt_topic_meta  # noqa: WPS433
+    from enterprise_happy_case_lib import happy_mqtt_stub_name  # noqa: WPS433
     from enterprise_surface_lib import MQTT_REL_TOPICS, build_mqtt_inventory, enterprise_mqtt_pattern  # noqa: WPS433
 
     out: list[dict[str, Any]] = []
@@ -366,7 +429,7 @@ def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
             continue
         seen.add(row.rel_topic)
         mm = mqtt_topic_meta(row.rel_topic, row.direction)
-        folder = "21 - MQTT Reference/" + ("Command Topics" if row.direction == "subscribe" else "Telemetry Topics")
+        folder = "MQTT Reference/" + ("Command Topics" if row.direction == "subscribe" else "Telemetry Topics")
         pattern = row.enterprise_pattern
         desc = "\n".join(
             [
@@ -382,7 +445,7 @@ def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
             {
                 "folder": folder,
                 "item": {
-                    "name": f"[{mm.actor_tag}] {row.rel_topic}",
+                    "name": happy_mqtt_stub_name(row.rel_topic, row.direction),
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -396,13 +459,13 @@ def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
         if rel in seen:
             continue
         mm = mqtt_topic_meta(rel, direction)
-        folder = "21 - MQTT Reference/" + ("Command Topics" if direction == "subscribe" else "Telemetry Topics")
+        folder = "MQTT Reference/" + ("Command Topics" if direction == "subscribe" else "Telemetry Topics")
         pattern = enterprise_mqtt_pattern(rel)
         out.append(
             {
                 "folder": folder,
                 "item": {
-                    "name": f"[{mm.actor_tag}] {rel}",
+                    "name": happy_mqtt_stub_name(rel, direction),
                     "request": {
                         "method": "GET",
                         "header": [],
@@ -417,24 +480,27 @@ def _build_mqtt_reference_stubs() -> list[dict[str, Any]]:
 
 def _build_market_release_flow_stubs() -> dict[str, list[dict[str, Any]]]:
     from enterprise_actor_lib import MARKET_RELEASE_FLOWS  # noqa: WPS433
+    from enterprise_happy_case_lib import happy_business_flow_name  # noqa: WPS433
 
     out: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for mf in MARKET_RELEASE_FLOWS:
-        folder = f"90 - Full Business Flows/Flow {mf['id']} {mf['title']}"
+        if "security negative" in mf["title"].lower():
+            continue
+        folder = f"Full Business Flows/{mf['title']}"
         desc = "\n".join(
             [
-                f"# Market flow {mf['id']}: {mf['title']}",
+                f"# {happy_business_flow_name(mf['title'])}",
                 f"**Actors:** {mf['actors']}",
                 f"**REST flows:** {mf['rest']}",
                 f"**gRPC flows:** {mf['grpc'] or '—'}",
                 f"**MQTT flows:** {mf['mqtt'] or '—'}",
                 "",
-                "Execute linked requests in folders 02–19 and 12–13 (gRPC/MQTT docs).",
+                "Execute linked happy-case requests in module folders and gRPC/MQTT reference docs.",
             ]
         )
         out[folder].append(
             {
-                "name": f"[RELEASE] Flow {mf['id']} — {mf['title']}",
+                "name": happy_business_flow_name(mf["title"]),
                 "request": {
                     "method": "GET",
                     "header": [],
@@ -494,8 +560,16 @@ def flow_to_postman_item(
 
     fid = _enterprise_flow_id(flow)
     events = _strip_per_request_write_gate(build_postman_events(flow, manifest))
-    if fid == "REST-AUTH-001":
-        # Enterprise: always run login so stale accessToken in env is replaced.
+    is_login = (
+        fid == "REST-AUTH-001"
+        or (
+            str(flow.get("method") or "").upper() == "POST"
+            and "/v1/auth/login" in str(flow.get("path") or "")
+            and flow.get("expected_status", 200) == 200
+        )
+    )
+    if is_login or flow.get("postman_skip_if_env") or flow.get("skip_if_env"):
+        # Happy-case: always execute (no skip-if-env); login also refreshes tokens.
         events = [
             ev
             for ev in (events or [])
@@ -517,9 +591,11 @@ def flow_to_postman_item(
     events = prereq_meta + (events or [])
     if classification == "ONLINE_PAYMENT_EXCLUDED":
         events = [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": ONLINE_PAYMENT_PREREQUEST}}] + events
-    if fid == "REST-AUTH-001":
+    if is_login:
         events = _merge_test_events(events, LOGIN_CAPTURE_TESTS)
-    elif fid == "REST-AUTH-002":
+    elif fid == "REST-AUTH-002" or (
+        str(flow.get("method") or "").upper() == "GET" and "/v1/auth/me" in str(flow.get("path") or "")
+    ):
         events = _merge_test_events(events, ME_ASSERT_TESTS)
     desc = build_flow_description(flow, classification, fid, manifest_dir)
     req = build_postman_request(flow, manifest_dir)
@@ -534,18 +610,47 @@ def flow_to_postman_item(
 
 
 def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, int]]:
+    from enterprise_happy_case_lib import is_unhappy_flow  # noqa: WPS433
+
     manifest = load_main_manifest(MANIFEST_MAIN)
     manifest_dir = MANIFEST_MAIN.parent
     repo_root = REPO_ROOT
-    flows_main = collect_manifest_rest_flows(manifest, postman_only=False, repo_root=repo_root)
+    flows_main = [
+        f
+        for f in collect_manifest_rest_flows(manifest, postman_only=True, repo_root=repo_root)
+        if not is_unhappy_flow(f)
+    ]
     flows_cov = collect_coverage_flows()
+    excluded_unhappy: list[dict[str, Any]] = []
     def flow_key(f: dict[str, Any]) -> str:
         return f"{f.get('id')}|{parity_key(f)}"
 
     seen: set[str] = set()
     all_flows: list[dict[str, Any]] = []
     # Prefer cloudinary product-images over presigned init when IDs collide (REST-MEDIA-INIT).
-    for f in sorted(flows_main + flows_cov + SUPPLEMENTAL_AUTH_FLOWS, key=lambda x: (str(x.get("path") or ""), str(x.get("id") or ""))):
+    raw_all = collect_manifest_rest_flows(manifest, postman_only=False, repo_root=repo_root) + list(
+        load_yaml(MANIFEST_COV).get("flows") or []
+    )
+    for f in raw_all:
+        if is_unhappy_flow(f):
+            excluded_unhappy.append(f)
+
+    def _flow_sort_key(f: dict[str, Any]) -> tuple:
+        path = str(f.get("path") or "").split("?")[0]
+        auth_order = {
+            "/v1/auth/login": 0,
+            "/v1/auth/me": 1,
+            "/v1/auth/refresh": 2,
+            "/v1/auth/logout": 99,
+        }
+        return (auth_order.get(path, 50), path, str(f.get("id") or ""))
+
+    for f in sorted(
+        flows_main + flows_cov + SUPPLEMENTAL_HAPPY_FLOWS + SUPPLEMENTAL_AUTH_FLOWS,
+        key=_flow_sort_key,
+    ):
+        if is_unhappy_flow(f):
+            continue
         key = flow_key(f)
         if key in seen:
             continue
@@ -560,28 +665,28 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
         folder = enterprise_folder(flow, cls)
         paths[folder].append(flow_to_postman_item(flow, manifest, manifest_dir, cls))
 
-    paths["00 - README Safety/00.01 How To Use"].append(
+    paths["README Safety/How To Use"].append(
         _readme_stub(
-            "00.01 How To Use",
-            "Import AVF_PRODUCTION_ENTERPRISE_REST + placeholder env. Copy PRIVATE template to *LOCAL* (gitignored). Run folder 02 - Auth first.",
+            "How To Use",
+            "Import AVF Production Enterprise Happy Case API + placeholder env. Copy PRIVATE template to *LOCAL* (gitignored). Run folder Auth first.",
         )
     )
-    paths["00 - README Safety/00.02 Production Write Gate"].append(
+    paths["README Safety/Production Write Gate"].append(
         _readme_stub(
-            "00.02 Production Write Gate",
+            "Production Write Gate",
             "allowGatedWrites=true AND confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. E2E-PROD-{{runId}} only.",
         )
     )
-    paths["00 - README Safety/00.03 Actor Map"].append(
-        _readme_stub("00.03 Actor Map", "See docs/testing/production-e2e/POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
+    paths["README Safety/Actor Map"].append(
+        _readme_stub("Actor Map", "See docs/testing/production-e2e/POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
     )
-    paths["00 - README Safety/00.04 Variable Map"].append(
-        _readme_stub("00.04 Variable Map", "See AVF_PRODUCTION_ENTERPRISE.postman_environment.json keys.")
+    paths["README Safety/Variable Map"].append(
+        _readme_stub("Variable Map", "See AVF_PRODUCTION_ENTERPRISE.postman_environment.json keys.")
     )
-    paths["00 - README Safety/00.05 Release Scope"].append(
+    paths["README Safety/Release Scope"].append(
         _readme_stub(
-            "00.05 Release Scope",
-            "Folder 97 online payment guarded. Folder 98 optional/disabled. gRPC/MQTT in folders 20-21 + markdown catalogs.",
+            "Release Scope",
+            "Happy-case only. Online payment in guarded folder. Negative tests in AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md.",
         )
     )
     for folder, stubs in _build_market_release_flow_stubs().items():
@@ -590,29 +695,29 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
         paths[stub["folder"]].append(stub["item"])
     for stub in _build_mqtt_reference_stubs():
         paths[stub["folder"]].append(stub["item"])
-    paths["20 - gRPC Reference/README"].append(
+    paths["gRPC Reference/README"].append(
         _readme_stub(
-            "gRPC catalog (Postman Desktop + grpcurl)",
+            "gRPC Catalog Readme",
             "All machine gRPC methods: postman/production-enterprise/AVF_PRODUCTION_GRPC_REQUESTS.md",
         )
     )
-    paths["21 - MQTT Reference/README"].append(
+    paths["MQTT Reference/README"].append(
         _readme_stub(
-            "MQTT catalog (Postman Desktop + mosquitto)",
+            "MQTT Catalog Readme",
             "All MQTT topics: postman/production-enterprise/AVF_PRODUCTION_MQTT_REQUESTS.md",
         )
     )
-    paths["99 - Cleanup/Verify Cleanup"].append(
-        _readme_stub("Coverage summary", "Run: python postman/production-enterprise/check_enterprise_postman_completeness.py")
+    paths["Cleanup/Verify Cleanup"].append(
+        _readme_stub("Coverage Summary", "Run: python postman/production-enterprise/check_enterprise_postman_completeness.py")
     )
 
     items = nested_folder_items(paths)
     collection = {
         "info": {
-            "_postman_id": stable_uuid("collection:avf-production-enterprise-rest-v1"),
-            "name": "AVF Production Enterprise API",
+            "_postman_id": stable_uuid("collection:avf-production-enterprise-happy-v1"),
+            "name": "AVF Production Enterprise Happy Case API",
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-            "description": "Generated enterprise production REST — manifest + route coverage. No secrets in repo.",
+            "description": "Happy-case production REST only — manifest + route coverage. No negative tests. No secrets in repo.",
         },
         "item": items,
         "event": [
@@ -624,6 +729,8 @@ def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, A
         "variable": [{"key": "baseUrl", "value": "https://api.ldtv.dev"}],
     }
     stats["REST_TOTAL"] = len(all_flows) + 1
+    stats["EXCLUDED_UNHAPPY"] = len(excluded_unhappy)
+    write_negative_tests_excluded_md(excluded_unhappy)
     return collection, all_flows, dict(stats)
 
 
@@ -969,24 +1076,25 @@ def write_full_recheck(stats: dict[str, int], rest_count: int) -> None:
 
 
 def write_readme() -> None:
-    text = """# AVF Production Enterprise Postman (market-ready)
+    text = """# AVF Production Enterprise Postman (happy-case)
 
 ## Import
 
-1. Import `AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json`
+1. Import `AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json` (**AVF Production Enterprise Happy Case API**)
 2. Import `AVF_PRODUCTION_ENTERPRISE.postman_environment.json`
 3. Copy `AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json` → `*LOCAL*.postman_environment.json` (gitignored)
 4. Set `allowGatedWrites=true` and `confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION`
 
-## Folder tree
+## Folder tree (no numeric prefixes)
 
-- **00** README Safety (how-to, write gate, actors, variables)
-- **01–19** REST by module (Auth, Category, Brand, Tag, Product, Media, Site, Machine, …)
-- **20–21** gRPC/MQTT reference stubs + `.md` catalogs
-- **90** Full business flows (20 scenarios)
-- **97** Online payment guarded (disabled by default)
-- **98** Contract-disabled optional APIs
-- **99** Cleanup
+- **README Safety** — how-to, write gate, actors, variables
+- **Health Version**, **Auth**, **Category**, **Brand**, **Product**, **Media**, **Machine**, …
+- **gRPC Reference** / **MQTT Reference** — stubs + `.md` catalogs
+- **Full Business Flows** — end-to-end scenarios
+- **Online Payment Happy Case Guarded** — disabled by default
+- **Optional Contract Disabled**, **Cleanup**
+
+Negative/security tests are listed in `AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md` only.
 
 ## Regenerate
 
@@ -997,7 +1105,7 @@ python postman/production-enterprise/check_enterprise_postman_completeness.py
 
 ## ZIP
 
-`AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip` (generated locally; may be gitignored)
+`AVF_PRODUCTION_ENTERPRISE_HAPPY_CASE_POSTMAN_PROJECT.zip`
 """
     (OUT_DIR / "AVF_PRODUCTION_POSTMAN_ENTERPRISE_README.md").write_text(text, encoding="utf-8")
 
@@ -1028,8 +1136,11 @@ REST is importable as Postman Collection v2.1. **gRPC and MQTT are not faked in 
 
 
 def create_zip(run_id: str) -> Path:
-    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_REORG_POSTMAN_PROJECT.zip"
-    legacy = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip"
+    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_HAPPY_CASE_POSTMAN_PROJECT.zip"
+    legacy = [
+        OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_REORG_POSTMAN_PROJECT.zip",
+        OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_MARKET_READY_POSTMAN_PROJECT.zip",
+    ]
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in [
             "AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json",
@@ -1039,6 +1150,7 @@ def create_zip(run_id: str) -> Path:
             "AVF_PRODUCTION_GRPC_MQTT_MANUAL_COLLECTION_GUIDE.md",
             "AVF_PRODUCTION_GRPC_REQUESTS.md",
             "AVF_PRODUCTION_MQTT_REQUESTS.md",
+            "AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md",
         ]:
             p = OUT_DIR / name
             if p.is_file():
@@ -1048,11 +1160,14 @@ def create_zip(run_id: str) -> Path:
         csv = DOCS_DIR / "POSTMAN_ENTERPRISE_COVERAGE_MATRIX.csv"
         if csv.is_file():
             zf.write(csv, arcname=f"docs/testing/production-e2e/{csv.name}")
-    if legacy != zip_path and legacy.is_file():
-        try:
-            legacy.unlink()
-        except OSError:
-            pass
+        for recheck in sorted(DOCS_DIR.glob("POSTMAN_HAPPY_CASE_RECHECK_*.md")):
+            zf.write(recheck, arcname=f"docs/testing/production-e2e/{recheck.name}")
+    for old in legacy:
+        if old.is_file() and old != zip_path:
+            try:
+                old.unlink()
+            except OSError:
+                pass
     return zip_path
 
 

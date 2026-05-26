@@ -348,6 +348,12 @@ def build_rest_inventory() -> list[RestRouteRow]:
             skip = str(mat.get("skip_reason") or mat.get("non_postman_reason") or "documented_skip")
             verdict = "CONTRACT_DISABLED" if ent == "NO" else "COVERED"
             runnable = "NO"
+        elif mat.get("coverage") == "auth_negative":
+            skip = "auth_negative coverage — excluded from happy-case Postman"
+            verdict = "EXCLUDED_NEGATIVE_TEST"
+            runnable = "NO"
+            if ent == "YES":
+                verdict = "COVERED"
         if ent == "NO" and verdict not in ("CONTRACT_DISABLED", "CONFIG_REQUIRED"):
             if "/commerce/" in path and "orders" in path and method in ("POST", "PUT"):
                 if any(x in path for x in ("momo", "zalopay", "vietqr", "webhooks")):

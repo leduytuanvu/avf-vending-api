@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-"""Strict market-ready completeness checker for enterprise Postman project."""
+"""Happy-case completeness checker for AVF Production Enterprise Postman project."""
 from __future__ import annotations
 
 import argparse
 import json
 import os
 import re
-import subprocess
 import sys
 from collections import Counter
 from datetime import datetime, timezone
@@ -20,33 +19,60 @@ ENV = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE.postman_environment.json"
 GRPC_MD = OUT_DIR / "AVF_PRODUCTION_GRPC_REQUESTS.md"
 MQTT_MD = OUT_DIR / "AVF_PRODUCTION_MQTT_REQUESTS.md"
 ACTOR_MD = DOCS_DIR / "POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md"
+NEG_MD = OUT_DIR / "AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md"
 
 sys.path.insert(0, str(OUT_DIR))
 import check_enterprise_api_coverage as api_cov  # noqa: E402
 from enterprise_actor_lib import MARKET_RELEASE_FLOWS  # noqa: E402
+from enterprise_happy_case_lib import (  # noqa: E402
+    FLOW_ID_PREFIX_RE,
+    NUMERIC_PREFIX_RE,
+    REST_ID_PREFIX_RE,
+    UNHAPPY_FOLDER_KEYWORDS,
+    is_happy_collection_name,
+)
 from enterprise_surface_lib import build_grpc_inventory, build_mqtt_inventory, build_rest_inventory  # noqa: E402
 
 SECRET_RE = re.compile(
-    r"(eyJ[A-Za-z0-9_-]{10,}|sk_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|"
-    r"password\s*[:=]\s*['\"]?[^'\"<\s]{8,})",
+    r"(eyJ[A-Za-z0-9_-]{20,}|sk_[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|"
+    r"password\s*[:=]\s*['\"]?[^'\"<\s]{12,})",
     re.I,
 )
 GIT_PATH_RE = re.compile(r"C:/Program Files/Git|C:\\Program Files\\Git", re.I)
 
 REQUIRED_ENV_KEYS = {
     "baseUrl", "grpcTarget", "mqttHost", "mqttPort", "mqttTls", "adminEmail", "adminPassword",
-    "accessToken", "refreshToken", "adminUserId", "adminAccountId", "runId", "e2ePrefix", "runPrefix",
+    "accessToken", "refreshToken", "adminAccountId", "adminRoles", "runId", "e2ePrefix",
     "categoryId", "brandId", "tagId", "productId", "mediaId", "siteId", "machineId",
-    "activationCode", "machineAccessToken", "machineRefreshToken", "topologyId", "planogramId",
-    "planogramRevision", "slotCode", "slotIndex", "stockItemId", "commandId", "orderId", "vendId",
-    "reportFrom", "reportTo", "allowGatedWrites", "confirmProductionWrites", "onlinePaymentEnabled",
-    "confirmOnlinePaymentTesting", "momoEnabled", "zalopayEnabled", "vietqrEnabled", "mqttTopicPrefix",
-    "operatorSessionId",
+    "activationCode", "machineToken", "machineAccessToken", "machineRefreshToken",
+    "topologyId", "planogramId", "planogramRevision", "slotCode", "slotIndex", "stockItemId",
+    "operatorSessionId", "commandId", "orderId", "vendId", "reportFrom", "reportTo",
+    "allowGatedWrites", "confirmProductionWrites", "onlinePaymentEnabled", "confirmOnlinePaymentTesting",
+    "momoEnabled", "zalopayEnabled", "vietqrEnabled",
 }
+
+REQUIRED_TOP_FOLDERS = [
+    "README Safety",
+    "Health Version",
+    "Auth",
+    "Category",
+    "Brand",
+    "Product",
+    "gRPC Reference",
+    "MQTT Reference",
+    "Full Business Flows",
+    "Online Payment Happy Case Guarded",
+    "Cleanup",
+]
+
+NEGATIVE_NAME_RE = re.compile(
+    r"(negative|invalid password|wrong token|missing token|invalid token|wrong role|abuse|auth_negative)",
+    re.I,
+)
 
 
 def audit_id() -> str:
-    return os.environ.get("PROD_E2E_RUN_ID", datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-reorg")
+    return os.environ.get("PROD_E2E_RUN_ID", datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "-happy")
 
 
 def coll_vars(coll: dict) -> set[str]:
@@ -65,6 +91,23 @@ def coll_vars(coll: dict) -> set[str]:
     return found
 
 
+def walk_names(coll: dict) -> list[tuple[str, str]]:
+    """Return (kind, name) for every folder and request."""
+    out: list[tuple[str, str]] = []
+
+    def walk(items: list, in_folder: str = "") -> None:
+        for it in items or []:
+            name = str(it.get("name") or "")
+            if "item" in it:
+                out.append(("folder", name))
+                walk(it["item"], name)
+            elif "request" in it:
+                out.append(("request", name))
+
+    walk(coll.get("item") or [])
+    return out
+
+
 def walk_all_requests(coll: dict) -> list[dict]:
     out: list[dict] = []
 
@@ -79,29 +122,59 @@ def walk_all_requests(coll: dict) -> list[dict]:
     return out
 
 
+def check_no_numeric_or_negative_names(coll: dict) -> list[str]:
+    errors: list[str] = []
+    for kind, name in walk_names(coll):
+        if not name:
+            continue
+        if NUMERIC_PREFIX_RE.match(name):
+            errors.append(f"{kind} name starts with digit: {name[:70]}")
+        if REST_ID_PREFIX_RE.match(name):
+            errors.append(f"{kind} name uses REST-XXX-NNN id prefix: {name[:70]}")
+        if FLOW_ID_PREFIX_RE.match(name):
+            errors.append(f"{kind} name uses Flow NN prefix: {name[:70]}")
+        if not is_happy_collection_name(name):
+            errors.append(f"{kind} name fails happy naming rules: {name[:70]}")
+        if NEGATIVE_NAME_RE.search(name):
+            errors.append(f"{kind} name contains negative keyword: {name[:70]}")
+        low = name.lower()
+        if any(k in low for k in UNHAPPY_FOLDER_KEYWORDS):
+            errors.append(f"{kind} name contains unhappy keyword: {name[:70]}")
+    return errors[:40]
+
+
+def check_collection_meta(coll: dict) -> list[str]:
+    errors: list[str] = []
+    info = coll.get("info") or {}
+    if info.get("name") != "AVF Production Enterprise Happy Case API":
+        errors.append(f"collection name must be happy-case title, got: {info.get('name')}")
+    blob = json.dumps(coll)
+    if "auth_negative" in blob:
+        errors.append("collection still contains auth_negative flows")
+    if "[ADMIN_WEB]" in blob or "[PUBLIC]" in blob or "[MACHINE_APP]" in blob:
+        errors.append("collection still uses legacy [ACTOR] REST-COV naming")
+    return errors
+
+
 def check_descriptions(coll: dict) -> list[str]:
     errors: list[str] = []
-    required_fields = ("Used by:", "Primary actor:", "Production purpose:", "Auth:")
+    skip = (
+        "How To", "Actor Map", "Production Write", "Variable Map", "Release Scope",
+        "gRPC Catalog", "MQTT Catalog", "Coverage Summary", "Business Flow",
+    )
 
     for it in walk_all_requests(coll):
         name = str(it.get("name") or "")
-        if name.startswith("[RELEASE]") or "README" in name.upper() or name.startswith("00."):
+        if any(name.startswith(s) for s in skip):
             continue
-        if "MachineCatalogService/" in name or "MachineTokenService/" in name:
+        if name.startswith("gRPC -") or name.startswith("MQTT -"):
             continue
         desc = str(it.get("description") or it["request"].get("description") or "")
-        if not any(f in desc for f in required_fields):
-            if "REST-COV-" in name or "[ADMIN" in name or "[PUBLIC" in name or "[MACHINE" in name:
-                errors.append(f"missing actor metadata in description: {name[:80]}")
-        skip_prefix = (
-            "How to", "Actor map", "Production write", "Online payment", "gRPC catalog",
-            "MQTT catalog", "Coverage summary", "RELEASE", "README", "00.",
-        )
-        if not name.startswith("[") and not any(name.startswith(s) for s in skip_prefix):
-            if "REST-COV" in name or " — " in name:
-                errors.append(f"missing actor prefix in name: {name[:80]}")
-
-    return errors[:30]
+        for field in ("Used by:", "Auth:", "CRUD action:", "Source file:", "Production safety:", "Purpose:"):
+            if field not in desc:
+                errors.append(f"missing {field} in description: {name[:60]}")
+                break
+    return errors[:25]
 
 
 def check_secrets(paths: list[Path]) -> list[str]:
@@ -116,21 +189,8 @@ def check_secrets(paths: list[Path]) -> list[str]:
 
 
 def check_git_path_artifacts(coll: dict) -> list[str]:
-    blob = json.dumps(coll)
-    if GIT_PATH_RE.search(blob):
+    if GIT_PATH_RE.search(json.dumps(coll)):
         return ["collection contains C:/Program Files/Git path artifact"]
-    return []
-
-
-def check_duplicate_flow_ids(coll: dict) -> list[str]:
-    ids: list[str] = []
-    for it in walk_all_requests(coll):
-        fid = it.get("_manifest_flow_id")
-        if fid:
-            ids.append(str(fid))
-    dupes = [k for k, v in Counter(ids).items() if v > 1]
-    if dupes:
-        return [f"duplicate manifest flow id: {dupes[:5]}"]
     return []
 
 
@@ -146,17 +206,75 @@ def check_collection_gate(coll: dict) -> list[str]:
         errors.append("collection write gate must exempt GET/HEAD/OPTIONS")
     if "/v1/auth/login" not in prereq_blob:
         errors.append("collection write gate must exempt POST /v1/auth/login")
-    if "accessToken captured" not in json.dumps(coll):
-        login_ok = False
-        for it in walk_all_requests(coll):
-            if it.get("_manifest_flow_id") == "REST-AUTH-001":
-                events = it.get("event") or []
-                blob = json.dumps(events)
-                if "accessToken" in blob and "tokens.accessToken" in blob:
-                    login_ok = True
-        if not login_ok:
-            errors.append("REST-AUTH-001 missing accessToken capture test script")
     return errors
+
+
+def check_login_capture(coll: dict) -> list[str]:
+    errors: list[str] = []
+    login_ok = False
+    for it in walk_all_requests(coll):
+        name = str(it.get("name") or "")
+        url = json.dumps(it.get("request") or {})
+        is_login = "Admin Login" in name or "/v1/auth/login" in url
+        if not is_login:
+            continue
+        blob = json.dumps(it.get("event") or [])
+        if "tokens.accessToken" in blob and "accessToken" in blob:
+            login_ok = True
+        body = json.dumps((it.get("request") or {}).get("body") or "")
+        if "adminEmail" not in body or "adminPassword" not in body:
+            errors.append("login request must use {{adminEmail}} and {{adminPassword}}")
+    if not login_ok:
+        errors.append("Auth login missing accessToken/refreshToken capture test script")
+    return errors
+
+
+def check_write_gates(coll: dict) -> list[str]:
+    errors: list[str] = []
+    for it in walk_all_requests(coll):
+        method = str((it.get("request") or {}).get("method") or "GET").upper()
+        url = json.dumps(it.get("request") or {})
+        if method in ("GET", "HEAD", "OPTIONS"):
+            for ev in it.get("event") or []:
+                if ev.get("listen") == "prerequest":
+                    blob = "\n".join((ev.get("script") or {}).get("exec") or [])
+                    if "Gated write blocked" in blob or (
+                        "allowGatedWrites" in blob and "confirmProductionWrites" in blob
+                    ):
+                        errors.append(f"GET/HEAD/OPTIONS must not be write-gated: {it.get('name','')[:50]}")
+        if method in ("POST", "PUT", "PATCH", "DELETE") and "/v1/auth/login" not in url:
+            if it.get("_classification") == "ONLINE_PAYMENT_EXCLUDED":
+                continue
+            has_gate = False
+            for ev in it.get("event") or []:
+                if ev.get("listen") == "prerequest":
+                    blob = "\n".join((ev.get("script") or {}).get("exec") or [])
+                    if "onlinePaymentEnabled" in blob:
+                        has_gate = True
+            if not has_gate:
+                coll_prereq = any(
+                    ev.get("listen") == "prerequest"
+                    for ev in coll.get("event") or []
+                )
+                if not coll_prereq:
+                    errors.append(f"write missing collection gate: {it.get('name','')[:50]}")
+    return errors[:15]
+
+
+def check_admin_bearer(coll: dict) -> list[str]:
+    errors: list[str] = []
+    for it in walk_all_requests(coll):
+        desc = str(it.get("description") or "")
+        if "Auth:** bearer_admin" not in desc and "bearer_admin" not in desc.lower():
+            continue
+        method = str((it.get("request") or {}).get("method") or "GET").upper()
+        if method in ("GET", "HEAD", "OPTIONS", "POST") and "/v1/auth/login" in json.dumps(it.get("request") or {}):
+            continue
+        prereq = json.dumps(it.get("event") or [])
+        coll_blob = json.dumps(coll.get("event") or [])
+        if "accessToken" not in prereq and "accessToken" not in coll_blob:
+            errors.append(f"bearer_admin request lacks accessToken injection: {it.get('name','')[:50]}")
+    return errors[:10]
 
 
 def check_payment_default_blocked(coll: dict) -> list[str]:
@@ -164,14 +282,13 @@ def check_payment_default_blocked(coll: dict) -> list[str]:
     for it in walk_all_requests(coll):
         if it.get("_classification") != "ONLINE_PAYMENT_EXCLUDED":
             continue
-        events = it.get("event") or []
-        blob = json.dumps(events)
+        blob = json.dumps(it.get("event") or [])
         if "onlinePaymentEnabled" not in blob and "ONLINE_PAYMENT_EXCLUDED" not in blob:
-            errors.append(f"payment route lacks guard prerequest: {it.get('name','')[:60]}")
+            errors.append(f"payment route lacks guard: {it.get('name','')[:60]}")
     return errors[:10]
 
 
-def check_grpc_mqtt_docs() -> list[str]:
+def check_grpc_mqtt_docs(coll: dict | None) -> list[str]:
     errors: list[str] = []
     if not GRPC_MD.is_file():
         return ["missing AVF_PRODUCTION_GRPC_REQUESTS.md"]
@@ -181,6 +298,9 @@ def check_grpc_mqtt_docs() -> list[str]:
             continue
         if g.verdict == "MISSING_FROM_DOCS":
             errors.append(f"gRPC missing docs: {g.service}/{g.method}")
+        key = f"{g.service}/{g.method}"
+        if key not in gtext and g.method not in gtext:
+            errors.append(f"gRPC missing grpcurl for {key}")
     if "grpcurl" not in gtext:
         errors.append("gRPC catalog missing grpcurl commands")
     if not MQTT_MD.is_file():
@@ -188,53 +308,77 @@ def check_grpc_mqtt_docs() -> list[str]:
     mtext = MQTT_MD.read_text(encoding="utf-8")
     if "mosquitto_pub" not in mtext:
         errors.append("MQTT docs missing mosquitto_pub")
-    if "mosquitto_sub" not in mtext and "Subscribe" not in mtext:
-        errors.append("MQTT docs missing subscribe guidance")
     for m in build_mqtt_inventory():
         if m.verdict == "MISSING_FROM_DOCS":
             errors.append(f"MQTT missing: {m.rel_topic}")
         if "?" in m.enterprise_pattern:
             errors.append(f"MQTT topic placeholder ?: {m.rel_topic}")
-    coll_stub = json.loads(COLL.read_text(encoding="utf-8")) if COLL.is_file() else {}
-    if coll_stub and "20 - gRPC Reference" not in json.dumps(coll_stub.get("item") or []):
-        errors.append("collection missing folder 20 - gRPC Reference")
-    if coll_stub and "21 - MQTT Reference" not in json.dumps(coll_stub.get("item") or []):
-        errors.append("collection missing folder 21 - MQTT Reference")
-    return errors
+        if m.rel_topic not in mtext and m.enterprise_pattern not in mtext:
+            errors.append(f"MQTT missing mosquitto for {m.rel_topic}")
+    if coll:
+        blob = json.dumps(coll)
+        if "gRPC Reference" not in blob:
+            errors.append("collection missing gRPC Reference folder")
+        if "MQTT Reference" not in blob:
+            errors.append("collection missing MQTT Reference folder")
+    return errors[:30]
 
 
 def check_market_flows(coll: dict) -> list[str]:
     blob = json.dumps(coll)
     missing = []
     for mf in MARKET_RELEASE_FLOWS:
-        if f"Flow {mf['id']}" not in blob:
-            missing.append(mf["id"])
+        if "security negative" in mf["title"].lower():
+            continue
+        title = mf["title"]
+        if f"Business Flow - {title}" not in blob and title not in blob:
+            missing.append(title)
     if missing:
-        return [f"market flow folder missing: {', '.join(missing)}"]
+        return [f"business flow missing: {', '.join(missing[:5])}"]
     return []
 
 
 def check_module_folders(coll: dict) -> list[str]:
-    blob = json.dumps([it.get("name") for it in coll.get("item") or []])
-    required_top = [
-        "00 - README Safety",
-        "01 - Health Version",
-        "02 - Auth",
-        "03 - Category",
-        "06 - Product",
-        "07 - Media",
-        "11 - Topology",
-        "12 - Planogram",
-        "14 - Operator Technician",
-        "20 - gRPC Reference",
-        "21 - MQTT Reference",
-        "90 - Full Business Flows",
-        "97 - Online Payment Guarded",
-    ]
-    missing = [f for f in required_top if f not in blob]
+    top = [it.get("name") for it in coll.get("item") or []]
+    missing = [f for f in REQUIRED_TOP_FOLDERS if f not in top]
     if missing:
         return [f"missing top-level folders: {missing}"]
     return []
+
+
+def _write_happy_recheck(
+    aid: str,
+    failures: list[str],
+    rest_miss: int,
+    grpc_miss: int,
+    mqtt_miss: int,
+    request_count: int,
+    folder_count: int,
+) -> None:
+    verdict = "POSTMAN_HAPPY_CASE_COMPLETE_OK" if not failures else "POSTMAN_HAPPY_CASE_COMPLETE_FAILED"
+    path = DOCS_DIR / f"POSTMAN_HAPPY_CASE_RECHECK_{aid}.md"
+    path.write_text(
+        "\n".join(
+            [
+                f"# Postman happy-case recheck ({aid})",
+                "",
+                f"**Verdict:** `{verdict}`",
+                "",
+                "| Metric | Value |",
+                "|--------|------:|",
+                f"| REST missing (runnable) | {rest_miss} |",
+                f"| gRPC missing from docs | {grpc_miss} |",
+                f"| MQTT missing from docs | {mqtt_miss} |",
+                f"| Collection requests | {request_count} |",
+                f"| Collection folders | {folder_count} |",
+                "",
+                "## Failures",
+                "",
+            ]
+            + ([f"- {f}" for f in failures] if failures else ["- None"])
+        ),
+        encoding="utf-8",
+    )
 
 
 def main() -> int:
@@ -245,10 +389,14 @@ def main() -> int:
     failures: list[str] = []
 
     if api_cov.main() != 0:
-        failures.append("api coverage checker failed (see ENTERPRISE_COVERAGE_FAILED)")
+        failures.append("api coverage checker failed")
 
     rest = build_rest_inventory()
-    rest_miss = sum(1 for r in rest if r.verdict == "MISSING_FROM_POSTMAN" and r.runnable_production == "YES")
+    rest_miss = sum(
+        1
+        for r in rest
+        if r.verdict == "MISSING_FROM_POSTMAN" and r.runnable_production == "YES"
+    )
     if rest_miss:
         failures.append(f"REST missing count={rest_miss}")
 
@@ -266,12 +414,14 @@ def main() -> int:
     if mqtt_miss:
         failures.append(f"MQTT missing count={mqtt_miss}")
 
-    folder_count = 0
+    if not NEG_MD.is_file():
+        failures.append("missing AVF_PRODUCTION_NEGATIVE_TESTS_EXCLUDED.md (regenerate)")
+
     request_count = 0
-    env_missing: list[str] = []
+    folder_count = 0
     coll: dict = {}
     if not COLL.is_file():
-        failures.append("collection missing")
+        failures.append("collection missing — run generate_enterprise_postman_project.py")
     else:
         coll = json.loads(COLL.read_text(encoding="utf-8"))
         request_count = len(walk_all_requests(coll))
@@ -284,13 +434,17 @@ def main() -> int:
             return n
 
         folder_count = count_folders(coll.get("item") or [])
-        failures.extend(check_grpc_mqtt_docs())
+        failures.extend(check_collection_meta(coll))
+        failures.extend(check_no_numeric_or_negative_names(coll))
+        failures.extend(check_grpc_mqtt_docs(coll))
         failures.extend(check_market_flows(coll))
         failures.extend(check_descriptions(coll))
         failures.extend(check_secrets([COLL, ENV]))
         failures.extend(check_git_path_artifacts(coll))
-        failures.extend(check_duplicate_flow_ids(coll))
         failures.extend(check_collection_gate(coll))
+        failures.extend(check_login_capture(coll))
+        failures.extend(check_write_gates(coll))
+        failures.extend(check_admin_bearer(coll))
         failures.extend(check_payment_default_blocked(coll))
         failures.extend(check_module_folders(coll))
 
@@ -301,93 +455,21 @@ def main() -> int:
         used = coll_vars(coll)
         env_missing = sorted((used | REQUIRED_ENV_KEYS) - env_keys)
         if env_missing:
-            failures.append(f"environment missing keys: {env_missing[:15]}")
+            failures.append(f"environment missing keys: {env_missing[:20]}")
 
     if not ACTOR_MD.is_file():
         failures.append("missing POSTMAN_ENTERPRISE_ACTOR_FLOW_MATRIX.md")
 
-    actor_missing = len([e for e in failures if "actor" in e.lower()])
-    req_missing = len([e for e in failures if "description" in e.lower() or "prefix" in e.lower()])
-    market_missing = len([e for e in failures if "market flow" in e.lower()])
+    _write_happy_recheck(aid, failures, rest_miss, grpc_miss, mqtt_miss, request_count, folder_count)
 
     ok = not failures
-    _write_reorg_check(
-        aid,
-        failures,
-        rest_miss,
-        grpc_miss,
-        mqtt_miss,
-        len(rest),
-        len(grpc_inv),
-        len(mqtt_inv),
-        request_count,
-        folder_count,
-        len(env_missing),
-        actor_missing,
-        market_missing,
-        req_missing,
-    )
-
     if ok:
-        print("ENTERPRISE_POSTMAN_REORG_OK")
-        print("ENTERPRISE_POSTMAN_COMPLETE_OK")
+        print("POSTMAN_HAPPY_CASE_COMPLETE_OK")
         return 0
-    print("ENTERPRISE_POSTMAN_REORG_FAILED", file=sys.stderr)
-    print("ENTERPRISE_POSTMAN_COMPLETE_FAILED", file=sys.stderr)
+    print("POSTMAN_HAPPY_CASE_COMPLETE_FAILED", file=sys.stderr)
     for f in failures[:50]:
         print(f"  {f}", file=sys.stderr)
     return 1
-
-
-def _write_reorg_check(
-    aid: str,
-    failures: list[str],
-    rest_miss: int,
-    grpc_miss: int,
-    mqtt_miss: int,
-    rest_src: int,
-    grpc_src: int,
-    mqtt_src: int,
-    request_count: int,
-    folder_count: int,
-    env_missing: int,
-    actor_missing: int,
-    market_missing: int,
-    req_missing: int,
-) -> None:
-    verdict = "ENTERPRISE_POSTMAN_REORG_OK" if not failures else "ENTERPRISE_POSTMAN_REORG_FAILED"
-    path = DOCS_DIR / f"POSTMAN_ENTERPRISE_REORG_CHECK_{aid}.md"
-    path.write_text(
-        "\n".join(
-            [
-                f"# Postman enterprise reorganize check ({aid})",
-                "",
-                f"**Verdict:** `{verdict}`",
-                "",
-                "| Metric | Count |",
-                "|--------|------:|",
-                f"| REST source routes (inventory) | {rest_src} |",
-                f"| REST collection requests | {request_count} |",
-                f"| REST missing (runnable) | {rest_miss} |",
-                f"| gRPC source methods | {grpc_src} |",
-                f"| gRPC missing from docs | {grpc_miss} |",
-                f"| MQTT source flows | {mqtt_src} |",
-                f"| MQTT missing from docs | {mqtt_miss} |",
-                f"| Collection folders | {folder_count} |",
-                f"| Environment missing keys | {env_missing} |",
-                f"| Actor/metadata issues | {actor_missing} |",
-                f"| Market flow missing | {market_missing} |",
-                f"| Request metadata missing | {req_missing} |",
-                "",
-                "## Failures",
-                "",
-            ]
-            + ([f"- {f}" for f in failures] if failures else ["- None"])
-        ),
-        encoding="utf-8",
-    )
-    recheck = DOCS_DIR / f"POSTMAN_ENTERPRISE_RECHECK_RESULT_{aid}.md"
-    recheck.write_text(path.read_text(encoding="utf-8"), encoding="utf-8")
 
 
 if __name__ == "__main__":

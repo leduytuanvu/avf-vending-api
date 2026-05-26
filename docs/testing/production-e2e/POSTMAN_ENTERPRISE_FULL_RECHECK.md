@@ -1,6 +1,6 @@
 # Postman enterprise full recheck
 
-Generated: 2026-05-26T20:08:39Z
+Generated: 2026-05-26T20:49:39Z
 
 ## Production targets
 - REST: https://api.ldtv.dev
@@ -8,9 +8,9 @@ Generated: 2026-05-26T20:08:39Z
 - MQTT: mqtt.ldtv.dev:8883
 
 ## Structural counts
-- REST collection requests: 266
+- REST collection requests: 115
 - Market release flow stubs: 20 (folder 90)
-- Classifications: {"RUNNABLE": 172, "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT": 67, "CONFIG_REQUIRED": 17, "ONLINE_PAYMENT_EXCLUDED": 9, "REST_TOTAL": 266}
+- Classifications: {"RUNNABLE": 41, "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT": 67, "ONLINE_PAYMENT_EXCLUDED": 6, "REST_TOTAL": 115, "EXCLUDED_UNHAPPY": 152}
 
 ## Checker
 ```bash
