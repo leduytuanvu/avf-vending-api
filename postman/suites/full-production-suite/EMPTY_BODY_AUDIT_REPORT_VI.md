@@ -2,18 +2,18 @@
 
 ## Thời điểm audit
 
-- **Timestamp (UTC):** 2026-05-19T18:20:31.519725+00:00
-- **Nhánh git:** main
-- **Commit:** 6527d502437f5137fb05c56d4851043b258afbc1
+- **Timestamp (UTC):** 2026-05-27T08:41:13.720064+00:00
+- **Nhánh git:** qa/market-readiness-full-flow-validation
+- **Commit:** 527dda0058596a880cccbb413f77f8d8220c5102
 
 ## Đếm OpenAPI / Postman
 
 | Chỉ số | Giá trị |
 |---------|--------|
-| Tổng operations OpenAPI | 327 |
-| Operations có `requestBody` | 110 |
-| Operations có JSON `requestBody` (`application/json`) | 110 |
-| Request Postman có raw JSON body không rỗng | 110 |
+| Tổng operations OpenAPI | 329 |
+| Operations có `requestBody` | 111 |
+| Operations có JSON `requestBody` (`application/json`) | 111 |
+| Request Postman có raw JSON body không rỗng | 111 |
 | JSON `requestBody` còn thiếu/sai body trong Postman | **0** |
 
 ## `operationId` chịu ảnh hưởng `schema.type=string` + `example` (swagger)
@@ -64,6 +64,7 @@
 - DocOpV1AdminPriceBookActivate — POST /v1/admin/price-books/{priceBookId}/activate
 - DocOpV1AdminPriceBookArchive — POST /v1/admin/price-books/{priceBookId}/archive
 - DocOpV1AdminPriceBookDeactivate — POST /v1/admin/price-books/{priceBookId}/deactivate
+- DocOpV1AdminProductImageUpload — POST /v1/admin/product-images
 - DocOpV1AdminPromotionActivate — POST /v1/admin/promotions/{promotionId}/activate
 - DocOpV1AdminPromotionArchive — POST /v1/admin/promotions/{promotionId}/archive
 - DocOpV1AdminPromotionDeactivate — POST /v1/admin/promotions/{promotionId}/deactivate
@@ -110,25 +111,18 @@ python -m json.tool postman/suites/full-production-suite/mqtt/mqtt_request_templ
 ## Kết quả validation (snapshot)
 
 ```text
-Traceback (most recent call last):
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 882, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 665, in main
-    spec = json.loads(SWAGGER.read_text(encoding="utf-8"))
-                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 787, in read_text
-    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
-         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 771, in open
-    return io.open(self, mode, buffering, encoding, errors, newline)
-           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\docs\\swagger\\swagger.json'
+VALIDATION_PASS
+openapi_operations: 329
+postman_requests: 329
+grpc_templates: 86
+mqtt_templates: 28
+manifest_finalStatus: PASS_IMPORT_ASSETS_COMPLETE
+openapi_idempotency_ops: 92
 ```
 
 ## Quét secret (validator)
 
-- **Kết quả:** FAIL (xem validator)
+- **Kết quả:** PASS
 
 ## Danh sách `operationId` JSON body vẫn rỗng/sai (phải rỗng sau sửa)
 
@@ -136,6 +130,6 @@ FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\
 
 ## Khẳng định cuối (theo audit này)
 
-**FAIL_VALIDATION**
+**PASS_AFTER_FIXES**
 
 > Nội dung: chỉ phản ánh **đầy đủ body import Postman + validator**; **không** tuyên bố PASS runtime production.

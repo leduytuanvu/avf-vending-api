@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-19T18:20:31.519725+00:00",
-  "gitCommit": "6527d502437f5137fb05c56d4851043b258afbc1",
-  "gitBranch": "main",
+  "generatedAt": "2026-05-27T08:41:13.720064+00:00",
+  "gitCommit": "527dda0058596a880cccbb413f77f8d8220c5102",
+  "gitBranch": "qa/market-readiness-full-flow-validation",
   "swaggerSource": "docs/swagger/swagger.json",
   "protoSources": [
     "proto/avf/internal/v1/catalog_query.proto",
@@ -28,21 +28,21 @@
     "internal/platform/mqtt/topics.go",
     "docs/api/mqtt-contract.md"
   ],
-  "restExpectedCount": 327,
-  "restActualCount": 327,
+  "restExpectedCount": 329,
+  "restActualCount": 329,
   "grpcExpectedCount": 86,
   "grpcActualCount": 86,
   "mqttExpectedCount": 28,
   "mqttActualCount": 28,
-  "restCollectionRequestCount": 327,
+  "restCollectionRequestCount": 329,
   "filesGenerated": [
     {
       "path": "05_PRODUCTION_TEST_EXECUTION_ORDER.md",
-      "sha256": "e715501e07d3cd50243931f1877a85ad72f810c0217d0a0c512fc9998f1f7802"
+      "sha256": "e65bc8422a7a2477ef722991c3bb86158cb320fd82a2a14eaace1a03a2611240"
     },
     {
       "path": "06_COMPLETENESS_AUDIT.csv",
-      "sha256": "03a91b9ac49912bfe8d4e0d51d9c32a60804965e8c14822eec865278ddc431f3"
+      "sha256": "4de5a37ad7c9bd9095abe2f76ce3c487cd7ebce5c749ac8c6dd0de8aec278c89"
     },
     {
       "path": "audit_postman_variables.py",
@@ -50,7 +50,7 @@
     },
     {
       "path": "AVF_FULL_100.postman_collection.json",
-      "sha256": "c027d1c1bb8c0d0739ab4b7c258f662ba437761c214de6cb44013e0875718a54"
+      "sha256": "5b373f5eed7d7cdf9e769ee7210c29abb576a9ab4da66aea0ddaffc952dcc2b7"
     },
     {
       "path": "AVF_FULL_100.postman_environment.json",
@@ -58,11 +58,11 @@
     },
     {
       "path": "AVF_FULL_100_OPERATION_MATRIX.csv",
-      "sha256": "d25f2940d872e332c8a4da35356786fb61e1d9fe1e805db5a75278fc0e3b8d74"
+      "sha256": "79c572795ea4621304594e2e8deb6841c5981e0d53edde506b122d9819e35317"
     },
     {
       "path": "AVF_FULL_100_OPERATION_MATRIX.md",
-      "sha256": "5c317c3f81116e3b4702a1e4d49c808e92900d0493bdfc43634122b0c6280154"
+      "sha256": "d0f6411571eff34302578a9b9f5162ad720b15ecd1d37d5471828695f85821d9"
     },
     {
       "path": "AVF_PRODUCTION.postman_environment.json",
@@ -70,19 +70,19 @@
     },
     {
       "path": "AVF_REST_365_FULL.postman_collection.json",
-      "sha256": "79b777085e44b1743edf1b21906bc6295f48979f3fc3dbab23ec481bc584cd28"
+      "sha256": "3195bad9fd90e6aa976a0956eb20e84f9d470961c1208ecef82843c764390399"
     },
     {
       "path": "AVF_REST_365_OPERATION_MATRIX.csv",
-      "sha256": "80d2c8b0e04920a539d8bf3d69ed170dd8b3c431a7d12383f2296165f4e05ec9"
+      "sha256": "9748e6eed01a4adcb66d10341bacdf9bd9143bc0892ce3582df7bf530efce8b5"
     },
     {
       "path": "AVF_REST_365_OPERATION_MATRIX.md",
-      "sha256": "63509545e6a282afe8ccf42e7069a250375ff5ed687d5e10712ce4d22083233e"
+      "sha256": "e42c58d8d72dec78b438738f065b77246de0657dc886e9aea3602ccbba97ee11"
     },
     {
       "path": "generate_full_postman_suite.py",
-      "sha256": "a94243b11f22005b1eb2d7a4f54c600132b7e3bcd343d381679a91c1e77d7a94"
+      "sha256": "8d4c6904325386c446da7c0790f55c0f5abd1e6b7dc149e033e4e38263066ec5"
     },
     {
       "path": "grpc/avf_all_services.proto",
@@ -142,7 +142,7 @@
     },
     {
       "path": "grpc/proto/avf/machine/v1/catalog.proto",
-      "sha256": "496da45cd39a4fcbad440d46663d9aa2141408861ce8acc2e79b750f60e33ac7"
+      "sha256": "5aba2769afab8d3ba0e410270634a1334ef9e7a230fdc7eb9f7e10ae3156c5dc"
     },
     {
       "path": "grpc/proto/avf/machine/v1/command.proto",
@@ -242,7 +242,7 @@
     },
     {
       "path": "POSTMAN_IMPORT_VALIDATION_REPORT.md",
-      "sha256": "19b40ccef18df0d06350a4de874e1fe45f5c2c12ce55ecbee5b2c1031eab340d"
+      "sha256": "20400caae1e93ebb82e16459ebbc6f1d30e8acc8e85c886f640bc2f6ab915a30"
     },
     {
       "path": "POSTMAN_VARIABLE_AUDIT_REPORT.md",
@@ -254,11 +254,11 @@
     },
     {
       "path": "REST_COVERAGE_AUDIT.md",
-      "sha256": "c20ec7267cd00ffb704fa41541cc7b94ae1a5a6c6c7913c83a49320bdfc2f97e"
+      "sha256": "d094506f3254b76f62c7aa8c61f4be06c1cda3669291925ee4c12134909a6c37"
     },
     {
       "path": "validate_generated_assets.py",
-      "sha256": "d707b453949bbfd9f856048d6ef256b3e530957390808e2115bb784bd651aaac"
+      "sha256": "91eebe09273997a799594c91b8e8ae46b5a205b614da2666db9b1a6bfe5f7fe1"
     }
   ],
   "notesExcludedFromSha256": [

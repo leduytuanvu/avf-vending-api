@@ -2,15 +2,15 @@
 
 ## Thông tin audit
 
-- **Timestamp (UTC):** 2026-05-19T18:20:31.519725+00:00
-- **git commit:** 6527d502437f5137fb05c56d4851043b258afbc1
-- **git branch:** main
+- **Timestamp (UTC):** 2026-05-27T08:41:13.720064+00:00
+- **git commit:** 527dda0058596a880cccbb413f77f8d8220c5102
+- **git branch:** qa/market-readiness-full-flow-validation
 
 ## Đếm từ source of truth / artifact
 
 | Layer | Source count | Artifact count |
 |-------|--------------|----------------|
-| REST operations (swagger) | 327 | collection requests 327; matrix rows 327 |
+| REST operations (swagger) | 329 | collection requests 329; matrix rows 329 |
 | gRPC methods (proto inventory) | 86 | templates 86; matrix rows 86 |
 | MQTT rows (topics.go + contract) | 28 | templates/matrix 28 |
 
@@ -18,9 +18,9 @@
 
 | Item | Value |
 |------|-------|
-| `AVF_FULL_100.postman_collection.json` requests | **327** (expect **327**) |
+| `AVF_FULL_100.postman_collection.json` requests | **329** (expect **329**) |
 | `avf_full_100_postman_suite.zip` | generated after variable audit |
-| Final verdict (tooling-only) | **NOT_READY_WITH_BLOCKERS** |
+| Final verdict (tooling-only) | **READY_TO_IMPORT_POSTMAN_REST_AND_RUN_GRPC_MQTT_ADJACENT** |
 
 > gRPC/MQTT: **grpcurl** + **mosquitto** adjacent scripts — not Newman HTTP.
 
@@ -69,20 +69,13 @@ python -m json.tool postman/suites/full-production-suite/mqtt/mqtt_request_templ
 ## Kết quả validation (stdout/stderr snapshot)
 
 ```text
-Traceback (most recent call last):
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 882, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 665, in main
-    spec = json.loads(SWAGGER.read_text(encoding="utf-8"))
-                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 787, in read_text
-    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
-         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 771, in open
-    return io.open(self, mode, buffering, encoding, errors, newline)
-           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\docs\\swagger\\swagger.json'
+VALIDATION_PASS
+openapi_operations: 329
+postman_requests: 329
+grpc_templates: 86
+mqtt_templates: 28
+manifest_finalStatus: PASS_IMPORT_ASSETS_COMPLETE
+openapi_idempotency_ops: 92
 ```
 
 ## Cổng an toàn
@@ -96,6 +89,6 @@ FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\
 
 ## Final claim
 
-**FAIL_IMPORT_INVALID**
+**PASS_AFTER_FIXES**
 
 > Lưu ý: Báo cáo này phản ánh **validator chạy ngay sau khi ghi manifest** (trước file báo cáo này). Nếu `final claim` là **PASS_IMPORT_ASSETS_COMPLETE**, số liệu REST/gRPC/MQTT khớp và `VALIDATION_PASS`.

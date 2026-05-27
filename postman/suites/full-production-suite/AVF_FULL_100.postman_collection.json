@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "e250b177-17b7-1b90-8573-f7062a0eaa60",
     "name": "AVF FULL 100 — REST OpenAPI parity (production inventory)",
-    "description": "Generated from `docs/swagger/swagger.json`. HTTP requests: **327** (equals OpenAPI operation count). Write requests default **disabled**; pre-request enforces `allow_destructive|canaryMode|readiness`. gRPC/MQTT are **not** executed by Newman — use adjacent shell assets.\n\nImport environment `AVF_FULL_100.postman_environment.json`.",
+    "description": "Generated from `docs/swagger/swagger.json`. HTTP requests: **329** (equals OpenAPI operation count). Write requests default **disabled**; pre-request enforces `allow_destructive|canaryMode|readiness`. gRPC/MQTT are **not** executed by Newman — use adjacent shell assets.\n\nImport environment `AVF_FULL_100.postman_environment.json`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -57957,6 +57957,214 @@
           ]
         },
         {
+          "name": "[GATED-WRITE] POST /v1/admin/media/external-images",
+          "description": "openapiOperationId: Doc‌OpV1AdminExternalProductImageRegister",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-ID",
+                "value": "{{_runtimeRequestId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{_runtimeCorrelationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/media/external-images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "media",
+                "external-images"
+              ]
+            },
+            "description": "### operationId (đối chiếu OpenAPI)\n`DocOpV1AdminExternalProductImageRegister`\n\n### Mục đích / API dùng để làm gì\nRegister external product image URL\n\n### Khi nào gọi / gọi sau bước nào\nTheo tag **Catalog Admin** và thứ tự trong `docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md` và `postman/suites/full-production-suite/05_PRODUCTION_TEST_EXECUTION_ORDER.md`. Nếu cần auth: gọi `POST /v1/auth/login` trước, sau đó `GET /v1/auth/me` để xác nhận principal.\n### Request truyền gì\nBiến Postman trên path/query/header; body mẫu sinh từ OpenAPI và chuẩn hoá **canary** (tránh 409).\n\n### Response nhận gì\nHTTP + body theo schema 2xx trong `docs/swagger/swagger.json`; lỗi chuẩn envelope JSON (`error.code`, `requestId`).\n\n### Evidence cần lưu\nHTTP status, `requestId`/`X-Request-ID`, `X-Correlation-ID`, `error` nếu có — **không** lưu/jwt/raw password.\n\n### Lỗi thường gặp\n- **401** unauthenticated — thiếu/sai JWT.\n- **403** forbidden — RBAC.\n- **404** không tìm thấy resource hoặc route tắt (metrics/swagger tùy cấu hình).\n- **409** conflict / idempotency replay.\n- **500** lỗi máy chủ.\n\n### Auth\nCó — Bearer JWT (`{{accessToken}}`). Với machine JWT: đặt `accessToken` = giá trị machine token (hoặc dùng biến `machineToken` và copy thủ công vào header nếu bạn tách biến).\n\n### Có destructive không?\nMức: **DESTRUCTIVE_CANARY_ONLY**. Request ghi mặc định **disabled** trong Postman; pre-request **throw** nếu chưa đặt `allow_destructive` / `canaryMode` / `readiness`.\n",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{resource_uuid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "disabled": true,
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* prerequest: gate destructive — không log secret */",
+                  "const destLevel = 'DESTRUCTIVE_CANARY_ONLY';",
+                  "const requestPath = '/v1/admin/media/external-images';",
+                  "const allow = pm.environment.get('allow_destructive') === 'true';",
+                  "const canaryMode = pm.environment.get('canaryMode') === 'true';",
+                  "const readiness = pm.environment.get('readiness') === 'true';",
+                  "const gateOk = allow || canaryMode || readiness;",
+                  "const method = 'POST';",
+                  "const isWrite = ['POST','PUT','PATCH','DELETE'].indexOf(method) >= 0;",
+                  "if (destLevel !== 'READ_ONLY' && destLevel !== 'AUTH_PUBLIC_WRITE' && isWrite && !gateOk) {",
+                  "  throw new Error('[GATED] Cần allow_destructive=true HOẶC canaryMode=true HOẶC readiness=true để chạy request ghi này (kể cả khi đã bật request trong Postman).');",
+                  "}",
+                  "if (gateOk && isWrite && (requestPath.indexOf('/v1/device/') >= 0 || requestPath.indexOf('/v1/commerce') >= 0) && !(pm.environment.get('canary_machine_id') || pm.environment.get('machineId'))) {",
+                  "  throw new Error('Thiếu canary_machine_id hoặc machineId cho luồng machine/commerce');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "/* global pm */",
+                  "const reqPath = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join(\"/\") : \"\";",
+                  "if (reqPath.indexOf(\"metrics\") >= 0) {",
+                  "  pm.test(\"/metrics: chấp nhận 200 / 401 / 404 (public prod có thể 404)\", function () {",
+                  "    pm.expect([200, 401, 404]).to.include(pm.response.code);",
+                  "  });",
+                  "} else {",
+                  "  pm.test(\"Status code is not 500 (mặc định)\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "  });",
+                  "}",
+                  "",
+                  "if (pm.request.url && pm.request.url.path && pm.request.url.path.join(\"/\").indexOf(\"v1/auth/login\") >= 0 && pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    const at = j.access_token || j.accessToken;",
+                  "    const rt = j.refresh_token || j.refreshToken;",
+                  "    const u = j.user || {};",
+                  "    if (at) { pm.environment.set(\"accessToken\", at); }",
+                  "    if (rt) { pm.environment.set(\"refreshToken\", rt); }",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "if (pm.request.url && pm.request.url.path && pm.request.url.path.join(\"/\").indexOf(\"v1/auth/me\") >= 0 && pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    const u = j.user || j;",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "",
+                  "const gateCapture =",
+                  "  pm.environment.get(\"allow_destructive\") === \"true\" ||",
+                  "  pm.environment.get(\"canaryMode\") === \"true\" ||",
+                  "  pm.environment.get(\"readiness\") === \"true\";",
+                  "const reqPath2 = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join(\"/\") : \"\";",
+                  "const method2 = (pm.request.method || \"\").toUpperCase();",
+                  "const setNonEmpty = (k, v) => {",
+                  "  if (v === undefined || v === null) return;",
+                  "  const s = String(v).trim();",
+                  "  if (!s.length) return;",
+                  "  pm.environment.set(k, s);",
+                  "};",
+                  "if (gateCapture && pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    setNonEmpty(\"orderId\", j.order_id || j.orderId);",
+                  "    setNonEmpty(\"machineId\", j.machine_id || j.machineId);",
+                  "    setNonEmpty(\"siteId\", j.site_id || j.siteId);",
+                  "    setNonEmpty(\"productId\", j.product_id || j.productId);",
+                  "    setNonEmpty(\"paymentSessionId\", j.payment_session_id || j.paymentSessionId);",
+                  "    setNonEmpty(\"planogramId\", j.planogram_id || j.planogramId);",
+                  "    setNonEmpty(\"slotId\", j.slot_id || j.slotId);",
+                  "    setNonEmpty(\"mediaId\", j.media_id || j.mediaId);",
+                  "    setNonEmpty(\"priceBookId\", j.price_book_id || j.priceBookId);",
+                  "    setNonEmpty(\"promotionId\", j.promotion_id || j.promotionId);",
+                  "    setNonEmpty(\"technicianId\", j.technician_id || j.technicianId);",
+                  "    setNonEmpty(\"tagId\", j.tag_id || j.tagId);",
+                  "    setNonEmpty(\"reportId\", j.report_id || j.reportId);",
+                  "    setNonEmpty(\"commandId\", j.command_id || j.commandId);",
+                  "    setNonEmpty(\"machineToken\", j.machine_token || j.machineToken);",
+                  "    setNonEmpty(\"activationCode\", j.activation_code || j.activationCode);",
+                  "    const actPath =",
+                  "      reqPath2.indexOf(\"activation\") >= 0 ||",
+                  "      reqPath2.indexOf(\"activate\") >= 0 ||",
+                  "      reqPath2.indexOf(\"claim\") >= 0;",
+                  "    if (",
+                  "      actPath &&",
+                  "      !(j.activation_code || j.activationCode) &&",
+                  "      typeof j.code === \"string\" &&",
+                  "      String(j.code).trim().length",
+                  "    ) {",
+                  "      setNonEmpty(\"activationCode\", j.code);",
+                  "    }",
+                  "    setNonEmpty(\"operatorSessionId\", j.operator_session_id || j.operatorSessionId);",
+                  "    const topId = j.id;",
+                  "    if (topId) {",
+                  "      if (method2 === \"POST\" && reqPath2.indexOf(\"v1/admin/sites\") >= 0 && !j.site_id && !j.siteId) {",
+                  "        setNonEmpty(\"siteId\", topId);",
+                  "      } else if (method2 === \"POST\" && reqPath2.indexOf(\"v1/admin/products\") >= 0 && !j.product_id && !j.productId) {",
+                  "        setNonEmpty(\"productId\", topId);",
+                  "      } else if (method2 === \"POST\" && (reqPath2.indexOf(\"v1/admin/machines\") >= 0 || reqPath2.indexOf(\"v1/machines\") >= 0) && !j.machine_id && !j.machineId) {",
+                  "        setNonEmpty(\"machineId\", topId);",
+                  "      } else if ((reqPath2.indexOf(\"v1/commerce\") >= 0 || reqPath2.indexOf(\"/orders\") >= 0) && !j.order_id && !j.orderId) {",
+                  "        setNonEmpty(\"orderId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"payment\") >= 0 && !j.payment_session_id && !j.paymentSessionId) {",
+                  "        setNonEmpty(\"paymentSessionId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"command\") >= 0 && !j.command_id && !j.commandId) {",
+                  "        setNonEmpty(\"commandId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"operator\") >= 0 && !j.operator_session_id && !j.operatorSessionId) {",
+                  "        setNonEmpty(\"operatorSessionId\", topId);",
+                  "      }",
+                  "    }",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "",
+                  "if (pm.response.code >= 400) {",
+                  "  pm.test(\"JSON error envelope (when body parses)\", function () {",
+                  "    try {",
+                  "      const j = pm.response.json();",
+                  "      if (j && j.error && typeof j.error === \"object\") {",
+                  "        pm.expect(j.error).to.have.property(\"code\");",
+                  "        pm.expect(j.error).to.have.property(\"message\");",
+                  "        const rid = j.error.requestId || j.error.request_id;",
+                  "        if (rid !== undefined && rid !== null && String(rid).trim().length) {",
+                  "          pm.expect(String(rid).trim().length).to.be.above(0);",
+                  "        }",
+                  "      }",
+                  "    } catch (e) { /* non-JSON body */ }",
+                  "  });",
+                  "}",
+                  "",
+                  "if ((pm.environment.get(\"allow_destructive\") === \"true\" || pm.environment.get(\"canaryMode\") === \"true\") && pm.environment.get(\"readiness\") === \"true\") {",
+                  "  pm.test(\"Canary — kỳ vọng 2xx khi readiness=true\", function () {",
+                  "    pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "  });",
+                  "}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "[GATED-WRITE] POST /v1/admin/media/uploads",
           "description": "openapiOperationId: Doc‌OpV1AdminMediaUploadInit",
           "request": {
@@ -62697,6 +62905,216 @@
                   "if (gateOk && isWrite && (requestPath.indexOf('/v1/device/') >= 0 || requestPath.indexOf('/v1/commerce') >= 0) && !(pm.environment.get('canary_machine_id') || pm.environment.get('machineId'))) {",
                   "  throw new Error('Thiếu canary_machine_id hoặc machineId cho luồng machine/commerce');",
                   "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "",
+                  "/* global pm */",
+                  "const reqPath = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join(\"/\") : \"\";",
+                  "if (reqPath.indexOf(\"metrics\") >= 0) {",
+                  "  pm.test(\"/metrics: chấp nhận 200 / 401 / 404 (public prod có thể 404)\", function () {",
+                  "    pm.expect([200, 401, 404]).to.include(pm.response.code);",
+                  "  });",
+                  "} else {",
+                  "  pm.test(\"Status code is not 500 (mặc định)\", function () {",
+                  "    pm.expect(pm.response.code).to.not.equal(500);",
+                  "  });",
+                  "}",
+                  "",
+                  "if (pm.request.url && pm.request.url.path && pm.request.url.path.join(\"/\").indexOf(\"v1/auth/login\") >= 0 && pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    const at = j.access_token || j.accessToken;",
+                  "    const rt = j.refresh_token || j.refreshToken;",
+                  "    const u = j.user || {};",
+                  "    if (at) { pm.environment.set(\"accessToken\", at); }",
+                  "    if (rt) { pm.environment.set(\"refreshToken\", rt); }",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "if (pm.request.url && pm.request.url.path && pm.request.url.path.join(\"/\").indexOf(\"v1/auth/me\") >= 0 && pm.response.code === 200) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    const u = j.user || j;",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "",
+                  "const gateCapture =",
+                  "  pm.environment.get(\"allow_destructive\") === \"true\" ||",
+                  "  pm.environment.get(\"canaryMode\") === \"true\" ||",
+                  "  pm.environment.get(\"readiness\") === \"true\";",
+                  "const reqPath2 = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join(\"/\") : \"\";",
+                  "const method2 = (pm.request.method || \"\").toUpperCase();",
+                  "const setNonEmpty = (k, v) => {",
+                  "  if (v === undefined || v === null) return;",
+                  "  const s = String(v).trim();",
+                  "  if (!s.length) return;",
+                  "  pm.environment.set(k, s);",
+                  "};",
+                  "if (gateCapture && pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  try {",
+                  "    const j = pm.response.json();",
+                  "    setNonEmpty(\"orderId\", j.order_id || j.orderId);",
+                  "    setNonEmpty(\"machineId\", j.machine_id || j.machineId);",
+                  "    setNonEmpty(\"siteId\", j.site_id || j.siteId);",
+                  "    setNonEmpty(\"productId\", j.product_id || j.productId);",
+                  "    setNonEmpty(\"paymentSessionId\", j.payment_session_id || j.paymentSessionId);",
+                  "    setNonEmpty(\"planogramId\", j.planogram_id || j.planogramId);",
+                  "    setNonEmpty(\"slotId\", j.slot_id || j.slotId);",
+                  "    setNonEmpty(\"mediaId\", j.media_id || j.mediaId);",
+                  "    setNonEmpty(\"priceBookId\", j.price_book_id || j.priceBookId);",
+                  "    setNonEmpty(\"promotionId\", j.promotion_id || j.promotionId);",
+                  "    setNonEmpty(\"technicianId\", j.technician_id || j.technicianId);",
+                  "    setNonEmpty(\"tagId\", j.tag_id || j.tagId);",
+                  "    setNonEmpty(\"reportId\", j.report_id || j.reportId);",
+                  "    setNonEmpty(\"commandId\", j.command_id || j.commandId);",
+                  "    setNonEmpty(\"machineToken\", j.machine_token || j.machineToken);",
+                  "    setNonEmpty(\"activationCode\", j.activation_code || j.activationCode);",
+                  "    const actPath =",
+                  "      reqPath2.indexOf(\"activation\") >= 0 ||",
+                  "      reqPath2.indexOf(\"activate\") >= 0 ||",
+                  "      reqPath2.indexOf(\"claim\") >= 0;",
+                  "    if (",
+                  "      actPath &&",
+                  "      !(j.activation_code || j.activationCode) &&",
+                  "      typeof j.code === \"string\" &&",
+                  "      String(j.code).trim().length",
+                  "    ) {",
+                  "      setNonEmpty(\"activationCode\", j.code);",
+                  "    }",
+                  "    setNonEmpty(\"operatorSessionId\", j.operator_session_id || j.operatorSessionId);",
+                  "    const topId = j.id;",
+                  "    if (topId) {",
+                  "      if (method2 === \"POST\" && reqPath2.indexOf(\"v1/admin/sites\") >= 0 && !j.site_id && !j.siteId) {",
+                  "        setNonEmpty(\"siteId\", topId);",
+                  "      } else if (method2 === \"POST\" && reqPath2.indexOf(\"v1/admin/products\") >= 0 && !j.product_id && !j.productId) {",
+                  "        setNonEmpty(\"productId\", topId);",
+                  "      } else if (method2 === \"POST\" && (reqPath2.indexOf(\"v1/admin/machines\") >= 0 || reqPath2.indexOf(\"v1/machines\") >= 0) && !j.machine_id && !j.machineId) {",
+                  "        setNonEmpty(\"machineId\", topId);",
+                  "      } else if ((reqPath2.indexOf(\"v1/commerce\") >= 0 || reqPath2.indexOf(\"/orders\") >= 0) && !j.order_id && !j.orderId) {",
+                  "        setNonEmpty(\"orderId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"payment\") >= 0 && !j.payment_session_id && !j.paymentSessionId) {",
+                  "        setNonEmpty(\"paymentSessionId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"command\") >= 0 && !j.command_id && !j.commandId) {",
+                  "        setNonEmpty(\"commandId\", topId);",
+                  "      } else if (reqPath2.indexOf(\"operator\") >= 0 && !j.operator_session_id && !j.operatorSessionId) {",
+                  "        setNonEmpty(\"operatorSessionId\", topId);",
+                  "      }",
+                  "    }",
+                  "  } catch (e) { /* ignore */ }",
+                  "}",
+                  "",
+                  "if (pm.response.code >= 400) {",
+                  "  pm.test(\"JSON error envelope (when body parses)\", function () {",
+                  "    try {",
+                  "      const j = pm.response.json();",
+                  "      if (j && j.error && typeof j.error === \"object\") {",
+                  "        pm.expect(j.error).to.have.property(\"code\");",
+                  "        pm.expect(j.error).to.have.property(\"message\");",
+                  "        const rid = j.error.requestId || j.error.request_id;",
+                  "        if (rid !== undefined && rid !== null && String(rid).trim().length) {",
+                  "          pm.expect(String(rid).trim().length).to.be.above(0);",
+                  "        }",
+                  "      }",
+                  "    } catch (e) { /* non-JSON body */ }",
+                  "  });",
+                  "}",
+                  "",
+                  "if ((pm.environment.get(\"allow_destructive\") === \"true\" || pm.environment.get(\"canaryMode\") === \"true\") && pm.environment.get(\"readiness\") === \"true\") {",
+                  "  pm.test(\"Canary — kỳ vọng 2xx khi readiness=true\", function () {",
+                  "    pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "  });",
+                  "}",
+                  ""
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[GATED-WRITE] POST /v1/admin/product-images",
+          "description": "openapiOperationId: Doc‌OpV1AdminProductImageUpload",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Request-ID",
+                "value": "{{_runtimeRequestId}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{_runtimeCorrelationId}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{_runtimeIdempotencyKey}}",
+                "type": "text"
+              },
+              {
+                "key": "X-Idempotency-Key",
+                "value": "{{_runtimeIdempotencyKey}}",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/product-images",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "product-images"
+              ]
+            },
+            "description": "### operationId (đối chiếu OpenAPI)\n`DocOpV1AdminProductImageUpload`\n\n### Mục đích / API dùng để làm gì\nUpload product image file (Cloudinary)\n\n### Khi nào gọi / gọi sau bước nào\nTheo tag **Media Admin** và thứ tự trong `docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md` và `postman/suites/full-production-suite/05_PRODUCTION_TEST_EXECUTION_ORDER.md`. Nếu cần auth: gọi `POST /v1/auth/login` trước, sau đó `GET /v1/auth/me` để xác nhận principal.\n### Request truyền gì\nBiến Postman trên path/query/header; body mẫu sinh từ OpenAPI và chuẩn hoá **canary** (tránh 409).\n\n### Response nhận gì\nHTTP + body theo schema 2xx trong `docs/swagger/swagger.json`; lỗi chuẩn envelope JSON (`error.code`, `requestId`).\n\n### Evidence cần lưu\nHTTP status, `requestId`/`X-Request-ID`, `X-Correlation-ID`, `error` nếu có — **không** lưu/jwt/raw password.\n\n### Lỗi thường gặp\n- **401** unauthenticated — thiếu/sai JWT.\n- **403** forbidden — RBAC.\n- **404** không tìm thấy resource hoặc route tắt (metrics/swagger tùy cấu hình).\n- **409** conflict / idempotency replay.\n- **500** lỗi máy chủ.\n\n### Auth\nCó — Bearer JWT (`{{accessToken}}`). Với machine JWT: đặt `accessToken` = giá trị machine token (hoặc dùng biến `machineToken` và copy thủ công vào header nếu bạn tách biến).\n\n### Có destructive không?\nMức: **DESTRUCTIVE_CANARY_ONLY**. Request ghi mặc định **disabled** trong Postman; pre-request **throw** nếu chưa đặt `allow_destructive` / `canaryMode` / `readiness`.\n"
+          },
+          "response": [],
+          "disabled": true,
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "/* prerequest: gate destructive — không log secret */",
+                  "const destLevel = 'DESTRUCTIVE_CANARY_ONLY';",
+                  "const requestPath = '/v1/admin/product-images';",
+                  "const allow = pm.environment.get('allow_destructive') === 'true';",
+                  "const canaryMode = pm.environment.get('canaryMode') === 'true';",
+                  "const readiness = pm.environment.get('readiness') === 'true';",
+                  "const gateOk = allow || canaryMode || readiness;",
+                  "const method = 'POST';",
+                  "const isWrite = ['POST','PUT','PATCH','DELETE'].indexOf(method) >= 0;",
+                  "if (destLevel !== 'READ_ONLY' && destLevel !== 'AUTH_PUBLIC_WRITE' && isWrite && !gateOk) {",
+                  "  throw new Error('[GATED] Cần allow_destructive=true HOẶC canaryMode=true HOẶC readiness=true để chạy request ghi này (kể cả khi đã bật request trong Postman).');",
+                  "}",
+                  "if (gateOk && isWrite && (requestPath.indexOf('/v1/device/') >= 0 || requestPath.indexOf('/v1/commerce') >= 0) && !(pm.environment.get('canary_machine_id') || pm.environment.get('machineId'))) {",
+                  "  throw new Error('Thiếu canary_machine_id hoặc machineId cho luồng machine/commerce');",
+                  "}",
+                  "(function () {",
+                  "  let v = pm.environment.get('idempotencyKey');",
+                  "  if (!v || !String(v).trim()) {",
+                  "    v = pm.variables.replaceIn('avf-postman-{{$timestamp}}-{{$guid}}');",
+                  "  }",
+                  "  pm.collectionVariables.set('_runtimeIdempotencyKey', String(v));",
+                  "})();"
                 ]
               }
             },
@@ -67824,112 +68242,117 @@
       "item": [
         {
           "name": "Activation",
-          "description": "Mục lục các operation OpenAPI có tag **Activation** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminActivationCodesCatalogList` — GET /v1/admin/activation-codes\n- `DocOpV1AdminActivationCodesCatalogCreate` — POST /v1/admin/activation-codes\n- `DocOpV1AdminActivationCodeCatalogRevoke` — POST /v1/admin/activation-codes/{codeId}/revoke\n- `DocOpV1SetupActivationClaimPost` — POST /v1/setup/activation-codes/claim\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Activation** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminActivationCodesCatalogList` — GET /v1/admin/activation-codes\n- `DocOpV1AdminActivationCodesCatalogCreate` — POST /v1/admin/activation-codes\n- `DocOpV1AdminActivationCodeCatalogRevoke` — POST /v1/admin/activation-codes/{codeId}/revoke\n- `DocOpV1SetupActivationClaimPost` — POST /v1/setup/activation-codes/claim\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Artifacts",
-          "description": "Mục lục các operation OpenAPI có tag **Artifacts** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminArtifactsList` — GET /v1/admin/artifacts\n- `DocOpV1AdminArtifactsReserve` — POST /v1/admin/artifacts\n- `DocOpV1AdminArtifactsDelete` — DELETE /v1/admin/artifacts/{artifactId}\n- `DocOpV1AdminArtifactsGet` — GET /v1/admin/artifacts/{artifactId}\n- `DocOpV1AdminArtifactsPutContent` — PUT /v1/admin/artifacts/{artifactId}/content\n- `DocOpV1AdminArtifactsDownloadURL` — GET /v1/admin/artifacts/{artifactId}/download\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Artifacts** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminArtifactsList` — GET /v1/admin/artifacts\n- `DocOpV1AdminArtifactsReserve` — POST /v1/admin/artifacts\n- `DocOpV1AdminArtifactsDelete` — DELETE /v1/admin/artifacts/{artifactId}\n- `DocOpV1AdminArtifactsGet` — GET /v1/admin/artifacts/{artifactId}\n- `DocOpV1AdminArtifactsPutContent` — PUT /v1/admin/artifacts/{artifactId}/content\n- `DocOpV1AdminArtifactsDownloadURL` — GET /v1/admin/artifacts/{artifactId}/download\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Audit Admin",
-          "description": "Mục lục các operation OpenAPI có tag **Audit Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAuditEventsList` — GET /v1/admin/audit/events\n- `DocOpV1AdminAuditEventGet` — GET /v1/admin/audit/events/{auditEventId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Audit Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAuditEventsList` — GET /v1/admin/audit/events\n- `DocOpV1AdminAuditEventGet` — GET /v1/admin/audit/events/{auditEventId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Auth",
-          "description": "Mục lục các operation OpenAPI có tag **Auth** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AuthChangePassword` — POST /v1/auth/change-password\n- `DocOpV1AuthLogin` — POST /v1/auth/login\n- `DocOpV1AuthLogout` — POST /v1/auth/logout\n- `DocOpV1AuthMe` — GET /v1/auth/me\n- `DocOpV1AuthMFADisable` — POST /v1/auth/mfa/totp/disable\n- `DocOpV1AuthMFAEnroll` — POST /v1/auth/mfa/totp/enroll\n- `DocOpV1AuthMFAVerify` — POST /v1/auth/mfa/totp/verify\n- `DocOpV1AuthPasswordChange` — POST /v1/auth/password/change\n- `DocOpV1AuthPasswordResetConfirm` — POST /v1/auth/password/reset/confirm\n- `DocOpV1AuthPasswordResetRequest` — POST /v1/auth/password/reset/request\n- `DocOpV1AuthRefresh` — POST /v1/auth/refresh\n- `DocOpV1AuthSessionsRevokeOthers` — DELETE /v1/auth/sessions\n- `DocOpV1AuthSessionsList` — GET /v1/auth/sessions\n- `DocOpV1AuthSessionDelete` — DELETE /v1/auth/sessions/{sessionId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Auth** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AuthChangePassword` — POST /v1/auth/change-password\n- `DocOpV1AuthLogin` — POST /v1/auth/login\n- `DocOpV1AuthLogout` — POST /v1/auth/logout\n- `DocOpV1AuthMe` — GET /v1/auth/me\n- `DocOpV1AuthMFADisable` — POST /v1/auth/mfa/totp/disable\n- `DocOpV1AuthMFAEnroll` — POST /v1/auth/mfa/totp/enroll\n- `DocOpV1AuthMFAVerify` — POST /v1/auth/mfa/totp/verify\n- `DocOpV1AuthPasswordChange` — POST /v1/auth/password/change\n- `DocOpV1AuthPasswordResetConfirm` — POST /v1/auth/password/reset/confirm\n- `DocOpV1AuthPasswordResetRequest` — POST /v1/auth/password/reset/request\n- `DocOpV1AuthRefresh` — POST /v1/auth/refresh\n- `DocOpV1AuthSessionsRevokeOthers` — DELETE /v1/auth/sessions\n- `DocOpV1AuthSessionsList` — GET /v1/auth/sessions\n- `DocOpV1AuthSessionDelete` — DELETE /v1/auth/sessions/{sessionId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Auth Admin",
-          "description": "Mục lục các operation OpenAPI có tag **Auth Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAuthUsersList` — GET /v1/admin/auth/users\n- `DocOpV1AdminAuthUsersCreate` — POST /v1/admin/auth/users\n- `DocOpV1AdminAuthUsersGet` — GET /v1/admin/auth/users/{accountId}\n- `DocOpV1AdminAuthUsersPatch` — PATCH /v1/admin/auth/users/{accountId}\n- `DocOpV1AdminAuthUsersActivate` — POST /v1/admin/auth/users/{accountId}/activate\n- `DocOpV1AdminAuthUsersDeactivate` — POST /v1/admin/auth/users/{accountId}/deactivate\n- `DocOpV1AdminAuthUsersResetPassword` — POST /v1/admin/auth/users/{accountId}/reset-password\n- `DocOpV1AdminAuthUsersRevokeSessions` — POST /v1/admin/auth/users/{accountId}/revoke-sessions\n- `DocOpV1AdminAuthUsersPatchRoles` — PATCH /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersPostRoles` — POST /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersPutRoles` — PUT /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersSessions` — GET /v1/admin/auth/users/{accountId}/sessions\n- `DocOpV1AdminAuthUsersPatchStatus` — PATCH /v1/admin/auth/users/{accountId}/status\n- `DocOpV1AdminUsersList` — GET /v1/admin/users\n- `DocOpV1AdminUsersCreate` — POST /v1/admin/users\n- `DocOpV1AdminUsersGet` — GET /v1/admin/users/{userId}\n- `DocOpV1AdminUsersPatch` — PATCH /v1/admin/users/{userId}\n- `DocOpV1AdminUsersDisable` — POST /v1/admin/users/{userId}/disable\n- `DocOpV1AdminUsersEnable` — POST /v1/admin/users/{userId}/enable\n- `DocOpV1AdminUsersResetPassword` — POST /v1/admin/users/{userId}/reset-password\n- `DocOpV1AdminUsersRevokeSessions` — POST /v1/admin/users/{userId}/revoke-sessions\n- `DocOpV1AdminUsersPatchRoles` — PATCH /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersPostRoles` — POST /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersPutRoles` — PUT /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersDeleteRole` — DELETE /v1/admin/users/{userId}/roles/{role}\n- `DocOpV1AdminUsersSessions` — GET /v1/admin/users/{userId}/sessions\n- `DocOpV1AdminUsersPatchStatus` — PATCH /v1/admin/users/{userId}/status\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Auth Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAuthUsersList` — GET /v1/admin/auth/users\n- `DocOpV1AdminAuthUsersCreate` — POST /v1/admin/auth/users\n- `DocOpV1AdminAuthUsersGet` — GET /v1/admin/auth/users/{accountId}\n- `DocOpV1AdminAuthUsersPatch` — PATCH /v1/admin/auth/users/{accountId}\n- `DocOpV1AdminAuthUsersActivate` — POST /v1/admin/auth/users/{accountId}/activate\n- `DocOpV1AdminAuthUsersDeactivate` — POST /v1/admin/auth/users/{accountId}/deactivate\n- `DocOpV1AdminAuthUsersResetPassword` — POST /v1/admin/auth/users/{accountId}/reset-password\n- `DocOpV1AdminAuthUsersRevokeSessions` — POST /v1/admin/auth/users/{accountId}/revoke-sessions\n- `DocOpV1AdminAuthUsersPatchRoles` — PATCH /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersPostRoles` — POST /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersPutRoles` — PUT /v1/admin/auth/users/{accountId}/roles\n- `DocOpV1AdminAuthUsersSessions` — GET /v1/admin/auth/users/{accountId}/sessions\n- `DocOpV1AdminAuthUsersPatchStatus` — PATCH /v1/admin/auth/users/{accountId}/status\n- `DocOpV1AdminUsersList` — GET /v1/admin/users\n- `DocOpV1AdminUsersCreate` — POST /v1/admin/users\n- `DocOpV1AdminUsersGet` — GET /v1/admin/users/{userId}\n- `DocOpV1AdminUsersPatch` — PATCH /v1/admin/users/{userId}\n- `DocOpV1AdminUsersDisable` — POST /v1/admin/users/{userId}/disable\n- `DocOpV1AdminUsersEnable` — POST /v1/admin/users/{userId}/enable\n- `DocOpV1AdminUsersResetPassword` — POST /v1/admin/users/{userId}/reset-password\n- `DocOpV1AdminUsersRevokeSessions` — POST /v1/admin/users/{userId}/revoke-sessions\n- `DocOpV1AdminUsersPatchRoles` — PATCH /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersPostRoles` — POST /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersPutRoles` — PUT /v1/admin/users/{userId}/roles\n- `DocOpV1AdminUsersDeleteRole` — DELETE /v1/admin/users/{userId}/roles/{role}\n- `DocOpV1AdminUsersSessions` — GET /v1/admin/users/{userId}/sessions\n- `DocOpV1AdminUsersPatchStatus` — PATCH /v1/admin/users/{userId}/status\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Cash settlement",
-          "description": "Mục lục các operation OpenAPI có tag **Cash settlement** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminMachineCashCollectionsList` — GET /v1/admin/machines/{machineId}/cash-collections\n- `DocOpV1AdminMachineCashCollectionsPost` — POST /v1/admin/machines/{machineId}/cash-collections\n- `DocOpV1AdminMachineCashCollectionGet` — GET /v1/admin/machines/{machineId}/cash-collections/{collectionId}\n- `DocOpV1AdminMachineCashCollectionClosePost` — POST /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close\n- `DocOpV1AdminMachineCashbox` — GET /v1/admin/machines/{machineId}/cashbox\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Cash settlement** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminMachineCashCollectionsList` — GET /v1/admin/machines/{machineId}/cash-collections\n- `DocOpV1AdminMachineCashCollectionsPost` — POST /v1/admin/machines/{machineId}/cash-collections\n- `DocOpV1AdminMachineCashCollectionGet` — GET /v1/admin/machines/{machineId}/cash-collections/{collectionId}\n- `DocOpV1AdminMachineCashCollectionClosePost` — POST /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close\n- `DocOpV1AdminMachineCashbox` — GET /v1/admin/machines/{machineId}/cashbox\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Catalog Admin",
-          "description": "Mục lục các operation OpenAPI có tag **Catalog Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminBrandsList` — GET /v1/admin/brands\n- `DocOpV1AdminBrandCreate` — POST /v1/admin/brands\n- `DocOpV1AdminBrandDelete` — DELETE /v1/admin/brands/{brandId}\n- `DocOpV1AdminBrandPatch` — PATCH /v1/admin/brands/{brandId}\n- `DocOpV1AdminBrandReplace` — PUT /v1/admin/brands/{brandId}\n- `DocOpV1AdminCategoriesList` — GET /v1/admin/categories\n- `DocOpV1AdminCategoryCreate` — POST /v1/admin/categories\n- `DocOpV1AdminCategoryDelete` — DELETE /v1/admin/categories/{categoryId}\n- `DocOpV1AdminCategoryPatch` — PATCH /v1/admin/categories/{categoryId}\n- `DocOpV1AdminCategoryReplace` — PUT /v1/admin/categories/{categoryId}\n- `DocOpV1AdminMediaList` — GET /v1/admin/media\n- `DocOpV1AdminMediaAssetsList` — GET /v1/admin/media/assets\n- `DocOpV1AdminMediaAssetsCreate` — POST /v1/admin/media/assets\n- `DocOpV1AdminMediaAssetDelete` — DELETE /v1/admin/media/assets/{mediaId}\n- `DocOpV1AdminMediaAssetGet` — GET /v1/admin/media/assets/{mediaId}\n- `DocOpV1AdminMediaUploadInit` — POST /v1/admin/media/uploads\n- `DocOpV1AdminMediaUploadInitV2` — POST /v1/admin/media/uploads/init\n- `DocOpV1AdminMediaUploadCompleteUploadsPrefix` — POST /v1/admin/media/uploads/{mediaId}/complete\n- `DocOpV1AdminMediaDelete` — DELETE /v1/admin/media/{mediaId}\n- `DocOpV1AdminMediaGet` — GET /v1/admin/media/{mediaId}\n- `DocOpV1AdminMediaUploadComplete` — POST /v1/admin/media/{mediaId}/complete\n- `DocOpV1AdminPlanogramsList` — GET /v1/admin/planograms\n- `DocOpV1AdminPlanogramGet` — GET /v1/admin/planograms/{planogramId}\n- `DocOpV1AdminPriceBooksList` — GET /v1/admin/price-books\n- `DocOpV1AdminPriceBookCreate` — POST /v1/admin/price-books\n- `DocOpV1AdminPriceBookGet` — GET /v1/admin/price-books/{priceBookId}\n- `DocOpV1AdminPriceBookPatch` — PATCH /v1/admin/price-books/{priceBookId}\n- `DocOpV1AdminPriceBookActivate` — POST /v1/admin/price-books/{priceBookId}/activate\n- `DocOpV1AdminPriceBookArchive` — POST /v1/admin/price-books/{priceBookId}/archive\n- `DocOpV1AdminPriceBookAssignTarget` — POST /v1/admin/price-books/{priceBookId}/assign-target\n- `DocOpV1AdminPriceBookDeactivate` — POST /v1/admin/price-books/{priceBookId}/deactivate\n- `DocOpV1AdminPriceBookItemsGet` — GET /v1/admin/price-books/{priceBookId}/items\n- `DocOpV1AdminPriceBookItemsPut` — PUT /v1/admin/price-books/{priceBookId}/items\n- `DocOpV1AdminPriceBookItemDelete` — DELETE /v1/admin/price-books/{priceBookId}/items/{productId}\n- `DocOpV1AdminPriceBookItemPatch` — PATCH /v1/admin/price-books/{priceBookId}/items/{productId}\n- `DocOpV1AdminPriceBookTargetDelete` — DELETE /v1/admin/price-books/{priceBookId}/targets/{targetId}\n- `DocOpV1AdminPricingPreview` — POST /v1/admin/pricing/preview\n- `DocOpV1AdminProductsList` — GET /v1/admin/products\n- `DocOpV1AdminProductCreate` — POST /v1/admin/products\n- `DocOpV1AdminProductDelete` — DELETE /v1/admin/products/{productId}\n- `DocOpV1AdminProductGet` — GET /v1/admin/products/{productId}\n- `DocOpV1AdminProductPatch` — PATCH /v1/admin/products/{productId}\n- `DocOpV1AdminProductReplace` — PUT /v1/admin/products/{productId}\n- `DocOpV1AdminProductImageDelete` — DELETE /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductImagePost` — POST /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductImagePut` — PUT /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductMediaBindPost` — POST /v1/admin/products/{productId}/media\n- `DocOpV1AdminProductMediaBindPut` — PUT /v1/admin/products/{productId}/media\n- `DocOpV1AdminProductMediaUnbind` — DELETE /v1/admin/products/{productId}/media/{mediaId}\n- `DocOpV1AdminPromotionsList` — GET /v1/admin/promotions\n- `DocOpV1AdminPromotionCreate` — POST /v1/admin/promotions\n- `DocOpV1AdminPromotionsPreview` — POST /v1/admin/promotions/preview\n- `DocOpV1AdminPromotionGet` — GET /v1/admin/promotions/{promotionId}\n- `DocOpV1AdminPromotionPatch` — PATCH /v1/admin/promotions/{promotionId}\n- `DocOpV1AdminPromotionActivate` — POST /v1/admin/promotions/{promotionId}/activate\n- `DocOpV1AdminPromotionArchive` — POST /v1/admin/promotions/{promotionId}/archive\n- `DocOpV1AdminPromotionAssignTarget` — POST /v1/admin/promotions/{promotionId}/assign-target\n- `DocOpV1AdminPromotionDeactivate` — POST /v1/admin/promotions/{promotionId}/deactivate\n- `DocOpV1AdminPromotionPause` — POST /v1/admin/promotions/{promotionId}/pause\n- `DocOpV1AdminPromotionTargetDelete` — DELETE /v1/admin/promotions/{promotionId}/targets/{targetId}\n- `DocOpV1AdminTagsList` — GET /v1/admin/tags\n- `DocOpV1AdminTagCreate` — POST /v1/admin/tags\n- `DocOpV1AdminTagDelete` — DELETE /v1/admin/tags/{tagId}\n- `DocOpV1AdminTagPatch` — PATCH /v1/admin/tags/{tagId}\n- `DocOpV1AdminTagReplace` — PUT /v1/admin/tags/{tagId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Catalog Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminBrandsList` — GET /v1/admin/brands\n- `DocOpV1AdminBrandCreate` — POST /v1/admin/brands\n- `DocOpV1AdminBrandDelete` — DELETE /v1/admin/brands/{brandId}\n- `DocOpV1AdminBrandPatch` — PATCH /v1/admin/brands/{brandId}\n- `DocOpV1AdminBrandReplace` — PUT /v1/admin/brands/{brandId}\n- `DocOpV1AdminCategoriesList` — GET /v1/admin/categories\n- `DocOpV1AdminCategoryCreate` — POST /v1/admin/categories\n- `DocOpV1AdminCategoryDelete` — DELETE /v1/admin/categories/{categoryId}\n- `DocOpV1AdminCategoryPatch` — PATCH /v1/admin/categories/{categoryId}\n- `DocOpV1AdminCategoryReplace` — PUT /v1/admin/categories/{categoryId}\n- `DocOpV1AdminMediaList` — GET /v1/admin/media\n- `DocOpV1AdminMediaAssetsList` — GET /v1/admin/media/assets\n- `DocOpV1AdminMediaAssetsCreate` — POST /v1/admin/media/assets\n- `DocOpV1AdminMediaAssetDelete` — DELETE /v1/admin/media/assets/{mediaId}\n- `DocOpV1AdminMediaAssetGet` — GET /v1/admin/media/assets/{mediaId}\n- `DocOpV1AdminExternalProductImageRegister` — POST /v1/admin/media/external-images\n- `DocOpV1AdminMediaUploadInit` — POST /v1/admin/media/uploads\n- `DocOpV1AdminMediaUploadInitV2` — POST /v1/admin/media/uploads/init\n- `DocOpV1AdminMediaUploadCompleteUploadsPrefix` — POST /v1/admin/media/uploads/{mediaId}/complete\n- `DocOpV1AdminMediaDelete` — DELETE /v1/admin/media/{mediaId}\n- `DocOpV1AdminMediaGet` — GET /v1/admin/media/{mediaId}\n- `DocOpV1AdminMediaUploadComplete` — POST /v1/admin/media/{mediaId}/complete\n- `DocOpV1AdminPlanogramsList` — GET /v1/admin/planograms\n- `DocOpV1AdminPlanogramGet` — GET /v1/admin/planograms/{planogramId}\n- `DocOpV1AdminPriceBooksList` — GET /v1/admin/price-books\n- `DocOpV1AdminPriceBookCreate` — POST /v1/admin/price-books\n- `DocOpV1AdminPriceBookGet` — GET /v1/admin/price-books/{priceBookId}\n- `DocOpV1AdminPriceBookPatch` — PATCH /v1/admin/price-books/{priceBookId}\n- `DocOpV1AdminPriceBookActivate` — POST /v1/admin/price-books/{priceBookId}/activate\n- `DocOpV1AdminPriceBookArchive` — POST /v1/admin/price-books/{priceBookId}/archive\n- `DocOpV1AdminPriceBookAssignTarget` — POST /v1/admin/price-books/{priceBookId}/assign-target\n- `DocOpV1AdminPriceBookDeactivate` — POST /v1/admin/price-books/{priceBookId}/deactivate\n- `DocOpV1AdminPriceBookItemsGet` — GET /v1/admin/price-books/{priceBookId}/items\n- `DocOpV1AdminPriceBookItemsPut` — PUT /v1/admin/price-books/{priceBookId}/items\n- `DocOpV1AdminPriceBookItemDelete` — DELETE /v1/admin/price-books/{priceBookId}/items/{productId}\n- `DocOpV1AdminPriceBookItemPatch` — PATCH /v1/admin/price-books/{priceBookId}/items/{productId}\n- `DocOpV1AdminPriceBookTargetDelete` — DELETE /v1/admin/price-books/{priceBookId}/targets/{targetId}\n- `DocOpV1AdminPricingPreview` — POST /v1/admin/pricing/preview\n- `DocOpV1AdminProductsList` — GET /v1/admin/products\n- `DocOpV1AdminProductCreate` — POST /v1/admin/products\n- `DocOpV1AdminProductDelete` — DELETE /v1/admin/products/{productId}\n- `DocOpV1AdminProductGet` — GET /v1/admin/products/{productId}\n- `DocOpV1AdminProductPatch` — PATCH /v1/admin/products/{productId}\n- `DocOpV1AdminProductReplace` — PUT /v1/admin/products/{productId}\n- `DocOpV1AdminProductImageDelete` — DELETE /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductImagePost` — POST /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductImagePut` — PUT /v1/admin/products/{productId}/image\n- `DocOpV1AdminProductMediaBindPost` — POST /v1/admin/products/{productId}/media\n- `DocOpV1AdminProductMediaBindPut` — PUT /v1/admin/products/{productId}/media\n- `DocOpV1AdminProductMediaUnbind` — DELETE /v1/admin/products/{productId}/media/{mediaId}\n- `DocOpV1AdminPromotionsList` — GET /v1/admin/promotions\n- `DocOpV1AdminPromotionCreate` — POST /v1/admin/promotions\n- `DocOpV1AdminPromotionsPreview` — POST /v1/admin/promotions/preview\n- `DocOpV1AdminPromotionGet` — GET /v1/admin/promotions/{promotionId}\n- `DocOpV1AdminPromotionPatch` — PATCH /v1/admin/promotions/{promotionId}\n- `DocOpV1AdminPromotionActivate` — POST /v1/admin/promotions/{promotionId}/activate\n- `DocOpV1AdminPromotionArchive` — POST /v1/admin/promotions/{promotionId}/archive\n- `DocOpV1AdminPromotionAssignTarget` — POST /v1/admin/promotions/{promotionId}/assign-target\n- `DocOpV1AdminPromotionDeactivate` — POST /v1/admin/promotions/{promotionId}/deactivate\n- `DocOpV1AdminPromotionPause` — POST /v1/admin/promotions/{promotionId}/pause\n- `DocOpV1AdminPromotionTargetDelete` — DELETE /v1/admin/promotions/{promotionId}/targets/{targetId}\n- `DocOpV1AdminTagsList` — GET /v1/admin/tags\n- `DocOpV1AdminTagCreate` — POST /v1/admin/tags\n- `DocOpV1AdminTagDelete` — DELETE /v1/admin/tags/{tagId}\n- `DocOpV1AdminTagPatch` — PATCH /v1/admin/tags/{tagId}\n- `DocOpV1AdminTagReplace` — PUT /v1/admin/tags/{tagId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Commerce",
-          "description": "Mục lục các operation OpenAPI có tag **Commerce** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminCommerceReconciliationList` — GET /v1/admin/commerce/reconciliation\n- `DocOpV1AdminCommerceReconciliationGet` — GET /v1/admin/commerce/reconciliation/{caseId}\n- `DocOpV1AdminCommerceReconciliationIgnore` — POST /v1/admin/commerce/reconciliation/{caseId}/ignore\n- `DocOpV1AdminCommerceReconciliationRequestRefund` — POST /v1/admin/commerce/reconciliation/{caseId}/request-refund\n- `DocOpV1AdminCommerceReconciliationResolve` — POST /v1/admin/commerce/reconciliation/{caseId}/resolve\n- `DocOpV1AdminCommerceOrderRefundPost` — POST /v1/admin/orders/{orderId}/refunds\n- `DocOpV1AdminCommerceOrderTimelineGet` — GET /v1/admin/orders/{orderId}/timeline\n- `DocOpV1AdminCommerceRefundRequestsList` — GET /v1/admin/refunds\n- `DocOpV1AdminCommerceRefundRequestGet` — GET /v1/admin/refunds/{refundId}\n- `DocOpV1CommerceCashCheckout` — POST /v1/commerce/cash-checkout\n- `DocOpV1CommerceCreateOrder` — POST /v1/commerce/orders\n- `DocOpV1CommerceGetOrder` — GET /v1/commerce/orders/{orderId}\n- `DocOpV1CommerceOrderCancel` — POST /v1/commerce/orders/{orderId}/cancel\n- `DocOpV1CommercePaymentSession` — POST /v1/commerce/orders/{orderId}/payment-session\n- `DocOpV1CommercePaymentWebhook` — POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks\n- `DocOpV1CommerceReconciliationSnapshot` — GET /v1/commerce/orders/{orderId}/reconciliation\n- `DocOpV1CommerceRefundsList` — GET /v1/commerce/orders/{orderId}/refunds\n- `DocOpV1CommerceRefundCreate` — POST /v1/commerce/orders/{orderId}/refunds\n- `DocOpV1CommerceRefundGet` — GET /v1/commerce/orders/{orderId}/refunds/{refundId}\n- `DocOpV1CommerceVendFailure` — POST /v1/commerce/orders/{orderId}/vend/failure\n- `DocOpV1CommerceVendStart` — POST /v1/commerce/orders/{orderId}/vend/start\n- `DocOpV1CommerceVendSuccess` — POST /v1/commerce/orders/{orderId}/vend/success\n- `DocOpV1OrdersList` — GET /v1/orders\n- `DocOpV1PaymentsList` — GET /v1/payments\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Commerce** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminCommerceReconciliationList` — GET /v1/admin/commerce/reconciliation\n- `DocOpV1AdminCommerceReconciliationGet` — GET /v1/admin/commerce/reconciliation/{caseId}\n- `DocOpV1AdminCommerceReconciliationIgnore` — POST /v1/admin/commerce/reconciliation/{caseId}/ignore\n- `DocOpV1AdminCommerceReconciliationRequestRefund` — POST /v1/admin/commerce/reconciliation/{caseId}/request-refund\n- `DocOpV1AdminCommerceReconciliationResolve` — POST /v1/admin/commerce/reconciliation/{caseId}/resolve\n- `DocOpV1AdminCommerceOrderRefundPost` — POST /v1/admin/orders/{orderId}/refunds\n- `DocOpV1AdminCommerceOrderTimelineGet` — GET /v1/admin/orders/{orderId}/timeline\n- `DocOpV1AdminCommerceRefundRequestsList` — GET /v1/admin/refunds\n- `DocOpV1AdminCommerceRefundRequestGet` — GET /v1/admin/refunds/{refundId}\n- `DocOpV1CommerceCashCheckout` — POST /v1/commerce/cash-checkout\n- `DocOpV1CommerceCreateOrder` — POST /v1/commerce/orders\n- `DocOpV1CommerceGetOrder` — GET /v1/commerce/orders/{orderId}\n- `DocOpV1CommerceOrderCancel` — POST /v1/commerce/orders/{orderId}/cancel\n- `DocOpV1CommercePaymentSession` — POST /v1/commerce/orders/{orderId}/payment-session\n- `DocOpV1CommercePaymentWebhook` — POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks\n- `DocOpV1CommerceReconciliationSnapshot` — GET /v1/commerce/orders/{orderId}/reconciliation\n- `DocOpV1CommerceRefundsList` — GET /v1/commerce/orders/{orderId}/refunds\n- `DocOpV1CommerceRefundCreate` — POST /v1/commerce/orders/{orderId}/refunds\n- `DocOpV1CommerceRefundGet` — GET /v1/commerce/orders/{orderId}/refunds/{refundId}\n- `DocOpV1CommerceVendFailure` — POST /v1/commerce/orders/{orderId}/vend/failure\n- `DocOpV1CommerceVendStart` — POST /v1/commerce/orders/{orderId}/vend/start\n- `DocOpV1CommerceVendSuccess` — POST /v1/commerce/orders/{orderId}/vend/success\n- `DocOpV1OrdersList` — GET /v1/orders\n- `DocOpV1PaymentsList` — GET /v1/payments\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Device Runtime",
-          "description": "Mục lục các operation OpenAPI có tag **Device Runtime** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1DeviceMachineCommandsPoll` — POST /v1/device/machines/{machineId}/commands/poll\n- `DocOpV1DeviceMachineVendResults` — POST /v1/device/machines/{machineId}/vend-results\n- `DocOpV1MachineCheckIn` — POST /v1/machines/{machineId}/check-ins\n- `DocOpV1MachineCommandDispatch` — POST /v1/machines/{machineId}/commands/dispatch\n- `DocOpV1MachineCommandReceipts` — GET /v1/machines/{machineId}/commands/receipts\n- `DocOpV1MachineCommandStatus` — GET /v1/machines/{machineId}/commands/{sequence}/status\n- `DocOpV1MachineConfigApply` — POST /v1/machines/{machineId}/config-applies\n- `DocOpV1MachineShadowGet` — GET /v1/machines/{machineId}/shadow\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Device Runtime** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1DeviceMachineCommandsPoll` — POST /v1/device/machines/{machineId}/commands/poll\n- `DocOpV1DeviceMachineVendResults` — POST /v1/device/machines/{machineId}/vend-results\n- `DocOpV1MachineCheckIn` — POST /v1/machines/{machineId}/check-ins\n- `DocOpV1MachineCommandDispatch` — POST /v1/machines/{machineId}/commands/dispatch\n- `DocOpV1MachineCommandReceipts` — GET /v1/machines/{machineId}/commands/receipts\n- `DocOpV1MachineCommandStatus` — GET /v1/machines/{machineId}/commands/{sequence}/status\n- `DocOpV1MachineConfigApply` — POST /v1/machines/{machineId}/config-applies\n- `DocOpV1MachineShadowGet` — GET /v1/machines/{machineId}/shadow\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Finance",
-          "description": "Mục lục các operation OpenAPI có tag **Finance** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminFinanceDailyCloseList` — GET /v1/admin/finance/daily-close\n- `DocOpV1AdminFinanceDailyClosePost` — POST /v1/admin/finance/daily-close\n- `DocOpV1AdminFinanceDailyCloseGet` — GET /v1/admin/finance/daily-close/{closeId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Finance** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminFinanceDailyCloseList` — GET /v1/admin/finance/daily-close\n- `DocOpV1AdminFinanceDailyClosePost` — POST /v1/admin/finance/daily-close\n- `DocOpV1AdminFinanceDailyCloseGet` — GET /v1/admin/finance/daily-close/{closeId}\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Fleet",
-          "description": "Mục lục các operation OpenAPI có tag **Fleet** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminFeatureFlagsList` — GET /v1/admin/feature-flags\n- `DocOpV1AdminFeatureFlagsPost` — POST /v1/admin/feature-flags\n- `DocOpV1AdminFeatureFlagGet` — GET /v1/admin/feature-flags/{flagId}\n- `DocOpV1AdminFeatureFlagPatch` — PATCH /v1/admin/feature-flags/{flagId}\n- `DocOpV1AdminFeatureFlagDisablePost` — POST /v1/admin/feature-flags/{flagId}/disable\n- `DocOpV1AdminFeatureFlagEnablePost` — POST /v1/admin/feature-flags/{flagId}/enable\n- `DocOpV1AdminFeatureFlagTargetsPut` — PUT /v1/admin/feature-flags/{flagId}/targets\n- `DocOpV1AdminMachineConfigRolloutsList` — GET /v1/admin/machine-config/rollouts\n- `DocOpV1AdminMachineConfigRolloutsPost` — POST /v1/admin/machine-config/rollouts\n- `DocOpV1AdminMachineConfigRolloutGet` — GET /v1/admin/machine-config/rollouts/{rolloutId}\n- `DocOpV1AdminMachineDiagnosticBundlesList` — GET /v1/admin/machines/{machineId}/diagnostics/bundles\n- `DocOpV1AdminMachineDiagnosticRequest` — POST /v1/admin/machines/{machineId}/diagnostics/requests\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Fleet** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminFeatureFlagsList` — GET /v1/admin/feature-flags\n- `DocOpV1AdminFeatureFlagsPost` — POST /v1/admin/feature-flags\n- `DocOpV1AdminFeatureFlagGet` — GET /v1/admin/feature-flags/{flagId}\n- `DocOpV1AdminFeatureFlagPatch` — PATCH /v1/admin/feature-flags/{flagId}\n- `DocOpV1AdminFeatureFlagDisablePost` — POST /v1/admin/feature-flags/{flagId}/disable\n- `DocOpV1AdminFeatureFlagEnablePost` — POST /v1/admin/feature-flags/{flagId}/enable\n- `DocOpV1AdminFeatureFlagTargetsPut` — PUT /v1/admin/feature-flags/{flagId}/targets\n- `DocOpV1AdminMachineConfigRolloutsList` — GET /v1/admin/machine-config/rollouts\n- `DocOpV1AdminMachineConfigRolloutsPost` — POST /v1/admin/machine-config/rollouts\n- `DocOpV1AdminMachineConfigRolloutGet` — GET /v1/admin/machine-config/rollouts/{rolloutId}\n- `DocOpV1AdminMachineDiagnosticBundlesList` — GET /v1/admin/machines/{machineId}/diagnostics/bundles\n- `DocOpV1AdminMachineDiagnosticRequest` — POST /v1/admin/machines/{machineId}/diagnostics/requests\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Health",
-          "description": "Mục lục các operation OpenAPI có tag **Health** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpHealthLive` — GET /health/live\n- `DocOpHealthReady` — GET /health/ready\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Health** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpHealthLive` — GET /health/live\n- `DocOpHealthReady` — GET /health/ready\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Inventory",
-          "description": "Mục lục các operation OpenAPI có tag **Inventory** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminOperationalAnomaliesList` — GET /v1/admin/anomalies\n- `DocOpV1AdminOperationalAnomalyGet` — GET /v1/admin/anomalies/{anomalyId}\n- `DocOpV1AdminOperationalAnomalyIgnore` — POST /v1/admin/anomalies/{anomalyId}/ignore\n- `DocOpV1AdminOperationalAnomalyResolve` — POST /v1/admin/anomalies/{anomalyId}/resolve\n- `DocOpV1AdminInventoryAnomaliesList` — GET /v1/admin/inventory/anomalies\n- `DocOpV1AdminInventoryAnomalyResolve` — POST /v1/admin/inventory/anomalies/{anomalyId}/resolve\n- `DocOpV1AdminInventoryLowStock` — GET /v1/admin/inventory/low-stock\n- `DocOpV1AdminInventoryRefillSuggestions` — GET /v1/admin/inventory/refill-suggestions\n- `DocOpV1AdminMachineInventory` — GET /v1/admin/machines/{machineId}/inventory\n- `DocOpV1AdminMachineInventoryEvents` — GET /v1/admin/machines/{machineId}/inventory-events\n- `DocOpV1AdminMachineInventoryAnomaliesList` — GET /v1/admin/machines/{machineId}/inventory/anomalies\n- `DocOpV1AdminMachineInventoryReconcile` — POST /v1/admin/machines/{machineId}/inventory/reconcile\n- `DocOpV1AdminMachineRefillSuggestions` — GET /v1/admin/machines/{machineId}/refill-suggestions\n- `DocOpV1AdminMachineSlots` — GET /v1/admin/machines/{machineId}/slots\n- `DocOpV1AdminMachineStockAdjustmentsPost` — POST /v1/admin/machines/{machineId}/stock-adjustments\n- `DocOpV1AdminRestockSuggestions` — GET /v1/admin/restock/suggestions\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Inventory** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminOperationalAnomaliesList` — GET /v1/admin/anomalies\n- `DocOpV1AdminOperationalAnomalyGet` — GET /v1/admin/anomalies/{anomalyId}\n- `DocOpV1AdminOperationalAnomalyIgnore` — POST /v1/admin/anomalies/{anomalyId}/ignore\n- `DocOpV1AdminOperationalAnomalyResolve` — POST /v1/admin/anomalies/{anomalyId}/resolve\n- `DocOpV1AdminInventoryAnomaliesList` — GET /v1/admin/inventory/anomalies\n- `DocOpV1AdminInventoryAnomalyResolve` — POST /v1/admin/inventory/anomalies/{anomalyId}/resolve\n- `DocOpV1AdminInventoryLowStock` — GET /v1/admin/inventory/low-stock\n- `DocOpV1AdminInventoryRefillSuggestions` — GET /v1/admin/inventory/refill-suggestions\n- `DocOpV1AdminMachineInventory` — GET /v1/admin/machines/{machineId}/inventory\n- `DocOpV1AdminMachineInventoryEvents` — GET /v1/admin/machines/{machineId}/inventory-events\n- `DocOpV1AdminMachineInventoryAnomaliesList` — GET /v1/admin/machines/{machineId}/inventory/anomalies\n- `DocOpV1AdminMachineInventoryReconcile` — POST /v1/admin/machines/{machineId}/inventory/reconcile\n- `DocOpV1AdminMachineRefillSuggestions` — GET /v1/admin/machines/{machineId}/refill-suggestions\n- `DocOpV1AdminMachineSlots` — GET /v1/admin/machines/{machineId}/slots\n- `DocOpV1AdminMachineStockAdjustmentsPost` — POST /v1/admin/machines/{machineId}/stock-adjustments\n- `DocOpV1AdminRestockSuggestions` — GET /v1/admin/restock/suggestions\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Machine Admin",
-          "description": "Mục lục các operation OpenAPI có tag **Machine Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAssignmentsList` — GET /v1/admin/assignments\n- `DocOpV1AdminAssignmentCreate` — POST /v1/admin/assignments\n- `DocOpV1AdminAssignmentDelete` — DELETE /v1/admin/assignments/{assignmentId}\n- `DocOpV1AdminAssignmentGet` — GET /v1/admin/assignments/{assignmentId}\n- `DocOpV1AdminCommandsList` — GET /v1/admin/commands\n- `DocOpV1AdminCommandGet` — GET /v1/admin/commands/{commandId}\n- `DocOpV1AdminCommandCancel` — POST /v1/admin/commands/{commandId}/cancel\n- `DocOpV1AdminCommandRetry` — POST /v1/admin/commands/{commandId}/retry\n- `DocOpV1AdminMachinesList` — GET /v1/admin/machines\n- `DocOpV1AdminMachineCreate` — POST /v1/admin/machines\n- `DocOpV1AdminMachineGet` — GET /v1/admin/machines/{machineId}\n- `DocOpV1AdminMachinePatch` — PATCH /v1/admin/machines/{machineId}\n- `DocOpV1AdminMachineActivationCodesList` — GET /v1/admin/machines/{machineId}/activation-codes\n- `DocOpV1AdminMachineActivationCodesPost` — POST /v1/admin/machines/{machineId}/activation-codes\n- `DocOpV1AdminMachineActivationCodeDelete` — DELETE /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}\n- `DocOpV1AdminMachineArchive` — POST /v1/admin/machines/{machineId}/archive\n- `DocOpV1AdminMachineCommandDispatch` — POST /v1/admin/machines/{machineId}/commands\n- `DocOpV1AdminMachineDisable` — POST /v1/admin/machines/{machineId}/disable\n- `DocOpV1AdminMachineEnable` — POST /v1/admin/machines/{machineId}/enable\n- `DocOpV1AdminMachineHealth` — GET /v1/admin/machines/{machineId}/health\n- `DocOpV1AdminMachineMarkCompromised` — POST /v1/admin/machines/{machineId}/mark-compromised\n- `DocOpV1AdminMachineResume` — POST /v1/admin/machines/{machineId}/resume\n- `DocOpV1AdminMachineRetire` — POST /v1/admin/machines/{machineId}/retire\n- `DocOpV1AdminMachineRevokeCredentials` — POST /v1/admin/machines/{machineId}/revoke-credentials\n- `DocOpV1AdminMachineRevokeSessions` — POST /v1/admin/machines/{machineId}/revoke-sessions\n- `DocOpV1AdminMachineRevokeToken` — POST /v1/admin/machines/{machineId}/revoke-token\n- `DocOpV1AdminMachineRotateCredential` — POST /v1/admin/machines/{machineId}/rotate-credential\n- `DocOpV1AdminMachineRotateCredentials` — POST /v1/admin/machines/{machineId}/rotate-credentials\n- `DocOpV1AdminMachineRotateTokenVersion` — POST /v1/admin/machines/{machineId}/rotate-token-version\n- `DocOpV1AdminMachineSuspend` — POST /v1/admin/machines/{machineId}/suspend\n- `DocOpV1AdminMachineTechniciansOnMachineList` — GET /v1/admin/machines/{machineId}/technicians\n- `DocOpV1AdminMachineTechnicianAssign` — POST /v1/admin/machines/{machineId}/technicians\n- `DocOpV1AdminMachineTechnicianRemove` — DELETE /v1/admin/machines/{machineId}/technicians/{userId}\n- `DocOpV1AdminMachineTimeline` — GET /v1/admin/machines/{machineId}/timeline\n- `DocOpV1AdminMachineTransferSite` — POST /v1/admin/machines/{machineId}/transfer-site\n- `DocOpV1AdminOperationsMachinesHealth` — GET /v1/admin/operations/machines/health\n- `DocOpV1AdminOTAList` — GET /v1/admin/ota\n- `DocOpV1AdminOTACampaignsList` — GET /v1/admin/ota/campaigns\n- `DocOpV1AdminOTACampaignCreate` — POST /v1/admin/ota/campaigns\n- `DocOpV1AdminOTACampaignGet` — GET /v1/admin/ota/campaigns/{campaignId}\n- `DocOpV1AdminOTACampaignPatch` — PATCH /v1/admin/ota/campaigns/{campaignId}\n- `DocOpV1AdminOTACampaignApprove` — POST /v1/admin/ota/campaigns/{campaignId}/approve\n- `DocOpV1AdminOTACampaignCancel` — POST /v1/admin/ota/campaigns/{campaignId}/cancel\n- `DocOpV1AdminOTACampaignPause` — POST /v1/admin/ota/campaigns/{campaignId}/pause\n- `DocOpV1AdminOTACampaignPublish` — POST /v1/admin/ota/campaigns/{campaignId}/publish\n- `DocOpV1AdminOTACampaignResultsGet` — GET /v1/admin/ota/campaigns/{campaignId}/results\n- `DocOpV1AdminOTACampaignResume` — POST /v1/admin/ota/campaigns/{campaignId}/resume\n- `DocOpV1AdminOTACampaignRollback` — POST /v1/admin/ota/campaigns/{campaignId}/rollback\n- `DocOpV1AdminOTACampaignStart` — POST /v1/admin/ota/campaigns/{campaignId}/start\n- `DocOpV1AdminOTACampaignTargetsGet` — GET /v1/admin/ota/campaigns/{campaignId}/targets\n- `DocOpV1AdminOTACampaignTargetsPut` — PUT /v1/admin/ota/campaigns/{campaignId}/targets\n- `DocOpV1AdminProvisioningBatchGet` — GET /v1/admin/provisioning/batches/{batchId}\n- `DocOpV1AdminProvisioningBulk` — POST /v1/admin/provisioning/machines/bulk\n- `DocOpV1AdminRolloutsList` — GET /v1/admin/rollouts\n- `DocOpV1AdminRolloutCreate` — POST /v1/admin/rollouts\n- `DocOpV1AdminRolloutGet` — GET /v1/admin/rollouts/{rolloutId}\n- `DocOpV1AdminRolloutCancel` — POST /v1/admin/rollouts/{rolloutId}/cancel\n- `DocOpV1AdminRolloutPause` — POST /v1/admin/rollouts/{rolloutId}/pause\n- `DocOpV1AdminRolloutResume` — POST /v1/admin/rollouts/{rolloutId}/resume\n- `DocOpV1AdminRolloutRollback` — POST /v1/admin/rollouts/{rolloutId}/rollback\n- `DocOpV1AdminRolloutStart` — POST /v1/admin/rollouts/{rolloutId}/start\n- `DocOpV1AdminSitesList` — GET /v1/admin/sites\n- `DocOpV1AdminSiteCreate` — POST /v1/admin/sites\n- `DocOpV1AdminSiteDelete` — DELETE /v1/admin/sites/{siteId}\n- `DocOpV1AdminSiteGet` — GET /v1/admin/sites/{siteId}\n- `DocOpV1AdminSitePatch` — PATCH /v1/admin/sites/{siteId}\n- `DocOpV1AdminSiteArchive` — POST /v1/admin/sites/{siteId}/archive\n- `DocOpV1AdminSiteDisable` — POST /v1/admin/sites/{siteId}/disable\n- `DocOpV1AdminTechnicianAssignmentsList` — GET /v1/admin/technician-assignments\n- `DocOpV1AdminTechnicianAssignmentCreate` — POST /v1/admin/technician-assignments\n- `DocOpV1AdminTechnicianAssignmentDelete` — DELETE /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentGet` — GET /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentPatch` — PATCH /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentCancel` — POST /v1/admin/technician-assignments/{assignmentId}/cancel\n- `DocOpV1AdminTechniciansList` — GET /v1/admin/technicians\n- `DocOpV1AdminTechnicianCreate` — POST /v1/admin/technicians\n- `DocOpV1AdminTechnicianGet` — GET /v1/admin/technicians/{technicianId}\n- `DocOpV1AdminTechnicianPatch` — PATCH /v1/admin/technicians/{technicianId}\n- `DocOpV1AdminTechnicianDisable` — POST /v1/admin/technicians/{technicianId}/disable\n- `DocOpV1AdminTechnicianEnable` — POST /v1/admin/technicians/{technicianId}/enable\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Machine Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminAssignmentsList` — GET /v1/admin/assignments\n- `DocOpV1AdminAssignmentCreate` — POST /v1/admin/assignments\n- `DocOpV1AdminAssignmentDelete` — DELETE /v1/admin/assignments/{assignmentId}\n- `DocOpV1AdminAssignmentGet` — GET /v1/admin/assignments/{assignmentId}\n- `DocOpV1AdminCommandsList` — GET /v1/admin/commands\n- `DocOpV1AdminCommandGet` — GET /v1/admin/commands/{commandId}\n- `DocOpV1AdminCommandCancel` — POST /v1/admin/commands/{commandId}/cancel\n- `DocOpV1AdminCommandRetry` — POST /v1/admin/commands/{commandId}/retry\n- `DocOpV1AdminMachinesList` — GET /v1/admin/machines\n- `DocOpV1AdminMachineCreate` — POST /v1/admin/machines\n- `DocOpV1AdminMachineGet` — GET /v1/admin/machines/{machineId}\n- `DocOpV1AdminMachinePatch` — PATCH /v1/admin/machines/{machineId}\n- `DocOpV1AdminMachineActivationCodesList` — GET /v1/admin/machines/{machineId}/activation-codes\n- `DocOpV1AdminMachineActivationCodesPost` — POST /v1/admin/machines/{machineId}/activation-codes\n- `DocOpV1AdminMachineActivationCodeDelete` — DELETE /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}\n- `DocOpV1AdminMachineArchive` — POST /v1/admin/machines/{machineId}/archive\n- `DocOpV1AdminMachineCommandDispatch` — POST /v1/admin/machines/{machineId}/commands\n- `DocOpV1AdminMachineDisable` — POST /v1/admin/machines/{machineId}/disable\n- `DocOpV1AdminMachineEnable` — POST /v1/admin/machines/{machineId}/enable\n- `DocOpV1AdminMachineHealth` — GET /v1/admin/machines/{machineId}/health\n- `DocOpV1AdminMachineMarkCompromised` — POST /v1/admin/machines/{machineId}/mark-compromised\n- `DocOpV1AdminMachineResume` — POST /v1/admin/machines/{machineId}/resume\n- `DocOpV1AdminMachineRetire` — POST /v1/admin/machines/{machineId}/retire\n- `DocOpV1AdminMachineRevokeCredentials` — POST /v1/admin/machines/{machineId}/revoke-credentials\n- `DocOpV1AdminMachineRevokeSessions` — POST /v1/admin/machines/{machineId}/revoke-sessions\n- `DocOpV1AdminMachineRevokeToken` — POST /v1/admin/machines/{machineId}/revoke-token\n- `DocOpV1AdminMachineRotateCredential` — POST /v1/admin/machines/{machineId}/rotate-credential\n- `DocOpV1AdminMachineRotateCredentials` — POST /v1/admin/machines/{machineId}/rotate-credentials\n- `DocOpV1AdminMachineRotateTokenVersion` — POST /v1/admin/machines/{machineId}/rotate-token-version\n- `DocOpV1AdminMachineSuspend` — POST /v1/admin/machines/{machineId}/suspend\n- `DocOpV1AdminMachineTechniciansOnMachineList` — GET /v1/admin/machines/{machineId}/technicians\n- `DocOpV1AdminMachineTechnicianAssign` — POST /v1/admin/machines/{machineId}/technicians\n- `DocOpV1AdminMachineTechnicianRemove` — DELETE /v1/admin/machines/{machineId}/technicians/{userId}\n- `DocOpV1AdminMachineTimeline` — GET /v1/admin/machines/{machineId}/timeline\n- `DocOpV1AdminMachineTransferSite` — POST /v1/admin/machines/{machineId}/transfer-site\n- `DocOpV1AdminOperationsMachinesHealth` — GET /v1/admin/operations/machines/health\n- `DocOpV1AdminOTAList` — GET /v1/admin/ota\n- `DocOpV1AdminOTACampaignsList` — GET /v1/admin/ota/campaigns\n- `DocOpV1AdminOTACampaignCreate` — POST /v1/admin/ota/campaigns\n- `DocOpV1AdminOTACampaignGet` — GET /v1/admin/ota/campaigns/{campaignId}\n- `DocOpV1AdminOTACampaignPatch` — PATCH /v1/admin/ota/campaigns/{campaignId}\n- `DocOpV1AdminOTACampaignApprove` — POST /v1/admin/ota/campaigns/{campaignId}/approve\n- `DocOpV1AdminOTACampaignCancel` — POST /v1/admin/ota/campaigns/{campaignId}/cancel\n- `DocOpV1AdminOTACampaignPause` — POST /v1/admin/ota/campaigns/{campaignId}/pause\n- `DocOpV1AdminOTACampaignPublish` — POST /v1/admin/ota/campaigns/{campaignId}/publish\n- `DocOpV1AdminOTACampaignResultsGet` — GET /v1/admin/ota/campaigns/{campaignId}/results\n- `DocOpV1AdminOTACampaignResume` — POST /v1/admin/ota/campaigns/{campaignId}/resume\n- `DocOpV1AdminOTACampaignRollback` — POST /v1/admin/ota/campaigns/{campaignId}/rollback\n- `DocOpV1AdminOTACampaignStart` — POST /v1/admin/ota/campaigns/{campaignId}/start\n- `DocOpV1AdminOTACampaignTargetsGet` — GET /v1/admin/ota/campaigns/{campaignId}/targets\n- `DocOpV1AdminOTACampaignTargetsPut` — PUT /v1/admin/ota/campaigns/{campaignId}/targets\n- `DocOpV1AdminProvisioningBatchGet` — GET /v1/admin/provisioning/batches/{batchId}\n- `DocOpV1AdminProvisioningBulk` — POST /v1/admin/provisioning/machines/bulk\n- `DocOpV1AdminRolloutsList` — GET /v1/admin/rollouts\n- `DocOpV1AdminRolloutCreate` — POST /v1/admin/rollouts\n- `DocOpV1AdminRolloutGet` — GET /v1/admin/rollouts/{rolloutId}\n- `DocOpV1AdminRolloutCancel` — POST /v1/admin/rollouts/{rolloutId}/cancel\n- `DocOpV1AdminRolloutPause` — POST /v1/admin/rollouts/{rolloutId}/pause\n- `DocOpV1AdminRolloutResume` — POST /v1/admin/rollouts/{rolloutId}/resume\n- `DocOpV1AdminRolloutRollback` — POST /v1/admin/rollouts/{rolloutId}/rollback\n- `DocOpV1AdminRolloutStart` — POST /v1/admin/rollouts/{rolloutId}/start\n- `DocOpV1AdminSitesList` — GET /v1/admin/sites\n- `DocOpV1AdminSiteCreate` — POST /v1/admin/sites\n- `DocOpV1AdminSiteDelete` — DELETE /v1/admin/sites/{siteId}\n- `DocOpV1AdminSiteGet` — GET /v1/admin/sites/{siteId}\n- `DocOpV1AdminSitePatch` — PATCH /v1/admin/sites/{siteId}\n- `DocOpV1AdminSiteArchive` — POST /v1/admin/sites/{siteId}/archive\n- `DocOpV1AdminSiteDisable` — POST /v1/admin/sites/{siteId}/disable\n- `DocOpV1AdminTechnicianAssignmentsList` — GET /v1/admin/technician-assignments\n- `DocOpV1AdminTechnicianAssignmentCreate` — POST /v1/admin/technician-assignments\n- `DocOpV1AdminTechnicianAssignmentDelete` — DELETE /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentGet` — GET /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentPatch` — PATCH /v1/admin/technician-assignments/{assignmentId}\n- `DocOpV1AdminTechnicianAssignmentCancel` — POST /v1/admin/technician-assignments/{assignmentId}/cancel\n- `DocOpV1AdminTechniciansList` — GET /v1/admin/technicians\n- `DocOpV1AdminTechnicianCreate` — POST /v1/admin/technicians\n- `DocOpV1AdminTechnicianGet` — GET /v1/admin/technicians/{technicianId}\n- `DocOpV1AdminTechnicianPatch` — PATCH /v1/admin/technicians/{technicianId}\n- `DocOpV1AdminTechnicianDisable` — POST /v1/admin/technicians/{technicianId}/disable\n- `DocOpV1AdminTechnicianEnable` — POST /v1/admin/technicians/{technicianId}/enable\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Machine Setup",
-          "description": "Mục lục các operation OpenAPI có tag **Machine Setup** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminMachinePlanogramDraftPut` — PUT /v1/admin/machines/{machineId}/planograms/draft\n- `DocOpV1AdminMachinePlanogramPublishPost` — POST /v1/admin/machines/{machineId}/planograms/publish\n- `DocOpV1AdminMachineSetupSyncPost` — POST /v1/admin/machines/{machineId}/sync\n- `DocOpV1AdminMachineTopologyPut` — PUT /v1/admin/machines/{machineId}/topology\n- `DocOpV1SetupMachineBootstrap` — GET /v1/setup/machines/{machineId}/bootstrap\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Machine Setup** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminMachinePlanogramDraftPut` — PUT /v1/admin/machines/{machineId}/planograms/draft\n- `DocOpV1AdminMachinePlanogramPublishPost` — POST /v1/admin/machines/{machineId}/planograms/publish\n- `DocOpV1AdminMachineSetupSyncPost` — POST /v1/admin/machines/{machineId}/sync\n- `DocOpV1AdminMachineTopologyPut` — PUT /v1/admin/machines/{machineId}/topology\n- `DocOpV1SetupMachineBootstrap` — GET /v1/setup/machines/{machineId}/bootstrap\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
+          "item": []
+        },
+        {
+          "name": "Media Admin",
+          "description": "Mục lục các operation OpenAPI có tag **Media Admin** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminProductImageUpload` — POST /v1/admin/product-images\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Operator Sessions",
-          "description": "Mục lục các operation OpenAPI có tag **Operator Sessions** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1OperatorSessionActionAttributions` — GET /v1/machines/{machineId}/operator-sessions/action-attributions\n- `DocOpV1OperatorSessionAuthEvents` — GET /v1/machines/{machineId}/operator-sessions/auth-events\n- `DocOpV1OperatorSessionCurrent` — GET /v1/machines/{machineId}/operator-sessions/current\n- `DocOpV1OperatorSessionHistory` — GET /v1/machines/{machineId}/operator-sessions/history\n- `DocOpV1OperatorSessionLogin` — POST /v1/machines/{machineId}/operator-sessions/login\n- `DocOpV1OperatorSessionLogout` — POST /v1/machines/{machineId}/operator-sessions/logout\n- `DocOpV1OperatorSessionTimeline` — GET /v1/machines/{machineId}/operator-sessions/timeline\n- `DocOpV1OperatorSessionHeartbeat` — POST /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat\n- `DocOpV1OperatorInsightsTechnicianAttributions` — GET /v1/operator-insights/technicians/{technicianId}/action-attributions\n- `DocOpV1OperatorInsightsUserAttributions` — GET /v1/operator-insights/users/action-attributions\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Operator Sessions** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1OperatorSessionActionAttributions` — GET /v1/machines/{machineId}/operator-sessions/action-attributions\n- `DocOpV1OperatorSessionAuthEvents` — GET /v1/machines/{machineId}/operator-sessions/auth-events\n- `DocOpV1OperatorSessionCurrent` — GET /v1/machines/{machineId}/operator-sessions/current\n- `DocOpV1OperatorSessionHistory` — GET /v1/machines/{machineId}/operator-sessions/history\n- `DocOpV1OperatorSessionLogin` — POST /v1/machines/{machineId}/operator-sessions/login\n- `DocOpV1OperatorSessionLogout` — POST /v1/machines/{machineId}/operator-sessions/logout\n- `DocOpV1OperatorSessionTimeline` — GET /v1/machines/{machineId}/operator-sessions/timeline\n- `DocOpV1OperatorSessionHeartbeat` — POST /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat\n- `DocOpV1OperatorInsightsTechnicianAttributions` — GET /v1/operator-insights/technicians/{technicianId}/action-attributions\n- `DocOpV1OperatorInsightsUserAttributions` — GET /v1/operator-insights/users/action-attributions\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Platform Ops",
-          "description": "Mục lục các operation OpenAPI có tag **Platform Ops** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminOutboxOpsGet` — GET /v1/admin/ops/outbox\n- `DocOpV1AdminOutboxRetry` — POST /v1/admin/ops/outbox/{outboxId}/retry\n- `DocOpV1AdminRetentionOpsGet` — GET /v1/admin/ops/retention\n- `DocOpV1AdminSystemOutboxListGet` — GET /v1/admin/system/outbox\n- `DocOpV1AdminSystemOutboxStatsGet` — GET /v1/admin/system/outbox/stats\n- `DocOpV1AdminSystemOutboxGet` — GET /v1/admin/system/outbox/{eventId}\n- `DocOpV1AdminSystemOutboxMarkDLQPost` — POST /v1/admin/system/outbox/{eventId}/mark-dlq\n- `DocOpV1AdminSystemOutboxReplayPost` — POST /v1/admin/system/outbox/{eventId}/replay\n- `DocOpV1AdminSystemRetentionDryRunPost` — POST /v1/admin/system/retention/dry-run\n- `DocOpV1AdminSystemRetentionRunPost` — POST /v1/admin/system/retention/run\n- `DocOpV1AdminSystemRetentionStatsGet` — GET /v1/admin/system/retention/stats\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Platform Ops** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminOutboxOpsGet` — GET /v1/admin/ops/outbox\n- `DocOpV1AdminOutboxRetry` — POST /v1/admin/ops/outbox/{outboxId}/retry\n- `DocOpV1AdminRetentionOpsGet` — GET /v1/admin/ops/retention\n- `DocOpV1AdminSystemOutboxListGet` — GET /v1/admin/system/outbox\n- `DocOpV1AdminSystemOutboxStatsGet` — GET /v1/admin/system/outbox/stats\n- `DocOpV1AdminSystemOutboxGet` — GET /v1/admin/system/outbox/{eventId}\n- `DocOpV1AdminSystemOutboxMarkDLQPost` — POST /v1/admin/system/outbox/{eventId}/mark-dlq\n- `DocOpV1AdminSystemOutboxReplayPost` — POST /v1/admin/system/outbox/{eventId}/replay\n- `DocOpV1AdminSystemRetentionDryRunPost` — POST /v1/admin/system/retention/dry-run\n- `DocOpV1AdminSystemRetentionRunPost` — POST /v1/admin/system/retention/run\n- `DocOpV1AdminSystemRetentionStatsGet` — GET /v1/admin/system/retention/stats\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Reporting",
-          "description": "Mục lục các operation OpenAPI có tag **Reporting** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminReportsCash` — GET /v1/admin/reports/cash\n- `DocOpV1AdminReportsCashCollectionsExportCSV` — GET /v1/admin/reports/cash-collections/export.csv\n- `DocOpV1AdminReportsCommands` — GET /v1/admin/reports/commands\n- `DocOpV1AdminReportsExport` — GET /v1/admin/reports/export\n- `DocOpV1AdminReportsFailedVends` — GET /v1/admin/reports/failed-vends\n- `DocOpV1AdminReportsTechnicianFills` — GET /v1/admin/reports/fills\n- `DocOpV1AdminReportsInventoryUnified` — GET /v1/admin/reports/inventory\n- `DocOpV1AdminReportsInventoryLowStock` — GET /v1/admin/reports/inventory-low-stock\n- `DocOpV1AdminReportsMachineHealth` — GET /v1/admin/reports/machine-health\n- `DocOpV1AdminReportsMachines` — GET /v1/admin/reports/machines\n- `DocOpV1AdminReportsPayments` — GET /v1/admin/reports/payments\n- `DocOpV1AdminReportsPaymentsSummaryExportCSV` — GET /v1/admin/reports/payments-summary/export.csv\n- `DocOpV1AdminReportsProducts` — GET /v1/admin/reports/products\n- `DocOpV1AdminReportsReconciliationBI` — GET /v1/admin/reports/reconciliation\n- `DocOpV1AdminReportsReconciliationQueue` — GET /v1/admin/reports/reconciliation-queue\n- `DocOpV1AdminReportsRefunds` — GET /v1/admin/reports/refunds\n- `DocOpV1AdminReportsSales` — GET /v1/admin/reports/sales\n- `DocOpV1AdminReportsSalesSummaryExportCSV` — GET /v1/admin/reports/sales-summary/export.csv\n- `DocOpV1AdminReportsVends` — GET /v1/admin/reports/vends\n- `DocOpV1ReportsFleetHealth` — GET /v1/reports/fleet-health\n- `DocOpV1ReportsInventoryExceptions` — GET /v1/reports/inventory-exceptions\n- `DocOpV1ReportsPaymentsSummary` — GET /v1/reports/payments-summary\n- `DocOpV1ReportsSalesSummary` — GET /v1/reports/sales-summary\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Reporting** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1AdminReportsCash` — GET /v1/admin/reports/cash\n- `DocOpV1AdminReportsCashCollectionsExportCSV` — GET /v1/admin/reports/cash-collections/export.csv\n- `DocOpV1AdminReportsCommands` — GET /v1/admin/reports/commands\n- `DocOpV1AdminReportsExport` — GET /v1/admin/reports/export\n- `DocOpV1AdminReportsFailedVends` — GET /v1/admin/reports/failed-vends\n- `DocOpV1AdminReportsTechnicianFills` — GET /v1/admin/reports/fills\n- `DocOpV1AdminReportsInventoryUnified` — GET /v1/admin/reports/inventory\n- `DocOpV1AdminReportsInventoryLowStock` — GET /v1/admin/reports/inventory-low-stock\n- `DocOpV1AdminReportsMachineHealth` — GET /v1/admin/reports/machine-health\n- `DocOpV1AdminReportsMachines` — GET /v1/admin/reports/machines\n- `DocOpV1AdminReportsPayments` — GET /v1/admin/reports/payments\n- `DocOpV1AdminReportsPaymentsSummaryExportCSV` — GET /v1/admin/reports/payments-summary/export.csv\n- `DocOpV1AdminReportsProducts` — GET /v1/admin/reports/products\n- `DocOpV1AdminReportsReconciliationBI` — GET /v1/admin/reports/reconciliation\n- `DocOpV1AdminReportsReconciliationQueue` — GET /v1/admin/reports/reconciliation-queue\n- `DocOpV1AdminReportsRefunds` — GET /v1/admin/reports/refunds\n- `DocOpV1AdminReportsSales` — GET /v1/admin/reports/sales\n- `DocOpV1AdminReportsSalesSummaryExportCSV` — GET /v1/admin/reports/sales-summary/export.csv\n- `DocOpV1AdminReportsVends` — GET /v1/admin/reports/vends\n- `DocOpV1ReportsFleetHealth` — GET /v1/reports/fleet-health\n- `DocOpV1ReportsInventoryExceptions` — GET /v1/reports/inventory-exceptions\n- `DocOpV1ReportsPaymentsSummary` — GET /v1/reports/payments-summary\n- `DocOpV1ReportsSalesSummary` — GET /v1/reports/sales-summary\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Runtime Catalog",
-          "description": "Mục lục các operation OpenAPI có tag **Runtime Catalog** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1MachineSaleCatalogGet` — GET /v1/machines/{machineId}/sale-catalog\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Runtime Catalog** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1MachineSaleCatalogGet` — GET /v1/machines/{machineId}/sale-catalog\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "System",
-          "description": "Mục lục các operation OpenAPI có tag **System** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpMetrics` — GET /metrics\n- `DocOpSwaggerDocJSON` — GET /swagger/doc.json\n- `DocOpSwaggerIndex` — GET /swagger/index.html\n- `DocOpVersion` — GET /version\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **System** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpMetrics` — GET /metrics\n- `DocOpSwaggerDocJSON` — GET /swagger/doc.json\n- `DocOpSwaggerIndex` — GET /swagger/index.html\n- `DocOpVersion` — GET /version\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Telemetry",
-          "description": "Mục lục các operation OpenAPI có tag **Telemetry** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1MachineTelemetryIncidents` — GET /v1/machines/{machineId}/telemetry/incidents\n- `DocOpV1MachineTelemetryRollups` — GET /v1/machines/{machineId}/telemetry/rollups\n- `DocOpV1MachineTelemetrySnapshot` — GET /v1/machines/{machineId}/telemetry/snapshot\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Telemetry** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1MachineTelemetryIncidents` — GET /v1/machines/{machineId}/telemetry/incidents\n- `DocOpV1MachineTelemetryRollups` — GET /v1/machines/{machineId}/telemetry/rollups\n- `DocOpV1MachineTelemetrySnapshot` — GET /v1/machines/{machineId}/telemetry/snapshot\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         },
         {
           "name": "Telemetry Reconcile",
-          "description": "Mục lục các operation OpenAPI có tag **Telemetry Reconcile** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1DeviceTelemetryReconcileBatch` — POST /v1/device/machines/{machineId}/events/reconcile\n- `DocOpV1DeviceTelemetryReconcileStatusGet` — GET /v1/device/machines/{machineId}/events/{idempotencyKey}/status\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **327** requests).",
+          "description": "Mục lục các operation OpenAPI có tag **Telemetry Reconcile** — **chỉ tài liệu**, không có request HTTP trong folder này.\n\n- `DocOpV1DeviceTelemetryReconcileBatch` — POST /v1/device/machines/{machineId}/events/reconcile\n- `DocOpV1DeviceTelemetryReconcileStatusGet` — GET /v1/device/machines/{machineId}/events/{idempotencyKey}/status\n\n**Documentation index only** — lists each OpenAPI tag with operationIds. Executable HTTP requests live in folders **00–17** (total **329** requests).",
           "item": []
         }
       ]

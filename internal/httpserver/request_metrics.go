@@ -12,6 +12,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+var httpRequestsInFlight = promauto.NewGauge(prometheus.GaugeOpts{
+	Namespace: "avf",
+	Subsystem: "http",
+	Name:      "requests_in_flight",
+	Help:      "HTTP requests currently being handled.",
+})
+
 var redisRateLimitHitsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 	Namespace: "avf",
 	Subsystem: "redis",
@@ -41,6 +48,8 @@ func routeLabel(r *http.Request) string {
 func requestMetricsMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			httpRequestsInFlight.Inc()
+			defer httpRequestsInFlight.Dec()
 			ww := chimw.NewWrapResponseWriter(w, r.ProtoMajor)
 			start := time.Now()
 			next.ServeHTTP(ww, r)

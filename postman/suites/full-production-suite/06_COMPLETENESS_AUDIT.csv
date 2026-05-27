@@ -1,7 +1,7 @@
 item,expected,actual,status,evidence_file,notes
-REST OpenAPI inventory count,327,327,PASS,manifest.json,
-REST collection request count,327,327,PASS,AVF_REST_365_FULL.postman_collection.json,
-REST matrix count,327,327,PASS,AVF_REST_365_OPERATION_MATRIX.csv,
+REST OpenAPI inventory count,329,329,PASS,manifest.json,
+REST collection request count,329,329,PASS,AVF_REST_365_FULL.postman_collection.json,
+REST matrix count,329,329,PASS,AVF_REST_365_OPERATION_MATRIX.csv,
 gRPC inventory count,86,86,PASS,grpc/AVF_GRPC_86_METHOD_MATRIX.csv,
 gRPC template count,86,86,PASS,grpc/grpc_request_templates.json,
 gRPC matrix count,86,86,PASS,grpc/AVF_GRPC_86_METHOD_MATRIX.csv,

@@ -2,6 +2,8 @@
 
 This describes what **this repository** actually publishes and what **cmd/mqtt-ingest** subscribes to. Source: `internal/platform/mqtt/` (topics, router, subscriber, publisher).
 
+**Scope:** MQTT carries realtime telemetry, commands, and events — **not** full catalog or media binary transfer (use gRPC `MachineCatalogService` / `MachineMediaService`). Prefer **enterprise** topic layout in production; legacy `{prefix}/{machineId}/…` remains subscribed for compatibility.
+
 ## Topic layout
 
 - **Prefix**: `MQTT_TOPIC_PREFIX` (trimmed; no trailing slash).
