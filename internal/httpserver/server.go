@@ -96,6 +96,7 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 	if cfg.MetricsEnabled {
 		r.Use(requestMetricsMiddleware())
 	}
+	r.Use(apiSurfaceDeprecationMiddleware())
 
 	r.Get("/health/live", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")

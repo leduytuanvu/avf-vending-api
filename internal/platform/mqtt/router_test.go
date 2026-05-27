@@ -174,6 +174,30 @@ func TestDispatch_commandsAckRejectsBodyMachineMismatch(t *testing.T) {
 	}
 }
 
+func TestDispatch_enterpriseEventsVend(t *testing.T) {
+	t.Parallel()
+	mid := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	topic := fmt.Sprintf("avf/devices/machines/%s/events/vend", mid)
+	var cap captureIngest
+	payload := []byte(`{"event_type":"events.vend","occurred_at":"2020-04-01T12:00:00Z","payload":{}}`)
+	if err := Dispatch(context.Background(), TopicLayoutEnterprise, "avf/devices", topic, payload, &cap, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.lastTelemetry == nil || cap.lastTelemetry.EventType != "events.vend" {
+		t.Fatalf("telemetry: %+v", cap.lastTelemetry)
+	}
+}
+
+func TestDispatch_enterpriseGenericEventsRequiresEventType(t *testing.T) {
+	t.Parallel()
+	mid := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	topic := fmt.Sprintf("avf/devices/machines/%s/events", mid)
+	err := Dispatch(context.Background(), TopicLayoutEnterprise, "avf/devices", topic, []byte(`{"payload":{}}`), &captureIngest{}, nil, nil)
+	if err == nil {
+		t.Fatal("expected error for missing event_type on generic events channel")
+	}
+}
+
 func TestTelemetryIdempotencyKey_bootSeq(t *testing.T) {
 	t.Parallel()
 	mid := uuid.MustParse("77777777-7777-7777-7777-777777777777")

@@ -46,5 +46,23 @@ func Register(pool *pgxpool.Pool) {
 			Name:      "constructing_conns",
 			Help:      "Postgres pool connections being established.",
 		}, func() float64 { return float64(pool.Stat().ConstructingConns()) })
+		promauto.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: "avf",
+			Subsystem: "db_pool",
+			Name:      "acquire_count_total",
+			Help:      "Total successful connection acquires from the pool.",
+		}, func() float64 { return float64(pool.Stat().AcquireCount()) })
+		promauto.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: "avf",
+			Subsystem: "db_pool",
+			Name:      "acquire_duration_seconds_total",
+			Help:      "Total time spent acquiring connections from the pool (seconds).",
+		}, func() float64 { return pool.Stat().AcquireDuration().Seconds() })
+		promauto.NewCounterFunc(prometheus.CounterOpts{
+			Namespace: "avf",
+			Subsystem: "db_pool",
+			Name:      "canceled_acquire_count_total",
+			Help:      "Total acquires canceled while waiting for a connection.",
+		}, func() float64 { return float64(pool.Stat().CanceledAcquireCount()) })
 	})
 }
