@@ -179,9 +179,38 @@ def classify_rest_flow(flow: dict[str, Any], repo_root: Path) -> str:
     return "RUNNABLE"
 
 
+def is_legacy_rest_path(path: str) -> bool:
+    p = (path or "").split("?")[0].rstrip("/") or "/"
+    legacy_prefixes = (
+        "/v1/admin/users",
+        "/v1/admin/media/uploads",
+    )
+    legacy_exact = {
+        "/v1/admin/media",
+        "/v1/machines/",
+    }
+    if any(p.startswith(prefix) for prefix in legacy_prefixes):
+        return True
+    if "/products/" in p and p.endswith("/image"):
+        return True
+    if p.startswith("/v1/machines/") and "/commands/dispatch" in p:
+        return True
+    if p.startswith("/v1/setup/") or p.startswith("/v1/commerce/") or p.startswith("/v1/device/"):
+        return True
+    if "/sale-catalog" in p or "/shadow" in p or "/telemetry" in p:
+        return True
+    if p in legacy_exact:
+        return True
+    return False
+
+
 def enterprise_folder(flow: dict[str, Any], classification: str) -> str:
     phase = flow.get("phase") or "misc"
     fid = str(flow.get("id") or "")
+    path = str(flow.get("path") or "")
+    if is_legacy_rest_path(path):
+        sub = phase.replace("-", " ").title() if phase else "Routes"
+        return f"11 - Legacy and Compatibility/{sub}"
     if classification == "ONLINE_PAYMENT_EXCLUDED":
         return "08 - Commerce No-Online-Payment/Payment Excluded Contract"
     if phase == "preflight":
