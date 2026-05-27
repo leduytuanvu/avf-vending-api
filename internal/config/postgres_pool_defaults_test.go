@@ -36,3 +36,18 @@ func TestApplyPostgresProductionServiceDefaults_setsWhenUnset(t *testing.T) {
 		t.Fatalf("API min: %+v", cfg.APIMinConns)
 	}
 }
+
+func TestApplyPostgresProductionServiceDefaults_clampsToGlobalMax(t *testing.T) {
+	for _, k := range []string{
+		"API_DATABASE_MAX_CONNS", "WORKER_DATABASE_MAX_CONNS",
+		"MQTT_INGEST_DATABASE_MAX_CONNS", "RECONCILER_DATABASE_MAX_CONNS",
+		"TEMPORAL_WORKER_DATABASE_MAX_CONNS",
+	} {
+		_ = os.Unsetenv(k)
+	}
+	cfg := &PostgresConfig{URL: "postgres://localhost/db", MaxConns: 8, MinConns: 1}
+	applyPostgresProductionServiceDefaults(cfg, AppEnvProduction)
+	if cfg.APIMaxConns == nil || *cfg.APIMaxConns != 8 {
+		t.Fatalf("API max should clamp to global 8, got %+v", cfg.APIMaxConns)
+	}
+}
