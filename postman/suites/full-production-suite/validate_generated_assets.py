@@ -15,7 +15,7 @@ OUT = Path(__file__).resolve().parent
 SWAGGER = REPO_ROOT / "docs" / "swagger" / "swagger.json"
 HTTP_VERBS = frozenset({"get", "post", "put", "patch", "delete", "options", "head", "trace"})
 WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-REST_EXPECTED = 327
+REST_EXPECTED = 329
 GRPC_EXPECTED = 86
 MQTT_EXPECTED = 28
 

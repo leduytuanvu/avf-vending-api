@@ -1,0 +1,5562 @@
+{
+  "generated_at": "2026-05-27T08:39:55.492385+00:00",
+  "note": "run from tools/generate_market_readiness_inventory.py",
+  "counts": {
+    "rest": 329,
+    "grpc": 80,
+    "mqtt": 16,
+    "workers": 7
+  },
+  "rest_by_surface": {
+    "canonical": 286,
+    "legacy": 43
+  },
+  "rest_by_audience": {
+    "Public/System": 6,
+    "Admin Web": 278,
+    "Machine App": 36,
+    "Payment Provider": 1,
+    "Authenticated": 8
+  },
+  "rest": [
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/health/live",
+      "operationId": "DocOpHealthLive",
+      "summary": "Liveness probe",
+      "tags": [
+        "Health"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpHealthLive"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/health/ready",
+      "operationId": "DocOpHealthReady",
+      "summary": "Readiness probe",
+      "tags": [
+        "Health"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpHealthReady"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "DocOpMetrics",
+      "summary": "Prometheus metrics scrape (public listener; optional)",
+      "tags": [
+        "System"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpMetrics"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/swagger/doc.json",
+      "operationId": "DocOpSwaggerDocJSON",
+      "summary": "OpenAPI 3.0 document (embedded)",
+      "tags": [
+        "System"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpSwaggerDocJSON"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/swagger/index.html",
+      "operationId": "DocOpSwaggerIndex",
+      "summary": "Swagger UI (HTML)",
+      "tags": [
+        "System"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpSwaggerIndex"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogList",
+      "summary": "List activation codes across machines (admin catalog)",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminActivationCodesCatalogList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogCreate",
+      "summary": "Create activation code (catalog path; targets machine in body)",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminActivationCodesCatalogCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/activation-codes/{codeId}/revoke",
+      "operationId": "DocOpV1AdminActivationCodeCatalogRevoke",
+      "summary": "Revoke activation code by id (catalog path)",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminActivationCodeCatalogRevoke"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/anomalies",
+      "operationId": "DocOpV1AdminOperationalAnomaliesList",
+      "summary": "List operational anomalies",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOperationalAnomaliesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/anomalies/{anomalyId}",
+      "operationId": "DocOpV1AdminOperationalAnomalyGet",
+      "summary": "Get operational anomaly",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOperationalAnomalyGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/ignore",
+      "operationId": "DocOpV1AdminOperationalAnomalyIgnore",
+      "summary": "Ignore operational anomaly",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOperationalAnomalyIgnore"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminOperationalAnomalyResolve",
+      "summary": "Resolve operational anomaly",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOperationalAnomalyResolve"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsList",
+      "summary": "List artifacts",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsReserve",
+      "summary": "Reserve artifact id",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsReserve"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsDelete",
+      "summary": "Delete artifact",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsGet",
+      "summary": "Get artifact metadata",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/artifacts/{artifactId}/content",
+      "operationId": "DocOpV1AdminArtifactsPutContent",
+      "summary": "Upload artifact bytes",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsPutContent"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}/download",
+      "operationId": "DocOpV1AdminArtifactsDownloadURL",
+      "summary": "Presigned download URL",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminArtifactsDownloadURL"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentsList",
+      "summary": "List technician assignments (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAssignmentsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentCreate",
+      "summary": "Create technician assignment",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAssignmentCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentDelete",
+      "summary": "Release assignment (delete)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAssignmentDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentGet",
+      "summary": "Get technician\u2013machine assignment by id",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAssignmentGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/audit/events",
+      "operationId": "DocOpV1AdminAuditEventsList",
+      "summary": "List enterprise audit events",
+      "tags": [
+        "Audit Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuditEventsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/audit/events/{auditEventId}",
+      "operationId": "DocOpV1AdminAuditEventGet",
+      "summary": "Get one enterprise audit event by id",
+      "tags": [
+        "Audit Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuditEventGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersList",
+      "summary": "List API accounts for an company (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersCreate",
+      "summary": "Create API account (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersGet",
+      "summary": "Get API account by id (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersPatch",
+      "summary": "Patch API account (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/activate",
+      "operationId": "DocOpV1AdminAuthUsersActivate",
+      "summary": "Activate API account (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersActivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/deactivate",
+      "operationId": "DocOpV1AdminAuthUsersDeactivate",
+      "summary": "Deactivate API account (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersDeactivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/reset-password",
+      "operationId": "DocOpV1AdminAuthUsersResetPassword",
+      "summary": "Reset password (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersResetPassword"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/revoke-sessions",
+      "operationId": "DocOpV1AdminAuthUsersRevokeSessions",
+      "summary": "Revoke API account sessions (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersRevokeSessions"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPatchRoles",
+      "summary": "Replace API account roles \u2014 PATCH alias",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersPatchRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPostRoles",
+      "summary": "Replace API account roles (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersPostRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPutRoles",
+      "summary": "Replace API account roles (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersPutRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}/sessions",
+      "operationId": "DocOpV1AdminAuthUsersSessions",
+      "summary": "List sessions for an API account (admin)",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersSessions"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/status",
+      "operationId": "DocOpV1AdminAuthUsersPatchStatus",
+      "summary": "Patch API account status only",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminAuthUsersPatchStatus"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandsList",
+      "summary": "List brands",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminBrandsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandCreate",
+      "summary": "Create brand",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminBrandCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandDelete",
+      "summary": "Deactivate brand",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminBrandDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandPatch",
+      "summary": "Update brand (PATCH)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminBrandPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandReplace",
+      "summary": "Update brand",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminBrandReplace"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoriesList",
+      "summary": "List categories",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCategoriesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoryCreate",
+      "summary": "Create category",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCategoryCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryDelete",
+      "summary": "Deactivate category",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCategoryDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryPatch",
+      "summary": "Update category (PATCH)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCategoryPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryReplace",
+      "summary": "Update category",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCategoryReplace"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/commands",
+      "operationId": "DocOpV1AdminCommandsList",
+      "summary": "List machine commands (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommandsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/commands/{commandId}",
+      "operationId": "DocOpV1AdminCommandGet",
+      "summary": "Get command ledger row by id",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommandGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/cancel",
+      "operationId": "DocOpV1AdminCommandCancel",
+      "summary": "Cancel pending command",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommandCancel"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/retry",
+      "operationId": "DocOpV1AdminCommandRetry",
+      "summary": "Retry failed command dispatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommandRetry"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation",
+      "operationId": "DocOpV1AdminCommerceReconciliationList",
+      "summary": "List commerce reconciliation cases",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceReconciliationList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}",
+      "operationId": "DocOpV1AdminCommerceReconciliationGet",
+      "summary": "Get commerce reconciliation case",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceReconciliationGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/ignore",
+      "operationId": "DocOpV1AdminCommerceReconciliationIgnore",
+      "summary": "Ignore commerce reconciliation case",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceReconciliationIgnore"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/request-refund",
+      "operationId": "DocOpV1AdminCommerceReconciliationRequestRefund",
+      "summary": "Request refund from reconciliation case",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceReconciliationRequestRefund"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/resolve",
+      "operationId": "DocOpV1AdminCommerceReconciliationResolve",
+      "summary": "Resolve commerce reconciliation case",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceReconciliationResolve"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsList",
+      "summary": "List company feature flags",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsPost",
+      "summary": "Create a feature flag",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagsPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagGet",
+      "summary": "Get feature flag and scoped targets",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagPatch",
+      "summary": "Patch feature flag metadata / master enabled bit",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/disable",
+      "operationId": "DocOpV1AdminFeatureFlagDisablePost",
+      "summary": "Disable feature flag (master switch)",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagDisablePost"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/enable",
+      "operationId": "DocOpV1AdminFeatureFlagEnablePost",
+      "summary": "Enable feature flag (master switch)",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagEnablePost"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/feature-flags/{flagId}/targets",
+      "operationId": "DocOpV1AdminFeatureFlagTargetsPut",
+      "summary": "Replace scoped targets for a feature flag",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFeatureFlagTargetsPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyCloseList",
+      "summary": "List finance daily closes",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFinanceDailyCloseList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyClosePost",
+      "summary": "Create immutable finance daily close (requires Idempotency-Key)",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFinanceDailyClosePost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close/{closeId}",
+      "operationId": "DocOpV1AdminFinanceDailyCloseGet",
+      "summary": "Get one finance daily close by id",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminFinanceDailyCloseGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/inventory/anomalies",
+      "operationId": "DocOpV1AdminInventoryAnomaliesList",
+      "summary": "List inventory anomalies (ledger-backed)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminInventoryAnomaliesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/inventory/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminInventoryAnomalyResolve",
+      "summary": "Resolve inventory anomaly",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminInventoryAnomalyResolve"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/inventory/low-stock",
+      "operationId": "DocOpV1AdminInventoryLowStock",
+      "summary": "List slots estimated to need refill soon (low stock)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminInventoryLowStock"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/inventory/refill-suggestions",
+      "operationId": "DocOpV1AdminInventoryRefillSuggestions",
+      "summary": "List refill suggestions across machines (all slots)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminInventoryRefillSuggestions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsList",
+      "summary": "List machine config rollouts",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineConfigRolloutsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsPost",
+      "summary": "Create machine config rollout (or rollback)",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineConfigRolloutsPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminMachineConfigRolloutGet",
+      "summary": "Get one machine config rollout",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineConfigRolloutGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachinesList",
+      "summary": "List machines (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachinesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachineCreate",
+      "summary": "Create machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachineGet",
+      "summary": "Get machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachinePatch",
+      "summary": "Patch machine metadata (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachinePatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesList",
+      "summary": "List activation codes for a machine",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineActivationCodesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesPost",
+      "summary": "Create machine activation code",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineActivationCodesPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}",
+      "operationId": "DocOpV1AdminMachineActivationCodeDelete",
+      "summary": "Revoke an activation code",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineActivationCodeDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/archive",
+      "operationId": "DocOpV1AdminMachineArchive",
+      "summary": "Retire machine (archive alias)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineArchive"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsList",
+      "summary": "List cash collections for machine",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCashCollectionsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsPost",
+      "summary": "Start cash collection session",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCashCollectionsPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}",
+      "operationId": "DocOpV1AdminMachineCashCollectionGet",
+      "summary": "Get one cash collection",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCashCollectionGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close",
+      "operationId": "DocOpV1AdminMachineCashCollectionClosePost",
+      "summary": "Close cash collection with counted cash",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCashCollectionClosePost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cashbox",
+      "operationId": "DocOpV1AdminMachineCashbox",
+      "summary": "Cashbox summary (expected vault from commerce)",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCashbox"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/commands",
+      "operationId": "DocOpV1AdminMachineCommandDispatch",
+      "summary": "Dispatch new command to machine (MQTT/device pipeline)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineCommandDispatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/bundles",
+      "operationId": "DocOpV1AdminMachineDiagnosticBundlesList",
+      "summary": "List machine diagnostic bundles",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineDiagnosticBundlesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/requests",
+      "operationId": "DocOpV1AdminMachineDiagnosticRequest",
+      "summary": "Request machine diagnostic bundle",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineDiagnosticRequest"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/disable",
+      "operationId": "DocOpV1AdminMachineDisable",
+      "summary": "Disable machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineDisable"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/enable",
+      "operationId": "DocOpV1AdminMachineEnable",
+      "summary": "Enable machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineEnable"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/health",
+      "operationId": "DocOpV1AdminMachineHealth",
+      "summary": "Machine health detail",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineHealth"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory",
+      "operationId": "DocOpV1AdminMachineInventory",
+      "summary": "Aggregate inventory by product for a machine",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineInventory"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory-events",
+      "operationId": "DocOpV1AdminMachineInventoryEvents",
+      "summary": "List append-only inventory ledger events for a machine",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineInventoryEvents"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory/anomalies",
+      "operationId": "DocOpV1AdminMachineInventoryAnomaliesList",
+      "summary": "List inventory anomalies for one machine",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineInventoryAnomaliesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/inventory/reconcile",
+      "operationId": "DocOpV1AdminMachineInventoryReconcile",
+      "summary": "Post machine inventory reconcile adjustment",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineInventoryReconcile"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/mark-compromised",
+      "operationId": "DocOpV1AdminMachineMarkCompromised",
+      "summary": "Mark machine compromised (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineMarkCompromised"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/planograms/draft",
+      "operationId": "DocOpV1AdminMachinePlanogramDraftPut",
+      "summary": "Save draft cabinet slot planogram assignments",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachinePlanogramDraftPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planograms/publish",
+      "operationId": "DocOpV1AdminMachinePlanogramPublishPost",
+      "summary": "Publish draft planogram as current and dispatch device command",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachinePlanogramPublishPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/refill-suggestions",
+      "operationId": "DocOpV1AdminMachineRefillSuggestions",
+      "summary": "Refill suggestions for one machine",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRefillSuggestions"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/resume",
+      "operationId": "DocOpV1AdminMachineResume",
+      "summary": "Resume suspended machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineResume"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/retire",
+      "operationId": "DocOpV1AdminMachineRetire",
+      "summary": "Retire machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRetire"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-credentials",
+      "operationId": "DocOpV1AdminMachineRevokeCredentials",
+      "summary": "Revoke machine credential material (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRevokeCredentials"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-sessions",
+      "operationId": "DocOpV1AdminMachineRevokeSessions",
+      "summary": "Revoke interactive sessions for machine technicians/operators (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRevokeSessions"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-token",
+      "operationId": "DocOpV1AdminMachineRevokeToken",
+      "summary": "Revoke machine tokens (alias path)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRevokeToken"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credential",
+      "operationId": "DocOpV1AdminMachineRotateCredential",
+      "summary": "Rotate machine credential (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRotateCredential"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credentials",
+      "operationId": "DocOpV1AdminMachineRotateCredentials",
+      "summary": "Rotate machine credential (plural alias)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRotateCredentials"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-token-version",
+      "operationId": "DocOpV1AdminMachineRotateTokenVersion",
+      "summary": "Bump credential version / rotate token (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineRotateTokenVersion"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/slots",
+      "operationId": "DocOpV1AdminMachineSlots",
+      "summary": "List live slot inventory for a machine (restock / cycle-count UI)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineSlots"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/stock-adjustments",
+      "operationId": "DocOpV1AdminMachineStockAdjustmentsPost",
+      "summary": "Apply stock adjustments (restock, cycle count, manual, reconcile)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineStockAdjustmentsPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/suspend",
+      "operationId": "DocOpV1AdminMachineSuspend",
+      "summary": "Suspend machine (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineSuspend"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/sync",
+      "operationId": "DocOpV1AdminMachineSetupSyncPost",
+      "summary": "Queue a machine setup / inventory sync command",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineSetupSyncPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechniciansOnMachineList",
+      "summary": "List technicians assigned to a machine",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTechniciansOnMachineList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechnicianAssign",
+      "summary": "Assign technician user to machine",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTechnicianAssign"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/technicians/{userId}",
+      "operationId": "DocOpV1AdminMachineTechnicianRemove",
+      "summary": "Remove technician assignment from machine by user id",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTechnicianRemove"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/timeline",
+      "operationId": "DocOpV1AdminMachineTimeline",
+      "summary": "Machine operational timeline",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTimeline"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/topology",
+      "operationId": "DocOpV1AdminMachineTopologyPut",
+      "summary": "Upsert machine cabinet topology and slot layouts",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTopologyPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/transfer-site",
+      "operationId": "DocOpV1AdminMachineTransferSite",
+      "summary": "Move machine to another site (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMachineTransferSite"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/media",
+      "operationId": "DocOpV1AdminMediaList",
+      "summary": "List media assets (alias path)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminMediaList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsList",
+      "summary": "List media assets (admin)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaAssetsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsCreate",
+      "summary": "Start enterprise media asset upload",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaAssetsCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetDelete",
+      "summary": "Delete media asset (admin)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaAssetDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetGet",
+      "summary": "Get one media asset by id (admin)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaAssetGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/external-images",
+      "operationId": "DocOpV1AdminExternalProductImageRegister",
+      "summary": "Register external product image URL",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminExternalProductImageRegister"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads",
+      "operationId": "DocOpV1AdminMediaUploadInit",
+      "summary": "Start enterprise media upload (presigned PUT)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminMediaUploadInit"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/init",
+      "operationId": "DocOpV1AdminMediaUploadInitV2",
+      "summary": "Start enterprise media upload (camelCase contract)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminMediaUploadInitV2"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadCompleteUploadsPrefix",
+      "summary": "Finalize media upload (uploads/{mediaId}/complete alias)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminMediaUploadCompleteUploadsPrefix"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaDelete",
+      "summary": "Delete media asset (alias path)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaGet",
+      "summary": "Get media asset (alias path)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/media/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadComplete",
+      "summary": "Finalize media upload (variants + ready)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminMediaUploadComplete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/operations/machines/health",
+      "operationId": "DocOpV1AdminOperationsMachinesHealth",
+      "summary": "Fleet machine health snapshot list",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOperationsMachinesHealth"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ops/outbox",
+      "operationId": "DocOpV1AdminOutboxOpsGet",
+      "summary": "List transactional outbox rows and pipeline stats",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOutboxOpsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ops/outbox/{outboxId}/retry",
+      "operationId": "DocOpV1AdminOutboxRetry",
+      "summary": "Reset a dead-lettered outbox row for retry",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOutboxRetry"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ops/retention",
+      "operationId": "DocOpV1AdminRetentionOpsGet",
+      "summary": "Show retention table visibility",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRetentionOpsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/orders/{orderId}/refunds",
+      "operationId": "DocOpV1AdminCommerceOrderRefundPost",
+      "summary": "Create refund request + ledger refund (admin scoped)",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceOrderRefundPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/orders/{orderId}/timeline",
+      "operationId": "DocOpV1AdminCommerceOrderTimelineGet",
+      "summary": "List commerce order timeline events",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceOrderTimelineGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ota",
+      "operationId": "DocOpV1AdminOTAList",
+      "summary": "List OTA campaigns (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTAList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignsList",
+      "summary": "List OTA campaigns (lifecycle admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignCreate",
+      "summary": "Create OTA campaign (draft)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignGet",
+      "summary": "Get OTA campaign detail",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignPatch",
+      "summary": "Patch draft/approved OTA campaign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/approve",
+      "operationId": "DocOpV1AdminOTACampaignApprove",
+      "summary": "Approve OTA campaign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignApprove"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/cancel",
+      "operationId": "DocOpV1AdminOTACampaignCancel",
+      "summary": "Cancel OTA campaign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignCancel"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/pause",
+      "operationId": "DocOpV1AdminOTACampaignPause",
+      "summary": "Pause active rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignPause"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/publish",
+      "operationId": "DocOpV1AdminOTACampaignPublish",
+      "summary": "Publish OTA campaign (approve + start when needed)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignPublish"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/results",
+      "operationId": "DocOpV1AdminOTACampaignResultsGet",
+      "summary": "List campaign machine rollout results",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignResultsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/resume",
+      "operationId": "DocOpV1AdminOTACampaignResume",
+      "summary": "Resume paused rollout (remaining machines)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignResume"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/rollback",
+      "operationId": "DocOpV1AdminOTACampaignRollback",
+      "summary": "Rollback OTA campaign (dispatch rollback commands)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignRollback"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/start",
+      "operationId": "DocOpV1AdminOTACampaignStart",
+      "summary": "Start OTA rollout (canary first wave)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignStart"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsGet",
+      "summary": "List campaign machine targets",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignTargetsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsPut",
+      "summary": "Replace campaign machine targets (draft/approved only)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminOTACampaignTargetsPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/planograms",
+      "operationId": "DocOpV1AdminPlanogramsList",
+      "summary": "List planograms (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPlanogramsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/planograms/{planogramId}",
+      "operationId": "DocOpV1AdminPlanogramGet",
+      "summary": "Get planogram detail with slots",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPlanogramGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBooksList",
+      "summary": "List price books (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBooksList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBookCreate",
+      "summary": "Create price book",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookGet",
+      "summary": "Get price book by ID",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookPatch",
+      "summary": "Patch price book",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/activate",
+      "operationId": "DocOpV1AdminPriceBookActivate",
+      "summary": "Activate price book",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookActivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/archive",
+      "operationId": "DocOpV1AdminPriceBookArchive",
+      "summary": "Archive price book (deactivate)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookArchive"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/assign-target",
+      "operationId": "DocOpV1AdminPriceBookAssignTarget",
+      "summary": "Assign company price book to machine or site",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookAssignTarget"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/deactivate",
+      "operationId": "DocOpV1AdminPriceBookDeactivate",
+      "summary": "Deactivate price book",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookDeactivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsGet",
+      "summary": "List price book items",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookItemsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsPut",
+      "summary": "Replace price book items",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookItemsPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemDelete",
+      "summary": "Delete price book item",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookItemDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemPatch",
+      "summary": "Upsert one price book item",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookItemPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPriceBookTargetDelete",
+      "summary": "Remove price book target assignment",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPriceBookTargetDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/pricing/preview",
+      "operationId": "DocOpV1AdminPricingPreview",
+      "summary": "Preview effective prices for products",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPricingPreview"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/product-images",
+      "operationId": "DocOpV1AdminProductImageUpload",
+      "summary": "Upload product image file (Cloudinary)",
+      "tags": [
+        "Media Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductImageUpload"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductsList",
+      "summary": "List products (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductCreate",
+      "summary": "Create product (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductDelete",
+      "summary": "Deactivate product",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductGet",
+      "summary": "Get product by id (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductPatch",
+      "summary": "Update product (PATCH)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductReplace",
+      "summary": "Update product (PUT/PATCH)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductReplace"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImageDelete",
+      "summary": "Remove primary product image",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminProductImageDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePost",
+      "summary": "Bind primary product image (alias)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminProductImagePost"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePut",
+      "summary": "Bind primary product image",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminProductImagePut"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPost",
+      "summary": "Bind media to product (POST)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductMediaBindPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPut",
+      "summary": "Bind or replace product media (PUT)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductMediaBindPut"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/media/{mediaId}",
+      "operationId": "DocOpV1AdminProductMediaUnbind",
+      "summary": "Remove bound media from product",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProductMediaUnbind"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionsList",
+      "summary": "List promotions (admin catalog)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionCreate",
+      "summary": "Create promotion (draft lifecycle)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/preview",
+      "operationId": "DocOpV1AdminPromotionsPreview",
+      "summary": "Preview promotion discounts on top of catalog pricing",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionsPreview"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionGet",
+      "summary": "Get promotion detail with rules and targets",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionPatch",
+      "summary": "Patch promotion fields or replace rules",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/activate",
+      "operationId": "DocOpV1AdminPromotionActivate",
+      "summary": "Activate promotion (lifecycle active)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionActivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/archive",
+      "operationId": "DocOpV1AdminPromotionArchive",
+      "summary": "Archive promotion (deactivate with audit trail)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionArchive"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/assign-target",
+      "operationId": "DocOpV1AdminPromotionAssignTarget",
+      "summary": "Assign a promotion target (company, site, machine, product, category, tag)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionAssignTarget"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/deactivate",
+      "operationId": "DocOpV1AdminPromotionDeactivate",
+      "summary": "Deactivate promotion",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionDeactivate"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/pause",
+      "operationId": "DocOpV1AdminPromotionPause",
+      "summary": "Pause promotion",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionPause"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/promotions/{promotionId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPromotionTargetDelete",
+      "summary": "Remove a promotion target assignment",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminPromotionTargetDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/provisioning/batches/{batchId}",
+      "operationId": "DocOpV1AdminProvisioningBatchGet",
+      "summary": "Get provisioning batch status",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProvisioningBatchGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/provisioning/machines/bulk",
+      "operationId": "DocOpV1AdminProvisioningBulk",
+      "summary": "Bulk provision machines at a site",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminProvisioningBulk"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/refunds",
+      "operationId": "DocOpV1AdminCommerceRefundRequestsList",
+      "summary": "List refund requests for company",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceRefundRequestsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/refunds/{refundId}",
+      "operationId": "DocOpV1AdminCommerceRefundRequestGet",
+      "summary": "Get refund request by id",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminCommerceRefundRequestGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/cash",
+      "operationId": "DocOpV1AdminReportsCash",
+      "summary": "Cash collection report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsCash"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/cash-collections/export.csv",
+      "operationId": "DocOpV1AdminReportsCashCollectionsExportCSV",
+      "summary": "Export cash collection sessions as CSV (UTF-8)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsCashCollectionsExportCSV"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/commands",
+      "operationId": "DocOpV1AdminReportsCommands",
+      "summary": "Machine command failure report (terminal attempts only)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsCommands"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/export",
+      "operationId": "DocOpV1AdminReportsExport",
+      "summary": "Unified CSV export dispatcher",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsExport"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/failed-vends",
+      "operationId": "DocOpV1AdminReportsFailedVends",
+      "summary": "Failed vend report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsFailedVends"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/fills",
+      "operationId": "DocOpV1AdminReportsTechnicianFills",
+      "summary": "Technician and fill / restock inventory operations",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsTechnicianFills"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory",
+      "operationId": "DocOpV1AdminReportsInventoryUnified",
+      "summary": "Inventory BI (low stock or movement ledger)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsInventoryUnified"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory-low-stock",
+      "operationId": "DocOpV1AdminReportsInventoryLowStock",
+      "summary": "Inventory low-stock report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsInventoryLowStock"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/machine-health",
+      "operationId": "DocOpV1AdminReportsMachineHealth",
+      "summary": "Machine health and offline report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsMachineHealth"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/machines",
+      "operationId": "DocOpV1AdminReportsMachines",
+      "summary": "Machine uptime / last-seen report (alias naming)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsMachines"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/payments",
+      "operationId": "DocOpV1AdminReportsPayments",
+      "summary": "Payment settlement report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsPayments"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/payments-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsPaymentsSummaryExportCSV",
+      "summary": "Export payments summary as CSV (UTF-8)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsPaymentsSummaryExportCSV"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/products",
+      "operationId": "DocOpV1AdminReportsProducts",
+      "summary": "Product performance report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsProducts"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation",
+      "operationId": "DocOpV1AdminReportsReconciliationBI",
+      "summary": "Reconciliation BI (open/closed summaries + scoped cases)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsReconciliationBI"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation-queue",
+      "operationId": "DocOpV1AdminReportsReconciliationQueue",
+      "summary": "Reconciliation queue report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsReconciliationQueue"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/refunds",
+      "operationId": "DocOpV1AdminReportsRefunds",
+      "summary": "Refund report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsRefunds"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/sales",
+      "operationId": "DocOpV1AdminReportsSales",
+      "summary": "Company sales report",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsSales"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/sales-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsSalesSummaryExportCSV",
+      "summary": "Export sales summary as CSV (UTF-8)",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsSalesSummaryExportCSV"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/reports/vends",
+      "operationId": "DocOpV1AdminReportsVends",
+      "summary": "Company vend lifecycle summary",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminReportsVends"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/restock/suggestions",
+      "operationId": "DocOpV1AdminRestockSuggestions",
+      "summary": "Restock suggestions (admin)",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRestockSuggestions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutsList",
+      "summary": "List rollout campaigns",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutCreate",
+      "summary": "Create rollout campaign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminRolloutGet",
+      "summary": "Get rollout campaign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/cancel",
+      "operationId": "DocOpV1AdminRolloutCancel",
+      "summary": "Cancel rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutCancel"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/pause",
+      "operationId": "DocOpV1AdminRolloutPause",
+      "summary": "Pause rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutPause"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/resume",
+      "operationId": "DocOpV1AdminRolloutResume",
+      "summary": "Resume rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutResume"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/rollback",
+      "operationId": "DocOpV1AdminRolloutRollback",
+      "summary": "Roll back rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutRollback"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/start",
+      "operationId": "DocOpV1AdminRolloutStart",
+      "summary": "Start rollout",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminRolloutStart"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSitesList",
+      "summary": "List sites (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSitesList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSiteCreate",
+      "summary": "Create site (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSiteCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteDelete",
+      "summary": "Deactivate site (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSiteDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteGet",
+      "summary": "Get site by ID (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSiteGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSitePatch",
+      "summary": "Patch site (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSitePatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/archive",
+      "operationId": "DocOpV1AdminSiteArchive",
+      "summary": "Archive site (admin alias)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSiteArchive"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/disable",
+      "operationId": "DocOpV1AdminSiteDisable",
+      "summary": "Disable site (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSiteDisable"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox",
+      "operationId": "DocOpV1AdminSystemOutboxListGet",
+      "summary": "List transactional outbox rows (system alias)",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemOutboxListGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/stats",
+      "operationId": "DocOpV1AdminSystemOutboxStatsGet",
+      "summary": "Outbox pipeline statistics (system alias)",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemOutboxStatsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/{eventId}",
+      "operationId": "DocOpV1AdminSystemOutboxGet",
+      "summary": "Get one outbox row by id",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemOutboxGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/mark-dlq",
+      "operationId": "DocOpV1AdminSystemOutboxMarkDLQPost",
+      "summary": "Manually move an outbox row to Postgres DLQ",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemOutboxMarkDLQPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/replay",
+      "operationId": "DocOpV1AdminSystemOutboxReplayPost",
+      "summary": "Replay a dead-lettered outbox row",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemOutboxReplayPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/system/retention/dry-run",
+      "operationId": "DocOpV1AdminSystemRetentionDryRunPost",
+      "summary": "Preview retention candidates (dry-run)",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemRetentionDryRunPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/system/retention/run",
+      "operationId": "DocOpV1AdminSystemRetentionRunPost",
+      "summary": "Run bounded Postgres retention",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemRetentionRunPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/system/retention/stats",
+      "operationId": "DocOpV1AdminSystemRetentionStatsGet",
+      "summary": "Data retention policy + table footprints (system)",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminSystemRetentionStatsGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagsList",
+      "summary": "List tags",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTagsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagCreate",
+      "summary": "Create tag",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTagCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagDelete",
+      "summary": "Deactivate tag",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTagDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagPatch",
+      "summary": "Update tag (PATCH)",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTagPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagReplace",
+      "summary": "Update tag",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTagReplace"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentsList",
+      "summary": "List technician assignments (alternate path)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCreate",
+      "summary": "Create technician\u2013machine assignment (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentDelete",
+      "summary": "Release technician assignment (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentGet",
+      "summary": "Get technician assignment by ID (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentPatch",
+      "summary": "Patch technician assignment (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments/{assignmentId}/cancel",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCancel",
+      "summary": "Cancel technician assignment (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianAssignmentCancel"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechniciansList",
+      "summary": "List technicians (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechniciansList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechnicianCreate",
+      "summary": "Create technician (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianGet",
+      "summary": "Get technician by ID (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianPatch",
+      "summary": "Patch technician (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/disable",
+      "operationId": "DocOpV1AdminTechnicianDisable",
+      "summary": "Disable technician (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianDisable"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/enable",
+      "operationId": "DocOpV1AdminTechnicianEnable",
+      "summary": "Enable technician (admin)",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AdminTechnicianEnable"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersList",
+      "summary": "List API accounts (admin) \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersCreate",
+      "summary": "Create API account \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersGet",
+      "summary": "Get API account \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersPatch",
+      "summary": "Patch API account \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersPatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/disable",
+      "operationId": "DocOpV1AdminUsersDisable",
+      "summary": "Disable API account \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersDisable"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/enable",
+      "operationId": "DocOpV1AdminUsersEnable",
+      "summary": "Enable API account \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersEnable"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/reset-password",
+      "operationId": "DocOpV1AdminUsersResetPassword",
+      "summary": "Reset password \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersResetPassword"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/revoke-sessions",
+      "operationId": "DocOpV1AdminUsersRevokeSessions",
+      "summary": "Revoke user sessions \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersRevokeSessions"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPatchRoles",
+      "summary": "Replace roles \u2014 PATCH alias",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersPatchRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPostRoles",
+      "summary": "Replace roles \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersPostRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "PUT",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPutRoles",
+      "summary": "Replace roles \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersPutRoles"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/admin/users/{userId}/roles/{role}",
+      "operationId": "DocOpV1AdminUsersDeleteRole",
+      "summary": "Remove one role from user",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersDeleteRole"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}/sessions",
+      "operationId": "DocOpV1AdminUsersSessions",
+      "summary": "List user sessions \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersSessions"
+    },
+    {
+      "protocol": "rest",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/status",
+      "operationId": "DocOpV1AdminUsersPatchStatus",
+      "summary": "Patch account status only \u2014 alternate path",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1AdminUsersPatchStatus"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/change-password",
+      "operationId": "DocOpV1AuthChangePassword",
+      "summary": "Change password (self-service)",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthChangePassword"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "operationId": "DocOpV1AuthLogin",
+      "summary": "Exchange email/password for JWT session tokens",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "none",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthLogin"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "operationId": "DocOpV1AuthLogout",
+      "summary": "Revoke refresh token(s)",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthLogout"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "operationId": "DocOpV1AuthMe",
+      "summary": "Current authenticated principal",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthMe"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/disable",
+      "operationId": "DocOpV1AuthMFADisable",
+      "summary": "Disable TOTP for the current user",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthMFADisable"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/enroll",
+      "operationId": "DocOpV1AuthMFAEnroll",
+      "summary": "Start TOTP MFA enrollment",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthMFAEnroll"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/verify",
+      "operationId": "DocOpV1AuthMFAVerify",
+      "summary": "Verify TOTP (enrollment or login)",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthMFAVerify"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/password/change",
+      "operationId": "DocOpV1AuthPasswordChange",
+      "summary": "Change password (self-service)",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthPasswordChange"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/password/reset/confirm",
+      "operationId": "DocOpV1AuthPasswordResetConfirm",
+      "summary": "Confirm password reset",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "none",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthPasswordResetConfirm"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/password/reset/request",
+      "operationId": "DocOpV1AuthPasswordResetRequest",
+      "summary": "Request password reset",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "none",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthPasswordResetRequest"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/auth/refresh",
+      "operationId": "DocOpV1AuthRefresh",
+      "summary": "Rotate access token using a refresh token",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "none",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthRefresh"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsRevokeOthers",
+      "summary": "Revoke other sessions",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthSessionsRevokeOthers"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsList",
+      "summary": "List current admin sessions",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthSessionsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "DELETE",
+      "path": "/v1/auth/sessions/{sessionId}",
+      "operationId": "DocOpV1AuthSessionDelete",
+      "summary": "Revoke one session",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer",
+      "audience": "Admin Web",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1AuthSessionDelete"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/cash-checkout",
+      "operationId": "DocOpV1CommerceCashCheckout",
+      "summary": "Create order, record captured cash payment, mark paid",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceCashCheckout"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders",
+      "operationId": "DocOpV1CommerceCreateOrder",
+      "summary": "Create order and initial vend session",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceCreateOrder"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}",
+      "operationId": "DocOpV1CommerceGetOrder",
+      "summary": "Checkout status for order",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceGetOrder"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/cancel",
+      "operationId": "DocOpV1CommerceOrderCancel",
+      "summary": "Cancel order before payment capture",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceOrderCancel"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payment-session",
+      "operationId": "DocOpV1CommercePaymentSession",
+      "summary": "Start payment with outbox row",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommercePaymentSession"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks",
+      "operationId": "DocOpV1CommercePaymentWebhook",
+      "summary": "Apply provider webhook",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "none",
+      "audience": "Payment Provider",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommercePaymentWebhook"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/reconciliation",
+      "operationId": "DocOpV1CommerceReconciliationSnapshot",
+      "summary": "Reconciliation snapshot wrapper",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceReconciliationSnapshot"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundsList",
+      "summary": "List refunds for an order",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceRefundsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundCreate",
+      "summary": "Create or replay a refund (idempotent)",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceRefundCreate"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds/{refundId}",
+      "operationId": "DocOpV1CommerceRefundGet",
+      "summary": "Get one refund on an order",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceRefundGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/failure",
+      "operationId": "DocOpV1CommerceVendFailure",
+      "summary": "Finalize vend failure",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceVendFailure"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/start",
+      "operationId": "DocOpV1CommerceVendStart",
+      "summary": "Advance vend to in_progress",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceVendStart"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/success",
+      "operationId": "DocOpV1CommerceVendSuccess",
+      "summary": "Finalize vend success",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1CommerceVendSuccess"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/commands/poll",
+      "operationId": "DocOpV1DeviceMachineCommandsPoll",
+      "summary": "Poll pending remote commands over HTTP (MQTT fallback)",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1DeviceMachineCommandsPoll"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/events/reconcile",
+      "operationId": "DocOpV1DeviceTelemetryReconcileBatch",
+      "summary": "Batch reconcile critical telemetry idempotency keys",
+      "tags": [
+        "Telemetry Reconcile"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1DeviceTelemetryReconcileBatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/device/machines/{machineId}/events/{idempotencyKey}/status",
+      "operationId": "DocOpV1DeviceTelemetryReconcileStatusGet",
+      "summary": "Single critical telemetry idempotency status",
+      "tags": [
+        "Telemetry Reconcile"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1DeviceTelemetryReconcileStatusGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/vend-results",
+      "operationId": "DocOpV1DeviceMachineVendResults",
+      "summary": "Report vend outcome for an order (HTTP bridge)",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1DeviceMachineVendResults"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/check-ins",
+      "operationId": "DocOpV1MachineCheckIn",
+      "summary": "Record Android check-in",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineCheckIn"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/commands/dispatch",
+      "operationId": "DocOpV1MachineCommandDispatch",
+      "summary": "Dispatch remote MQTT command",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1MachineCommandDispatch"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/receipts",
+      "operationId": "DocOpV1MachineCommandReceipts",
+      "summary": "List recent command receipts",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineCommandReceipts"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/{sequence}/status",
+      "operationId": "DocOpV1MachineCommandStatus",
+      "summary": "Get command dispatch status by sequence",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineCommandStatus"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/config-applies",
+      "operationId": "DocOpV1MachineConfigApply",
+      "summary": "Acknowledge config applied on device",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineConfigApply"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/action-attributions",
+      "operationId": "DocOpV1OperatorSessionActionAttributions",
+      "summary": "List action attributions for machine",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionActionAttributions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/auth-events",
+      "operationId": "DocOpV1OperatorSessionAuthEvents",
+      "summary": "List auth events",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionAuthEvents"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/current",
+      "operationId": "DocOpV1OperatorSessionCurrent",
+      "summary": "Get current operator session",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionCurrent"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/history",
+      "operationId": "DocOpV1OperatorSessionHistory",
+      "summary": "List session history",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionHistory"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/login",
+      "operationId": "DocOpV1OperatorSessionLogin",
+      "summary": "Start or resume operator session",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionLogin"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/logout",
+      "operationId": "DocOpV1OperatorSessionLogout",
+      "summary": "End operator session",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionLogout"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/timeline",
+      "operationId": "DocOpV1OperatorSessionTimeline",
+      "summary": "Combined operator timeline",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionTimeline"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat",
+      "operationId": "DocOpV1OperatorSessionHeartbeat",
+      "summary": "Session activity heartbeat",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorSessionHeartbeat"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/sale-catalog",
+      "operationId": "DocOpV1MachineSaleCatalogGet",
+      "summary": "Runtime sale catalog (planogram, price, stock, images)",
+      "tags": [
+        "Runtime Catalog"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1MachineSaleCatalogGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/shadow",
+      "operationId": "DocOpV1MachineShadowGet",
+      "summary": "Get machine shadow JSON",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1MachineShadowGet"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/incidents",
+      "operationId": "DocOpV1MachineTelemetryIncidents",
+      "summary": "Recent persisted machine incidents",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineTelemetryIncidents"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/rollups",
+      "operationId": "DocOpV1MachineTelemetryRollups",
+      "summary": "Telemetry rollup buckets (1m / 1h)",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineTelemetryRollups"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/snapshot",
+      "operationId": "DocOpV1MachineTelemetrySnapshot",
+      "summary": "Current machine telemetry snapshot (projected)",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1MachineTelemetrySnapshot"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/operator-insights/technicians/{technicianId}/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsTechnicianAttributions",
+      "summary": "List action attributions for a technician",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorInsightsTechnicianAttributions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/operator-insights/users/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsUserAttributions",
+      "summary": "List action attributions for a user principal",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OperatorInsightsUserAttributions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/orders",
+      "operationId": "DocOpV1OrdersList",
+      "summary": "List orders for company",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1OrdersList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/payments",
+      "operationId": "DocOpV1PaymentsList",
+      "summary": "List payments for company",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1PaymentsList"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/reports/fleet-health",
+      "operationId": "DocOpV1ReportsFleetHealth",
+      "summary": "Machine posture and incident rollups",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1ReportsFleetHealth"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/reports/inventory-exceptions",
+      "operationId": "DocOpV1ReportsInventoryExceptions",
+      "summary": "Slots needing refill or restock attention",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1ReportsInventoryExceptions"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/reports/payments-summary",
+      "operationId": "DocOpV1ReportsPaymentsSummary",
+      "summary": "Payment outcomes and method/status breakdown",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1ReportsPaymentsSummary"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/reports/sales-summary",
+      "operationId": "DocOpV1ReportsSalesSummary",
+      "summary": "Sales rollup and trend breakdown",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer",
+      "audience": "Authenticated",
+      "surface": "canonical",
+      "handler": "swagger:DocOpV1ReportsSalesSummary"
+    },
+    {
+      "protocol": "rest",
+      "method": "POST",
+      "path": "/v1/setup/activation-codes/claim",
+      "operationId": "DocOpV1SetupActivationClaimPost",
+      "summary": "Claim an activation code (public pre-auth)",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "none",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1SetupActivationClaimPost"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/v1/setup/machines/{machineId}/bootstrap",
+      "operationId": "DocOpV1SetupMachineBootstrap",
+      "summary": "Machine setup bootstrap (topology + catalog)",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer",
+      "audience": "Machine App",
+      "surface": "legacy",
+      "handler": "swagger:DocOpV1SetupMachineBootstrap"
+    },
+    {
+      "protocol": "rest",
+      "method": "GET",
+      "path": "/version",
+      "operationId": "DocOpVersion",
+      "summary": "Build and runtime version",
+      "tags": [
+        "System"
+      ],
+      "auth": "none",
+      "audience": "Public/System",
+      "surface": "canonical",
+      "handler": "swagger:DocOpVersion"
+    }
+  ],
+  "grpc": [
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineAuthService",
+      "method": "ActivateMachine",
+      "proto_file": "proto/avf/machine/v1/auth.proto",
+      "audience": "Machine App",
+      "surface": "legacy"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineAuthService",
+      "method": "ClaimActivation",
+      "proto_file": "proto/avf/machine/v1/auth.proto",
+      "audience": "Machine App",
+      "surface": "legacy"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineAuthService",
+      "method": "RefreshMachineToken",
+      "proto_file": "proto/avf/machine/v1/auth.proto",
+      "audience": "Machine App",
+      "surface": "legacy"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineBootstrapService",
+      "method": "GetBootstrap",
+      "proto_file": "proto/avf/machine/v1/bootstrap.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineBootstrapService",
+      "method": "CheckIn",
+      "proto_file": "proto/avf/machine/v1/bootstrap.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineBootstrapService",
+      "method": "AckConfigVersion",
+      "proto_file": "proto/avf/machine/v1/bootstrap.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineBootstrapService",
+      "method": "CheckForUpdates",
+      "proto_file": "proto/avf/machine/v1/bootstrap.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "GetSaleCatalog",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "SyncSaleCatalog",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "GetCatalogSnapshot",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "SyncCatalogBundle",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "GetCatalogDelta",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "AckCatalogVersion",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCatalogService",
+      "method": "GetMediaManifest",
+      "proto_file": "proto/avf/machine/v1/catalog.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "GetPendingCommands",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "AckCommand",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "RejectCommand",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "GetAssignedUpdate",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "ReportUpdateStatus",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommandService",
+      "method": "ReportDiagnosticBundleResult",
+      "proto_file": "proto/avf/machine/v1/command.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "CreateOrder",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "CreatePaymentSession",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "AttachPaymentResult",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "ConfirmCashPayment",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "CreateCashCheckout",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "GetOrder",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "GetOrderStatus",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "StartVend",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "ConfirmVendSuccess",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "ReportVendSuccess",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "ReportVendFailure",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineCommerceService",
+      "method": "CancelOrder",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "CreateSale",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "AttachPayment",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "ConfirmCashReceived",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "StartVend",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "CompleteVend",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "FailVend",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineSaleService",
+      "method": "CancelSale",
+      "proto_file": "proto/avf/machine/v1/commerce.proto",
+      "audience": "Machine App",
+      "surface": "legacy_companion"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "PushInventoryDelta",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "GetInventorySnapshot",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "AckInventorySync",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "GetPlanogram",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitStockSnapshot",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitFillResult",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitFillReport",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitRestock",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitInventoryAdjustment",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineInventoryService",
+      "method": "SubmitStockAdjustment",
+      "proto_file": "proto/avf/machine/v1/inventory.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineActivationService",
+      "method": "ClaimActivation",
+      "proto_file": "proto/avf/machine/v1/machine_activation.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTokenService",
+      "method": "RefreshMachineToken",
+      "proto_file": "proto/avf/machine/v1/machine_token.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineMediaService",
+      "method": "GetMediaManifest",
+      "proto_file": "proto/avf/machine/v1/media.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineMediaService",
+      "method": "GetMediaDelta",
+      "proto_file": "proto/avf/machine/v1/media.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineMediaService",
+      "method": "AckMediaVersion",
+      "proto_file": "proto/avf/machine/v1/media.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOfflineSyncService",
+      "method": "PushOfflineEvents",
+      "proto_file": "proto/avf/machine/v1/offline_sync.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOfflineSyncService",
+      "method": "GetSyncCursor",
+      "proto_file": "proto/avf/machine/v1/offline_sync.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "OpenOperatorSession",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "CloseOperatorSession",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "SubmitFillReport",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "SubmitStockAdjustment",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "LoginOperator",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "LogoutOperator",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineOperatorService",
+      "method": "HeartbeatOperatorSession",
+      "proto_file": "proto/avf/machine/v1/operator_grpc.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "PushTelemetryBatch",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "PushCriticalEvent",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "CheckIn",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "SubmitTelemetryBatch",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "ReconcileEvents",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.machine.v1",
+      "service": "MachineTelemetryService",
+      "method": "GetEventStatus",
+      "proto_file": "proto/avf/machine/v1/telemetry.proto",
+      "audience": "Machine App",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalCatalogQueryService",
+      "method": "GetSaleCatalogSnapshot",
+      "proto_file": "proto/avf/internal/v1/catalog_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalCommerceQueryService",
+      "method": "GetOrderPaymentVendState",
+      "proto_file": "proto/avf/internal/v1/commerce_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalInventoryQueryService",
+      "method": "GetMachineSlotInventory",
+      "proto_file": "proto/avf/internal/v1/inventory_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalMachineQueryService",
+      "method": "GetMachineSummary",
+      "proto_file": "proto/avf/internal/v1/machine_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalMachineQueryService",
+      "method": "GetMachineState",
+      "proto_file": "proto/avf/internal/v1/machine_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalMachineQueryService",
+      "method": "GetMachineCabinetSlotSummary",
+      "proto_file": "proto/avf/internal/v1/machine_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalTelemetryQueryService",
+      "method": "GetLatestMachineTelemetry",
+      "proto_file": "proto/avf/internal/v1/machine_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalTelemetryQueryService",
+      "method": "GetMachineIncidentSummary",
+      "proto_file": "proto/avf/internal/v1/machine_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalPaymentQueryService",
+      "method": "GetPaymentById",
+      "proto_file": "proto/avf/internal/v1/payment_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalPaymentQueryService",
+      "method": "GetLatestPaymentForOrder",
+      "proto_file": "proto/avf/internal/v1/payment_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    },
+    {
+      "protocol": "grpc",
+      "package": "avf.internal.v1",
+      "service": "InternalReportingQueryService",
+      "method": "GetSalesSummary",
+      "proto_file": "proto/avf/internal/v1/reporting_query.proto",
+      "audience": "Internal Backend",
+      "surface": "canonical"
+    }
+  ],
+  "mqtt": [
+    {
+      "protocol": "mqtt",
+      "channel": "presence",
+      "constant": "RelTopicPresence",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "state/heartbeat",
+      "constant": "RelTopicStateHeartbeat",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "telemetry/snapshot",
+      "constant": "RelTopicTelemetrySnapshot",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "telemetry/incident",
+      "constant": "RelTopicTelemetryIncident",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "events/vend",
+      "constant": "RelTopicEventsVend",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "events/cash",
+      "constant": "RelTopicEventsCash",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "events/inventory",
+      "constant": "RelTopicEventsInventory",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "commands/down",
+      "constant": "RelTopicCommandsDown",
+      "direction": "backend_to_machine",
+      "layout": "both",
+      "surface": "legacy",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "commands/ack",
+      "constant": "RelTopicCommandsAck",
+      "direction": "backend_to_machine",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "commands/receipt",
+      "constant": "RelTopicCommandsReceipt",
+      "direction": "backend_to_machine",
+      "layout": "both",
+      "surface": "legacy",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "commands/dispatch",
+      "constant": "RelTopicCommandsDispatch",
+      "direction": "backend_to_machine",
+      "layout": "both",
+      "surface": "legacy",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "shadow/desired",
+      "constant": "RelTopicShadowDesired",
+      "direction": "backend_to_machine",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "shadow/reported",
+      "constant": "RelTopicShadowReported",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "canonical",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "telemetry",
+      "constant": "RelTopicTelemetryLegacy",
+      "direction": "machine_to_backend",
+      "layout": "both",
+      "surface": "legacy",
+      "handler": "mqtt-ingest Dispatch"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "subscription:InboundDeviceTopicPatterns",
+      "constant": "InboundDeviceTopicPatterns",
+      "direction": "machine_to_backend",
+      "layout": "legacy",
+      "surface": "legacy",
+      "handler": "subscriber.go"
+    },
+    {
+      "protocol": "mqtt",
+      "channel": "subscription:InboundEnterpriseDeviceTopicPatterns",
+      "constant": "InboundEnterpriseDeviceTopicPatterns",
+      "direction": "machine_to_backend",
+      "layout": "enterprise",
+      "surface": "canonical",
+      "handler": "subscriber.go"
+    }
+  ],
+  "workers": [
+    {
+      "protocol": "worker",
+      "name": "api",
+      "entry": "cmd/api/main.go",
+      "description": "HTTP + optional gRPC",
+      "jobs": []
+    },
+    {
+      "protocol": "worker",
+      "name": "worker",
+      "entry": "cmd/worker/main.go",
+      "description": "outbox, telemetry projection, payment timeout, retention",
+      "jobs": [
+        "outbox",
+        "telemetry",
+        "payment_timeout"
+      ]
+    },
+    {
+      "protocol": "worker",
+      "name": "reconciler",
+      "entry": "cmd/reconciler/main.go",
+      "description": "order/vend/psp/refund reconciliation ticks",
+      "jobs": [
+        "reconciler"
+      ]
+    },
+    {
+      "protocol": "worker",
+      "name": "mqtt-ingest",
+      "entry": "cmd/mqtt-ingest/main.go",
+      "description": "MQTT subscribe + telemetry pipeline + command ack sweep",
+      "jobs": [
+        "mqtt_ingest"
+      ]
+    },
+    {
+      "protocol": "worker",
+      "name": "temporal-worker",
+      "entry": "cmd/temporal-worker/main.go",
+      "description": "Temporal workflows/activities",
+      "jobs": [
+        "temporal"
+      ]
+    },
+    {
+      "protocol": "worker",
+      "name": "migrate",
+      "entry": "cmd/migrate/main.go",
+      "description": "goose migrations one-shot",
+      "jobs": [
+        "migration"
+      ]
+    },
+    {
+      "protocol": "worker",
+      "name": "outbox-replay",
+      "entry": "cmd/outbox-replay/main.go",
+      "description": "CLI outbox list/requeue",
+      "jobs": [
+        "outbox"
+      ]
+    }
+  ]
+}

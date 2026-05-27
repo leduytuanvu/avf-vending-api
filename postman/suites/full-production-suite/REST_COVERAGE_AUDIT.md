@@ -2,8 +2,8 @@
 
 | Check | Expected | Actual | Status |
 |-------|----------|--------|--------|
-| OpenAPI operations | 327 | 327 | PASS |
-| Postman REST requests | 327 | 327 | PASS |
+| OpenAPI operations | 329 | 329 | PASS |
+| Postman REST requests | 329 | 329 | PASS |
 | gRPC template rows | 86 | 86 | PASS |
 | MQTT flow rows | 28 | 28 | PASS |
 | Forbidden-term scan (FULL100 json) | 0 hits | 0 | PASS |

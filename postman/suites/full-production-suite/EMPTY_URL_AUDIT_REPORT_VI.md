@@ -2,24 +2,24 @@
 
 ## Thời điểm audit
 
-- **Timestamp (UTC):** 2026-05-19T18:20:31.519725+00:00
-- **Nhánh git:** main
-- **Commit:** 6527d502437f5137fb05c56d4851043b258afbc1
+- **Timestamp (UTC):** 2026-05-27T08:41:13.720064+00:00
+- **Nhánh git:** qa/market-readiness-full-flow-validation
+- **Commit:** 527dda0058596a880cccbb413f77f8d8220c5102
 
 ## Đếm URL / request
 
 | Chỉ số | Giá trị |
 |---------|--------|
-| OpenAPI operations | 327 |
-| Postman items có `request` (chỉ API thực) | **327** |
-| URL hợp lệ sau sửa (validator `validate_collection_urls`) | **327** |
+| OpenAPI operations | 329 |
+| Postman items có `request` (chỉ API thực) | **329** |
+| URL hợp lệ sau sửa (validator `validate_collection_urls`) | **329** |
 | URL trống/sai sau sửa | **0** (kỳ vọng) |
 
 ## Trước sửa (root cause từ generator cũ)
 
 - Khi **không** có query: `request.url` là **chuỗi** thay vì object — một số bản Postman hiển thị "Enter URL or paste text".
 - Folder **99**: mỗi tag có request **GET** tới `/swagger/doc.json` chỉ làm mục lục — **không** phải 365 API; đã **xoá request**, giữ **description** trên folder tag.
-- Số request giả lục (ước lượng theo tag đầu tiên): **~22**.
+- Số request giả lục (ước lượng theo tag đầu tiên): **~23**.
 
 ## Sau sửa
 
@@ -46,28 +46,21 @@ python -m json.tool postman/suites/full-production-suite/mqtt/mqtt_request_templ
 ## Kết quả validation (snapshot)
 
 ```text
-Traceback (most recent call last):
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 882, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 665, in main
-    spec = json.loads(SWAGGER.read_text(encoding="utf-8"))
-                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 787, in read_text
-    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
-         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 771, in open
-    return io.open(self, mode, buffering, encoding, errors, newline)
-           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\docs\\swagger\\swagger.json'
+VALIDATION_PASS
+openapi_operations: 329
+postman_requests: 329
+grpc_templates: 86
+mqtt_templates: 28
+manifest_finalStatus: PASS_IMPORT_ASSETS_COMPLETE
+openapi_idempotency_ops: 92
 ```
 
 ## Quét secret (validator)
 
-- **Kết quả:** FAIL (xem validator)
+- **Kết quả:** PASS
 
 ## Khẳng định cuối
 
-**FAIL_VALIDATION**
+**PASS_AFTER_FIXES**
 
 > Chứng minh **import URL đầy đủ** + parity OpenAPI; **không** tuyên bố PASS runtime production.
