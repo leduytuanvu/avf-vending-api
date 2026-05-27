@@ -55,11 +55,12 @@ Measured from operator workstation via `curl.exe`; post-deploy comparison requir
 
 | Step | Status |
 |------|--------|
-| Commit + push branch | Pending operator / CI |
-| PR → `develop` | Pending |
-| CI green | Pending |
-| Merge + production workflow | **Not executed in this session** — requires approved gates and secrets |
-| Post-deploy latency script | Pending after deploy |
+| Branch | `perf/production-latency-observability-and-surface-cleanup` |
+| PR | https://github.com/leduytuanvu/avf-vending-api/pull/316 |
+| CI (2026-05-27) | **All required checks PASS** (Go CI Gates run `26500126148`, Linux race `26500126158`) |
+| Merge → `develop` | **Blocked by branch policy** (review/approval required); `gh pr merge` returned not mergeable |
+| Production deploy | **Not executed** — merge + release workflow + operator approval required |
+| Post-deploy latency | Pending after deploy |
 
 **Rollback:** use existing production rollback workflow / last-known-good `APP_IMAGE_REF` digest.
 
