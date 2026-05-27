@@ -4,13 +4,13 @@
 
 | Giao thức | Kỳ vọng | Thực tế (repo) |
 |-------------|---------|----------------|
-| REST operations | 327 | **327** |
+| REST operations | 329 | **329** |
 | gRPC methods (proto avf) | 85 | **86** |
 | MQTT topic/flow rows | 28 | **28** |
 
 ## Phạm vi đã bao phủ
 
-- OpenAPI: `docs/swagger/swagger.json` → **327** REST requests + matrices (`AVF_REST_365_*` legacy naming + `AVF_FULL_100_*`).
+- OpenAPI: `docs/swagger/swagger.json` → **329** REST requests + matrices (`AVF_REST_365_*` legacy naming + `AVF_FULL_100_*`).
 - gRPC: toàn bộ RPC trong `proto/avf` (85, gồm bản `avf.v1` song song `avf.internal.v1`) — cột `registeredOnListener`.
 - MQTT: 12 legacy ingest + 13 enterprise ingest + 3 outbound API publish (từ `internal/platform/mqtt/topics.go` + `docs/api/mqtt-contract.md`).
 
@@ -28,29 +28,22 @@
 
 ## Tài liệu đầy đủ theo repo
 
-- **Chỉ** khẳng định đầy đủ tài liệu/import khi REST=327, gRPC=86, MQTT=28 và validator không phát hiện secret — xem `manifest.json`.
+- **Chỉ** khẳng định đầy đủ tài liệu/import khi REST=329, gRPC=86, MQTT=28 và validator không phát hiện secret — xem `manifest.json`.
 
 ## Output validator
 
 ```text
-Traceback (most recent call last):
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 882, in <module>
-    sys.exit(main())
-             ~~~~^^
-  File "D:\admin\development\avf\avf-vending-system\avf-vending-api\postman\suites\full-production-suite\validate_generated_assets.py", line 665, in main
-    spec = json.loads(SWAGGER.read_text(encoding="utf-8"))
-                      ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 787, in read_text
-    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
-         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Python314\Lib\pathlib\__init__.py", line 771, in open
-    return io.open(self, mode, buffering, encoding, errors, newline)
-           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-FileNotFoundError: [Errno 2] No such file or directory: 'D:\\admin\\development\\avf\\avf-vending-system\\avf-vending-api\\postman\\docs\\swagger\\swagger.json'
+VALIDATION_PASS
+openapi_operations: 329
+postman_requests: 329
+grpc_templates: 86
+mqtt_templates: 28
+manifest_finalStatus: PASS_IMPORT_ASSETS_COMPLETE
+openapi_idempotency_ops: 92
 ```
 
 ## Trạng thái generator
 
 **finalStatus:** `PASS_IMPORT_ASSETS_COMPLETE`
 
-**PASS_IMPORT_ASSETS_COMPLETE:** Không — xem blockers/warnings manifest và log validator.
+**PASS_IMPORT_ASSETS_COMPLETE:** Có

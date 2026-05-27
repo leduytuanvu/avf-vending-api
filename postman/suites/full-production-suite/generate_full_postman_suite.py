@@ -48,7 +48,7 @@ REGISTERED_SERVICES = {
     ("avf.internal.v1", "InternalReportingQueryService"),
 }
 
-REST_EXPECTED = 327
+REST_EXPECTED = 329
 GRPC_EXPECTED = 86
 MQTT_EXPECTED = 28
 

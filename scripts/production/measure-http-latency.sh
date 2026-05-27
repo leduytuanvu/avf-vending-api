@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # Measure public HTTP latency for AVF API health and admin read endpoints.
+# See docs/operations/production-latency-runbook.md
+#
 # Usage:
 #   BASE_URL=https://api.ldtv.dev ACCESS_TOKEN=<token> ./scripts/production/measure-http-latency.sh
 #   OUTPUT_DIR=.production-latency-runs ./scripts/production/measure-http-latency.sh
@@ -69,7 +71,6 @@ measure admin_tags GET '/v1/admin/tags?limit=5' yes
 echo "Results written under ${RUN_DIR}"
 echo "Summary: ${RUN_DIR}/summary.txt"
 
-# Fail if health endpoints are not HTTP 200
 for h in health_live health_ready; do
   f="${RUN_DIR}/${h}.txt"
   if ! grep -q 'http_code=200' "${f}" 2>/dev/null; then

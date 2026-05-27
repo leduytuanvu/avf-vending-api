@@ -53,6 +53,7 @@ Thumbs.db
 # Local E2E shell harness artifacts (planned scripts under tests/e2e/)
 .e2e-runs/
 .production-latency-runs/
+.production-smoke-runs/
 
 # Local Go integration / PowerShell workflow output (.test-runs/<timestamp>/)
 .test-runs/
@@ -140,5 +141,28 @@ manual-import-parity-newman-report.json
 postman/production-enterprise/*LOCAL*.postman_environment.json
 postman/production-enterprise/AVF_PRODUCTION_ENTERPRISE_IMPORT.zip
 
+# Flow-test local Postman env (credentials)
+flow-test/*LOCAL*.postman_environment.json
+flow-test/*.local.postman_environment.json
+
 # Local full-system verification run output in docs tree
 docs/testing/_verify*.txt
+
+# Regenerable E2E / Postman audit reports (keep README + matrix + RECHECK only in git)
+docs/testing/production-e2e/RESULTS_*.md
+docs/testing/production-e2e/API_TRACE_*.md
+docs/testing/production-e2e/MANUAL_RETEST_GUIDE_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_AUDIT_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_COVERAGE_CHECK_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_IMPORT_PARITY_*.md
+docs/testing/production-e2e/POSTMAN_IMPORT_PARITY_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_RECHECK_RESULT_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_REORG_CHECK_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_REQUEST_RESPONSE_TRACE_*.md
+docs/testing/production-e2e/POSTMAN_ENTERPRISE_RUNTIME_VALIDATION_*.md
+postman/suites/full-production-suite/*_AUDIT_REPORT*.md
+postman/suites/full-production-suite/REST_COVERAGE_AUDIT.md
+postman/suites/full-production-suite/POSTMAN_IMPORT_VALIDATION_REPORT.md
+postman/production-enterprise/*_POSTMAN_PROJECT/
+flow-test/API_COVERAGE_AUDIT_CHECK_*.md
+flow-test/AVF_PRODUCTION_HAPPY_CASE_FULL/
