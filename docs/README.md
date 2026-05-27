@@ -73,8 +73,14 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 - **OpenAPI 3.0 (generated):** [`swagger/swagger.json`](swagger/swagger.json) — regenerate with `make swagger`
 - **Postman collections (CI-checked):** [`../postman/`](../postman/) — collections, environments, production suite
 - [Postman runbook](runbooks/postman.md)
+- [Repomix generation guide](operations/repomix-generation-guide.md) — smaller LLM packs; excludes heavy Postman JSON
 - [Swagger / OpenAPI appendix](api/swagger-openapi-appendix.md)
 - [API contract checks](api/api-contract-checks.md)
+
+## Audits and archives
+
+- [Project cleanup audit](audits/project-cleanup-audit.md) — nonessential artifact inventory
+- [Historical cleanup audits](archive/cleanup/README.md) — superseded; not canonical
 
 ## HTTP API (integration)
 
