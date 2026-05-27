@@ -10,16 +10,16 @@ import (
 // legacyRouteSuccessor maps Chi route patterns to canonical successor path templates.
 // Patterns use Chi param names; Link header uses the template (clients resolve IDs).
 var legacyRouteSuccessor = map[string]string{
-	"/v1/admin/users":                           "/v1/admin/auth/users",
-	"/v1/admin/users/{userId}":                  "/v1/admin/auth/users/{accountId}",
-	"/v1/admin/users/{userId}/sessions":         "/v1/admin/auth/users/{accountId}/sessions",
-	"/v1/admin/users/{userId}/roles":            "/v1/admin/auth/users/{accountId}/roles",
-	"/v1/admin/users/{userId}/roles/{role}":     "/v1/admin/auth/users/{accountId}/roles/{role}",
-	"/v1/admin/media":                           "/v1/admin/media/assets",
-	"/v1/admin/media/{mediaId}":                 "/v1/admin/media/assets/{mediaId}",
-	"/v1/admin/media/uploads":                   "/v1/admin/media/uploads/init",
-	"/v1/admin/media/{mediaId}/complete":        "/v1/admin/media/uploads/{mediaId}/complete",
-	"/v1/admin/products/{productId}/image":      "/v1/admin/products/{productId}/media",
+	"/v1/admin/users":                            "/v1/admin/auth/users",
+	"/v1/admin/users/{userId}":                   "/v1/admin/auth/users/{accountId}",
+	"/v1/admin/users/{userId}/sessions":          "/v1/admin/auth/users/{accountId}/sessions",
+	"/v1/admin/users/{userId}/roles":             "/v1/admin/auth/users/{accountId}/roles",
+	"/v1/admin/users/{userId}/roles/{role}":      "/v1/admin/auth/users/{accountId}/roles/{role}",
+	"/v1/admin/media":                            "/v1/admin/media/assets",
+	"/v1/admin/media/{mediaId}":                  "/v1/admin/media/assets/{mediaId}",
+	"/v1/admin/media/uploads":                    "/v1/admin/media/uploads/init",
+	"/v1/admin/media/{mediaId}/complete":         "/v1/admin/media/uploads/{mediaId}/complete",
+	"/v1/admin/products/{productId}/image":       "/v1/admin/products/{productId}/media",
 	"/v1/machines/{machineId}/commands/dispatch": "/v1/admin/machines/{machineId}/commands",
 }
 
