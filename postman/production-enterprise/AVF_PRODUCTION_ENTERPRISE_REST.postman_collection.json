@@ -856,188 +856,6 @@
       ]
     },
     {
-      "name": "04 - Admin Media",
-      "item": [
-        {
-          "name": "Cloudinary ",
-          "item": [
-            {
-              "name": " Direct Backend Upload",
-              "item": [
-                {
-                  "name": "REST-MEDIA-001 \u2014 POST /v1/admin/media/uploads/init (legacy standalone)",
-                  "request": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Idempotency-Key",
-                        "value": "{{runPrefix}}-REST-MEDIA-001"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/v1/admin/media/uploads/init",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "v1",
-                        "admin",
-                        "media",
-                        "uploads",
-                        "init"
-                      ]
-                    },
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"filename\": \"{{runPrefix}}-legacy.png\",\n  \"contentType\": \"image/png\",\n  \"purpose\": \"product_image\"\n}"
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "event": [
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                          "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                          "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                        ]
-                      }
-                    },
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
-                          "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_USE_MEDIA_PIPE');",
-                          "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
-                          "  pm.execution.skipRequest();",
-                          "}"
-                        ]
-                      }
-                    },
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('expected HTTP status (manifest)', function () {",
-                          "  pm.response.to.have.status(200);",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "description": "Flow ID: REST-MEDIA-001\nClassification: CONFIG_REQUIRED\nPhase: media\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
-                  "_manifest_flow_id": "REST-MEDIA-001",
-                  "_classification": "CONFIG_REQUIRED"
-                },
-                {
-                  "name": "REST-MEDIA-002 \u2014 POST /v1/admin/media/uploads/{mediaId}/complete (legacy standalone)",
-                  "request": {
-                    "method": "POST",
-                    "header": [
-                      {
-                        "key": "Content-Type",
-                        "value": "application/json"
-                      },
-                      {
-                        "key": "Idempotency-Key",
-                        "value": "{{runPrefix}}-REST-MEDIA-002"
-                      }
-                    ],
-                    "url": {
-                      "raw": "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete",
-                      "host": [
-                        "{{baseUrl}}"
-                      ],
-                      "path": [
-                        "v1",
-                        "admin",
-                        "media",
-                        "uploads",
-                        "{{mediaId}}",
-                        "complete"
-                      ]
-                    },
-                    "body": {
-                      "mode": "raw",
-                      "raw": "{\n  \"sizeBytes\": 70,\n  \"contentType\": \"image/png\",\n  \"sha256\": \"{{mediaSha256}}\"\n}"
-                    },
-                    "auth": {
-                      "type": "bearer",
-                      "bearer": [
-                        {
-                          "key": "token",
-                          "value": "{{accessToken}}",
-                          "type": "string"
-                        }
-                      ]
-                    }
-                  },
-                  "event": [
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                          "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                          "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                        ]
-                      }
-                    },
-                    {
-                      "listen": "prerequest",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
-                          "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_USE_MEDIA_PIPE');",
-                          "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
-                          "  pm.execution.skipRequest();",
-                          "}"
-                        ]
-                      }
-                    },
-                    {
-                      "listen": "test",
-                      "script": {
-                        "type": "text/javascript",
-                        "exec": [
-                          "pm.test('expected HTTP status (manifest)', function () {",
-                          "  pm.response.to.have.status(200);",
-                          "});"
-                        ]
-                      }
-                    }
-                  ],
-                  "description": "Flow ID: REST-MEDIA-002\nClassification: CONFIG_REQUIRED\nPhase: media\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
-                  "_manifest_flow_id": "REST-MEDIA-002",
-                  "_classification": "CONFIG_REQUIRED"
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    {
       "name": "06 - Topology ",
       "item": [
         {
@@ -1708,798 +1526,10 @@
                       "description": "Flow ID: REST-OP-002\nClassification: CONFIG_REQUIRED\nPhase: operator\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
                       "_manifest_flow_id": "REST-OP-002",
                       "_classification": "CONFIG_REQUIRED"
-                    },
-                    {
-                      "name": "REST-MACHINE-006 \u2014 GET /v1/machines/{id}/sale-catalog (legacy HTTP)",
-                      "request": {
-                        "method": "GET",
-                        "header": [
-                          {
-                            "key": "Content-Type",
-                            "value": "application/json"
-                          }
-                        ],
-                        "url": {
-                          "raw": "{{baseUrl}}/v1/machines/{{machineId}}/sale-catalog?include_unavailable=true&include_images=true",
-                          "host": [
-                            "{{baseUrl}}"
-                          ],
-                          "path": [
-                            "v1",
-                            "machines",
-                            "{{machineId}}",
-                            "sale-catalog"
-                          ],
-                          "query": [
-                            {
-                              "key": "include_unavailable",
-                              "value": "true"
-                            },
-                            {
-                              "key": "include_images",
-                              "value": "true"
-                            }
-                          ]
-                        },
-                        "auth": {
-                          "type": "bearer",
-                          "bearer": [
-                            {
-                              "key": "token",
-                              "value": "{{machineAccessToken}}",
-                              "type": "string"
-                            }
-                          ]
-                        }
-                      },
-                      "event": [
-                        {
-                          "listen": "prerequest",
-                          "script": {
-                            "type": "text/javascript",
-                            "exec": [
-                              "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                              "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                              "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                            ]
-                          }
-                        },
-                        {
-                          "listen": "prerequest",
-                          "script": {
-                            "type": "text/javascript",
-                            "exec": [
-                              "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
-                              "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP');",
-                              "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
-                              "  pm.execution.skipRequest();",
-                              "}"
-                            ]
-                          }
-                        },
-                        {
-                          "listen": "test",
-                          "script": {
-                            "type": "text/javascript",
-                            "exec": [
-                              "pm.test('expected HTTP status (manifest)', function () {",
-                              "  pm.response.to.have.status(200);",
-                              "});"
-                            ]
-                          }
-                        }
-                      ],
-                      "description": "Flow ID: REST-MACHINE-006\nClassification: CONFIG_REQUIRED\nPhase: planogram\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-                      "_manifest_flow_id": "REST-MACHINE-006",
-                      "_classification": "CONFIG_REQUIRED"
                     }
                   ]
                 }
               ]
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "08 - Commerce No-Online-Payment",
-      "item": [
-        {
-          "name": "Payment Excluded Contract",
-          "item": [
-            {
-              "name": "REST-COMMERCE-001 \u2014 POST /v1/commerce/orders",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-COMMERCE-001"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{productId}}\",\n  \"currency\": \"VND\",\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\",\n  \"slot_index\": 1\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(201);",
-                      "});",
-                      "try {",
-                      "  const j = pm.response.json();",
-                      "  if (j.order_id !== undefined) pm.environment.set('orderId', j.order_id);",
-                      "} catch (e) {}"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-001\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 201\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-COMMERCE-001",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-004 \u2014 GET /v1/commerce/orders/{id}",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-004\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-COMMERCE-004",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-002 \u2014 POST /v1/commerce/orders/{id}/payment-session",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-COMMERCE-002"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session?slot_index=1",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "payment-session"
-                  ],
-                  "query": [
-                    {
-                      "key": "slot_index",
-                      "value": "1"
-                    }
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"provider\": \"stripe\",\n  \"payment_state\": \"created\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"outbox_payload_json\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "try {",
-                      "  const j = pm.response.json();",
-                      "  if (j.payment_id !== undefined) pm.environment.set('paymentId', j.payment_id);",
-                      "} catch (e) {}"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-002\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-COMMERCE-002",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-003 \u2014 POST payment webhook (signed)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "payments",
-                    "{{paymentId}}",
-                    "webhooks"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const secret = pm.environment.get('webhookSecret') || '';",
-                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
-                      "const ts = Math.floor(Date.now() / 1000).toString();",
-                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-003\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: webhook_hmac\n",
-              "_manifest_flow_id": "REST-COMMERCE-003",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-003-DUP \u2014 POST payment webhook duplicate (idempotency)",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "payments",
-                    "{{paymentId}}",
-                    "webhooks"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const secret = pm.environment.get('webhookSecret') || '';",
-                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
-                      "const ts = Math.floor(Date.now() / 1000).toString();",
-                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-003-DUP\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: webhook_hmac\n",
-              "_manifest_flow_id": "REST-COMMERCE-003-DUP",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-NEG-002 \u2014 POST payment webhook invalid HMAC",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "payments",
-                    "{{paymentId}}",
-                    "webhooks"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_failed_{{runId}}\",\n  \"status\": \"failed\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"failure_reason\": \"e2e_negative_test\"\n}\n"
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: '0' });",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: 'invalid' });"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(401);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-NEG-002\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: negative\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: webhook_hmac_invalid\n",
-              "_manifest_flow_id": "REST-NEG-002",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-NEG-003 \u2014 POST payment webhook stale timestamp",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "payments",
-                    "{{paymentId}}",
-                    "webhooks"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_failed_{{runId}}\",\n  \"status\": \"failed\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"failure_reason\": \"e2e_negative_test\"\n}\n"
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const secret = pm.environment.get('webhookSecret') || '';",
-                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
-                      "const ts = (Math.floor(Date.now() / 1000) - 86400).toString();",
-                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
-                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(401);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-NEG-003\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: negative\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: webhook_hmac_stale\n",
-              "_manifest_flow_id": "REST-NEG-003",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-005 \u2014 POST /v1/commerce/orders/{id}/vend/start",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-COMMERCE-005"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/start",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "vend",
-                    "start"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-005\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-COMMERCE-005",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
-            },
-            {
-              "name": "REST-COMMERCE-006 \u2014 POST /v1/commerce/orders/{id}/vend/success",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-COMMERCE-006"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/success",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "commerce",
-                    "orders",
-                    "{{orderId}}",
-                    "vend",
-                    "success"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
-                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
-                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-COMMERCE-006\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-COMMERCE-006",
-              "_classification": "ONLINE_PAYMENT_EXCLUDED"
             }
           ]
         }
@@ -2511,154 +1541,6 @@
         {
           "name": "misc",
           "item": [
-            {
-              "name": "REST-MEDIA-INIT \u2014 POST /v1/admin/media/uploads/init",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-MEDIA-INIT"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/media/uploads/init",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "media",
-                    "uploads",
-                    "init"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"filename\": \"{{runPrefix}}-product.png\",\n  \"contentType\": \"image/png\",\n  \"purpose\": \"product_image\"\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "pm.test('assertion 0: json_path_exists mediaId', function () {",
-                      "  const j = pm.response.json();",
-                      "  pm.expect(j.mediaId).to.not.be.undefined;",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-MEDIA-INIT\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
-              "_manifest_flow_id": "REST-MEDIA-INIT",
-              "_classification": "RUNNABLE"
-            },
-            {
-              "name": "REST-MEDIA-COMPLETE \u2014 POST /v1/admin/media/uploads/{mediaId}/complete",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  },
-                  {
-                    "key": "Idempotency-Key",
-                    "value": "{{runPrefix}}-REST-MEDIA-COMPLETE"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "admin",
-                    "media",
-                    "uploads",
-                    "{{mediaId}}",
-                    "complete"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"sizeBytes\": 70,\n  \"contentType\": \"image/png\",\n  \"sha256\": \"{{mediaSha256}}\"\n}"
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{accessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "pm.test('assertion 0: body_not_empty', function () {",
-                      "  pm.expect(pm.response.text()).to.not.be.empty;",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-MEDIA-COMPLETE\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
-              "_manifest_flow_id": "REST-MEDIA-COMPLETE",
-              "_classification": "RUNNABLE"
-            },
             {
               "name": "REST-MEDIA-INIT \u2014 POST /v1/admin/product-images",
               "request": {
@@ -3146,150 +2028,6 @@
               ],
               "description": "Flow ID: REST-SITE-001\nClassification: CONFIG_REQUIRED\nPhase: provisioning\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 201\nAuth: bearer_admin\n",
               "_manifest_flow_id": "REST-SITE-001",
-              "_classification": "CONFIG_REQUIRED"
-            },
-            {
-              "name": "REST-MACHINE-004 \u2014 POST /v1/setup/activation-codes/claim",
-              "request": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/setup/activation-codes/claim",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "setup",
-                    "activation-codes",
-                    "claim"
-                  ]
-                },
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"activationCode\": \"{{activationCode}}\",\n  \"deviceFingerprint\": {\n    \"serial\": \"{{runPrefix}}-ANDROID\",\n    \"androidId\": \"{{runPrefix}}-aid\",\n    \"packageName\": \"dev.avf.vending.e2e\"\n  }\n}"
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
-                      "pm.variables.set('_postman_skip_if_env_key', 'machineAccessToken');",
-                      "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
-                      "const envKey = pm.variables.get('_postman_skip_if_env_key');",
-                      "if (reuse && envKey && pm.environment.get(envKey)) {",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});",
-                      "pm.test('assertion 0: json_path_exists machineToken', function () {",
-                      "  const j = pm.response.json();",
-                      "  pm.expect(j.machineToken).to.not.be.undefined;",
-                      "});",
-                      "try {",
-                      "  const j = pm.response.json();",
-                      "  if (j.machineToken !== undefined) pm.environment.set('machineAccessToken', j.machineToken);",
-                      "  if (j.refreshToken !== undefined) pm.environment.set('machineRefreshToken', j.refreshToken);",
-                      "  if (j.mqtt.topicPrefix !== undefined) pm.environment.set('mqttTopicPrefix', j.mqtt.topicPrefix);",
-                      "} catch (e) {}"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-MACHINE-004\nClassification: CONFIG_REQUIRED\nPhase: provisioning\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: none\n",
-              "_manifest_flow_id": "REST-MACHINE-004",
-              "_classification": "CONFIG_REQUIRED"
-            },
-            {
-              "name": "REST-MACHINE-005 \u2014 GET /v1/setup/machines/{id}/bootstrap (legacy HTTP)",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{baseUrl}}/v1/setup/machines/{{machineId}}/bootstrap",
-                  "host": [
-                    "{{baseUrl}}"
-                  ],
-                  "path": [
-                    "v1",
-                    "setup",
-                    "machines",
-                    "{{machineId}}",
-                    "bootstrap"
-                  ]
-                },
-                "auth": {
-                  "type": "bearer",
-                  "bearer": [
-                    {
-                      "key": "token",
-                      "value": "{{machineAccessToken}}",
-                      "type": "string"
-                    }
-                  ]
-                }
-              },
-              "event": [
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
-                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
-                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
-                    ]
-                  }
-                },
-                {
-                  "listen": "prerequest",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
-                      "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP');",
-                      "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
-                      "  pm.execution.skipRequest();",
-                      "}"
-                    ]
-                  }
-                },
-                {
-                  "listen": "test",
-                  "script": {
-                    "type": "text/javascript",
-                    "exec": [
-                      "pm.test('expected HTTP status (manifest)', function () {",
-                      "  pm.response.to.have.status(200);",
-                      "});"
-                    ]
-                  }
-                }
-              ],
-              "description": "Flow ID: REST-MACHINE-005\nClassification: CONFIG_REQUIRED\nPhase: provisioning\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
-              "_manifest_flow_id": "REST-MACHINE-005",
               "_classification": "CONFIG_REQUIRED"
             }
           ]
@@ -8144,50 +6882,6 @@
           "_classification": "RUNNABLE"
         },
         {
-          "name": "REST-COV-POS-0153 \u2014 POST /v1/admin/media/uploads (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/media/uploads",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "media",
-                "uploads"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0153\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0153",
-          "_classification": "RUNNABLE"
-        },
-        {
           "name": "REST-COV-DEL-0008 \u2014 DELETE /v1/admin/media/{mediaId} (auth_negative)",
           "request": {
             "method": "DELETE",
@@ -8321,61 +7015,6 @@
           "description": "Flow ID: REST-COV-POS-0154\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
           "_manifest_flow_id": "REST-COV-POS-0154",
           "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-GET-0047 \u2014 GET /v1/admin/media (readonly_smoke)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/media?limit=1",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "media"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "1"
-                }
-              ]
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.expect([200,404]).to.include(pm.response.code);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-GET-0047\nClassification: OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: [200, 404]\nAuth: bearer_admin\n",
-          "_manifest_flow_id": "REST-COV-GET-0047",
-          "_classification": "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
         },
         {
           "name": "REST-COV-GET-0051 \u2014 GET /v1/admin/operations/machines/health (readonly_smoke)",
@@ -9745,137 +8384,6 @@
           ],
           "description": "Flow ID: REST-COV-PUT-0209\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
           "_manifest_flow_id": "REST-COV-PUT-0209",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-DEL-0012 \u2014 DELETE /v1/admin/products/{productId}/image (auth_negative)",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "products",
-                "{{productId}}",
-                "image"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-DEL-0012\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-DEL-0012",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0167 \u2014 POST /v1/admin/products/{productId}/image (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "products",
-                "{{productId}}",
-                "image"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0167\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0167",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-PUT-0210 \u2014 PUT /v1/admin/products/{productId}/image (auth_negative)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "products",
-                "{{productId}}",
-                "image"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-PUT-0210\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-PUT-0210",
           "_classification": "RUNNABLE"
         },
         {
@@ -12885,495 +11393,6 @@
           "_classification": "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
         },
         {
-          "name": "REST-COV-POS-0192 \u2014 POST /v1/admin/users (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0192\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0192",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-PAT-0104 \u2014 PATCH /v1/admin/users/{userId} (auth_negative)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-PAT-0104\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-PAT-0104",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0193 \u2014 POST /v1/admin/users/{userId}/disable (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/disable",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "disable"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0193\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0193",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0194 \u2014 POST /v1/admin/users/{userId}/enable (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/enable",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "enable"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0194\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0194",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0195 \u2014 POST /v1/admin/users/{userId}/reset-password (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/reset-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "reset-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0195\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0195",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0196 \u2014 POST /v1/admin/users/{userId}/revoke-sessions (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/revoke-sessions",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "revoke-sessions"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0196\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0196",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-PAT-0105 \u2014 PATCH /v1/admin/users/{userId}/roles (auth_negative)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "roles"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-PAT-0105\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-PAT-0105",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-POS-0197 \u2014 POST /v1/admin/users/{userId}/roles (auth_negative)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "roles"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-POS-0197\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-POS-0197",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-PUT-0213 \u2014 PUT /v1/admin/users/{userId}/roles (auth_negative)",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "roles"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-PUT-0213\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-PUT-0213",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-DEL-0018 \u2014 DELETE /v1/admin/users/{userId}/roles/{role} (auth_negative)",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles/00000000-0000-4000-8000-000000000099",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "roles",
-                "00000000-0000-4000-8000-000000000099"
-              ]
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-DEL-0018\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-DEL-0018",
-          "_classification": "RUNNABLE"
-        },
-        {
-          "name": "REST-COV-PAT-0106 \u2014 PATCH /v1/admin/users/{userId}/status (auth_negative)",
-          "request": {
-            "method": "PATCH",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/status",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "00000000-0000-4000-8000-000000000099",
-                "status"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"probe\": \"auth-negative\"\n}"
-            }
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('expected HTTP status (manifest)', function () {",
-                  "  pm.response.to.have.status(401);",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "description": "Flow ID: REST-COV-PAT-0106\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
-          "_manifest_flow_id": "REST-COV-PAT-0106",
-          "_classification": "RUNNABLE"
-        },
-        {
           "name": "REST-COV-POS-0198 \u2014 POST /v1/auth/change-password (auth_negative)",
           "request": {
             "method": "POST",
@@ -14007,6 +12026,2002 @@
           "description": "Flow ID: REST-COV-GET-0088\nClassification: OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: [200, 404]\nAuth: bearer_admin\n",
           "_manifest_flow_id": "REST-COV-GET-0088",
           "_classification": "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
+        }
+      ]
+    },
+    {
+      "name": "11 - Legacy and Compatibility",
+      "item": [
+        {
+          "name": "Commerce",
+          "item": [
+            {
+              "name": "REST-COMMERCE-001 \u2014 POST /v1/commerce/orders",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-COMMERCE-001"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"machine_id\": \"{{machineId}}\",\n  \"product_id\": \"{{productId}}\",\n  \"currency\": \"VND\",\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\",\n  \"slot_index\": 1\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});",
+                      "try {",
+                      "  const j = pm.response.json();",
+                      "  if (j.order_id !== undefined) pm.environment.set('orderId', j.order_id);",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-001\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 201\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-COMMERCE-001",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-004 \u2014 GET /v1/commerce/orders/{id}",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-004\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-COMMERCE-004",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-002 \u2014 POST /v1/commerce/orders/{id}/payment-session",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-COMMERCE-002"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session?slot_index=1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "payment-session"
+                  ],
+                  "query": [
+                    {
+                      "key": "slot_index",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"provider\": \"stripe\",\n  \"payment_state\": \"created\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"outbox_payload_json\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "try {",
+                      "  const j = pm.response.json();",
+                      "  if (j.payment_id !== undefined) pm.environment.set('paymentId', j.payment_id);",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-002\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-COMMERCE-002",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-003 \u2014 POST payment webhook (signed)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "payments",
+                    "{{paymentId}}",
+                    "webhooks"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const secret = pm.environment.get('webhookSecret') || '';",
+                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
+                      "const ts = Math.floor(Date.now() / 1000).toString();",
+                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-003\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: webhook_hmac\n",
+              "_manifest_flow_id": "REST-COMMERCE-003",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-003-DUP \u2014 POST payment webhook duplicate (idempotency)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "payments",
+                    "{{paymentId}}",
+                    "webhooks"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_{{runId}}\",\n  \"status\": \"succeeded\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"metadata\": {\n    \"source\": \"e2e_prod_manifest\"\n  }\n}\n"
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const secret = pm.environment.get('webhookSecret') || '';",
+                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
+                      "const ts = Math.floor(Date.now() / 1000).toString();",
+                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-003-DUP\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: webhook_hmac\n",
+              "_manifest_flow_id": "REST-COMMERCE-003-DUP",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-005 \u2014 POST /v1/commerce/orders/{id}/vend/start",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-COMMERCE-005"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/start",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "vend",
+                    "start"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-005\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-COMMERCE-005",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-COMMERCE-006 \u2014 POST /v1/commerce/orders/{id}/vend/success",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-COMMERCE-006"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/success",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "vend",
+                    "success"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"cabinet_code\": \"A\",\n  \"slot_code\": \"A1\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COMMERCE-006\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: commerce\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-COMMERCE-006",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            }
+          ]
+        },
+        {
+          "name": "Media",
+          "item": [
+            {
+              "name": "REST-MEDIA-001 \u2014 POST /v1/admin/media/uploads/init (legacy standalone)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-MEDIA-001"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media/uploads/init",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media",
+                    "uploads",
+                    "init"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"{{runPrefix}}-legacy.png\",\n  \"contentType\": \"image/png\",\n  \"purpose\": \"product_image\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                      "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_USE_MEDIA_PIPE');",
+                      "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MEDIA-001\nClassification: CONFIG_REQUIRED\nPhase: media\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-001",
+              "_classification": "CONFIG_REQUIRED"
+            },
+            {
+              "name": "REST-MEDIA-002 \u2014 POST /v1/admin/media/uploads/{mediaId}/complete (legacy standalone)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-MEDIA-002"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media",
+                    "uploads",
+                    "{{mediaId}}",
+                    "complete"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sizeBytes\": 70,\n  \"contentType\": \"image/png\",\n  \"sha256\": \"{{mediaSha256}}\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                      "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_USE_MEDIA_PIPE');",
+                      "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MEDIA-002\nClassification: CONFIG_REQUIRED\nPhase: media\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-002",
+              "_classification": "CONFIG_REQUIRED"
+            }
+          ]
+        },
+        {
+          "name": "Misc",
+          "item": [
+            {
+              "name": "REST-MEDIA-INIT \u2014 POST /v1/admin/media/uploads/init",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-MEDIA-INIT"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media/uploads/init",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media",
+                    "uploads",
+                    "init"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"filename\": \"{{runPrefix}}-product.png\",\n  \"contentType\": \"image/png\",\n  \"purpose\": \"product_image\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test('assertion 0: json_path_exists mediaId', function () {",
+                      "  const j = pm.response.json();",
+                      "  pm.expect(j.mediaId).to.not.be.undefined;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MEDIA-INIT\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-INIT",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-MEDIA-COMPLETE \u2014 POST /v1/admin/media/uploads/{mediaId}/complete",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Idempotency-Key",
+                    "value": "{{runPrefix}}-REST-MEDIA-COMPLETE"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media",
+                    "uploads",
+                    "{{mediaId}}",
+                    "complete"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"sizeBytes\": 70,\n  \"contentType\": \"image/png\",\n  \"sha256\": \"{{mediaSha256}}\"\n}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test('assertion 0: body_not_empty', function () {",
+                      "  pm.expect(pm.response.text()).to.not.be.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MEDIA-COMPLETE\nClassification: RUNNABLE\nPhase: None\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-MEDIA-COMPLETE",
+              "_classification": "RUNNABLE"
+            }
+          ]
+        },
+        {
+          "name": "Negative",
+          "item": [
+            {
+              "name": "REST-NEG-002 \u2014 POST payment webhook invalid HMAC",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "payments",
+                    "{{paymentId}}",
+                    "webhooks"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_failed_{{runId}}\",\n  \"status\": \"failed\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"failure_reason\": \"e2e_negative_test\"\n}\n"
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: '0' });",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: 'invalid' });"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-NEG-002\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: negative\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: webhook_hmac_invalid\n",
+              "_manifest_flow_id": "REST-NEG-002",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            },
+            {
+              "name": "REST-NEG-003 \u2014 POST payment webhook stale timestamp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "commerce",
+                    "orders",
+                    "{{orderId}}",
+                    "payments",
+                    "{{paymentId}}",
+                    "webhooks"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"webhook_event_id\": \"{{webhookEventId}}\",\n  \"provider\": \"stripe\",\n  \"provider_reference\": \"pi_e2e_prod_failed_{{runId}}\",\n  \"status\": \"failed\",\n  \"amount_minor\": 15000,\n  \"currency\": \"VND\",\n  \"failure_reason\": \"e2e_negative_test\"\n}\n"
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.variables.set('_enterprise_payment_excluded', 'true');",
+                      "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+                      "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const secret = pm.environment.get('webhookSecret') || '';",
+                      "const body = pm.request.body ? (pm.request.body.raw || '') : '';",
+                      "const ts = (Math.floor(Date.now() / 1000) - 86400).toString();",
+                      "const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });",
+                      "pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-NEG-003\nClassification: ONLINE_PAYMENT_EXCLUDED\nPhase: negative\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: webhook_hmac_stale\n",
+              "_manifest_flow_id": "REST-NEG-003",
+              "_classification": "ONLINE_PAYMENT_EXCLUDED"
+            }
+          ]
+        },
+        {
+          "name": "Planogram",
+          "item": [
+            {
+              "name": "REST-MACHINE-006 \u2014 GET /v1/machines/{id}/sale-catalog (legacy HTTP)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/machines/{{machineId}}/sale-catalog?include_unavailable=true&include_images=true",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "machines",
+                    "{{machineId}}",
+                    "sale-catalog"
+                  ],
+                  "query": [
+                    {
+                      "key": "include_unavailable",
+                      "value": "true"
+                    },
+                    {
+                      "key": "include_images",
+                      "value": "true"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                      "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP');",
+                      "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MACHINE-006\nClassification: CONFIG_REQUIRED\nPhase: planogram\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-MACHINE-006",
+              "_classification": "CONFIG_REQUIRED"
+            }
+          ]
+        },
+        {
+          "name": "Provisioning",
+          "item": [
+            {
+              "name": "REST-MACHINE-004 \u2014 POST /v1/setup/activation-codes/claim",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/setup/activation-codes/claim",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "setup",
+                    "activation-codes",
+                    "claim"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"activationCode\": \"{{activationCode}}\",\n  \"deviceFingerprint\": {\n    \"serial\": \"{{runPrefix}}-ANDROID\",\n    \"androidId\": \"{{runPrefix}}-aid\",\n    \"packageName\": \"dev.avf.vending.e2e\"\n  }\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';",
+                      "pm.variables.set('_postman_skip_if_env_key', 'machineAccessToken');",
+                      "const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');",
+                      "const envKey = pm.variables.get('_postman_skip_if_env_key');",
+                      "if (reuse && envKey && pm.environment.get(envKey)) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});",
+                      "pm.test('assertion 0: json_path_exists machineToken', function () {",
+                      "  const j = pm.response.json();",
+                      "  pm.expect(j.machineToken).to.not.be.undefined;",
+                      "});",
+                      "try {",
+                      "  const j = pm.response.json();",
+                      "  if (j.machineToken !== undefined) pm.environment.set('machineAccessToken', j.machineToken);",
+                      "  if (j.refreshToken !== undefined) pm.environment.set('machineRefreshToken', j.refreshToken);",
+                      "  if (j.mqtt.topicPrefix !== undefined) pm.environment.set('mqttTopicPrefix', j.mqtt.topicPrefix);",
+                      "} catch (e) {}"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MACHINE-004\nClassification: CONFIG_REQUIRED\nPhase: provisioning\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: none\n",
+              "_manifest_flow_id": "REST-MACHINE-004",
+              "_classification": "CONFIG_REQUIRED"
+            },
+            {
+              "name": "REST-MACHINE-005 \u2014 GET /v1/setup/machines/{id}/bootstrap (legacy HTTP)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/setup/machines/{{machineId}}/bootstrap",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "setup",
+                    "machines",
+                    "{{machineId}}",
+                    "bootstrap"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{machineAccessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';",
+                      "const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                      "if (!allow || !confirm) { throw new Error('Gated write blocked'); }"
+                    ]
+                  }
+                },
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');",
+                      "pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP');",
+                      "if (skipIfEnv && pm.environment.get(skipIfEnv)) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-MACHINE-005\nClassification: CONFIG_REQUIRED\nPhase: provisioning\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 200\nAuth: bearer_machine\n",
+              "_manifest_flow_id": "REST-MACHINE-005",
+              "_classification": "CONFIG_REQUIRED"
+            }
+          ]
+        },
+        {
+          "name": "Rest Coverage",
+          "item": [
+            {
+              "name": "REST-COV-POS-0153 \u2014 POST /v1/admin/media/uploads (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media/uploads",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media",
+                    "uploads"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0153\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0153",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-GET-0047 \u2014 GET /v1/admin/media (readonly_smoke)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/media?limit=1",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "media"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "1"
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{accessToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.expect([200,404]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-GET-0047\nClassification: OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: [200, 404]\nAuth: bearer_admin\n",
+              "_manifest_flow_id": "REST-COV-GET-0047",
+              "_classification": "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
+            },
+            {
+              "name": "REST-COV-DEL-0012 \u2014 DELETE /v1/admin/products/{productId}/image (auth_negative)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "products",
+                    "{{productId}}",
+                    "image"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-DEL-0012\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-DEL-0012",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0167 \u2014 POST /v1/admin/products/{productId}/image (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "products",
+                    "{{productId}}",
+                    "image"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0167\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0167",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-PUT-0210 \u2014 PUT /v1/admin/products/{productId}/image (auth_negative)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/products/{{productId}}/image",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "products",
+                    "{{productId}}",
+                    "image"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-PUT-0210\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-PUT-0210",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0192 \u2014 POST /v1/admin/users (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0192\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0192",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-PAT-0104 \u2014 PATCH /v1/admin/users/{userId} (auth_negative)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-PAT-0104\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-PAT-0104",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0193 \u2014 POST /v1/admin/users/{userId}/disable (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/disable",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "disable"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0193\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0193",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0194 \u2014 POST /v1/admin/users/{userId}/enable (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/enable",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "enable"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0194\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0194",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0195 \u2014 POST /v1/admin/users/{userId}/reset-password (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/reset-password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "reset-password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0195\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0195",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0196 \u2014 POST /v1/admin/users/{userId}/revoke-sessions (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/revoke-sessions",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "revoke-sessions"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0196\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0196",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-PAT-0105 \u2014 PATCH /v1/admin/users/{userId}/roles (auth_negative)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "roles"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-PAT-0105\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-PAT-0105",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-POS-0197 \u2014 POST /v1/admin/users/{userId}/roles (auth_negative)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "roles"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-POS-0197\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-POS-0197",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-PUT-0213 \u2014 PUT /v1/admin/users/{userId}/roles (auth_negative)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "roles"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-PUT-0213\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-PUT-0213",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-DEL-0018 \u2014 DELETE /v1/admin/users/{userId}/roles/{role} (auth_negative)",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/roles/00000000-0000-4000-8000-000000000099",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "roles",
+                    "00000000-0000-4000-8000-000000000099"
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-DEL-0018\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-DEL-0018",
+              "_classification": "RUNNABLE"
+            },
+            {
+              "name": "REST-COV-PAT-0106 \u2014 PATCH /v1/admin/users/{userId}/status (auth_negative)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/v1/admin/users/00000000-0000-4000-8000-000000000099/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "admin",
+                    "users",
+                    "00000000-0000-4000-8000-000000000099",
+                    "status"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"probe\": \"auth-negative\"\n}"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('expected HTTP status (manifest)', function () {",
+                      "  pm.response.to.have.status(401);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "description": "Flow ID: REST-COV-PAT-0106\nClassification: RUNNABLE\nPhase: rest-coverage\nSource: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\nExpected: 401\nAuth: none\n",
+              "_manifest_flow_id": "REST-COV-PAT-0106",
+              "_classification": "RUNNABLE"
+            }
+          ]
         }
       ]
     }

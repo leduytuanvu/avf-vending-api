@@ -516,6 +516,11 @@ type PostgresConfig struct {
 	MQTTIngestMaxConns     *int32
 	ReconcilerMaxConns     *int32
 	TemporalWorkerMaxConns *int32
+	APIMinConns            *int32
+	WorkerMinConns         *int32
+	MQTTIngestMinConns     *int32
+	ReconcilerMinConns     *int32
+	TemporalWorkerMinConns *int32
 	// SlowQueryLogThresholdMS logs queries exceeding this duration at WARN (0 = disabled). Uses DATABASE_SLOW_QUERY_LOG_MS.
 	SlowQueryLogThresholdMS int
 }
@@ -534,7 +539,7 @@ func (p PostgresConfig) PoolSummaryForProcess(processName string) PostgresPoolSu
 	return PostgresPoolSummary{
 		ProcessName:     strings.TrimSpace(processName),
 		MaxConns:        p.MaxConnsForProcess(processName),
-		MinConns:        p.MinConns,
+		MinConns:        p.MinConnsForProcess(processName),
 		MaxConnIdleTime: p.MaxConnIdleTime,
 		MaxConnLifetime: p.MaxConnLifetime,
 	}
@@ -1069,6 +1074,15 @@ func (p PostgresConfig) validate() error {
 		}
 		if p.MinConns > maxConns {
 			return fmt.Errorf("config: DATABASE_MIN_CONNS must be <= %s", envName)
+		}
+	}
+	for envName, minConns := range p.overrideMinConns() {
+		if minConns < 0 {
+			return fmt.Errorf("config: %s must be >= 0 when DATABASE_URL is set", envName)
+		}
+		maxForProc := p.maxConnsForEnvName(envName)
+		if minConns > maxForProc {
+			return fmt.Errorf("config: %s must be <= effective max for that process (%d)", envName, maxForProc)
 		}
 	}
 	if p.SlowQueryLogThresholdMS < 0 || p.SlowQueryLogThresholdMS > 600_000 {
@@ -2211,7 +2225,7 @@ func loadPostgresConfig(appEnv AppEnvironment) (PostgresConfig, error) {
 		case AppEnvStaging:
 			defaultMaxConns = 5
 		case AppEnvProduction:
-			defaultMaxConns = 10
+			defaultMaxConns = 40
 		default:
 			defaultMaxConns = 3
 		}
@@ -2220,7 +2234,11 @@ func loadPostgresConfig(appEnv AppEnvironment) (PostgresConfig, error) {
 	if err != nil {
 		return PostgresConfig{}, err
 	}
-	minConns, err := getenvInt32Strict("DATABASE_MIN_CONNS", 0)
+	defaultMinConns := int32(0)
+	if url != "" && appEnv == AppEnvProduction {
+		defaultMinConns = 4
+	}
+	minConns, err := getenvInt32Strict("DATABASE_MIN_CONNS", defaultMinConns)
 	if err != nil {
 		return PostgresConfig{}, err
 	}
@@ -2241,6 +2259,26 @@ func loadPostgresConfig(appEnv AppEnvironment) (PostgresConfig, error) {
 		return PostgresConfig{}, err
 	}
 	temporalWorkerMaxConns, err := getenvOptionalInt32Strict("TEMPORAL_WORKER_DATABASE_MAX_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	apiMinConns, err := getenvOptionalInt32Strict("API_DATABASE_MIN_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	workerMinConns, err := getenvOptionalInt32Strict("WORKER_DATABASE_MIN_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	mqttIngestMinConns, err := getenvOptionalInt32Strict("MQTT_INGEST_DATABASE_MIN_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	reconcilerMinConns, err := getenvOptionalInt32Strict("RECONCILER_DATABASE_MIN_CONNS")
+	if err != nil {
+		return PostgresConfig{}, err
+	}
+	temporalWorkerMinConns, err := getenvOptionalInt32Strict("TEMPORAL_WORKER_DATABASE_MIN_CONNS")
 	if err != nil {
 		return PostgresConfig{}, err
 	}
@@ -2270,19 +2308,30 @@ func loadPostgresConfig(appEnv AppEnvironment) (PostgresConfig, error) {
 		}
 	}
 
-	return PostgresConfig{
-		URL:                     url,
-		MaxConns:                maxConns,
-		MinConns:                minConns,
-		MaxConnIdleTime:         maxConnIdleTime,
-		MaxConnLifetime:         maxConnLifetime,
-		APIMaxConns:             apiMaxConns,
-		WorkerMaxConns:          workerMaxConns,
-		MQTTIngestMaxConns:      mqttIngestMaxConns,
-		ReconcilerMaxConns:      reconcilerMaxConns,
-		TemporalWorkerMaxConns:  temporalWorkerMaxConns,
-		SlowQueryLogThresholdMS: getenvInt("DATABASE_SLOW_QUERY_LOG_MS", 0),
-	}, nil
+	cfg := PostgresConfig{
+		URL:                    url,
+		MaxConns:               maxConns,
+		MinConns:               minConns,
+		MaxConnIdleTime:        maxConnIdleTime,
+		MaxConnLifetime:        maxConnLifetime,
+		APIMaxConns:            apiMaxConns,
+		WorkerMaxConns:         workerMaxConns,
+		MQTTIngestMaxConns:     mqttIngestMaxConns,
+		ReconcilerMaxConns:     reconcilerMaxConns,
+		TemporalWorkerMaxConns: temporalWorkerMaxConns,
+		APIMinConns:            apiMinConns,
+		WorkerMinConns:         workerMinConns,
+		MQTTIngestMinConns:     mqttIngestMinConns,
+		ReconcilerMinConns:     reconcilerMinConns,
+		TemporalWorkerMinConns: temporalWorkerMinConns,
+	}
+	if _, ok := os.LookupEnv("DATABASE_SLOW_QUERY_LOG_MS"); ok {
+		cfg.SlowQueryLogThresholdMS = getenvInt("DATABASE_SLOW_QUERY_LOG_MS", 0)
+	} else if url != "" && appEnv == AppEnvProduction {
+		cfg.SlowQueryLogThresholdMS = 200
+	}
+	applyPostgresProductionServiceDefaults(&cfg, appEnv)
+	return cfg, nil
 }
 
 func loadRedisConfig() (RedisConfig, error) {
@@ -2540,6 +2589,68 @@ func getenvOptionalInt32Strict(key string) (*int32, error) {
 	return &value, nil
 }
 
+func (p PostgresConfig) MinConnsForProcess(processName string) int32 {
+	switch strings.TrimSpace(processName) {
+	case "api":
+		if p.APIMinConns != nil {
+			return *p.APIMinConns
+		}
+	case "worker":
+		if p.WorkerMinConns != nil {
+			return *p.WorkerMinConns
+		}
+	case "mqtt-ingest":
+		if p.MQTTIngestMinConns != nil {
+			return *p.MQTTIngestMinConns
+		}
+	case "reconciler":
+		if p.ReconcilerMinConns != nil {
+			return *p.ReconcilerMinConns
+		}
+	case "temporal-worker":
+		if p.TemporalWorkerMinConns != nil {
+			return *p.TemporalWorkerMinConns
+		}
+	}
+	return p.MinConns
+}
+
+func (p PostgresConfig) maxConnsForEnvName(envName string) int32 {
+	switch envName {
+	case "API_DATABASE_MAX_CONNS":
+		if p.APIMaxConns != nil {
+			return *p.APIMaxConns
+		}
+	case "WORKER_DATABASE_MAX_CONNS":
+		if p.WorkerMaxConns != nil {
+			return *p.WorkerMaxConns
+		}
+	case "MQTT_INGEST_DATABASE_MAX_CONNS":
+		if p.MQTTIngestMaxConns != nil {
+			return *p.MQTTIngestMaxConns
+		}
+	case "RECONCILER_DATABASE_MAX_CONNS":
+		if p.ReconcilerMaxConns != nil {
+			return *p.ReconcilerMaxConns
+		}
+	case "TEMPORAL_WORKER_DATABASE_MAX_CONNS":
+		if p.TemporalWorkerMaxConns != nil {
+			return *p.TemporalWorkerMaxConns
+		}
+	case "API_DATABASE_MIN_CONNS":
+		return p.MaxConnsForProcess("api")
+	case "WORKER_DATABASE_MIN_CONNS":
+		return p.MaxConnsForProcess("worker")
+	case "MQTT_INGEST_DATABASE_MIN_CONNS":
+		return p.MaxConnsForProcess("mqtt-ingest")
+	case "RECONCILER_DATABASE_MIN_CONNS":
+		return p.MaxConnsForProcess("reconciler")
+	case "TEMPORAL_WORKER_DATABASE_MIN_CONNS":
+		return p.MaxConnsForProcess("temporal-worker")
+	}
+	return p.MaxConns
+}
+
 func (p PostgresConfig) MaxConnsForProcess(processName string) int32 {
 	switch strings.TrimSpace(processName) {
 	case "api":
@@ -2582,6 +2693,26 @@ func (p PostgresConfig) overrideMaxConns() map[string]int32 {
 	}
 	if p.TemporalWorkerMaxConns != nil {
 		overrides["TEMPORAL_WORKER_DATABASE_MAX_CONNS"] = *p.TemporalWorkerMaxConns
+	}
+	return overrides
+}
+
+func (p PostgresConfig) overrideMinConns() map[string]int32 {
+	overrides := make(map[string]int32)
+	if p.APIMinConns != nil {
+		overrides["API_DATABASE_MIN_CONNS"] = *p.APIMinConns
+	}
+	if p.WorkerMinConns != nil {
+		overrides["WORKER_DATABASE_MIN_CONNS"] = *p.WorkerMinConns
+	}
+	if p.MQTTIngestMinConns != nil {
+		overrides["MQTT_INGEST_DATABASE_MIN_CONNS"] = *p.MQTTIngestMinConns
+	}
+	if p.ReconcilerMinConns != nil {
+		overrides["RECONCILER_DATABASE_MIN_CONNS"] = *p.ReconcilerMinConns
+	}
+	if p.TemporalWorkerMinConns != nil {
+		overrides["TEMPORAL_WORKER_DATABASE_MIN_CONNS"] = *p.TemporalWorkerMinConns
 	}
 	return overrides
 }
