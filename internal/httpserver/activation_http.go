@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -180,12 +181,13 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 		if prefix == "" {
 			prefix = "avf/devices"
 		}
+		layout := platformmqtt.LayoutString(platformmqtt.NormalizeTopicLayout(cfg.MQTT.TopicLayout))
 		out, err := app.Activation.Claim(r.Context(), activation.ClaimInput{
 			ActivationCode:    body.ActivationCode,
 			DeviceFingerprint: body.DeviceFingerprint,
 			ClientIP:          clientIP(r),
 			UserAgent:         strings.TrimSpace(r.UserAgent()),
-		}, broker, prefix)
+		}, broker, prefix, layout)
 		if err != nil {
 			if errors.Is(err, activation.ErrInvalid) {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "activation_invalid", "activation code is not valid")
@@ -208,6 +210,7 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 			"mqtt": map[string]any{
 				"brokerUrl":   out.MQTTBrokerURL,
 				"topicPrefix": out.MQTTTopicPrefix,
+				"topicLayout": out.MQTTTopicLayout,
 			},
 			"bootstrapUrl": out.BootstrapPath,
 		}

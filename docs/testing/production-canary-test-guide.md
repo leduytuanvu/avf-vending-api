@@ -14,8 +14,10 @@ Allowed probes:
 Run:
 
 ```bash
-BASE_URL="https://api.example.com" bash scripts/test/run-production-readonly-smoke.sh
+bash scripts/e2e/production-readonly-smoke.sh
 ```
+
+See also: [`PRODUCTION_E2E_CANARY_RUNBOOK.md`](PRODUCTION_E2E_CANARY_RUNBOOK.md).
 
 ## Canary Write E2E
 
@@ -44,8 +46,10 @@ Rules:
 Run:
 
 ```bash
-bash scripts/test/run-production-canary-e2e.sh
+bash scripts/e2e/production-canary-live-sale.sh
 ```
+
+See [`PRODUCTION_E2E_CANARY_RUNBOOK.md`](PRODUCTION_E2E_CANARY_RUNBOOK.md) for full guard documentation.
 
 ## Blocked Proof
 

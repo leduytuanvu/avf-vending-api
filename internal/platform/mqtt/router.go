@@ -162,6 +162,15 @@ func NormalizeReceiptStatus(raw string) (string, bool) {
 	return normalizeReceiptStatus(raw)
 }
 
+func receiptStatusRequiresErrorReason(status string) bool {
+	switch status {
+	case "nacked", "failed", "timeout":
+		return true
+	default:
+		return false
+	}
+}
+
 func eventTypeForChannel(channel string, w deviceWire) (string, error) {
 	if et := strings.TrimSpace(w.EventType); et != "" {
 		return et, nil
@@ -191,6 +200,9 @@ func eventTypeForChannel(channel string, w deviceWire) (string, error) {
 }
 
 func parseLegacyDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+	if err := ValidateDevicePublishTopic(topic); err != nil {
+		return uuid.Nil, "", err
+	}
 	p := strings.TrimSuffix(strings.TrimSpace(prefix), "/")
 	if err := ValidateTopicPrefix(p); err != nil {
 		return uuid.Nil, "", fmt.Errorf("mqtt: invalid topic prefix: %w", err)
@@ -215,6 +227,9 @@ func parseLegacyDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel 
 }
 
 func parseEnterpriseDeviceTopic(prefix, topic string) (machineID uuid.UUID, channel string, err error) {
+	if err := ValidateDevicePublishTopic(topic); err != nil {
+		return uuid.Nil, "", err
+	}
 	p := strings.TrimSuffix(strings.TrimSpace(prefix), "/")
 	if err := ValidateTopicPrefix(p); err != nil {
 		return uuid.Nil, "", fmt.Errorf("mqtt: invalid topic prefix: %w", err)
@@ -330,7 +345,7 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 	}
 
 	switch channel {
-	case "telemetry", "presence", "state/heartbeat", "telemetry/snapshot", "telemetry/incident", "events/vend", "events/cash", "events/inventory":
+	case "telemetry", "presence", "state/heartbeat", "telemetry/snapshot", "telemetry/incident", "events", "events/vend", "events/cash", "events/inventory":
 		et, err := eventTypeForChannel(channel, w)
 		if err != nil {
 			ingestReject(hooks, topic, "telemetry_missing_event_type", len(payload))
@@ -384,18 +399,26 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 
 	case "commands/receipt", "commands/ack":
 		var body struct {
-			Sequence      int64           `json:"sequence"`
-			Status        string          `json:"status"`
-			CorrelationID *uuid.UUID      `json:"correlation_id"`
-			Data          json.RawMessage `json:"payload"`
-			DedupeKey     string          `json:"dedupe_key"`
-			CommandID     uuid.UUID       `json:"command_id"`
-			MachineID     uuid.UUID       `json:"machine_id"`
-			OccurredAt    time.Time       `json:"occurred_at"`
+			Sequence       int64           `json:"sequence"`
+			Status         string          `json:"status"`
+			CorrelationID  *uuid.UUID      `json:"correlation_id"`
+			Data           json.RawMessage `json:"payload"`
+			DedupeKey      string          `json:"dedupe_key"`
+			IdempotencyKey string          `json:"idempotency_key"`
+			CommandID      uuid.UUID       `json:"command_id"`
+			MachineID      uuid.UUID       `json:"machine_id"`
+			OccurredAt     time.Time       `json:"occurred_at"`
+			ErrorReason    string          `json:"error_reason"`
+			ErrorCode      string          `json:"error_code"`
+			ErrorMessage   string          `json:"error_message"`
 		}
 		if err := json.Unmarshal(payload, &body); err != nil {
 			ingestReject(hooks, topic, "receipt_json", len(payload))
 			return fmt.Errorf("mqtt: command receipt json: %w", err)
+		}
+		dedupe := strings.TrimSpace(body.DedupeKey)
+		if dedupe == "" {
+			dedupe = strings.TrimSpace(body.IdempotencyKey)
 		}
 		if body.Sequence < 0 {
 			ingestReject(hooks, topic, "receipt_bad_sequence", len(payload))
@@ -406,14 +429,25 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 			ingestReject(hooks, topic, "receipt_bad_status", len(payload))
 			return fmt.Errorf("mqtt: invalid receipt status %q", body.Status)
 		}
-		if strings.TrimSpace(body.DedupeKey) == "" {
+		if dedupe == "" {
 			ingestReject(hooks, topic, "receipt_missing_dedupe", len(payload))
-			return errors.New("mqtt: commands.receipt.dedupe_key is required")
+			return errors.New("mqtt: commands.receipt.dedupe_key or idempotency_key is required")
 		}
 		if err := ValidateEdgeCommandReceipt(mid, body.CommandID, body.MachineID, body.OccurredAt); err != nil {
 			mqttprom.RecordCommandAckRejected("invalid_edge_command_receipt")
 			ingestReject(hooks, topic, "receipt_identity_fields", len(payload))
 			return err
+		}
+		errReason := strings.TrimSpace(body.ErrorReason)
+		if errReason == "" {
+			errReason = strings.TrimSpace(body.ErrorMessage)
+		}
+		if errReason == "" && strings.TrimSpace(body.ErrorCode) != "" {
+			errReason = strings.TrimSpace(body.ErrorCode)
+		}
+		if receiptStatusRequiresErrorReason(st) && errReason == "" {
+			ingestReject(hooks, topic, "receipt_missing_error_reason", len(payload))
+			return errors.New("mqtt: commands.ack.error_reason, error_message, or error_code is required for failed/nacked/timeout status")
 		}
 		raw := []byte(body.Data)
 		if len(raw) == 0 {
@@ -429,9 +463,10 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 			Status:        st,
 			CorrelationID: body.CorrelationID,
 			Payload:       raw,
-			DedupeKey:     strings.TrimSpace(body.DedupeKey),
+			DedupeKey:     dedupe,
 			CommandID:     body.CommandID,
 			OccurredAt:    body.OccurredAt,
+			ErrorReason:   errReason,
 		})
 
 	default:

@@ -156,7 +156,9 @@ proto-check: proto-generate
 	git diff --exit-code -- proto/avf/machine/v1/ proto/avf/v1/ internal/gen/avfinternalv1/
 
 machine-grpc-docs-check:
+	"$(PY)" scripts/ci/generate_android_proto_sync_doc.py
 	"$(PY)" scripts/ci/check_machine_grpc_docs.py
+	"$(PY)" scripts/ci/check_machine_grpc_production_contract.py
 
 # Requires grpcurl on PATH (optional CI/dev smoke against localhost:9090).
 machine-grpc-smoke:
@@ -174,12 +176,15 @@ sqlc:
 
 build:
 	mkdir -p $(BIN_DIR)
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/api ./cmd/api
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/worker ./cmd/worker
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/mqtt-ingest ./cmd/mqtt-ingest
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/reconciler ./cmd/reconciler
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/temporal-worker ./cmd/temporal-worker
-	$(GO) build -trimpath -ldflags "-s -w" -o $(BIN_DIR)/cli ./cmd/cli
+	$(eval GIT_SHA := $(shell git rev-parse HEAD 2>/dev/null || echo ""))
+	$(eval BUILD_TIME := $(shell date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo ""))
+	$(eval LDFLAGS := -s -w -X github.com/avf/avf-vending-api/internal/version.Commit=$(GIT_SHA) -X github.com/avf/avf-vending-api/internal/version.BuildTime=$(BUILD_TIME))
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/api ./cmd/api
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/worker ./cmd/worker
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/mqtt-ingest ./cmd/mqtt-ingest
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/reconciler ./cmd/reconciler
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/temporal-worker ./cmd/temporal-worker
+	$(GO) build -trimpath -ldflags "$(LDFLAGS)" -o $(BIN_DIR)/cli ./cmd/cli
 
 run-api:
 	$(GO) run ./cmd/api

@@ -235,6 +235,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 					ConfigSource:     row.ConfigSource,
 					DefaultForEnv:    row.DefaultForEnv,
 					ActiveSessionKey: row.ActiveSessionKey,
+					Wired:            row.Wired,
+					SessionAvailable: row.SessionAvailable,
+					ProviderStatus:   row.ProviderStatus,
 				}
 			}
 			return out
@@ -293,6 +296,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 			TelemetryStore:  httpApp.TelemetryStore,
 			MediaStore:      machineMediaStore,
 			MediaPresignTTL: machineMediaPresignTTL,
+			PaymentRuntime:  rt.Deps.PaymentProviders,
 		}),
 	)
 	if err != nil {

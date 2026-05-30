@@ -25,5 +25,7 @@ message RefreshMachineTokenResponse {
   google.protobuf.Timestamp refresh_token_expires_at = 8;
   string mqtt_broker_url = 9;
   string mqtt_topic_prefix = 10;
+  // "enterprise" or "legacy"; must match server MQTT_TOPIC_LAYOUT.
+  string mqtt_topic_layout = 12;
   string bootstrap_http_path = 11;
 }

@@ -420,7 +420,7 @@ func setMinimalProductionLoadEnv(t *testing.T) {
 	t.Setenv("APP_NODE_NAME", "prod-node-a")
 	t.Setenv("APP_INSTANCE_ID", "prod-node-a-api-1")
 	t.Setenv("DATABASE_URL", "postgres://user:pass@db.prod.internal:5432/prod?sslmode=require")
-	t.Setenv("PAYMENT_ENV", "live")
+	t.Setenv("PAYMENT_ENV", "cash_only")
 	t.Setenv("READINESS_STRICT", "true")
 	t.Setenv("PUBLIC_BASE_URL", "https://api.ldtv.dev")
 	t.Setenv("MQTT_BROKER_URL", "tls://emqx.prod.internal:8883")
@@ -428,7 +428,8 @@ func setMinimalProductionLoadEnv(t *testing.T) {
 	t.Setenv("MQTT_PASSWORD", "test-fixture-mqtt-password-not-real")
 	t.Setenv("MQTT_CLIENT_ID_INGEST", "avf-prod-test-ingest")
 	t.Setenv("MQTT_TOPIC_PREFIX", "avf/devices")
-	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "vnpay")
+	t.Setenv("MQTT_TOPIC_LAYOUT", "enterprise")
+	_ = os.Unsetenv("COMMERCE_PAYMENT_PROVIDER")
 	t.Setenv("REDIS_ADDR", "127.0.0.1:6379")
 	t.Setenv("COMMERCE_PAYMENT_WEBHOOK_HMAC_SECRET", "production-test-commerce-webhook-secret-at-least-32chars-xx")
 	t.Setenv("HTTP_CORS_ALLOWED_ORIGINS", "")
@@ -1223,6 +1224,7 @@ func TestMQTTConfig_validateProductionRequiresTLS(t *testing.T) {
 		BrokerURL:   "tcp://mqtt:1883",
 		TopicPrefix: "avf/devices",
 		ClientID:    "c",
+		TopicLayout: "enterprise",
 	}
 	if err := m.validate(AppEnvProduction); err == nil {
 		t.Fatal("expected error when MQTT is plain TCP in production")
@@ -1232,6 +1234,7 @@ func TestMQTTConfig_validateProductionRequiresTLS(t *testing.T) {
 		TopicPrefix: "avf/devices",
 		ClientID:    "c",
 		TLSEnabled:  true,
+		TopicLayout: "enterprise",
 	}
 	if err := m.validate(AppEnvProduction); err == nil {
 		t.Fatal("expected error when production MQTT uses tcp:// to non-localhost even if MQTT_TLS_ENABLED=true")
@@ -1240,6 +1243,7 @@ func TestMQTTConfig_validateProductionRequiresTLS(t *testing.T) {
 		BrokerURL:   "tcp://localhost:1883",
 		TopicPrefix: "avf/devices",
 		ClientID:    "c",
+		TopicLayout: "enterprise",
 	}
 	if err := m.validate(AppEnvProduction); err != nil {
 		t.Fatalf("localhost tcp should be allowed in production: %v", err)
@@ -1249,9 +1253,35 @@ func TestMQTTConfig_validateProductionRequiresTLS(t *testing.T) {
 		TopicPrefix:        "avf/devices",
 		ClientID:           "c",
 		InsecureSkipVerify: true,
+		TopicLayout:        "enterprise",
 	}
 	if err := m.validate(AppEnvProduction); err == nil {
 		t.Fatal("expected MQTT_INSECURE_SKIP_VERIFY rejected in production")
+	}
+}
+
+func TestMQTTConfig_validateProductionRequiresExplicitEnterpriseLayout(t *testing.T) {
+	m := MQTTConfig{
+		BrokerURL:   "tcp://localhost:1883",
+		TopicPrefix: "avf/devices",
+		ClientID:    "c",
+	}
+	if err := m.validate(AppEnvProduction); err == nil {
+		t.Fatal("expected error when production MQTT_TOPIC_LAYOUT is unset")
+	}
+	m.TopicLayout = "legacy"
+	if err := m.validate(AppEnvProduction); err == nil {
+		t.Fatal("expected error when production uses legacy layout without opt-in")
+	}
+	t.Setenv("PRODUCTION_ALLOW_LEGACY_MQTT_TOPIC_LAYOUT", "true")
+	m = MQTTConfig{
+		BrokerURL:   "tcp://localhost:1883",
+		TopicPrefix: "avf/devices",
+		ClientID:    "c",
+		TopicLayout: "legacy",
+	}
+	if err := m.validate(AppEnvProduction); err != nil {
+		t.Fatalf("legacy layout with opt-in should pass other checks: %v", err)
 	}
 }
 

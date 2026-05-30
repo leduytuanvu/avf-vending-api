@@ -14,6 +14,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -26,6 +28,29 @@ import (
 )
 
 const actionMachineBootstrapRequested = "machine.bootstrap_requested"
+
+func resolveMQTTTopicLayout(deps MachineGRPCServicesDeps) string {
+	if deps.Config != nil {
+		return platformmqtt.LayoutString(platformmqtt.NormalizeTopicLayout(deps.Config.MQTT.TopicLayout))
+	}
+	return string(platformmqtt.TopicLayoutLegacy)
+}
+
+func mapMqttConfigMetadataProto(deps MachineGRPCServicesDeps) *machinev1.MqttConfigMetadata {
+	prefix := strings.TrimSuffix(strings.TrimSpace(deps.MQTTTopicPrefix), "/")
+	layout := resolveMQTTTopicLayout(deps)
+	tlsRequired := false
+	if deps.Config != nil {
+		tlsRequired = platformmqtt.BootstrapTLSRequired(deps.MQTTBrokerURL, deps.Config.MQTT.TLSEnabled, string(deps.Config.AppEnv))
+	}
+	return &machinev1.MqttConfigMetadata{
+		BrokerUrl:      deps.MQTTBrokerURL,
+		TopicPrefix:    prefix,
+		TopicLayout:    layout,
+		TlsRequired:    tlsRequired,
+		ClientIdPolicy: platformmqtt.MachineClientIDPolicyTemplate,
+	}
+}
 
 // RegisterMachineGRPCServices registers machine lifecycle gRPC services.
 func RegisterMachineGRPCServices(deps MachineGRPCServicesDeps) ServiceRegistrar {
@@ -140,7 +165,7 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 		},
 		ClientIP:  cip,
 		UserAgent: ua,
-	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix)
+	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix, resolveMQTTTopicLayout(s.deps))
 	if err != nil {
 		return nil, mapActivationError(err)
 	}
@@ -152,6 +177,7 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 		AccessTokenExpiresAt: timestamppb.New(out.TokenExpiresAt),
 		MqttBrokerUrl:        out.MQTTBrokerURL,
 		MqttTopicPrefix:      out.MQTTTopicPrefix,
+		MqttTopicLayout:      out.MQTTTopicLayout,
 		BootstrapHttpPath:    out.BootstrapPath,
 		BootstrapRequired:    out.BootstrapRequired,
 	}
@@ -186,7 +212,7 @@ func (s *machineTokenServer) RefreshMachineToken(ctx context.Context, req *machi
 	}
 	out, err := s.deps.Activation.RefreshMachineSession(ctx, activation.RefreshInput{
 		RefreshToken: req.GetRefreshToken(),
-	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix)
+	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix, resolveMQTTTopicLayout(s.deps))
 	if err != nil {
 		switch err {
 		case activation.ErrRefreshInvalid:
@@ -207,6 +233,7 @@ func (s *machineTokenServer) RefreshMachineToken(ctx context.Context, req *machi
 		RefreshTokenExpiresAt: timestamppb.New(out.RefreshExpiresAt),
 		MqttBrokerUrl:         out.MQTTBrokerURL,
 		MqttTopicPrefix:       out.MQTTTopicPrefix,
+		MqttTopicLayout:       out.MQTTTopicLayout,
 		BootstrapHttpPath:     out.BootstrapPath,
 	}, nil
 }
@@ -459,17 +486,14 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			CreatedAt:         timestamppb.New(m.CreatedAt.UTC()),
 			UpdatedAt:         timestamppb.New(m.UpdatedAt.UTC()),
 		},
-		Topology:             &machinev1.BootstrapTopology{Cabinets: cabinets},
-		Catalog:              &machinev1.BootstrapCatalog{Products: products},
-		CatalogFingerprint:   setupapp.CatalogFingerprint(b),
-		PricingFingerprint:   setupapp.PricingFingerprint(b),
-		PlanogramFingerprint: setupapp.PlanogramFingerprint(b),
-		MediaFingerprint:     setupapp.MediaFingerprint(b),
-		ServerTime:           timestamppb.New(time.Now().UTC()),
-		Mqtt: &machinev1.MqttConfigMetadata{
-			BrokerUrl:   deps.MQTTBrokerURL,
-			TopicPrefix: prefix,
-		},
+		Topology:                    &machinev1.BootstrapTopology{Cabinets: cabinets},
+		Catalog:                     &machinev1.BootstrapCatalog{Products: products},
+		CatalogFingerprint:          setupapp.CatalogFingerprint(b),
+		PricingFingerprint:          setupapp.PricingFingerprint(b),
+		PlanogramFingerprint:        setupapp.PlanogramFingerprint(b),
+		MediaFingerprint:            setupapp.MediaFingerprint(b),
+		ServerTime:                  timestamppb.New(time.Now().UTC()),
+		Mqtt:                        mapMqttConfigMetadataProto(deps),
 		PublishedPlanogramVersionNo: b.PublishedPlanogramVersionNo,
 	}
 	if b.PublishedPlanogramVersionID != nil && *b.PublishedPlanogramVersionID != uuid.Nil {
@@ -500,7 +524,19 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			ReadinessIssues: sr.Issues,
 		}
 	}
+	flags := map[string]bool{}
+	if resp.RuntimeHints != nil && resp.RuntimeHints.FeatureFlags != nil {
+		flags = resp.RuntimeHints.FeatureFlags
+	}
+	resp.PaymentMethods = mapPaymentMethodsProto(resolveMachinePaymentMethods(deps, flags))
 	return resp, nil
+}
+
+func resolveMachinePaymentMethods(deps MachineGRPCServicesDeps, flags map[string]bool) platformpayments.MachinePaymentMethodsView {
+	if deps.PaymentRuntime != nil {
+		return deps.PaymentRuntime.ResolveMachinePaymentMethodsForMachine(deps.Config, flags)
+	}
+	return platformpayments.ResolveMachinePaymentMethods(deps.Config, nil, flags)
 }
 
 func mapRuntimeHintsProto(h *featureflags.RuntimeHints) *machinev1.RuntimeHints {

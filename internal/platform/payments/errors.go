@@ -17,6 +17,8 @@ var (
 	ErrProviderKeyMismatch = errors.New("payments: client provider does not match server COMMERCE_PAYMENT_PROVIDER")
 	// ErrLiveProviderNotWired is returned by placeholder adapters until credentials are configured.
 	ErrLiveProviderNotWired = errors.New("payments: live provider adapter is not wired for this deployment")
+	// ErrProviderUnavailable means QR/card payment sessions are disabled (cash-only deployment or unwired live PSP).
+	ErrProviderUnavailable = errors.New("provider_unavailable")
 	// ErrInvalidCardSessionProvider blocks cash and other invalid defaults for PSP session flows.
 	ErrInvalidCardSessionProvider = errors.New("payments: invalid provider for card/QR payment session")
 )

@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-05-27T08:41:13.720064+00:00",
-  "gitCommit": "527dda0058596a880cccbb413f77f8d8220c5102",
-  "gitBranch": "qa/market-readiness-full-flow-validation",
+  "generatedAt": "2026-05-27T18:40:29.505396+00:00",
+  "gitCommit": "526b30327826fe4ab9701ede813b33c7b71631c9",
+  "gitBranch": "chore/clean-project-nonessential-files",
   "swaggerSource": "docs/swagger/swagger.json",
   "protoSources": [
     "proto/avf/internal/v1/catalog_query.proto",
@@ -243,10 +243,6 @@
     {
       "path": "POSTMAN_IMPORT_VALIDATION_REPORT.md",
       "sha256": "20400caae1e93ebb82e16459ebbc6f1d30e8acc8e85c886f640bc2f6ab915a30"
-    },
-    {
-      "path": "POSTMAN_VARIABLE_AUDIT_REPORT.md",
-      "sha256": "a73696786df77e92a3110654eea37cd55628ea577245754954dafdf447b584e9"
     },
     {
       "path": "README_IMPORT_AND_RUN_VI.md",

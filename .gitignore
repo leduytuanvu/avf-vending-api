@@ -14,6 +14,8 @@ tests/e2e/production/.env.production.e2e.local
 deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node
 /repomix-output.xml
+repomix-output*.xml
+.repomix/
 /bin/
 /dist/
 /gen/
@@ -76,6 +78,10 @@ postman/**/*-report.html
 postman/**/*-report.json
 .e2e-runs/**/newman-report.json
 .e2e-runs/**/newman-junit.xml
+
+# Regenerable test coverage reports (scripts/test/run-mqtt-full-coverage.sh)
+docs/reports/test/mqtt-full-coverage.json
+docs/reports/test/mqtt-full-coverage.md
 
 # Local CI/security reports
 ci-reports/

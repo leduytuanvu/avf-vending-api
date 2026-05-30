@@ -23,6 +23,12 @@ message GetBootstrapRequest {
 message MqttConfigMetadata {
   string broker_url = 1;
   string topic_prefix = 2;
+  // "enterprise" (production default) or explicit "legacy" for documented legacy stacks.
+  string topic_layout = 3;
+  // True when the deployment requires TLS for machine MQTT (ssl/tls URL or MQTT_TLS_ENABLED in non-dev).
+  bool tls_required = 4;
+  // Client id template for kiosk connections; substitute {machine_id} with the machine UUID.
+  string client_id_policy = 5;
 }
 
 message BootstrapMachine {
@@ -101,6 +107,21 @@ message PendingRolloutHint {
   string status = 4;
 }
 
+message PaymentMethodsConfig {
+  // Machine may offer cash checkout when true (also requires deployment cash_only or operator policy).
+  bool cash_enabled = 1;
+  // Machine may offer QR/card checkout when true. False when deployment has no wired live PSP.
+  bool qr_card_enabled = 2;
+  // Deployment mode: cash_only | live_psp | sandbox.
+  string payment_mode = 3;
+  // Registry key for card/QR sessions when qr_card_enabled; empty when disabled.
+  string card_qr_provider_key = 4;
+  // unavailable | wired | sandbox | placeholder.
+  string card_qr_provider_status = 5;
+  // Stable Android reason when qr_card_enabled=false (e.g. provider_unavailable).
+  string qr_card_unavailable_reason = 6;
+}
+
 message GetBootstrapResponse {
   BootstrapMachine machine = 1;
   BootstrapTopology topology = 2;
@@ -115,6 +136,7 @@ message GetBootstrapResponse {
   MachineResponseMeta meta = 11;
   string published_planogram_version_id = 12;
   int32 published_planogram_version_no = 13;
+  PaymentMethodsConfig payment_methods = 14;
 }
 
 message MachineBootstrapServiceCheckInRequest {

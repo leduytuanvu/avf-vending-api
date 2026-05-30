@@ -44,6 +44,7 @@ type PaymentProviderRegistry interface {
 	ProviderSummaries() []platformpayments.ProviderSummary
 	// ResolveForPaymentSession selects the outbound adapter for backend-owned payment sessions (machine gRPC / HTTP).
 	ResolveForPaymentSession(appEnv config.AppEnvironment, clientDeclaredProvider string) (platformpayments.PaymentProvider, string, error)
+	ResolveMachinePaymentMethodsForMachine(cfg *config.Config, featureFlags map[string]bool) platformpayments.MachinePaymentMethodsView
 }
 
 // WorkflowOrchestration schedules durable long-running work (Temporal when enabled).
