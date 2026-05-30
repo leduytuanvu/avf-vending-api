@@ -102,11 +102,11 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-1-"+uuid.NewString
 	fp := DeviceFingerprint{SerialNumber: "SN-ACT", AndroidID: "aid-1"}
 	in := ClaimInput{ActivationCode: create.PlaintextCode, DeviceFingerprint: fp}
 
-	out1, err := svc.Claim(ctx, in, "mqtt://x", "pfx")
+	out1, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out1.MachineID)
 
-	out2, err := svc.Claim(ctx, in, "mqtt://x", "pfx")
+	out2, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out2.MachineID)
 }
@@ -146,13 +146,13 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-2-"+uuid.NewString
 	_, err = svc.Claim(ctx, ClaimInput{
 		ActivationCode:    create.PlaintextCode,
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "A"},
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 
 	_, err = svc.Claim(ctx, ClaimInput{
 		ActivationCode:    create.PlaintextCode,
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "B"},
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.ErrorIs(t, err, ErrInvalid)
 }
 
@@ -192,18 +192,18 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-3-"+uuid.NewString
 	_, err = svc.Claim(ctx, ClaimInput{
 		ActivationCode:    code,
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "fp-one"},
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	_, err = svc.Claim(ctx, ClaimInput{
 		ActivationCode:    code,
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "fp-two"},
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 
 	_, err = svc.Claim(ctx, ClaimInput{
 		ActivationCode:    code,
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "fp-three"},
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.ErrorIs(t, err, ErrInvalid)
 
 	var n int
@@ -255,7 +255,7 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-4-"+uuid.NewString
 			_, err := svc.Claim(ctx, ClaimInput{
 				ActivationCode:    code,
 				DeviceFingerprint: DeviceFingerprint{SerialNumber: fmt.Sprintf("conc-%d", i)},
-			}, "mqtt://x", "pfx")
+			}, "mqtt://x", "pfx", "legacy")
 			if err == nil {
 				okCount.Add(1)
 			}
@@ -308,7 +308,7 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-5-"+uuid.NewString
 		DeviceFingerprint: DeviceFingerprint{SerialNumber: "aud-1"},
 		ClientIP:          "203.0.113.10",
 		UserAgent:         "integration-test",
-	}, "mqtt://x", "pfx")
+	}, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 
 	var claimCount int

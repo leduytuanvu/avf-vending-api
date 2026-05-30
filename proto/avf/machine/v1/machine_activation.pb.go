@@ -177,10 +177,12 @@ type ClaimActivationResponse struct {
 	RefreshTokenExpiresAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=refresh_token_expires_at,json=refreshTokenExpiresAt,proto3" json:"refresh_token_expires_at,omitempty"`
 	MqttBrokerUrl         string                 `protobuf:"bytes,9,opt,name=mqtt_broker_url,json=mqttBrokerUrl,proto3" json:"mqtt_broker_url,omitempty"`
 	MqttTopicPrefix       string                 `protobuf:"bytes,10,opt,name=mqtt_topic_prefix,json=mqttTopicPrefix,proto3" json:"mqtt_topic_prefix,omitempty"`
-	BootstrapHttpPath     string                 `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
-	BootstrapRequired     bool                   `protobuf:"varint,12,opt,name=bootstrap_required,json=bootstrapRequired,proto3" json:"bootstrap_required,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// "enterprise" or "legacy"; must match server MQTT_TOPIC_LAYOUT.
+	MqttTopicLayout   string `protobuf:"bytes,13,opt,name=mqtt_topic_layout,json=mqttTopicLayout,proto3" json:"mqtt_topic_layout,omitempty"`
+	BootstrapHttpPath string `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
+	BootstrapRequired bool   `protobuf:"varint,12,opt,name=bootstrap_required,json=bootstrapRequired,proto3" json:"bootstrap_required,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ClaimActivationResponse) Reset() {
@@ -276,6 +278,13 @@ func (x *ClaimActivationResponse) GetMqttTopicPrefix() string {
 	return ""
 }
 
+func (x *ClaimActivationResponse) GetMqttTopicLayout() string {
+	if x != nil {
+		return x.MqttTopicLayout
+	}
+	return ""
+}
+
 func (x *ClaimActivationResponse) GetBootstrapHttpPath() string {
 	if x != nil {
 		return x.BootstrapHttpPath
@@ -306,7 +315,7 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\fversion_code\x18\a \x01(\x05R\vversionCode\"\x93\x01\n" +
 	"\x16ClaimActivationRequest\x12'\n" +
 	"\x0factivation_code\x18\x01 \x01(\tR\x0eactivationCode\x12P\n" +
-	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\x97\x04\n" +
+	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xc3\x04\n" +
 	"\x17ClaimActivationResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -318,7 +327,8 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\x18refresh_token_expires_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\x12&\n" +
 	"\x0fmqtt_broker_url\x18\t \x01(\tR\rmqttBrokerUrl\x12*\n" +
 	"\x11mqtt_topic_prefix\x18\n" +
-	" \x01(\tR\x0fmqttTopicPrefix\x12.\n" +
+	" \x01(\tR\x0fmqttTopicPrefix\x12*\n" +
+	"\x11mqtt_topic_layout\x18\r \x01(\tR\x0fmqttTopicLayout\x12.\n" +
 	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath\x12-\n" +
 	"\x12bootstrap_required\x18\f \x01(\bR\x11bootstrapRequired2~\n" +
 	"\x18MachineActivationService\x12b\n" +

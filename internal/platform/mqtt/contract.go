@@ -67,6 +67,7 @@ type CommandReceiptIngest struct {
 	DedupeKey     string
 	CommandID     uuid.UUID
 	OccurredAt    time.Time
+	ErrorReason   string
 }
 
 // ValidateEdgeCommandReceipt enforces topic/body identity fields required for MQTT command ACK safety.

@@ -104,7 +104,7 @@ type OutboxConfig struct {
 // Config is the complete process configuration loaded from the environment.
 type Config struct {
 	AppEnv AppEnvironment
-	// PaymentEnv is "sandbox" or "live" from PAYMENT_ENV; empty means unset (rules depend on APP_ENV).
+	// PaymentEnv is sandbox, live, or cash_only from PAYMENT_ENV; empty means unset (rules depend on APP_ENV).
 	PaymentEnv  string
 	ProcessName string
 	Runtime     RuntimeConfig
@@ -1206,6 +1206,14 @@ func (m MQTTConfig) validate(appEnv AppEnvironment) error {
 		return errors.New("config: MQTT_BROKER_URL requires MQTT_CLIENT_ID and/or MQTT_CLIENT_ID_API / MQTT_CLIENT_ID_INGEST")
 	}
 	layout := strings.TrimSpace(strings.ToLower(m.TopicLayout))
+	if appEnv == AppEnvProduction {
+		if layout == "" {
+			return errors.New("config: production requires explicit MQTT_TOPIC_LAYOUT=enterprise")
+		}
+		if layout == "legacy" && !getenvBool("PRODUCTION_ALLOW_LEGACY_MQTT_TOPIC_LAYOUT", false) {
+			return errors.New("config: production MQTT_TOPIC_LAYOUT=legacy requires PRODUCTION_ALLOW_LEGACY_MQTT_TOPIC_LAYOUT=true")
+		}
+	}
 	if layout == "" {
 		layout = "legacy"
 	}

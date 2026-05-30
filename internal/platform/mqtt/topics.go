@@ -28,12 +28,15 @@ func NormalizeTopicLayout(raw string) TopicLayout {
 	}
 }
 
-// Canonical relative topic tails under {prefix}/{machineId}/...
+// Canonical relative topic tails under {prefix}/{machineId}/... (legacy) or
+// {prefix}/machines/{machineId}/... (enterprise).
 const (
 	RelTopicPresence          = "presence"
 	RelTopicStateHeartbeat    = "state/heartbeat"
+	RelTopicTelemetry         = "telemetry"
 	RelTopicTelemetrySnapshot = "telemetry/snapshot"
 	RelTopicTelemetryIncident = "telemetry/incident"
+	RelTopicEvents            = "events"
 	RelTopicEventsVend        = "events/vend"
 	RelTopicEventsCash        = "events/cash"
 	RelTopicEventsInventory   = "events/inventory"
@@ -45,6 +48,82 @@ const (
 	RelTopicShadowReported    = "shadow/reported"
 	RelTopicTelemetryLegacy   = "telemetry"
 )
+
+// EnterpriseDevicePublishRelPaths lists device-originated channels under the enterprise tree.
+// Devices subscribe to OutboundEnterpriseCommandTopic; they publish on these relative tails only.
+func EnterpriseDevicePublishRelPaths() []string {
+	return []string{
+		RelTopicCommandsAck,
+		RelTopicCommandsReceipt,
+		RelTopicPresence,
+		RelTopicStateHeartbeat,
+		RelTopicTelemetry,
+		RelTopicTelemetrySnapshot,
+		RelTopicTelemetryIncident,
+		RelTopicEvents,
+		RelTopicEventsVend,
+		RelTopicEventsCash,
+		RelTopicEventsInventory,
+		RelTopicShadowReported,
+	}
+}
+
+// LegacyDevicePublishRelPaths lists device-originated channels under the legacy tree.
+func LegacyDevicePublishRelPaths() []string {
+	return []string{
+		RelTopicCommandsAck,
+		RelTopicCommandsReceipt,
+		RelTopicPresence,
+		RelTopicStateHeartbeat,
+		RelTopicTelemetry,
+		RelTopicTelemetrySnapshot,
+		RelTopicTelemetryIncident,
+		RelTopicEventsVend,
+		RelTopicEventsCash,
+		RelTopicEventsInventory,
+		RelTopicShadowReported,
+	}
+}
+
+// LayoutString returns the wire value for bootstrap/activation metadata ("legacy" or "enterprise").
+func LayoutString(layout TopicLayout) string {
+	if NormalizeTopicLayout(string(layout)) == TopicLayoutEnterprise {
+		return string(TopicLayoutEnterprise)
+	}
+	return string(TopicLayoutLegacy)
+}
+
+// MachineClientIDPolicyTemplate is the recommended MQTT client id pattern for Android kiosks.
+const MachineClientIDPolicyTemplate = "avf-machine-{machine_id}"
+
+// MachineClientID returns the concrete client id for a machine using MachineClientIDPolicyTemplate.
+func MachineClientID(machineID uuid.UUID) string {
+	if machineID == uuid.Nil {
+		return ""
+	}
+	return "avf-machine-" + machineID.String()
+}
+
+// BootstrapTLSRequired reports whether the app must use TLS for broker connections.
+func BootstrapTLSRequired(brokerURL string, tlsEnabled bool, appEnv string) bool {
+	if brokerURLImpliesTLS(brokerURL) || tlsEnabled {
+		return true
+	}
+	switch strings.ToLower(strings.TrimSpace(appEnv)) {
+	case "", "development", "test":
+		return false
+	default:
+		return strings.TrimSpace(brokerURL) != ""
+	}
+}
+
+// EnterpriseSubscribeRelPath is the relative tail devices subscribe to for inbound commands.
+const EnterpriseSubscribeRelPath = "commands"
+
+// RequiredEnterpriseDevicePublishRelPaths returns the production Android publish channels (excluding subscribe-only commands).
+func RequiredEnterpriseDevicePublishRelPaths() []string {
+	return EnterpriseDevicePublishRelPaths()
+}
 
 // NormalizeDeviceTopicPrefix trims space and a trailing slash from the configured MQTT prefix.
 func NormalizeDeviceTopicPrefix(prefix string) string {
@@ -101,6 +180,38 @@ func DeviceTopic(prefix string, machineID uuid.UUID, rel string) string {
 	p := NormalizeDeviceTopicPrefix(prefix)
 	rel = strings.Trim(rel, "/")
 	return fmt.Sprintf("%s/%s/%s", p, machineID.String(), rel)
+}
+
+// EnterpriseDeviceTopicStrict builds {prefix}/machines/{machineId}/{rel} with ACL-safe validation.
+func EnterpriseDeviceTopicStrict(prefix string, machineID uuid.UUID, rel string) (string, error) {
+	if machineID == uuid.Nil {
+		return "", errors.New("machine id must be non-empty")
+	}
+	p := NormalizeDeviceTopicPrefix(prefix)
+	r := strings.Trim(rel, "/")
+	if err := ValidateTopicPrefix(p); err != nil {
+		return "", err
+	}
+	if err := ValidateRelativeTopic(r); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/machines/%s/%s", p, machineID.String(), r), nil
+}
+
+// DevicePublishTopicStrict selects legacy or enterprise topic builders for device publish paths.
+func DevicePublishTopicStrict(layout TopicLayout, prefix string, machineID uuid.UUID, rel string) (string, error) {
+	if NormalizeTopicLayout(string(layout)) == TopicLayoutEnterprise {
+		return EnterpriseDeviceTopicStrict(prefix, machineID, rel)
+	}
+	return DeviceTopicStrict(prefix, machineID, rel)
+}
+
+// ValidateDevicePublishTopic rejects wildcard publish paths from edge devices.
+func ValidateDevicePublishTopic(topic string) error {
+	if strings.ContainsAny(topic, "+#") {
+		return errors.New("mqtt: device publish topic must not contain wildcards")
+	}
+	return nil
 }
 
 // OutboundCommandDispatchTopic is the MQTT topic the API publishes remote commands to.

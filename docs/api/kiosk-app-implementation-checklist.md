@@ -2,6 +2,7 @@
 
 Backend-oriented checklist for **correct API usage order**, **local persistence**, **offline**, and **security**. Pair with:
 
+- **Production gRPC contract (canonical):** [machine-grpc-production-contract.md](machine-grpc-production-contract.md)
 - Narrative flow: [kiosk-app-flow.md](kiosk-app-flow.md)
 - MQTT wire + replay: [mqtt-contract.md](mqtt-contract.md), [examples/device-offline-replay-samples.md](examples/device-offline-replay-samples.md)
 - Payload / idempotency tables: [examples/kiosk-implementation-payloads.md](examples/kiosk-implementation-payloads.md)

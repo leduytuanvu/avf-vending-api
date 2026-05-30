@@ -4,8 +4,9 @@ Readiness, gap analysis, and repository cleanup audits. For operational runbooks
 
 | Document | Purpose |
 |----------|---------|
-| [DEEP_REPO_CLEANUP_AUDIT.md](DEEP_REPO_CLEANUP_AUDIT.md) | Deep cleanup audit (2026-05-20) |
-| [DEEP_REPO_CLEANUP_FINAL_REPORT.md](DEEP_REPO_CLEANUP_FINAL_REPORT.md) | Deep cleanup execution report |
+| [project-cleanup-audit.md](project-cleanup-audit.md) | Nonessential artifact inventory (2026-05-28) |
+| [project-cleanup-final-report.md](project-cleanup-final-report.md) | Cleanup execution + validation report |
+| [archive/cleanup/README.md](../archive/cleanup/README.md) | Superseded cleanup audits (historical) |
 | [REPO_STRUCTURE_P2_REFACTOR_PROPOSAL.md](REPO_STRUCTURE_P2_REFACTOR_PROPOSAL.md) | P2 structure refactor proposal |
 | [PRE_FLIGHT_SAFETY_AUDIT.md](PRE_FLIGHT_SAFETY_AUDIT.md) | Pre-flight safety audit |
 | [PRODUCTION_AUTO_MIGRATION_GATE_AUDIT.md](PRODUCTION_AUTO_MIGRATION_GATE_AUDIT.md) | Production auto-migration gate audit |

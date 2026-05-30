@@ -14,7 +14,7 @@ These gates prevent broken OpenAPI references, duplicate **operationId** values,
 | `make proto-check` | Lint + breaking-change check vs baseline + `git diff` on generated paths — fails if committed `.pb.go` / stubs drift. |
 | `make sqlc` | Regenerate `internal/gen/db` from `db/queries` + schema (pinned sqlc via `SQLC_VERSION`). |
 | `make sqlc-check` | Runs `sqlc generate` then `git diff` on `internal/gen/db/` — fails if sqlc output drifts from committed files. |
-| `make machine-grpc-docs-check` | Ensures `docs/api/machine-grpc.md` mentions every `service` in `proto/avf/machine/v1/*.proto`. |
+| `make machine-grpc-docs-check` | Generates [`android-proto-sync.md`](android-proto-sync.md), ensures `docs/api/machine-grpc.md` and [`machine-grpc-production-contract.md`](machine-grpc-production-contract.md) cover all services/flows. |
 | `make api-contract-check` | **`sqlc-check`** + **`swagger-check`** + **`postman-check`** + **`proto-check`** + **`machine-grpc-docs-check`**. |
 
 Wrapper script (same as `make api-contract-check`): `bash scripts/api-contract-check.sh`
