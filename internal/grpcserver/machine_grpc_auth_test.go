@@ -144,6 +144,11 @@ func TestMachineGRPC_P01ServicesRegistered(t *testing.T) {
 
 func TestMachineGRPC_GetBootstrap_MissingBearerRejected(t *testing.T) {
 	t.Parallel()
+	testMachineGRPCMissingBearerRejected(t)
+}
+
+func testMachineGRPCMissingBearerRejected(t *testing.T) {
+	t.Helper()
 
 	cfg := testMachineGRPCConfig()
 	rec := &recordingBootstrapServer{}
@@ -236,6 +241,11 @@ func TestMachineGRPC_GetBootstrap_UserJWTRejected(t *testing.T) {
 
 func TestMachineGRPC_GetBootstrap_MachineJWTAccepted(t *testing.T) {
 	t.Parallel()
+	testMachineGRPCMachineJWTAccepted(t)
+}
+
+func testMachineGRPCMachineJWTAccepted(t *testing.T) {
+	t.Helper()
 
 	cfg := testMachineGRPCConfig()
 	rec := &recordingBootstrapServer{}

@@ -192,6 +192,7 @@ func TestLoad_Production_RejectsSandboxPayment(t *testing.T) {
 
 func TestLoad_Production_RejectsMockCommercePaymentProvider(t *testing.T) {
 	setMinimalProductionLoadEnv(t)
+	t.Setenv("PAYMENT_ENV", "live")
 	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "mock")
 	_, err := Load()
 	if err == nil {
@@ -202,14 +203,53 @@ func TestLoad_Production_RejectsMockCommercePaymentProvider(t *testing.T) {
 	}
 }
 
-func TestLoad_Production_RequiresCommercePaymentProvider(t *testing.T) {
+func TestLoad_Production_RequiresWiredProviderWhenLive(t *testing.T) {
 	setMinimalProductionLoadEnv(t)
-	_ = os.Unsetenv("COMMERCE_PAYMENT_PROVIDER")
+	t.Setenv("PAYMENT_ENV", "live")
+	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "vnpay")
 	_, err := Load()
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(err.Error(), "COMMERCE_PAYMENT_PROVIDER") {
+	if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestLoad_Production_RejectsAllPlaceholderLiveProviders(t *testing.T) {
+	for _, provider := range []string{"stripe", "momo", "zalopay", "vnpay"} {
+		provider := provider
+		t.Run(provider, func(t *testing.T) {
+			setMinimalProductionLoadEnv(t)
+			t.Setenv("PAYMENT_ENV", "live")
+			t.Setenv("COMMERCE_PAYMENT_PROVIDER", provider)
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("expected error for placeholder %q", provider)
+			}
+			if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
+				t.Fatalf("unexpected: %v", err)
+			}
+		})
+	}
+}
+
+func TestLoad_Production_AllowsCashOnlyWithoutCommerceProvider(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	_, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoad_Production_CashOnlyRejectsCommercePaymentProvider(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "vnpay")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "cash_only") {
 		t.Fatalf("unexpected: %v", err)
 	}
 }

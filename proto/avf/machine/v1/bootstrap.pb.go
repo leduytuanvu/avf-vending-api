@@ -68,11 +68,17 @@ func (x *GetBootstrapRequest) GetMeta() *MachineRequestMeta {
 }
 
 type MqttConfigMetadata struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	BrokerUrl     string                 `protobuf:"bytes,1,opt,name=broker_url,json=brokerUrl,proto3" json:"broker_url,omitempty"`
-	TopicPrefix   string                 `protobuf:"bytes,2,opt,name=topic_prefix,json=topicPrefix,proto3" json:"topic_prefix,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	BrokerUrl   string                 `protobuf:"bytes,1,opt,name=broker_url,json=brokerUrl,proto3" json:"broker_url,omitempty"`
+	TopicPrefix string                 `protobuf:"bytes,2,opt,name=topic_prefix,json=topicPrefix,proto3" json:"topic_prefix,omitempty"`
+	// "enterprise" (production default) or explicit "legacy" for documented legacy stacks.
+	TopicLayout string `protobuf:"bytes,3,opt,name=topic_layout,json=topicLayout,proto3" json:"topic_layout,omitempty"`
+	// True when the deployment requires TLS for machine MQTT (ssl/tls URL or MQTT_TLS_ENABLED in non-dev).
+	TlsRequired bool `protobuf:"varint,4,opt,name=tls_required,json=tlsRequired,proto3" json:"tls_required,omitempty"`
+	// Client id template for kiosk connections; substitute {machine_id} with the machine UUID.
+	ClientIdPolicy string `protobuf:"bytes,5,opt,name=client_id_policy,json=clientIdPolicy,proto3" json:"client_id_policy,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *MqttConfigMetadata) Reset() {
@@ -115,6 +121,27 @@ func (x *MqttConfigMetadata) GetBrokerUrl() string {
 func (x *MqttConfigMetadata) GetTopicPrefix() string {
 	if x != nil {
 		return x.TopicPrefix
+	}
+	return ""
+}
+
+func (x *MqttConfigMetadata) GetTopicLayout() string {
+	if x != nil {
+		return x.TopicLayout
+	}
+	return ""
+}
+
+func (x *MqttConfigMetadata) GetTlsRequired() bool {
+	if x != nil {
+		return x.TlsRequired
+	}
+	return false
+}
+
+func (x *MqttConfigMetadata) GetClientIdPolicy() string {
+	if x != nil {
+		return x.ClientIdPolicy
 	}
 	return ""
 }
@@ -828,6 +855,96 @@ func (x *PendingRolloutHint) GetStatus() string {
 	return ""
 }
 
+type PaymentMethodsConfig struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Machine may offer cash checkout when true (also requires deployment cash_only or operator policy).
+	CashEnabled bool `protobuf:"varint,1,opt,name=cash_enabled,json=cashEnabled,proto3" json:"cash_enabled,omitempty"`
+	// Machine may offer QR/card checkout when true. False when deployment has no wired live PSP.
+	QrCardEnabled bool `protobuf:"varint,2,opt,name=qr_card_enabled,json=qrCardEnabled,proto3" json:"qr_card_enabled,omitempty"`
+	// Deployment mode: cash_only | live_psp | sandbox.
+	PaymentMode string `protobuf:"bytes,3,opt,name=payment_mode,json=paymentMode,proto3" json:"payment_mode,omitempty"`
+	// Registry key for card/QR sessions when qr_card_enabled; empty when disabled.
+	CardQrProviderKey string `protobuf:"bytes,4,opt,name=card_qr_provider_key,json=cardQrProviderKey,proto3" json:"card_qr_provider_key,omitempty"`
+	// unavailable | wired | sandbox | placeholder.
+	CardQrProviderStatus string `protobuf:"bytes,5,opt,name=card_qr_provider_status,json=cardQrProviderStatus,proto3" json:"card_qr_provider_status,omitempty"`
+	// Stable Android reason when qr_card_enabled=false (e.g. provider_unavailable).
+	QrCardUnavailableReason string `protobuf:"bytes,6,opt,name=qr_card_unavailable_reason,json=qrCardUnavailableReason,proto3" json:"qr_card_unavailable_reason,omitempty"`
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *PaymentMethodsConfig) Reset() {
+	*x = PaymentMethodsConfig{}
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PaymentMethodsConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PaymentMethodsConfig) ProtoMessage() {}
+
+func (x *PaymentMethodsConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PaymentMethodsConfig.ProtoReflect.Descriptor instead.
+func (*PaymentMethodsConfig) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *PaymentMethodsConfig) GetCashEnabled() bool {
+	if x != nil {
+		return x.CashEnabled
+	}
+	return false
+}
+
+func (x *PaymentMethodsConfig) GetQrCardEnabled() bool {
+	if x != nil {
+		return x.QrCardEnabled
+	}
+	return false
+}
+
+func (x *PaymentMethodsConfig) GetPaymentMode() string {
+	if x != nil {
+		return x.PaymentMode
+	}
+	return ""
+}
+
+func (x *PaymentMethodsConfig) GetCardQrProviderKey() string {
+	if x != nil {
+		return x.CardQrProviderKey
+	}
+	return ""
+}
+
+func (x *PaymentMethodsConfig) GetCardQrProviderStatus() string {
+	if x != nil {
+		return x.CardQrProviderStatus
+	}
+	return ""
+}
+
+func (x *PaymentMethodsConfig) GetQrCardUnavailableReason() string {
+	if x != nil {
+		return x.QrCardUnavailableReason
+	}
+	return ""
+}
+
 type GetBootstrapResponse struct {
 	state                       protoimpl.MessageState `protogen:"open.v1"`
 	Machine                     *BootstrapMachine      `protobuf:"bytes,1,opt,name=machine,proto3" json:"machine,omitempty"`
@@ -843,13 +960,14 @@ type GetBootstrapResponse struct {
 	Meta                        *MachineResponseMeta   `protobuf:"bytes,11,opt,name=meta,proto3" json:"meta,omitempty"`
 	PublishedPlanogramVersionId string                 `protobuf:"bytes,12,opt,name=published_planogram_version_id,json=publishedPlanogramVersionId,proto3" json:"published_planogram_version_id,omitempty"`
 	PublishedPlanogramVersionNo int32                  `protobuf:"varint,13,opt,name=published_planogram_version_no,json=publishedPlanogramVersionNo,proto3" json:"published_planogram_version_no,omitempty"`
+	PaymentMethods              *PaymentMethodsConfig  `protobuf:"bytes,14,opt,name=payment_methods,json=paymentMethods,proto3" json:"payment_methods,omitempty"`
 	unknownFields               protoimpl.UnknownFields
 	sizeCache                   protoimpl.SizeCache
 }
 
 func (x *GetBootstrapResponse) Reset() {
 	*x = GetBootstrapResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -861,7 +979,7 @@ func (x *GetBootstrapResponse) String() string {
 func (*GetBootstrapResponse) ProtoMessage() {}
 
 func (x *GetBootstrapResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -874,7 +992,7 @@ func (x *GetBootstrapResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBootstrapResponse.ProtoReflect.Descriptor instead.
 func (*GetBootstrapResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{11}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetBootstrapResponse) GetMachine() *BootstrapMachine {
@@ -968,6 +1086,13 @@ func (x *GetBootstrapResponse) GetPublishedPlanogramVersionNo() int32 {
 	return 0
 }
 
+func (x *GetBootstrapResponse) GetPaymentMethods() *PaymentMethodsConfig {
+	if x != nil {
+		return x.PaymentMethods
+	}
+	return nil
+}
+
 type MachineBootstrapServiceCheckInRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -980,7 +1105,7 @@ type MachineBootstrapServiceCheckInRequest struct {
 
 func (x *MachineBootstrapServiceCheckInRequest) Reset() {
 	*x = MachineBootstrapServiceCheckInRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -992,7 +1117,7 @@ func (x *MachineBootstrapServiceCheckInRequest) String() string {
 func (*MachineBootstrapServiceCheckInRequest) ProtoMessage() {}
 
 func (x *MachineBootstrapServiceCheckInRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1005,7 +1130,7 @@ func (x *MachineBootstrapServiceCheckInRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use MachineBootstrapServiceCheckInRequest.ProtoReflect.Descriptor instead.
 func (*MachineBootstrapServiceCheckInRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{12}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *MachineBootstrapServiceCheckInRequest) GetMeta() *MachineRequestMeta {
@@ -1045,7 +1170,7 @@ type MachineBootstrapServiceCheckInResponse struct {
 
 func (x *MachineBootstrapServiceCheckInResponse) Reset() {
 	*x = MachineBootstrapServiceCheckInResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1057,7 +1182,7 @@ func (x *MachineBootstrapServiceCheckInResponse) String() string {
 func (*MachineBootstrapServiceCheckInResponse) ProtoMessage() {}
 
 func (x *MachineBootstrapServiceCheckInResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1070,7 +1195,7 @@ func (x *MachineBootstrapServiceCheckInResponse) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use MachineBootstrapServiceCheckInResponse.ProtoReflect.Descriptor instead.
 func (*MachineBootstrapServiceCheckInResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{13}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MachineBootstrapServiceCheckInResponse) GetMeta() *MachineResponseMeta {
@@ -1091,7 +1216,7 @@ type AckConfigVersionRequest struct {
 
 func (x *AckConfigVersionRequest) Reset() {
 	*x = AckConfigVersionRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1103,7 +1228,7 @@ func (x *AckConfigVersionRequest) String() string {
 func (*AckConfigVersionRequest) ProtoMessage() {}
 
 func (x *AckConfigVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1116,7 +1241,7 @@ func (x *AckConfigVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckConfigVersionRequest.ProtoReflect.Descriptor instead.
 func (*AckConfigVersionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{14}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AckConfigVersionRequest) GetMeta() *MachineRequestMeta {
@@ -1149,7 +1274,7 @@ type AckConfigVersionResponse struct {
 
 func (x *AckConfigVersionResponse) Reset() {
 	*x = AckConfigVersionResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1161,7 +1286,7 @@ func (x *AckConfigVersionResponse) String() string {
 func (*AckConfigVersionResponse) ProtoMessage() {}
 
 func (x *AckConfigVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1174,7 +1299,7 @@ func (x *AckConfigVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckConfigVersionResponse.ProtoReflect.Descriptor instead.
 func (*AckConfigVersionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{15}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *AckConfigVersionResponse) GetMeta() *MachineResponseMeta {
@@ -1196,7 +1321,7 @@ type CheckForUpdatesRequest struct {
 
 func (x *CheckForUpdatesRequest) Reset() {
 	*x = CheckForUpdatesRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1208,7 +1333,7 @@ func (x *CheckForUpdatesRequest) String() string {
 func (*CheckForUpdatesRequest) ProtoMessage() {}
 
 func (x *CheckForUpdatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1221,7 +1346,7 @@ func (x *CheckForUpdatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckForUpdatesRequest.ProtoReflect.Descriptor instead.
 func (*CheckForUpdatesRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{16}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *CheckForUpdatesRequest) GetCatalogFingerprint() string {
@@ -1269,7 +1394,7 @@ type CheckForUpdatesResponse struct {
 
 func (x *CheckForUpdatesResponse) Reset() {
 	*x = CheckForUpdatesResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1281,7 +1406,7 @@ func (x *CheckForUpdatesResponse) String() string {
 func (*CheckForUpdatesResponse) ProtoMessage() {}
 
 func (x *CheckForUpdatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[17]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1294,7 +1419,7 @@ func (x *CheckForUpdatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckForUpdatesResponse.ProtoReflect.Descriptor instead.
 func (*CheckForUpdatesResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{17}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CheckForUpdatesResponse) GetCatalogChanged() bool {
@@ -1366,11 +1491,14 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\n" +
 	"\x1eavf/machine/v1/bootstrap.proto\x12\x0eavf.machine.v1\x1a\x1bavf/machine/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"M\n" +
 	"\x13GetBootstrapRequest\x126\n" +
-	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\"V\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\"\xc6\x01\n" +
 	"\x12MqttConfigMetadata\x12\x1d\n" +
 	"\n" +
 	"broker_url\x18\x01 \x01(\tR\tbrokerUrl\x12!\n" +
-	"\ftopic_prefix\x18\x02 \x01(\tR\vtopicPrefix\"\xec\x02\n" +
+	"\ftopic_prefix\x18\x02 \x01(\tR\vtopicPrefix\x12!\n" +
+	"\ftopic_layout\x18\x03 \x01(\tR\vtopicLayout\x12!\n" +
+	"\ftls_required\x18\x04 \x01(\bR\vtlsRequired\x12(\n" +
+	"\x10client_id_policy\x18\x05 \x01(\tR\x0eclientIdPolicy\"\xec\x02\n" +
 	"\x10BootstrapMachine\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -1444,7 +1572,14 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"rollout_id\x18\x01 \x01(\tR\trolloutId\x12*\n" +
 	"\x11target_version_id\x18\x02 \x01(\tR\x0ftargetVersionId\x120\n" +
 	"\x14target_version_label\x18\x03 \x01(\tR\x12targetVersionLabel\x12\x16\n" +
-	"\x06status\x18\x04 \x01(\tR\x06status\"\x8c\x06\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\"\xa9\x02\n" +
+	"\x14PaymentMethodsConfig\x12!\n" +
+	"\fcash_enabled\x18\x01 \x01(\bR\vcashEnabled\x12&\n" +
+	"\x0fqr_card_enabled\x18\x02 \x01(\bR\rqrCardEnabled\x12!\n" +
+	"\fpayment_mode\x18\x03 \x01(\tR\vpaymentMode\x12/\n" +
+	"\x14card_qr_provider_key\x18\x04 \x01(\tR\x11cardQrProviderKey\x125\n" +
+	"\x17card_qr_provider_status\x18\x05 \x01(\tR\x14cardQrProviderStatus\x12;\n" +
+	"\x1aqr_card_unavailable_reason\x18\x06 \x01(\tR\x17qrCardUnavailableReason\"\xdb\x06\n" +
 	"\x14GetBootstrapResponse\x12:\n" +
 	"\amachine\x18\x01 \x01(\v2 .avf.machine.v1.BootstrapMachineR\amachine\x12=\n" +
 	"\btopology\x18\x02 \x01(\v2!.avf.machine.v1.BootstrapTopologyR\btopology\x12:\n" +
@@ -1460,7 +1595,8 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	" \x01(\v2\x1c.avf.machine.v1.RuntimeHintsR\fruntimeHints\x127\n" +
 	"\x04meta\x18\v \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12C\n" +
 	"\x1epublished_planogram_version_id\x18\f \x01(\tR\x1bpublishedPlanogramVersionId\x12C\n" +
-	"\x1epublished_planogram_version_no\x18\r \x01(\x05R\x1bpublishedPlanogramVersionNo\"\xc3\x02\n" +
+	"\x1epublished_planogram_version_no\x18\r \x01(\x05R\x1bpublishedPlanogramVersionNo\x12M\n" +
+	"\x0fpayment_methods\x18\x0e \x01(\v2$.avf.machine.v1.PaymentMethodsConfigR\x0epaymentMethods\"\xc3\x02\n" +
 	"%MachineBootstrapServiceCheckInRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x17\n" +
 	"\aboot_id\x18\x02 \x01(\tR\x06bootId\x12#\n" +
@@ -1512,7 +1648,7 @@ func file_avf_machine_v1_bootstrap_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_bootstrap_proto_rawDescData
 }
 
-var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
 var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*GetBootstrapRequest)(nil),                    // 0: avf.machine.v1.GetBootstrapRequest
 	(*MqttConfigMetadata)(nil),                     // 1: avf.machine.v1.MqttConfigMetadata
@@ -1525,56 +1661,58 @@ var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*SellReadiness)(nil),                          // 8: avf.machine.v1.SellReadiness
 	(*RuntimeHints)(nil),                           // 9: avf.machine.v1.RuntimeHints
 	(*PendingRolloutHint)(nil),                     // 10: avf.machine.v1.PendingRolloutHint
-	(*GetBootstrapResponse)(nil),                   // 11: avf.machine.v1.GetBootstrapResponse
-	(*MachineBootstrapServiceCheckInRequest)(nil),  // 12: avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	(*MachineBootstrapServiceCheckInResponse)(nil), // 13: avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	(*AckConfigVersionRequest)(nil),                // 14: avf.machine.v1.AckConfigVersionRequest
-	(*AckConfigVersionResponse)(nil),               // 15: avf.machine.v1.AckConfigVersionResponse
-	(*CheckForUpdatesRequest)(nil),                 // 16: avf.machine.v1.CheckForUpdatesRequest
-	(*CheckForUpdatesResponse)(nil),                // 17: avf.machine.v1.CheckForUpdatesResponse
-	nil,                                            // 18: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
-	nil,                                            // 19: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	(*MachineRequestMeta)(nil),                     // 20: avf.machine.v1.MachineRequestMeta
-	(*timestamppb.Timestamp)(nil),                  // 21: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),                        // 22: google.protobuf.Struct
-	(*MachineResponseMeta)(nil),                    // 23: avf.machine.v1.MachineResponseMeta
+	(*PaymentMethodsConfig)(nil),                   // 11: avf.machine.v1.PaymentMethodsConfig
+	(*GetBootstrapResponse)(nil),                   // 12: avf.machine.v1.GetBootstrapResponse
+	(*MachineBootstrapServiceCheckInRequest)(nil),  // 13: avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	(*MachineBootstrapServiceCheckInResponse)(nil), // 14: avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	(*AckConfigVersionRequest)(nil),                // 15: avf.machine.v1.AckConfigVersionRequest
+	(*AckConfigVersionResponse)(nil),               // 16: avf.machine.v1.AckConfigVersionResponse
+	(*CheckForUpdatesRequest)(nil),                 // 17: avf.machine.v1.CheckForUpdatesRequest
+	(*CheckForUpdatesResponse)(nil),                // 18: avf.machine.v1.CheckForUpdatesResponse
+	nil,                                            // 19: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	nil,                                            // 20: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	(*MachineRequestMeta)(nil),                     // 21: avf.machine.v1.MachineRequestMeta
+	(*timestamppb.Timestamp)(nil),                  // 22: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                        // 23: google.protobuf.Struct
+	(*MachineResponseMeta)(nil),                    // 24: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_bootstrap_proto_depIdxs = []int32{
-	20, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	21, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
-	21, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
+	21, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	22, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
+	22, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
+	23, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
 	3,  // 4: avf.machine.v1.BootstrapCabinet.slots:type_name -> avf.machine.v1.BootstrapSlot
 	4,  // 5: avf.machine.v1.BootstrapTopology.cabinets:type_name -> avf.machine.v1.BootstrapCabinet
 	6,  // 6: avf.machine.v1.BootstrapCatalog.products:type_name -> avf.machine.v1.BootstrapCatalogProduct
-	18, // 7: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	19, // 7: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
 	10, // 8: avf.machine.v1.RuntimeHints.pending_machine_config_rollouts:type_name -> avf.machine.v1.PendingRolloutHint
 	8,  // 9: avf.machine.v1.RuntimeHints.sell_readiness:type_name -> avf.machine.v1.SellReadiness
 	2,  // 10: avf.machine.v1.GetBootstrapResponse.machine:type_name -> avf.machine.v1.BootstrapMachine
 	5,  // 11: avf.machine.v1.GetBootstrapResponse.topology:type_name -> avf.machine.v1.BootstrapTopology
 	7,  // 12: avf.machine.v1.GetBootstrapResponse.catalog:type_name -> avf.machine.v1.BootstrapCatalog
-	21, // 13: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
+	22, // 13: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
 	1,  // 14: avf.machine.v1.GetBootstrapResponse.mqtt:type_name -> avf.machine.v1.MqttConfigMetadata
 	9,  // 15: avf.machine.v1.GetBootstrapResponse.runtime_hints:type_name -> avf.machine.v1.RuntimeHints
-	23, // 16: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	20, // 17: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	19, // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	23, // 19: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	20, // 20: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	23, // 21: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	0,  // 22: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
-	12, // 23: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	14, // 24: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
-	16, // 25: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
-	11, // 26: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
-	13, // 27: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	15, // 28: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
-	17, // 29: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
-	26, // [26:30] is the sub-list for method output_type
-	22, // [22:26] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	24, // 16: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	11, // 17: avf.machine.v1.GetBootstrapResponse.payment_methods:type_name -> avf.machine.v1.PaymentMethodsConfig
+	21, // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	20, // 19: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	24, // 20: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	21, // 21: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	24, // 22: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	0,  // 23: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
+	13, // 24: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	15, // 25: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
+	17, // 26: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
+	12, // 27: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
+	14, // 28: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	16, // 29: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
+	18, // 30: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
+	27, // [27:31] is the sub-list for method output_type
+	23, // [23:27] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_bootstrap_proto_init() }
@@ -1589,7 +1727,7 @@ func file_avf_machine_v1_bootstrap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_bootstrap_proto_rawDesc), len(file_avf_machine_v1_bootstrap_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   21,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

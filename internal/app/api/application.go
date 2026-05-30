@@ -100,6 +100,9 @@ type PaymentProviderRegistryInfo struct {
 	ConfigSource     string `json:"config_source"`
 	DefaultForEnv    bool   `json:"default_for_env,omitempty"`
 	ActiveSessionKey bool   `json:"active_session_key,omitempty"`
+	Wired            bool   `json:"wired"`
+	SessionAvailable bool   `json:"session_available"`
+	ProviderStatus   string `json:"provider_status"`
 }
 
 // HTTPApplicationDeps wires real domain services for the HTTP API process.

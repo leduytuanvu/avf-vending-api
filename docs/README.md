@@ -74,7 +74,8 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 - **Postman collections (CI-checked):** [`../postman/`](../postman/) — collections, environments, production suite
 - [Postman runbook](runbooks/postman.md)
 - [Repomix generation guide](operations/repomix-generation-guide.md) — smaller LLM packs; excludes heavy Postman JSON
-- [Swagger / OpenAPI appendix](api/swagger-openapi-appendix.md)
+- [Machine gRPC production contract](api/machine-grpc-production-contract.md) — **Android runtime SoT** (RPC auth, idempotency, legacy fallbacks)
+- [Android proto sync index](api/android-proto-sync.md) — generated RPC list from `proto/avf/machine/v1/`
 - [API contract checks](api/api-contract-checks.md)
 
 ## Audits and archives

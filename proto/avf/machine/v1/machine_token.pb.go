@@ -77,9 +77,11 @@ type RefreshMachineTokenResponse struct {
 	RefreshTokenExpiresAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=refresh_token_expires_at,json=refreshTokenExpiresAt,proto3" json:"refresh_token_expires_at,omitempty"`
 	MqttBrokerUrl         string                 `protobuf:"bytes,9,opt,name=mqtt_broker_url,json=mqttBrokerUrl,proto3" json:"mqtt_broker_url,omitempty"`
 	MqttTopicPrefix       string                 `protobuf:"bytes,10,opt,name=mqtt_topic_prefix,json=mqttTopicPrefix,proto3" json:"mqtt_topic_prefix,omitempty"`
-	BootstrapHttpPath     string                 `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// "enterprise" or "legacy"; must match server MQTT_TOPIC_LAYOUT.
+	MqttTopicLayout   string `protobuf:"bytes,12,opt,name=mqtt_topic_layout,json=mqttTopicLayout,proto3" json:"mqtt_topic_layout,omitempty"`
+	BootstrapHttpPath string `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *RefreshMachineTokenResponse) Reset() {
@@ -175,6 +177,13 @@ func (x *RefreshMachineTokenResponse) GetMqttTopicPrefix() string {
 	return ""
 }
 
+func (x *RefreshMachineTokenResponse) GetMqttTopicLayout() string {
+	if x != nil {
+		return x.MqttTopicLayout
+	}
+	return ""
+}
+
 func (x *RefreshMachineTokenResponse) GetBootstrapHttpPath() string {
 	if x != nil {
 		return x.BootstrapHttpPath
@@ -188,7 +197,7 @@ const file_avf_machine_v1_machine_token_proto_rawDesc = "" +
 	"\n" +
 	"\"avf/machine/v1/machine_token.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"A\n" +
 	"\x1aRefreshMachineTokenRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\xec\x03\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x98\x04\n" +
 	"\x1bRefreshMachineTokenResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -200,7 +209,8 @@ const file_avf_machine_v1_machine_token_proto_rawDesc = "" +
 	"\x18refresh_token_expires_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x15refreshTokenExpiresAt\x12&\n" +
 	"\x0fmqtt_broker_url\x18\t \x01(\tR\rmqttBrokerUrl\x12*\n" +
 	"\x11mqtt_topic_prefix\x18\n" +
-	" \x01(\tR\x0fmqttTopicPrefix\x12.\n" +
+	" \x01(\tR\x0fmqttTopicPrefix\x12*\n" +
+	"\x11mqtt_topic_layout\x18\f \x01(\tR\x0fmqttTopicLayout\x12.\n" +
 	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath2\x85\x01\n" +
 	"\x13MachineTokenService\x12n\n" +
 	"\x13RefreshMachineToken\x12*.avf.machine.v1.RefreshMachineTokenRequest\x1a+.avf.machine.v1.RefreshMachineTokenResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
