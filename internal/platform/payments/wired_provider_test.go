@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/config"
+	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ type testWiredProvider struct {
 	key string
 }
 
-func (p *testWiredProvider) Key() string { return p.key }
+func (p *testWiredProvider) Key() string            { return p.key }
 func (p *testWiredProvider) LivePaymentWired() bool { return true }
 func (p *testWiredProvider) VerifyWebhookSignature(secret string, tsHeader, sigHeader string, rawBody []byte, skew time.Duration) error {
 	return VerifyCommerceWebhookHMAC(secret, tsHeader, sigHeader, rawBody, skew)
@@ -30,8 +30,12 @@ func (p *testWiredProvider) QueryPaymentStatus(ctx context.Context, lookup domai
 func (p *testWiredProvider) CreatePaymentSession(ctx context.Context, in CreatePaymentSessionInput) (CreatePaymentSessionResult, error) {
 	return CreatePaymentSessionResult{ProviderReference: "wired-" + in.PaymentID.String()}, nil
 }
-func (p *testWiredProvider) CancelPayment(ctx context.Context, in CancelPaymentInput) error { return nil }
-func (p *testWiredProvider) RefundPayment(ctx context.Context, in RefundPaymentInput) error { return nil }
+func (p *testWiredProvider) CancelPayment(ctx context.Context, in CancelPaymentInput) error {
+	return nil
+}
+func (p *testWiredProvider) RefundPayment(ctx context.Context, in RefundPaymentInput) error {
+	return nil
+}
 
 func TestResolveForPaymentSession_WiredLiveProviderAllowed(t *testing.T) {
 	t.Parallel()

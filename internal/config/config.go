@@ -105,7 +105,7 @@ type OutboxConfig struct {
 type Config struct {
 	AppEnv AppEnvironment
 	// PaymentEnv is sandbox, live, or cash_only from PAYMENT_ENV; empty means unset (rules depend on APP_ENV).
-	PaymentEnv string
+	PaymentEnv  string
 	ProcessName string
 	Runtime     RuntimeConfig
 	Build       BuildConfig

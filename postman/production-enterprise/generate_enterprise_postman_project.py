@@ -1,0 +1,669 @@
+#!/usr/bin/env python3
+"""Generate enterprise production Postman project (REST collection, env, guides, inventory)."""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import zipfile
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT / "postman" / "production"))
+
+from manifest_postman_lib import (  # noqa: E402
+    build_postman_events,
+    build_postman_request,
+    collect_manifest_rest_flows,
+    flow_excluded_online_payment,
+    load_main_manifest,
+    parity_key,
+    postman_var,
+    stable_uuid,
+    to_postman_template,
+)
+
+try:
+    import yaml
+except ImportError:
+    yaml = None  # type: ignore
+
+OUT_DIR = REPO_ROOT / "postman" / "production-enterprise"
+DOCS_DIR = REPO_ROOT / "docs" / "testing" / "production-e2e"
+MANIFEST_MAIN = REPO_ROOT / "tests" / "e2e" / "production" / "e2e-manifest.yaml"
+MANIFEST_COV = REPO_ROOT / "tests" / "e2e" / "production" / "e2e-manifest-rest-coverage.yaml"
+MANIFEST_GRPC = REPO_ROOT / "tests" / "e2e" / "production" / "e2e-manifest-grpc.yaml"
+MANIFEST_MQTT = REPO_ROOT / "tests" / "e2e" / "production" / "e2e-manifest-mqtt.yaml"
+SUITE_PROFILES = REPO_ROOT / "tests" / "e2e" / "production" / "suite-profiles.yaml"
+PROTO_ROOT = REPO_ROOT / "proto" / "avf" / "machine" / "v1"
+
+PAYMENT_FLOW_IDS = {
+    "REST-COMMERCE-001",
+    "REST-COMMERCE-002",
+    "REST-COMMERCE-003",
+    "REST-COMMERCE-003-DUP",
+    "REST-COMMERCE-004",
+    "REST-COMMERCE-005",
+    "REST-COMMERCE-006",
+    "REST-NEG-002",
+    "REST-NEG-003",
+    "GRPC-COMM-QR-001",
+}
+
+ENTERPRISE_ENV_KEYS: list[tuple[str, str]] = [
+    ("baseUrl", "https://api.ldtv.dev"),
+    ("grpcTarget", "machine-api.ldtv.dev:443"),
+    ("mqttHost", "mqtt.ldtv.dev"),
+    ("mqttPort", "8883"),
+    ("mqttTls", "true"),
+    ("adminEmail", "<fill locally>"),
+    ("adminPassword", "<fill locally>"),
+    ("accessToken", ""),
+    ("refreshToken", ""),
+    ("adminUserId", ""),
+    ("runId", ""),
+    ("e2ePrefix", "E2E-PROD-{{runId}}"),
+    ("runPrefix", "E2E-PROD-{{runId}}"),
+    ("categoryId", ""),
+    ("brandId", ""),
+    ("tagId", ""),
+    ("productId", ""),
+    ("mediaId", ""),
+    ("mediaSha256", ""),
+    ("siteId", ""),
+    ("machineId", ""),
+    ("activationCode", ""),
+    ("machineAccessToken", ""),
+    ("machineRefreshToken", ""),
+    ("topologyId", ""),
+    ("planogramId", ""),
+    ("planogramRevision", ""),
+    ("slotCode", ""),
+    ("slotIndex", ""),
+    ("stockItemId", ""),
+    ("commandId", ""),
+    ("orderId", ""),
+    ("paymentId", ""),
+    ("vendId", ""),
+    ("reportFrom", ""),
+    ("reportTo", ""),
+    ("webhookSecret", "<fill locally>"),
+    ("webhookEventId", ""),
+    ("operatorSessionId", ""),
+    ("catalogVersion", ""),
+    ("mediaFingerprint", ""),
+    ("allowGatedWrites", "false"),
+    ("confirmProductionWrites", ""),
+    ("onlinePaymentEnabled", "false"),
+    ("momoEnabled", "false"),
+    ("zalopayEnabled", "false"),
+    ("vietqrEnabled", "false"),
+    ("newmanReuseShellState", "false"),
+]
+
+COLLECTION_PREREQUEST = [
+    "const method = (pm.request.method || 'GET').toUpperCase();",
+    "if (!pm.environment.get('runId')) {",
+    "  const ts = new Date().toISOString().replace(/[-:]/g,'').replace(/\\.\\d{3}Z$/,'Z').slice(0,15);",
+    "  const rnd = Math.random().toString(36).slice(2,8);",
+    "  pm.environment.set('runId', ts + '-' + rnd);",
+    "}",
+    "const rid = pm.environment.get('runId');",
+    "pm.environment.set('e2ePrefix', 'E2E-PROD-' + rid);",
+    "pm.environment.set('runPrefix', 'E2E-PROD-' + rid);",
+    "if (!pm.environment.get('reportTo')) {",
+    "  pm.environment.set('reportTo', new Date().toISOString());",
+    "}",
+    "if (!pm.environment.get('reportFrom')) {",
+    "  const d = new Date(); d.setDate(d.getDate() - 7);",
+    "  pm.environment.set('reportFrom', d.toISOString());",
+    "}",
+    "const safe = ['GET','HEAD','OPTIONS'];",
+    "const isLogin = pm.request.url && String(pm.request.url).includes('/v1/auth/login');",
+    "if (!safe.includes(method) && !isLogin) {",
+    "  const allow = String(pm.environment.get('allowGatedWrites')).toLowerCase() === 'true';",
+    "  const confirm = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+    "  if (!allow || !confirm) { throw new Error('Production write gate: set allowGatedWrites=true and confirmProductionWrites'); }",
+    "}",
+    "const payPath = pm.variables.get('_enterprise_payment_excluded');",
+    "if (payPath === 'true') {",
+    "  const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+    "  if (!op) { throw new Error('ONLINE_PAYMENT_EXCLUDED: enable onlinePaymentEnabled only with explicit operator confirmation'); }",
+    "}",
+    "if (pm.environment.get('accessToken') && !isLogin) {",
+    "  const authHdr = pm.request.headers.get('Authorization');",
+    "  if (!authHdr && pm.request.auth && pm.request.auth.type === 'bearer') { /* collection auth */ }",
+    "}",
+    "pm.request.headers.upsert({ key: 'X-Request-ID', value: 'e2e-' + rid + '-' + Math.random().toString(36).slice(2,10) });",
+]
+
+ONLINE_PAYMENT_PREREQUEST = [
+    "pm.variables.set('_enterprise_payment_excluded', 'true');",
+    "const op = String(pm.environment.get('onlinePaymentEnabled')).toLowerCase() === 'true';",
+    "if (!op) { throw new Error('Skipped: online payment excluded by default (no MoMo/ZaloPay/VietQR)'); }",
+]
+
+
+def load_yaml(path: Path) -> dict[str, Any]:
+    if yaml is None:
+        raise RuntimeError("PyYAML required")
+    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+
+
+def collect_coverage_flows() -> list[dict[str, Any]]:
+    data = load_yaml(MANIFEST_COV)
+    return [f for f in data.get("flows") or [] if f.get("protocol") == "rest" and f.get("method")]
+
+
+def classify_rest_flow(flow: dict[str, Any], repo_root: Path) -> str:
+    fid = str(flow.get("id") or "")
+    phase = str(flow.get("phase") or "misc")
+    if fid in PAYMENT_FLOW_IDS or flow_excluded_online_payment(flow, repo_root):
+        return "ONLINE_PAYMENT_EXCLUDED"
+    if phase == "rest-coverage":
+        rm = (flow.get("route_matrix") or {}).get("coverage") or ""
+        if rm == "auth_negative":
+            return "RUNNABLE"
+        if flow.get("optional"):
+            return "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
+        return "RUNNABLE"
+    if phase == "negative":
+        return "RUNNABLE"
+    if flow.get("skip_if_env") or flow.get("postman_skip_if_env"):
+        return "CONFIG_REQUIRED"
+    if flow.get("handler") in ("media_presigned_upload",):
+        return "OPTIONAL_SKIPPED_BY_PRODUCTION_CONTRACT"
+    return "RUNNABLE"
+
+
+def is_legacy_rest_path(path: str) -> bool:
+    p = (path or "").split("?")[0].rstrip("/") or "/"
+    legacy_prefixes = (
+        "/v1/admin/users",
+        "/v1/admin/media/uploads",
+    )
+    legacy_exact = {
+        "/v1/admin/media",
+        "/v1/machines/",
+    }
+    if any(p.startswith(prefix) for prefix in legacy_prefixes):
+        return True
+    if "/products/" in p and p.endswith("/image"):
+        return True
+    if p.startswith("/v1/machines/") and "/commands/dispatch" in p:
+        return True
+    if p.startswith("/v1/setup/") or p.startswith("/v1/commerce/") or p.startswith("/v1/device/"):
+        return True
+    if "/sale-catalog" in p or "/shadow" in p or "/telemetry" in p:
+        return True
+    if p in legacy_exact:
+        return True
+    return False
+
+
+def enterprise_folder(flow: dict[str, Any], classification: str) -> str:
+    phase = flow.get("phase") or "misc"
+    fid = str(flow.get("id") or "")
+    path = str(flow.get("path") or "")
+    if is_legacy_rest_path(path):
+        sub = phase.replace("-", " ").title() if phase else "Routes"
+        return f"11 - Legacy and Compatibility/{sub}"
+    if classification == "ONLINE_PAYMENT_EXCLUDED":
+        return "08 - Commerce No-Online-Payment/Payment Excluded Contract"
+    if phase == "preflight":
+        return "01 - Health & Version"
+    if phase == "auth":
+        if "login" in fid or fid == "REST-AUTH-001":
+            return "02 - Auth/02.01 Login"
+        if fid in ("REST-AUTH-002",):
+            return "02 - Auth/02.02 Current User"
+        return "02 - Auth/02.99 Negative Auth"
+    if phase == "catalog":
+        label = str(flow.get("label") or "").lower()
+        if "categor" in label:
+            return "03 - Admin Catalog/Categories"
+        if "brand" in label:
+            return "03 - Admin Catalog/Brands"
+        if "tag" in label:
+            return "03 - Admin Catalog/Tags"
+        return "03 - Admin Catalog/Products"
+    if phase == "media":
+        return "04 - Admin Media/Cloudinary / Direct Backend Upload"
+    if phase in ("machine", "site", "activation"):
+        return "05 - Admin Sites & Machines/Machines"
+    if phase in ("topology", "planogram", "stock", "operator"):
+        return "06 - Topology / Planogram / Stock/Planogram Draft"
+    if phase == "report":
+        return "07 - Reports/Fleet"
+    if phase == "commerce":
+        return "08 - Commerce No-Online-Payment/Cash / Manual Vend"
+    if phase == "rest-coverage":
+        return "09 - Route Coverage Smoke"
+    if phase == "negative":
+        return "10 - Negative Tests"
+    if phase == "cleanup":
+        return "99 - Cleanup"
+    if fid.startswith("REST-FLOW-"):
+        return "90 - Full Business Flows/Flow A - Admin Catalog Setup"
+    return f"09 - Route Coverage Smoke/{phase}"
+
+
+def nested_folder_items(paths: dict[str, list[dict[str, Any]]]) -> list[dict[str, Any]]:
+    """Build Postman folder tree from path -> request items."""
+    root: dict[str, Any] = {}
+
+    def ensure(parts: list[str]) -> dict[str, Any]:
+        node = root
+        for p in parts:
+            node = node.setdefault(p, {"_children": {}, "_items": []})
+            node = node["_children"]
+        return node
+
+    for path, reqs in sorted(paths.items()):
+        parts = [x for x in path.split("/") if x]
+        node = root
+        for p in parts[:-1]:
+            node = node.setdefault(p, {"_children": {}, "_items": []})["_children"]
+        leaf = parts[-1] if parts else "misc"
+        bucket = node.setdefault(leaf, {"_children": {}, "_items": []})
+        bucket["_items"].extend(reqs)
+
+    def walk(node: dict[str, Any], name: str | None = None) -> dict[str, Any] | list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for child_name, child in sorted((node.get("_children") or {}).items()):
+            sub = walk(child, child_name)
+            if isinstance(sub, dict):
+                items.append(sub)
+            else:
+                items.extend(sub)
+        items.extend(node.get("_items") or [])
+        if name is None:
+            return items
+        return {"name": name, "item": items}
+
+    out: list[dict[str, Any]] = []
+    for top_name, top in sorted(root.items()):
+        built = walk(top, top_name)
+        if isinstance(built, dict):
+            out.append(built)
+        else:
+            out.extend(built)
+    return out
+
+
+def flow_to_postman_item(
+    flow: dict[str, Any],
+    manifest: dict[str, Any],
+    manifest_dir: Path,
+    classification: str,
+) -> dict[str, Any]:
+    fid = flow.get("id") or parity_key(flow)
+    events = build_postman_events(flow, manifest) or []
+    if classification == "ONLINE_PAYMENT_EXCLUDED":
+        events = [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": ONLINE_PAYMENT_PREREQUEST}}] + events
+    desc = (
+        f"Flow ID: {fid}\n"
+        f"Classification: {classification}\n"
+        f"Phase: {flow.get('phase')}\n"
+        f"Source: tests/e2e/production/e2e-manifest.yaml (or rest-coverage)\n"
+        f"Expected: {flow.get('expected_status', 200)}\n"
+        f"Auth: {flow.get('auth', 'none')}\n"
+    )
+    return {
+        "name": f"{fid} — {flow.get('label', fid)}",
+        "request": build_postman_request(flow, manifest_dir),
+        "event": events or None,
+        "description": desc,
+        "_manifest_flow_id": fid,
+        "_classification": classification,
+    }
+
+
+def build_enterprise_rest_collection() -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, int]]:
+    manifest = load_main_manifest(MANIFEST_MAIN)
+    manifest_dir = MANIFEST_MAIN.parent
+    repo_root = REPO_ROOT
+    flows_main = collect_manifest_rest_flows(manifest, postman_only=False, repo_root=repo_root)
+    flows_cov = collect_coverage_flows()
+    def flow_key(f: dict[str, Any]) -> str:
+        return f"{f.get('id')}|{parity_key(f)}"
+
+    seen: set[str] = set()
+    all_flows: list[dict[str, Any]] = []
+    # Prefer cloudinary product-images over presigned init when IDs collide (REST-MEDIA-INIT).
+    for f in sorted(flows_main + flows_cov, key=lambda x: (str(x.get("path") or ""), str(x.get("id") or ""))):
+        key = flow_key(f)
+        if key in seen:
+            continue
+        seen.add(key)
+        all_flows.append(f)
+
+    paths: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    stats: dict[str, int] = defaultdict(int)
+    for flow in all_flows:
+        cls = classify_rest_flow(flow, repo_root)
+        stats[cls] += 1
+        folder = enterprise_folder(flow, cls)
+        paths[folder].append(flow_to_postman_item(flow, manifest, manifest_dir, cls))
+
+    readme_item = {
+        "name": "README — Safety & Write Gate",
+        "request": {
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/health/live", "host": ["{{baseUrl}}"], "path": ["health", "live"]},
+            "description": (
+                "Enterprise production REST collection. Placeholders only in git.\n"
+                "Writes require allowGatedWrites=true and confirmProductionWrites.\n"
+                "Online payment flows excluded unless onlinePaymentEnabled=true.\n"
+                "Regenerate: python postman/production-enterprise/generate_enterprise_postman_project.py"
+            ),
+        },
+    }
+    paths["00 - README & Safety"].append(readme_item)
+
+    items = nested_folder_items(paths)
+    collection = {
+        "info": {
+            "_postman_id": stable_uuid("collection:avf-production-enterprise-rest-v1"),
+            "name": "AVF Production Enterprise REST",
+            "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+            "description": "Generated enterprise production REST — manifest + route coverage. No secrets in repo.",
+        },
+        "item": items,
+        "event": [
+            {
+                "listen": "prerequest",
+                "script": {"type": "text/javascript", "exec": COLLECTION_PREREQUEST},
+            }
+        ],
+        "variable": [{"key": "baseUrl", "value": "https://api.ldtv.dev"}],
+    }
+    stats["REST_TOTAL"] = len(all_flows) + 1
+    return collection, all_flows, dict(stats)
+
+
+def build_environment(*, private_template: bool = False) -> dict[str, Any]:
+    values = list(ENTERPRISE_ENV_KEYS)
+    if private_template:
+        values = [(k, v) for k, v in values]
+        values = [
+            (k, "I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION" if k == "confirmProductionWrites" else
+             "true" if k == "allowGatedWrites" else v)
+            for k, v in values
+        ]
+    return {
+        "id": stable_uuid("environment:avf-production-enterprise-v1"),
+        "name": "AVF Production Enterprise" + (" (private template)" if private_template else ""),
+        "values": [{"key": k, "value": v, "enabled": True, "type": "default"} for k, v in values],
+        "_postman_variable_scope": "environment",
+    }
+
+
+def write_inventory(
+    rest_flows: list[dict[str, Any]],
+    grpc_flows: list[dict[str, Any]],
+    mqtt_flows: list[dict[str, Any]],
+    stats: dict[str, int],
+) -> None:
+    lines = [
+        "# Postman enterprise API inventory",
+        "",
+        f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        f"Repository SHA: `{os.environ.get('GIT_SHA', 'local')}`",
+        "",
+        "## Summary",
+        "",
+        f"| Surface | Count |",
+        f"|---------|------:|",
+        f"| REST (manifest + coverage) | {len(rest_flows)} |",
+        f"| gRPC flows | {len(grpc_flows)} |",
+        f"| MQTT flows | {len(mqtt_flows)} |",
+        "",
+        "## REST classifications",
+        "",
+    ]
+    for k, v in sorted(stats.items()):
+        lines.append(f"- **{k}**: {v}")
+    lines += ["", "## REST endpoints", "", "| Flow ID | Method | Path | Auth | Folder | Class |", "|---------|--------|------|------|--------|-------|"]
+    repo_root = REPO_ROOT
+    for flow in sorted(rest_flows, key=lambda f: str(f.get("id"))):
+        cls = classify_rest_flow(flow, repo_root)
+        folder = enterprise_folder(flow, cls)
+        lines.append(
+            f"| {flow.get('id')} | {flow.get('method')} | `{flow.get('path','')}` | {flow.get('auth','none')} | {folder} | {cls} |"
+        )
+    lines += ["", "## gRPC methods", "", "| Flow ID | Service.RPC | Phase | Source |", "|---------|-------------|-------|--------|"]
+    for flow in grpc_flows:
+        svc = flow.get("service") or flow.get("handler") or ""
+        rpc = flow.get("rpc") or ""
+        lines.append(f"| {flow.get('id')} | {svc}/{rpc} | {flow.get('phase')} | e2e-manifest-grpc.yaml |")
+    lines += ["", "## MQTT flows", "", "| Flow ID | Phase | Handler | Topic key |", "|---------|-------|---------|-----------|"]
+    for flow in mqtt_flows:
+        lines.append(f"| {flow.get('id')} | {flow.get('phase')} | {flow.get('handler')} | {flow.get('topic_key','')} |")
+    lines += [
+        "",
+        "## Excluded / skipped",
+        "",
+        "- Online payment / PSP / VietQR / refunds (suite `all-no-online-payment`)",
+        "- `GRPC-COMM-QR-001` unless `SKIP_GRPC_QR_WEBHOOK` unset and payment explicitly enabled",
+        "- Legacy machine HTTP when `PROD_E2E_SKIP_LEGACY_MACHINE_HTTP=1`",
+        "- Presigned media path when production uses Cloudinary direct upload",
+        "",
+    ]
+    path = DOCS_DIR / "POSTMAN_ENTERPRISE_API_INVENTORY.md"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def grpc_catalog_md(flows: list[dict[str, Any]]) -> str:
+    lines = [
+        "# AVF Production gRPC requests",
+        "",
+        "Target: `{{grpcTarget}}` (TLS, ALPN h2). Machine JWT in metadata `authorization: Bearer <redacted>`.",
+        "",
+        "Postman Desktop: New → gRPC → server URL → import proto from `proto/avf/machine/v1/` → invoke.",
+        "",
+        "Verified with **grpcurl** in production E2E; Newman does not run gRPC.",
+        "",
+        "| Flow ID | Service | RPC | Metadata | Request (redacted) |",
+        "|---------|---------|-----|----------|-------------------|",
+    ]
+    for f in flows:
+        req = json.dumps(f.get("request_template") or {}, indent=0)[:120]
+        meta = "authorization: Bearer <machineAccessToken>"
+        if f.get("inject_meta") is False:
+            meta = "(none)"
+        if f.get("idempotency_key"):
+            meta += "; idempotency-key"
+        lines.append(f"| {f.get('id')} | {f.get('service','')} | {f.get('rpc','')} | {meta} | `{req}...` |")
+        lines.append("")
+        lines.append(f"### {f.get('id')} — {f.get('label')}")
+        lines.append("")
+        lines.append("```bash")
+        lines.append(
+            f"grpcurl -H 'authorization: Bearer $MACHINE_TOKEN' "
+            f"-d '{json.dumps(f.get('request_template') or {})}' "
+            f"{{grpcTarget}} {f.get('service')}.{f.get('rpc')}"
+        )
+        lines.append("```")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def mqtt_catalog_md(flows: list[dict[str, Any]]) -> str:
+    lines = [
+        "# AVF Production MQTT requests",
+        "",
+        "Broker: `mqtts://{{mqttHost}}:{{mqttPort}}` TLS. Credentials: fill locally (never commit).",
+        "",
+        "Topic layout (enterprise): `avf/prod/machines/{machineId}/...` — see `tests/e2e/production/lib/mqtt_common.sh`.",
+        "",
+        "| Flow ID | Direction | Topic pattern | QoS |",
+        "|---------|-----------|---------------|-----|",
+    ]
+    topic_map = {
+        "heartbeat": "`{prefix}/machines/{machineId}/state/heartbeat`",
+        "presence": "`{prefix}/machines/{machineId}/presence`",
+        "snapshot": "`{prefix}/machines/{machineId}/telemetry/snapshot`",
+        "inventory": "`{prefix}/machines/{machineId}/events/inventory`",
+    }
+    for f in flows:
+        tk = f.get("topic_key") or f.get("handler") or ""
+        topic = topic_map.get(str(tk), "commands/ack/telemetry per mqtt_common.sh")
+        lines.append(f"| {f.get('id')} | pub/sub | {topic} | 1 |")
+    lines.append("")
+    lines.append("```bash")
+    lines.append("mosquitto_pub -h mqtt.ldtv.dev -p 8883 --capath /etc/ssl/certs \\")
+    lines.append("  -u \"$E2E_PROD_MQTT_USERNAME\" -P \"$E2E_PROD_MQTT_PASSWORD\" \\")
+    lines.append("  -t 'avf/prod/machines/$MACHINE_ID/state/heartbeat' -m '{}' -q 1")
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def write_readme() -> None:
+    text = """# AVF Production Enterprise Postman
+
+## Import
+
+1. Import `AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json`
+2. Import `AVF_PRODUCTION_ENTERPRISE.postman_environment.json`
+3. Copy `AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json` locally; fill secrets
+4. Set `allowGatedWrites=true` and `confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION` for CRUD
+
+## Scope
+
+- Default gate: **no online payment** (MoMo/ZaloPay/VietQR/webhooks excluded)
+- REST: Newman-runnable collection from E2E manifests
+- gRPC/MQTT: see `AVF_PRODUCTION_GRPC_REQUESTS.md`, `AVF_PRODUCTION_MQTT_REQUESTS.md`, and manual guide
+
+## Regenerate
+
+```bash
+python postman/production-enterprise/generate_enterprise_postman_project.py
+```
+"""
+    (OUT_DIR / "AVF_PRODUCTION_POSTMAN_ENTERPRISE_README.md").write_text(text, encoding="utf-8")
+
+
+def write_grpc_mqtt_guide() -> None:
+    text = """# gRPC & MQTT manual collection guide
+
+REST is importable as Postman Collection v2.1. **gRPC and MQTT are not faked in Newman JSON** — use:
+
+- Postman Desktop native gRPC/MQTT request types, or
+- `grpcurl` / `mosquitto_pub` / `mosquitto_sub` (commands in sibling markdown files)
+
+## gRPC
+
+1. Server: `machine-api.ldtv.dev:443` TLS + SNI
+2. Import protos from `proto/avf/machine/v1/`
+3. Metadata: `authorization: Bearer {{machineAccessToken}}`
+4. Follow flow order in `AVF_PRODUCTION_GRPC_REQUESTS.md` (token refresh → bootstrap → catalog → media → inventory → cash commerce)
+
+## MQTT
+
+1. Broker: `mqtts://mqtt.ldtv.dev:8883`
+2. Subscribe command topic before dispatching REST `catalog.refresh`
+3. Publish ACK on `.../commands/ack`
+4. See `AVF_PRODUCTION_MQTT_REQUESTS.md`
+"""
+    (OUT_DIR / "AVF_PRODUCTION_GRPC_MQTT_MANUAL_COLLECTION_GUIDE.md").write_text(text, encoding="utf-8")
+
+
+def create_zip(run_id: str) -> Path:
+    zip_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_POSTMAN_PROJECT.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in [
+            "AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json",
+            "AVF_PRODUCTION_ENTERPRISE.postman_environment.json",
+            "AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json",
+            "AVF_PRODUCTION_POSTMAN_ENTERPRISE_README.md",
+            "AVF_PRODUCTION_GRPC_MQTT_MANUAL_COLLECTION_GUIDE.md",
+            "AVF_PRODUCTION_GRPC_REQUESTS.md",
+            "AVF_PRODUCTION_MQTT_REQUESTS.md",
+        ]:
+            p = OUT_DIR / name
+            if p.is_file():
+                zf.write(p, arcname=name)
+        for doc in DOCS_DIR.glob(f"POSTMAN_ENTERPRISE_*{run_id}*"):
+            zf.write(doc, arcname=f"docs/testing/production-e2e/{doc.name}")
+    return zip_path
+
+
+def main() -> int:
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    run_id = os.environ.get("PROD_E2E_RUN_ID", "20260525T192300Z-1196-5901")
+
+    coll, rest_flows, stats = build_enterprise_rest_collection()
+    env = build_environment()
+    env_private = build_environment(private_template=True)
+
+    coll_path = OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_REST.postman_collection.json"
+    coll_path.write_text(json.dumps(coll, indent=2) + "\n", encoding="utf-8")
+
+    (OUT_DIR / "AVF_PRODUCTION_ENTERPRISE.postman_environment.json").write_text(
+        json.dumps(env, indent=2) + "\n", encoding="utf-8"
+    )
+    (OUT_DIR / "AVF_PRODUCTION_ENTERPRISE_PRIVATE.template.postman_environment.json").write_text(
+        json.dumps(env_private, indent=2) + "\n", encoding="utf-8"
+    )
+
+    grpc_data = load_yaml(MANIFEST_GRPC)
+    mqtt_data = load_yaml(MANIFEST_MQTT)
+    grpc_flows = list(grpc_data.get("flows") or [])
+    mqtt_flows = list(mqtt_data.get("flows") or [])
+
+    write_inventory(rest_flows, grpc_flows, mqtt_flows, stats)
+    (OUT_DIR / "AVF_PRODUCTION_GRPC_REQUESTS.md").write_text(grpc_catalog_md(grpc_flows), encoding="utf-8")
+    (OUT_DIR / "AVF_PRODUCTION_MQTT_REQUESTS.md").write_text(mqtt_catalog_md(mqtt_flows), encoding="utf-8")
+    write_readme()
+    write_grpc_mqtt_guide()
+
+    audit = DOCS_DIR / f"POSTMAN_ENTERPRISE_AUDIT_{run_id}.md"
+    audit.write_text(
+        f"# Postman enterprise audit ({run_id})\n\n"
+        f"- REST requests in collection: {stats.get('REST_TOTAL', len(rest_flows))}\n"
+        f"- gRPC flows documented: {len(grpc_flows)}\n"
+        f"- MQTT flows documented: {len(mqtt_flows)}\n"
+        f"- Collection: `{coll_path.relative_to(REPO_ROOT)}`\n"
+        f"- No secrets in tracked JSON.\n",
+        encoding="utf-8",
+    )
+
+    trace = DOCS_DIR / f"POSTMAN_ENTERPRISE_REQUEST_RESPONSE_TRACE_{run_id}.md"
+    trace.write_text(
+        f"# Request/response trace ({run_id})\n\n"
+        "See canonical evidence:\n"
+        f"- `docs/testing/production-e2e/API_TRACE_{run_id}.md`\n"
+        f"- `.e2e-runs/production/{run_id}/` (if present locally)\n\n"
+        "Regenerate trace after a fresh `all-no-online-payment` run.\n",
+        encoding="utf-8",
+    )
+
+    parity = DOCS_DIR / f"POSTMAN_ENTERPRISE_IMPORT_PARITY_{run_id}.md"
+    parity.write_text(
+        f"# Postman enterprise import parity ({run_id})\n\n"
+        "Run Newman after filling local private environment:\n\n"
+        "```bash\n"
+        f"newman run {coll_path.relative_to(REPO_ROOT)} \\\n"
+        f"  -e postman/production-enterprise/AVF_PRODUCTION_ENTERPRISE_LOCAL.postman_environment.json \\\n"
+        f"  --reporters cli,json\n"
+        "```\n\n"
+        "Status: **PENDING_OPERATOR_CREDENTIALS** until local env is configured.\n",
+        encoding="utf-8",
+    )
+
+    zip_path = create_zip(run_id)
+
+    print(f"GENERATED {coll_path.name}: {stats.get('REST_TOTAL', 0)} items")
+    print(f"GENERATED environment + private template")
+    print(f"gRPC flows: {len(grpc_flows)} MQTT flows: {len(mqtt_flows)}")
+    print(f"ZIP: {zip_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

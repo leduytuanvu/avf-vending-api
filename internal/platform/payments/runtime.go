@@ -55,12 +55,12 @@ type DeploymentRuntime struct {
 
 // MachinePaymentMethodsView is the machine-facing payment method matrix for bootstrap/config.
 type MachinePaymentMethodsView struct {
-	CashEnabled               bool
-	QRCardEnabled             bool
-	PaymentMode               string
-	CardQRProviderKey         string
-	CardQRProviderStatus      string
-	QRCardUnavailableReason   string
+	CashEnabled             bool
+	QRCardEnabled           bool
+	PaymentMode             string
+	CardQRProviderKey       string
+	CardQRProviderStatus    string
+	QRCardUnavailableReason string
 }
 
 // IsPlaceholderLiveProviderKey reports whether key is a known unwired live PSP shell.

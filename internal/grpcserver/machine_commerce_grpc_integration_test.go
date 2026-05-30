@@ -76,7 +76,7 @@ func machineCommerceTestServer(t *testing.T, pool *pgxpool.Pool, cfg *config.Con
 		Commerce:        commerceSvc,
 		TelemetryStore:  store,
 		EnterpriseAudit: auditSvc,
-		PaymentRuntime: payReg,
+		PaymentRuntime:  payReg,
 	}))
 	require.NoError(t, err)
 	return srv, issuer

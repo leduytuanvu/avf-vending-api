@@ -44,11 +44,11 @@ func mapMqttConfigMetadataProto(deps MachineGRPCServicesDeps) *machinev1.MqttCon
 		tlsRequired = platformmqtt.BootstrapTLSRequired(deps.MQTTBrokerURL, deps.Config.MQTT.TLSEnabled, string(deps.Config.AppEnv))
 	}
 	return &machinev1.MqttConfigMetadata{
-		BrokerUrl:       deps.MQTTBrokerURL,
-		TopicPrefix:     prefix,
-		TopicLayout:     layout,
-		TlsRequired:     tlsRequired,
-		ClientIdPolicy:  platformmqtt.MachineClientIDPolicyTemplate,
+		BrokerUrl:      deps.MQTTBrokerURL,
+		TopicPrefix:    prefix,
+		TopicLayout:    layout,
+		TlsRequired:    tlsRequired,
+		ClientIdPolicy: platformmqtt.MachineClientIDPolicyTemplate,
 	}
 }
 
@@ -486,14 +486,14 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			CreatedAt:         timestamppb.New(m.CreatedAt.UTC()),
 			UpdatedAt:         timestamppb.New(m.UpdatedAt.UTC()),
 		},
-		Topology:             &machinev1.BootstrapTopology{Cabinets: cabinets},
-		Catalog:              &machinev1.BootstrapCatalog{Products: products},
-		CatalogFingerprint:   setupapp.CatalogFingerprint(b),
-		PricingFingerprint:   setupapp.PricingFingerprint(b),
-		PlanogramFingerprint: setupapp.PlanogramFingerprint(b),
-		MediaFingerprint:     setupapp.MediaFingerprint(b),
-		ServerTime:           timestamppb.New(time.Now().UTC()),
-		Mqtt: mapMqttConfigMetadataProto(deps),
+		Topology:                    &machinev1.BootstrapTopology{Cabinets: cabinets},
+		Catalog:                     &machinev1.BootstrapCatalog{Products: products},
+		CatalogFingerprint:          setupapp.CatalogFingerprint(b),
+		PricingFingerprint:          setupapp.PricingFingerprint(b),
+		PlanogramFingerprint:        setupapp.PlanogramFingerprint(b),
+		MediaFingerprint:            setupapp.MediaFingerprint(b),
+		ServerTime:                  timestamppb.New(time.Now().UTC()),
+		Mqtt:                        mapMqttConfigMetadataProto(deps),
 		PublishedPlanogramVersionNo: b.PublishedPlanogramVersionNo,
 	}
 	if b.PublishedPlanogramVersionID != nil && *b.PublishedPlanogramVersionID != uuid.Nil {

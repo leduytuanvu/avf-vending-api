@@ -51,12 +51,12 @@ func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machi
 		return nil
 	}
 	return &machinev1.PaymentMethodsConfig{
-		CashEnabled:               m.CashEnabled,
-		QrCardEnabled:             m.QRCardEnabled,
-		PaymentMode:               m.PaymentMode,
-		CardQrProviderKey:         m.CardQRProviderKey,
-		CardQrProviderStatus:      m.CardQRProviderStatus,
-		QrCardUnavailableReason:   m.QRCardUnavailableReason,
+		CashEnabled:             m.CashEnabled,
+		QrCardEnabled:           m.QRCardEnabled,
+		PaymentMode:             m.PaymentMode,
+		CardQrProviderKey:       m.CardQRProviderKey,
+		CardQrProviderStatus:    m.CardQRProviderStatus,
+		QrCardUnavailableReason: m.QRCardUnavailableReason,
 	}
 }
 

@@ -296,7 +296,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 			TelemetryStore:  httpApp.TelemetryStore,
 			MediaStore:      machineMediaStore,
 			MediaPresignTTL: machineMediaPresignTTL,
-			PaymentRuntime: rt.Deps.PaymentProviders,
+			PaymentRuntime:  rt.Deps.PaymentProviders,
 		}),
 	)
 	if err != nil {

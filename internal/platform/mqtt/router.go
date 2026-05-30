@@ -399,18 +399,18 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 
 	case "commands/receipt", "commands/ack":
 		var body struct {
-			Sequence        int64           `json:"sequence"`
-			Status          string          `json:"status"`
-			CorrelationID   *uuid.UUID      `json:"correlation_id"`
-			Data            json.RawMessage `json:"payload"`
-			DedupeKey       string          `json:"dedupe_key"`
-			IdempotencyKey  string          `json:"idempotency_key"`
-			CommandID       uuid.UUID       `json:"command_id"`
-			MachineID       uuid.UUID       `json:"machine_id"`
-			OccurredAt      time.Time       `json:"occurred_at"`
-			ErrorReason     string          `json:"error_reason"`
-			ErrorCode       string          `json:"error_code"`
-			ErrorMessage    string          `json:"error_message"`
+			Sequence       int64           `json:"sequence"`
+			Status         string          `json:"status"`
+			CorrelationID  *uuid.UUID      `json:"correlation_id"`
+			Data           json.RawMessage `json:"payload"`
+			DedupeKey      string          `json:"dedupe_key"`
+			IdempotencyKey string          `json:"idempotency_key"`
+			CommandID      uuid.UUID       `json:"command_id"`
+			MachineID      uuid.UUID       `json:"machine_id"`
+			OccurredAt     time.Time       `json:"occurred_at"`
+			ErrorReason    string          `json:"error_reason"`
+			ErrorCode      string          `json:"error_code"`
+			ErrorMessage   string          `json:"error_message"`
 		}
 		if err := json.Unmarshal(payload, &body); err != nil {
 			ingestReject(hooks, topic, "receipt_json", len(payload))
