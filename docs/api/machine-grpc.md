@@ -1,6 +1,6 @@
 # Machine gRPC API (`avf.machine.v1`)
 
-> **Release / TPM:** The **normative production integration contract** (Admin REST vs machine gRPC vs MQTT vs payments vs media) is **[`production-final-contract.md`](../architecture/production-final-contract.md)**. Field QA uses **[`field-test-cases.md`](../testing/field-test-cases.md)**. Android handoff: [`kiosk-app-implementation-checklist.md`](kiosk-app-implementation-checklist.md).
+> **Android production runtime (canonical):** [`machine-grpc-production-contract.md`](machine-grpc-production-contract.md) — per-RPC auth, idempotency, persistence, errors, and legacy REST fallbacks. Proto index: [`android-proto-sync.md`](android-proto-sync.md) (generated). The **normative production integration contract** (Admin REST vs machine gRPC vs MQTT vs payments vs media) is **[`production-final-contract.md`](../architecture/production-final-contract.md)**. Field QA uses **[`field-test-cases.md`](../testing/field-test-cases.md)**. Android handoff: [`kiosk-app-implementation-checklist.md`](kiosk-app-implementation-checklist.md).
 
 Native machine runtime contracts live under `proto/avf/machine/v1`. The **entry import path** for the full public surface is [`machine_runtime.proto`](../../proto/avf/machine/v1/machine_runtime.proto) (documentation aggregator). This package is **not** `avf.internal.v1` — internal query gRPC is service-to-service only and must not be used as the public vending machine app API.
 

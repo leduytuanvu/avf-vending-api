@@ -61,6 +61,7 @@ type CommandReceiptTransitionParams struct {
 	DedupeKey          string
 	CommandID          uuid.UUID
 	OccurredAt         time.Time
+	ErrorReason        string
 	CommandAttemptID   *uuid.UUID
 	ReportedShadowJSON []byte
 
@@ -329,8 +330,8 @@ func auditPayloadBytes(p []byte) []byte {
 	return p
 }
 
-func enrichCommandReceiptPayload(raw []byte, occurredAt time.Time) []byte {
-	if occurredAt.IsZero() {
+func enrichCommandReceiptPayload(raw []byte, occurredAt time.Time, errorReason string) []byte {
+	if occurredAt.IsZero() && strings.TrimSpace(errorReason) == "" {
 		if len(raw) == 0 {
 			return []byte("{}")
 		}
@@ -343,7 +344,12 @@ func enrichCommandReceiptPayload(raw []byte, occurredAt time.Time) []byte {
 	if m == nil {
 		m = map[string]any{}
 	}
-	m["occurred_at"] = occurredAt.UTC().Format(time.RFC3339Nano)
+	if !occurredAt.IsZero() {
+		m["occurred_at"] = occurredAt.UTC().Format(time.RFC3339Nano)
+	}
+	if s := strings.TrimSpace(errorReason); s != "" {
+		m["error_reason"] = s
+	}
 	b, err := json.Marshal(m)
 	if err != nil {
 		if len(raw) == 0 {
@@ -805,7 +811,7 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 		}
 	}
 
-	payload := enrichCommandReceiptPayload(p.Payload, p.OccurredAt)
+	payload := enrichCommandReceiptPayload(p.Payload, p.OccurredAt, p.ErrorReason)
 	if len(payload) == 0 {
 		payload = []byte("{}")
 	}
@@ -982,6 +988,7 @@ func (s *Store) IngestCommandReceipt(ctx context.Context, in platformmqtt.Comman
 		DedupeKey:     in.DedupeKey,
 		CommandID:     in.CommandID,
 		OccurredAt:    in.OccurredAt,
+		ErrorReason:   in.ErrorReason,
 	})
 	return err
 }

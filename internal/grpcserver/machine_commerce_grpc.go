@@ -27,6 +27,39 @@ type machineCommerceServer struct {
 	deps MachineGRPCServicesDeps
 }
 
+func (s *machineCommerceServer) machineFeatureFlags(ctx context.Context, machineID uuid.UUID) map[string]bool {
+	if s.deps.FeatureFlags == nil || machineID == uuid.Nil {
+		return nil
+	}
+	rh, err := s.deps.FeatureFlags.RuntimeHintsForMachine(ctx, machineID)
+	if err != nil || rh == nil {
+		return nil
+	}
+	return rh.FeatureFlags
+}
+
+func (s *machineCommerceServer) machinePaymentMethods(ctx context.Context, machineID uuid.UUID) platformpayments.MachinePaymentMethodsView {
+	flags := s.machineFeatureFlags(ctx, machineID)
+	if s.deps.PaymentRuntime != nil {
+		return s.deps.PaymentRuntime.ResolveMachinePaymentMethodsForMachine(s.deps.Config, flags)
+	}
+	return platformpayments.ResolveMachinePaymentMethods(s.deps.Config, nil, flags)
+}
+
+func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machinev1.PaymentMethodsConfig {
+	if m.PaymentMode == "" {
+		return nil
+	}
+	return &machinev1.PaymentMethodsConfig{
+		CashEnabled:               m.CashEnabled,
+		QrCardEnabled:             m.QRCardEnabled,
+		PaymentMode:               m.PaymentMode,
+		CardQrProviderKey:         m.CardQRProviderKey,
+		CardQrProviderStatus:      m.CardQRProviderStatus,
+		QrCardUnavailableReason:   m.QRCardUnavailableReason,
+	}
+}
+
 func machinePrincipalFromAccessClaims(c plauth.MachineAccessClaims) plauth.Principal {
 	return plauth.Principal{
 		Subject:    "machine:" + c.MachineID.String(),
@@ -81,7 +114,9 @@ func mapCommercePaymentSessionErr(err error) error {
 	case errors.Is(err, platformpayments.ErrUnknownProvider):
 		return status.Error(codes.InvalidArgument, err.Error())
 	case errors.Is(err, platformpayments.ErrLiveProviderNotWired):
-		return status.Error(codes.Unavailable, err.Error())
+		return status.Error(codes.FailedPrecondition, "provider_unavailable")
+	case errors.Is(err, platformpayments.ErrProviderUnavailable):
+		return status.Error(codes.FailedPrecondition, "provider_unavailable")
 	case errors.Is(err, platformpayments.ErrInvalidCardSessionProvider):
 		return status.Error(codes.InvalidArgument, err.Error())
 	default:
@@ -329,6 +364,9 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	if o.MachineID != claims.MachineID {
 		return nil, status.Error(codes.PermissionDenied, "order machine mismatch")
 	}
+	if methods := s.machinePaymentMethods(ctx, claims.MachineID); !methods.QRCardEnabled {
+		return nil, status.Error(codes.FailedPrecondition, "provider_unavailable")
+	}
 
 	topic := strings.TrimSpace(s.deps.Config.Commerce.PaymentOutboxTopic)
 	evType := strings.TrimSpace(s.deps.Config.Commerce.PaymentOutboxEventType)
@@ -422,6 +460,9 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 	}
 	if o.MachineID != claims.MachineID {
 		return nil, status.Error(codes.PermissionDenied, "order machine mismatch")
+	}
+	if methods := s.machinePaymentMethods(ctx, claims.MachineID); !methods.CashEnabled {
+		return nil, status.Error(codes.FailedPrecondition, "cash_payment_disabled")
 	}
 
 	topic := strings.TrimSpace(s.deps.Config.Commerce.PaymentOutboxTopic)

@@ -2,15 +2,51 @@
 
 This describes what **this repository** actually publishes and what **cmd/mqtt-ingest** subscribes to. Source: `internal/platform/mqtt/` (topics, router, subscriber, publisher).
 
-**Scope:** MQTT carries realtime telemetry, commands, and events — **not** full catalog or media binary transfer (use gRPC `MachineCatalogService` / `MachineMediaService`). Prefer **enterprise** topic layout in production; legacy `{prefix}/{machineId}/…` remains subscribed for compatibility.
+**Scope:** MQTT carries realtime telemetry, commands, and events — **not** full catalog or media binary transfer (use gRPC `MachineCatalogService` / `MachineMediaService`). **Production requires `MQTT_TOPIC_LAYOUT=enterprise`** (see config validation). Legacy `{prefix}/{machineId}/…` is explicit opt-in via `MQTT_TOPIC_LAYOUT=legacy` plus `PRODUCTION_ALLOW_LEGACY_MQTT_TOPIC_LAYOUT=true`.
 
 ## Topic layout
 
 - **Prefix**: `MQTT_TOPIC_PREFIX` (trimmed; no trailing slash).
-- **Legacy (default)** when `MQTT_TOPIC_LAYOUT` is unset or `legacy`: `{prefix}/{machineId}/{channel…}`.
-- **Enterprise** when `MQTT_TOPIC_LAYOUT=enterprise`: `{prefix}/machines/{machineId}/{channel…}` (e.g. prefix `avf/production` → `avf/production/machines/{uuid}/commands/ack`).
+- **Enterprise (production)** when `MQTT_TOPIC_LAYOUT=enterprise`: `{prefix}/machines/{machineId}/{channel…}` (e.g. prefix `avf/production` → `avf/production/machines/{uuid}/commands/ack`).
+- **Legacy (development default)** when `MQTT_TOPIC_LAYOUT` is unset or `legacy`: `{prefix}/{machineId}/{channel…}`.
+- **Production default:** `APP_ENV=production` requires explicit `MQTT_TOPIC_LAYOUT=enterprise`. Legacy layout requires `PRODUCTION_ALLOW_LEGACY_MQTT_TOPIC_LAYOUT=true`.
 - **Machine segment**: lowercase UUID string.
-- Prefixes and relative topic paths must not contain MQTT wildcards (`+`, `#`), empty path segments, or relative path segments. Publish-side builders and ingest-side parsers reject invalid values before broker publish or persistence.
+- Prefixes and relative topic paths must not contain MQTT wildcards (`+`, `#`), empty path segments, or relative path segments. Publish-side builders (`DevicePublishTopicStrict`, `EnterpriseDeviceTopicStrict`) and ingest-side parsers reject invalid values before broker publish or persistence.
+- **Cross-layout rejection**: ingest configured for enterprise rejects legacy-shaped topics (and vice versa). Optional JSON `machine_id` must match the topic UUID.
+
+### Bootstrap / activation MQTT metadata (Android)
+
+`GetBootstrapResponse.mqtt` (`MqttConfigMetadata`) and activation/token responses expose:
+
+| Field | Purpose |
+|-------|---------|
+| `broker_url` | MQTT broker URL (`ssl://`, `tls://`, or `tcp://` + `tls_required`) |
+| `topic_prefix` | Prefix for all machine topics |
+| `topic_layout` | `enterprise` or `legacy` — **must** drive topic builders on device |
+| `tls_required` | When `true`, kiosk must use TLS (URL scheme or explicit TLS config) |
+| `client_id_policy` | Template `avf-machine-{machine_id}` — substitute machine UUID |
+
+**Android derivation:** for enterprise layout, publish topics = `{topic_prefix}/machines/{machine_id}/{rel}` where `rel` is from the table below; subscribe to `{topic_prefix}/machines/{machine_id}/commands`. Use `MachineClientIDPolicyTemplate` from bootstrap (`client_id_policy`).
+
+### Enterprise topic tree (device publish)
+
+Build topics only from bootstrap/activation metadata: `mqtt.broker_url`, `mqtt.topic_prefix`, `mqtt.topic_layout` (`enterprise` or `legacy`). Use `DevicePublishTopicStrict(layout, prefix, machineId, rel)` semantics on the app:
+
+| Relative tail | Purpose |
+|---------------|---------|
+| `commands/ack` | Command ACK (also legacy `commands/receipt`) |
+| `presence` | Presence |
+| `state/heartbeat` | Heartbeat |
+| `telemetry` | Generic telemetry (`event_type` required in JSON) |
+| `telemetry/snapshot` | Snapshot |
+| `telemetry/incident` | Incident |
+| `events` | Generic events (`event_type` required) |
+| `events/vend` | Vend events |
+| `events/cash` | Cash events |
+| `events/inventory` | Inventory events |
+| `shadow/reported` | Shadow reported |
+
+Device **subscribes** to `{prefix}/machines/{machineId}/commands` (API outbound).
 
 ### Enterprise command topics (contract)
 
@@ -122,6 +158,7 @@ Top-level JSON must include:
 | `status` | string | Normalized to `acked` / `nacked` / `failed` / `timeout` |
 | `sequence` | int64 | |
 | `dedupe_key` | string | Server-side idempotency |
+| `error_reason` | string | **Required** when `status` is `failed`, `nacked`, or `timeout` |
 | `payload` | JSON object | Optional receipt detail merged into persistence |
 
 The ingest router rejects ACKs with identity mismatches before OLTP; Postgres rejects `command_id` / company mismatches with audit + metrics.
@@ -377,10 +414,17 @@ On `{prefix}/{machineId}/commands/receipt` or `…/commands/ack`, `Dispatch` unm
 | `sequence` | yes | int ≥ 0 |
 | `status` | yes | `acked`, `nacked`, `failed`, `timeout` (aliases: `ack` → `acked`, etc.) |
 | `dedupe_key` | yes | non-empty string (**application idempotency key** for this receipt; ties to `device_command_receipts`) |
+| `idempotency_key` | alias | Accepted as alias for `dedupe_key` when `dedupe_key` is empty |
+| `command_id` | yes | UUID; must match ledger row for `(machine_id, sequence)` |
+| `machine_id` | yes | UUID; must match topic machine id |
+| `occurred_at` | yes | RFC3339 device-side timestamp |
+| `error_reason` | when failed/nacked/timeout | Human/machine-readable failure reason |
+| `error_message` | alias | Accepted as alias for `error_reason` |
+| `error_code` | alias | Used as `error_reason` when message fields are empty (e.g. `UNKNOWN_COMMAND`) |
 | `payload` | yes | JSON object (may be `{}`) |
 | `correlation_id` | no | UUID |
 
-Missing **`dedupe_key`** is rejected at the MQTT router (`commands.receipt.dedupe_key is required`). This is the **supported** application-level identity for command receipts; it is **not** a substitute for vend/cash/inventory MQTT event ACKs.
+Missing **`dedupe_key`** / **`idempotency_key`** is rejected at the MQTT router. Duplicate receipts with the same dedupe key are idempotent at OLTP (`ApplyCommandReceiptTransition` returns `ReceiptReplay=true`). Stale or unknown sequence ACKs are rejected before terminal success is applied.
 
 ## HTTP fallbacks (same auth as machine-scoped admin APIs)
 

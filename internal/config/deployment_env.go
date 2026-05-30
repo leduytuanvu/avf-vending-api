@@ -18,8 +18,9 @@ const (
 
 // Payment environment values for PAYMENT_ENV.
 const (
-	PaymentEnvSandbox = "sandbox"
-	PaymentEnvLive    = "live"
+	PaymentEnvSandbox  = "sandbox"
+	PaymentEnvLive     = "live"
+	PaymentEnvCashOnly = "cash_only"
 )
 
 // normalizeBaseURL removes trailing slash for comparisons.
@@ -65,6 +66,16 @@ func isLocalDatabaseHost(host string) bool {
 	return false
 }
 
+// productionPlaceholderLiveCommercePaymentProvider reports unwired live PSP shell keys (keep aligned with payments.PlaceholderLiveProviderKeys).
+func productionPlaceholderLiveCommercePaymentProvider(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(key)) {
+	case "stripe", "momo", "zalopay", "vnpay":
+		return true
+	default:
+		return false
+	}
+}
+
 // productionSandboxFamilyCommercePaymentProvider reports mock/sandbox PSP keys disallowed in production.
 // Keep aligned with internal/platform/payments.sandboxFamilyProviderKey (empty means runtime would fall back to sandbox).
 func productionSandboxFamilyCommercePaymentProvider(key string) bool {
@@ -82,8 +93,8 @@ func (c *Config) validateEnvironmentDeployment() error {
 	}
 
 	pe := strings.ToLower(strings.TrimSpace(c.PaymentEnv))
-	if pe != "" && pe != PaymentEnvSandbox && pe != PaymentEnvLive {
-		return fmt.Errorf("config: invalid PAYMENT_ENV %q (use sandbox or live)", c.PaymentEnv)
+	if pe != "" && pe != PaymentEnvSandbox && pe != PaymentEnvLive && pe != PaymentEnvCashOnly {
+		return fmt.Errorf("config: invalid PAYMENT_ENV %q (use sandbox, live, or cash_only)", c.PaymentEnv)
 	}
 
 	if err := c.validateByAppEnv(pe); err != nil {
@@ -184,15 +195,24 @@ func (c *Config) validateProduction(payment string) error {
 	if isLocalDatabaseHost(host) {
 		return errors.New("config: production DATABASE_URL must not use localhost/loopback")
 	}
-	if payment != PaymentEnvLive {
-		return errors.New("config: APP_ENV=production requires PAYMENT_ENV=live")
+	if payment != PaymentEnvLive && payment != PaymentEnvCashOnly {
+		return errors.New("config: APP_ENV=production requires PAYMENT_ENV=live (wired PSP) or PAYMENT_ENV=cash_only (explicit cash pilot)")
 	}
-	if productionSandboxFamilyCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
-		k := strings.TrimSpace(c.Commerce.DefaultPaymentProvider)
-		if k == "" {
-			return errors.New("config: APP_ENV=production requires COMMERCE_PAYMENT_PROVIDER (live PSP registry key; empty is treated as sandbox at runtime)")
+	if payment == PaymentEnvCashOnly {
+		if strings.TrimSpace(c.Commerce.DefaultPaymentProvider) != "" {
+			return errors.New("config: APP_ENV=production with PAYMENT_ENV=cash_only forbids COMMERCE_PAYMENT_PROVIDER (QR/card sessions are disabled)")
 		}
-		return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDER=%q (mock/sandbox family)", strings.ToLower(k))
+	} else {
+		if productionSandboxFamilyCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
+			k := strings.TrimSpace(c.Commerce.DefaultPaymentProvider)
+			if k == "" {
+				return errors.New("config: APP_ENV=production with PAYMENT_ENV=live requires COMMERCE_PAYMENT_PROVIDER (wired live PSP registry key)")
+			}
+			return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDER=%q (mock/sandbox family)", strings.ToLower(k))
+		}
+		if productionPlaceholderLiveCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live forbids unwired placeholder COMMERCE_PAYMENT_PROVIDER=%q (implement and register a WiredLiveProvider, or use PAYMENT_ENV=cash_only)", strings.ToLower(strings.TrimSpace(c.Commerce.DefaultPaymentProvider)))
+		}
 	}
 	if pub := publicBaseURLForValidation(c); pub != ProductionPublicBaseURL {
 		if pub == "" {

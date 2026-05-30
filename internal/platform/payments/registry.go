@@ -19,6 +19,9 @@ type ProviderSummary struct {
 	ConfigSource     string `json:"config_source"`
 	DefaultForEnv    bool   `json:"default_for_env,omitempty"`
 	ActiveSessionKey bool   `json:"active_session_key,omitempty"`
+	Wired            bool   `json:"wired"`
+	SessionAvailable bool   `json:"session_available"`
+	ProviderStatus   string `json:"provider_status"`
 }
 
 // Registry holds registered PaymentProvider adapters and optional HTTP probe fallback for reconciliation.
@@ -30,6 +33,7 @@ type Registry struct {
 	httpProbe *HTTPStatusGateway
 
 	defaultPaymentProviderKey string
+	paymentEnv                string
 }
 
 // NewRegistry builds the process-local provider registry from config.
@@ -37,12 +41,13 @@ func NewRegistry(cfg *config.Config) *Registry {
 	r := &Registry{byKey: make(map[string]PaymentProvider)}
 	if cfg != nil {
 		r.defaultPaymentProviderKey = strings.ToLower(strings.TrimSpace(cfg.Commerce.DefaultPaymentProvider))
+		r.paymentEnv = strings.ToLower(strings.TrimSpace(cfg.PaymentEnv))
 	}
 	for _, k := range []string{"mock", "sandbox", "test", "psp_fixture", "dev", "psp_grpc_int"} {
 		p := NewSandboxProvider(k)
 		r.byKey[p.Key()] = p
 	}
-	for _, k := range []string{"stripe", "momo", "zalopay", "vnpay"} {
+	for _, k := range PlaceholderLiveProviderKeys {
 		p := NewPlaceholderLiveProvider(k)
 		r.byKey[p.Key()] = p
 	}
@@ -74,6 +79,9 @@ func (r *Registry) ResolveForPaymentSession(appEnv config.AppEnvironment, client
 	if key == "" {
 		key = client
 	}
+	if r.paymentEnv == config.PaymentEnvCashOnly {
+		return nil, "", ErrProviderUnavailable
+	}
 	if key == "" {
 		if appEnv == config.AppEnvProduction {
 			return nil, "", ErrPaymentProviderRequired
@@ -90,7 +98,18 @@ func (r *Registry) ResolveForPaymentSession(appEnv config.AppEnvironment, client
 	if appEnv == config.AppEnvProduction && sandboxFamilyProviderKey(key) {
 		return nil, "", fmt.Errorf("%w: %q", ErrSandboxProviderInProduction, key)
 	}
+	if IsPlaceholderLiveProvider(p) {
+		return nil, "", fmt.Errorf("%w: %q", ErrProviderUnavailable, key)
+	}
+	if w, ok := p.(WiredLiveProvider); ok && !w.LivePaymentWired() {
+		return nil, "", fmt.Errorf("%w: %q", ErrProviderUnavailable, key)
+	}
 	return p, key, nil
+}
+
+// DeploymentRuntime returns non-secret deployment payment capability for ops/version endpoints.
+func (r *Registry) DeploymentRuntime(cfg *config.Config) DeploymentRuntime {
+	return DeploymentRuntimeFromConfig(cfg, r)
 }
 
 // SetHTTPProbe configures the optional HTTP payment status probe used by cmd/reconciler (RECONCILER_PAYMENT_PROBE_*).
@@ -155,6 +174,8 @@ func (r *Registry) ProviderSummaries() []ProviderSummary {
 		if p == nil {
 			continue
 		}
+		st, sessionAvail := providerSessionStatus(p)
+		wired := st == ProviderStatusWired || st == ProviderStatusSandbox
 		out = append(out, ProviderSummary{
 			Key:              k,
 			QuerySupported:   p.SupportsQueryPaymentStatus() || r.httpProbe != nil,
@@ -162,9 +183,17 @@ func (r *Registry) ProviderSummaries() []ProviderSummary {
 			ConfigSource:     "environment",
 			DefaultForEnv:    defKey != "" && k == defKey,
 			ActiveSessionKey: defKey != "" && k == defKey,
+			Wired:            wired,
+			SessionAvailable: sessionAvail,
+			ProviderStatus:   st,
 		})
 	}
 	return out
+}
+
+// ResolveMachinePaymentMethodsForMachine implements machine bootstrap/commerce payment method resolution.
+func (r *Registry) ResolveMachinePaymentMethodsForMachine(cfg *config.Config, featureFlags map[string]bool) MachinePaymentMethodsView {
+	return ResolveMachinePaymentMethods(cfg, r, featureFlags)
 }
 
 // CompositePaymentGateway routes FetchPaymentStatus to a provider adapter, then optional HTTP probe, else error.

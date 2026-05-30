@@ -14,8 +14,14 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// MachinePaymentRuntimeSource resolves machine-facing payment method config for bootstrap and commerce gates.
+type MachinePaymentRuntimeSource interface {
+	ResolveMachinePaymentMethodsForMachine(cfg *config.Config, featureFlags map[string]bool) platformpayments.MachinePaymentMethodsView
+}
 
 // MachineGRPCServicesDeps wires machine-facing gRPC services without importing cmd/bootstrap.
 type MachineGRPCServicesDeps struct {
@@ -35,6 +41,8 @@ type MachineGRPCServicesDeps struct {
 	Operator *appoperator.Service
 	// Commerce orchestrates orders/payments/vends for machine checkout gRPC.
 	Commerce appcommerce.Orchestrator
+	// PaymentRuntime resolves machine payment method config for bootstrap and commerce gates.
+	PaymentRuntime MachinePaymentRuntimeSource
 	// TelemetryStore applies vend-success inventory decrements (same Store as HTTP TelemetryStore).
 	TelemetryStore *postgres.Store
 	// MediaStore issues fresh presigned HTTPS URLs for catalog/media manifests when wired (nil keeps DB URLs).

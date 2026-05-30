@@ -276,6 +276,7 @@ type ClaimResult struct {
 	RefreshExpiresAt  time.Time
 	MQTTBrokerURL     string
 	MQTTTopicPrefix   string
+	MQTTTopicLayout   string
 	BootstrapPath     string
 	BootstrapRequired bool
 }
@@ -411,7 +412,7 @@ func (s *Service) recordRefreshFailureAudit(ctx context.Context, scopeID uuid.UU
 	})
 }
 
-func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.MachineActivationCode, mqttBrokerURL, mqttTopicPrefix string, auditMeta map[string]any) (ClaimResult, error) {
+func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.MachineActivationCode, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string, auditMeta map[string]any) (ClaimResult, error) {
 	qtx := db.New(tx)
 	m, err := qtx.GetMachineByID(ctx, row.MachineID)
 	if err != nil {
@@ -476,13 +477,14 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 		RefreshExpiresAt:  refreshExp,
 		MQTTBrokerURL:     mqttBrokerURL,
 		MQTTTopicPrefix:   mqttTopicPrefix,
+		MQTTTopicLayout:   mqttTopicLayout,
 		BootstrapPath:     fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
 		BootstrapRequired: true,
 	}, nil
 }
 
 // Claim exchanges a valid activation code for a machine token.
-func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttTopicPrefix string) (ClaimResult, error) {
+func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string) (ClaimResult, error) {
 	code := normalizeActivationCode(in.ActivationCode)
 	if code == "" {
 		return ClaimResult{}, ErrInvalid
@@ -519,7 +521,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		FingerprintHash:  fpHash[:],
 	})
 	if err == nil {
-		return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, map[string]any{
+		return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout, map[string]any{
 			"idempotent_replay":   true,
 			"activation_claim_id": prevSucc.ID.String(),
 		})
@@ -606,7 +608,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		return ClaimResult{}, err
 	}
 
-	return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, map[string]any{
+	return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout, map[string]any{
 		"first_claim": true,
 	})
 }
@@ -617,7 +619,7 @@ type RefreshInput struct {
 }
 
 // RefreshMachineSession rotates the opaque refresh token and issues a new access token without bumping credential_version.
-func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mqttBrokerURL, mqttTopicPrefix string) (ClaimResult, error) {
+func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string) (ClaimResult, error) {
 	raw := strings.TrimSpace(in.RefreshToken)
 	if raw == "" {
 		return ClaimResult{}, ErrRefreshInvalid
@@ -754,6 +756,7 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 		RefreshExpiresAt:  rexp,
 		MQTTBrokerURL:     mqttBrokerURL,
 		MQTTTopicPrefix:   mqttTopicPrefix,
+		MQTTTopicLayout:   mqttTopicLayout,
 		BootstrapPath:     fmt.Sprintf("/v1/setup/machines/%s/bootstrap", m.ID),
 		BootstrapRequired: false,
 	}, nil
