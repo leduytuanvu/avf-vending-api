@@ -220,7 +220,7 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
     else
       fail_probe "grpc.inventory" "rpc failed" "${E2E_GRPC_LAST_LAT:-0}"
     fi
-    plano_body="$(jq -nc --argjson meta "$meta" '{meta:$meta}')"
+    plano_body="$(jq -nc --arg mid "${TEST_MACHINE_ID}" '{machineId:$mid}')"
     if e2e_grpc_call "avf.machine.v1.MachineInventoryService/GetPlanogram" "$plano_body" "grpc-planogram" machine ""; then
       pass_probe "grpc.planogram" "ok" "${E2E_GRPC_LAST_LAT:-0}"
     else
