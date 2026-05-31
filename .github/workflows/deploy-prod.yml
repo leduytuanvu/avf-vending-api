@@ -2192,7 +2192,7 @@ jobs:
               '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh'"
 
-      - name: Apply MQTT enterprise env on app nodes
+      - name: Apply production runtime env on app nodes
         if: env.ACTION_MODE == 'deploy'
         shell: bash
         env:
@@ -2209,9 +2209,21 @@ jobs:
               "APP_NODE_ENV_FILE=${env_path}" \
               bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_mqtt_enterprise_app_node_env.sh" "${env_path}"
           }
+          apply_cash_only_payment_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "PAYMENT_ENV=${PAYMENT_ENV:-cash_only}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_cash_only_payment_app_node_env.sh" "${env_path}"
+          }
           apply_mqtt_enterprise_remote "${APP_NODE_A_HOST}"
+          apply_cash_only_payment_remote "${APP_NODE_A_HOST}"
           if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
             apply_mqtt_enterprise_remote "${APP_NODE_B_HOST}"
+            apply_cash_only_payment_remote "${APP_NODE_B_HOST}"
           fi
 
       - name: Apply Cloudinary env on app nodes
