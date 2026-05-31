@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "serverTime": "2026-05-31T20:18:00.103078984Z",
+    "traceId": "e86f7b68-6efd-4999-9c95-6513e8ad8f53",
+    "requestId": "e2e-ro-20260531T201748Z",
+    "status": "MACHINE_RESPONSE_STATUS_ACCEPTED"
+  },
+  "changedEntries": [
+    {
+      "productId": "019e6ff5-fa20-7f7c-b804-37b035786559",
+      "sku": "SKU PRODUCT 1",
+      "primaryMedia": {
+        "thumbUrl": "https://res.cloudinary.com/dz4qz0tk9/image/upload/w_300,h_300,c_fill,q_auto,f_auto/v1/avf-vending/products/019e6ff1-fb2e-716e-b879-768d0cc5b5c8?_a=AQAXenF",
+        "displayUrl": "https://res.cloudinary.com/dz4qz0tk9/image/upload/v1779994590/avf-vending/products/019e6ff1-fb2e-716e-b879-768d0cc5b5c8.png",
+        "checksumSha256": "sha256:9fe4af73d79a7bc8df7946f923ae34baf6d222bdd23728508262830e21ba2963",
+        "etag": "W/\"9fe4af73d79a7bc8df7946f923ae34baf6d222bdd23728508262830e21ba2963\"",
+        "updatedAt": "2026-05-28T19:00:51.568186Z",
+        "mediaId": "019e6ff1-fb2e-716e-b879-768d0cc5b5c8",
+        "sizeBytes": "52971",
+        "objectVersion": 1,
+        "mediaVersion": 1,
+        "width": 612,
+        "height": 612,
+        "contentType": "image/png",
+        "mediaVariants": [
+          {
+            "kind": "MEDIA_VARIANT_KIND_ORIGINAL",
+            "mediaAssetId": "019e6ff1-fb2e-716e-b879-768d0cc5b5c8",
+            "url": "https://res.cloudinary.com/dz4qz0tk9/image/upload/v1779994590/avf-vending/products/019e6ff1-fb2e-716e-b879-768d0cc5b5c8.png",
+            "contentType": "image/png",
+            "checksumSha256": "sha256:c40bbd7598b88310ce1c9919e6d1105a2a674c591f60cbd9028f088e2bd84e2c",
+            "etag": "W/\"c40bbd7598b88310ce1c9919e6d1105a2a674c591f60cbd9028f088e2bd84e2c\"",
+            "sizeBytes": "52971",
+            "width": 612,
+            "height": 612,
+            "mediaVersion": 1,
+            "updatedAt": "2026-05-28T19:00:51.568186Z"
+          },
+          {
+            "kind": "MEDIA_VARIANT_KIND_THUMB",
+            "mediaAssetId": "019e6ff1-fb2e-716e-b879-768d0cc5b5c8",
+            "url": "https://res.cloudinary.com/dz4qz0tk9/image/upload/w_300,h_300,c_fill,q_auto,f_auto/v1/avf-vending/products/019e6ff1-fb2e-716e-b879-768d0cc5b5c8?_a=AQAXenF",
+            "contentType": "image/png",
+            "checksumSha256": "sha256:3e6fb91546ca75faa9fa65fe2e80579f317b12364d883f01310ce18a0256dd29",
+            "etag": "W/\"3e6fb91546ca75faa9fa65fe2e80579f317b12364d883f01310ce18a0256dd29\"",
+            "sizeBytes": "52971",
+            "width": 612,
+            "height": 612,
+            "mediaVersion": 1,
+            "updatedAt": "2026-05-28T19:00:51.568186Z"
+          },
+          {
+            "kind": "MEDIA_VARIANT_KIND_DISPLAY",
+            "mediaAssetId": "019e6ff1-fb2e-716e-b879-768d0cc5b5c8",
+            "url": "https://res.cloudinary.com/dz4qz0tk9/image/upload/v1779994590/avf-vending/products/019e6ff1-fb2e-716e-b879-768d0cc5b5c8.png",
+            "contentType": "image/png",
+            "checksumSha256": "sha256:9fe4af73d79a7bc8df7946f923ae34baf6d222bdd23728508262830e21ba2963",
+            "etag": "W/\"9fe4af73d79a7bc8df7946f923ae34baf6d222bdd23728508262830e21ba2963\"",
+            "sizeBytes": "52971",
+            "width": 612,
+            "height": 612,
+            "mediaVersion": 1,
+            "updatedAt": "2026-05-28T19:00:51.568186Z"
+          }
+        ],
+        "sourceType": "external_url",
+        "cacheKey": "external-image:d98624a42b33010137eae251c38066bada8062c4688ec7656cb557d0748358be:v1",
+        "offlineRequired": true,
+        "downloadStrategy": "download_when_online_use_local_when_offline"
+      },
+      "mediaId": "019e6ff1-fb2e-716e-b879-768d0cc5b5c8"
+    }
+  ],
+  "nextSyncToken": "cfb7faaf9495778cb7a892c82595fbe04725f5d8c0c43618de448b9c2b39eb00"
+}

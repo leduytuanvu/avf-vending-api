@@ -1,0 +1,26 @@
+{
+  "machineId": "019e702c-11c6-7ab0-89c7-5eb32f0b12cb",
+  "serverTime": "2026-05-31T20:18:00.957917661Z",
+  "slots": [
+    {
+      "planogramId": "cccccccc-cccc-cccc-cccc-000000000001",
+      "planogramName": "Default Planogram",
+      "slotIndex": 1,
+      "currentQuantity": 10,
+      "maxQuantity": 10,
+      "priceMinor": "15000",
+      "planogramRevisionApplied": 1,
+      "cabinetCode": "A",
+      "cabinetIndex": 1,
+      "productId": "019e6ff5-fa20-7f7c-b804-37b035786559",
+      "productSku": "SKU PRODUCT 1",
+      "productName": "Product 1"
+    }
+  ],
+  "meta": {
+    "serverTime": "2026-05-31T20:18:00.957918823Z",
+    "traceId": "73e0ec6c-500e-450c-8f27-30fa232bc42b",
+    "requestId": "e2e-ro-20260531T201748Z",
+    "status": "MACHINE_RESPONSE_STATUS_ACCEPTED"
+  }
+}
