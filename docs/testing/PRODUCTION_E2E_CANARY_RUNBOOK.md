@@ -12,9 +12,10 @@ Safe production integration testing for the Android vending backend without acci
 Legacy wrappers remain under `scripts/test/`; prefer `scripts/e2e/` for new runs.
 
 # Readiness verdict mapping (see docs/release/BACKEND_MARKET_READY_REPORT.md)
-# - readonly smoke PASS  → GO (HTTP/gRPC read path healthy)
-# - readonly smoke FAIL  → NO-GO
-# - canary live sale PASS on marked machine → supports GO-CANARY-ONLY when combined with full smoke + deploy evidence
+# - strict readonly smoke PASS (all required probes) → READINESS_VERDICT=GO-CANARY-ONLY
+# - strict readonly smoke FAIL or any required probe SKIP → READINESS_VERDICT=NO-GO
+# - non-strict developer smoke with skips → SMOKE_VERDICT=PASS_DEV_ONLY, READINESS_VERDICT=NO-GO
+# - canary live sale PASS on marked machine → supports fleet GO when combined with full smoke + deploy evidence
 
 ## Read-only smoke
 
@@ -44,12 +45,15 @@ export GRPC_ADDR=machine-api.ldtv.dev:443
 export GRPC_USE_PLAINTEXT=false
 export GRPC_PROTO_ROOT=/path/to/avf-vending-api/proto
 
-# Test machine (recommended for gRPC section)
+# Strict canary gate (default true for https://api.ldtv.dev)
+export PRODUCTION_SMOKE_STRICT_CANARY=true
+
+# Test machine (required for strict canary / gRPC section)
 export TEST_MACHINE_ID=<canary-machine-uuid>
 export MACHINE_ACCESS_TOKEN=<machine JWT>
 export MACHINE_REFRESH_TOKEN=<optional refresh token>
 
-# Admin (optional — enables admin read probes)
+# Admin (required for strict canary)
 export ADMIN_EMAIL=...
 export ADMIN_PASSWORD=...
 # or ADMIN_TOKEN=...
@@ -57,15 +61,32 @@ export ADMIN_PASSWORD=...
 bash scripts/e2e/production-readonly-smoke.sh
 ```
 
+For partial HTTP-only developer checks against non-production hosts:
+
+```bash
+export BASE_URL=http://localhost:8080
+export PRODUCTION_SMOKE_STRICT_CANARY=false
+bash scripts/e2e/production-readonly-smoke.sh
+```
+
 ### Output
 
-- Verdict: **PASS** / **FAIL** (executed probes only; SKIP is not a failure)
-- Readiness: **GO** / **GO-CANARY-ONLY** / **NO-GO** (written to `READINESS.txt`)
-  - **GO** — all executed probes pass **and** gRPC machine runtime section ran
-  - **GO-CANARY-ONLY** — HTTP health pass but gRPC/admin credentials missing (partial smoke)
-  - **NO-GO** — any executed probe failed
+- **SMOKE_VERDICT:** `PASS` / `PASS_DEV_ONLY` / `FAIL`
+  - `PASS` — all executed probes pass (strict canary probes included when strict mode)
+  - `PASS_DEV_ONLY` — non-strict run with skipped required canary probes (developer smoke only)
+  - `FAIL` — any executed probe failed, or strict mode required probe skipped/failed
+- **READINESS_VERDICT:** `GO-CANARY-ONLY` / `NO-GO` (written to `READINESS.txt`)
+  - **GO-CANARY-ONLY** — strict mode: all required probes PASS **and** `/version.payment_runtime` cash-only contract valid
+  - **NO-GO** — any failure, missing `payment_runtime`, skipped strict probe, or non-strict partial run
+- Strict mode exits non-zero when `READINESS_VERDICT=NO-GO`
 - Evidence: `reports/e2e/production-readonly-smoke/<timestamp>/`
   - `REPORT.md`, `report.json`, `READINESS.txt`, `raw/*.json`
+
+### Verdict unit tests
+
+```bash
+bash scripts/e2e/tests/readonly-smoke-verdict.test.sh
+```
 
 ## Canary live sale
 

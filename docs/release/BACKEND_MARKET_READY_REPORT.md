@@ -32,10 +32,18 @@
 | Verdict | When it applies |
 |---------|-----------------|
 | **GO** | Deployed full readonly smoke PASS (HTTP + gRPC + admin + bootstrap MQTT/payment fields) **and** production canary cash sale PASS on a marked test machine **and** `/version.payment_runtime.payment_mode=cash_only` |
-| **GO-CANARY-ONLY** | Code/tests green **and** deployed `/version.payment_runtime` passes **but** full readonly smoke incomplete and/or canary not yet run — proceed only with **guarded cash canary** on a marked machine |
-| **NO-GO** | Failing tests, failing smoke probes, missing deployed `payment_runtime`, or canary attempted on non-canary machine |
+| **GO-CANARY-ONLY** | Deployed strict readonly smoke PASS (all required probes below) **and** `/version.payment_runtime` cash-only contract valid **but** canary live sale not yet run — proceed only with **guarded cash canary** on a marked machine |
+| **NO-GO** | Failing tests, failing smoke probes, missing deployed `payment_runtime`, skipped strict canary probes, or canary attempted on non-canary machine |
 
 `scripts/e2e/production-readonly-smoke.sh` **never** writes `READINESS_VERDICT=GO` — only `GO-CANARY-ONLY` or `NO-GO`. Fleet **GO** requires `production-canary-live-sale.sh` evidence.
+
+**Strict canary gate (`PRODUCTION_SMOKE_STRICT_CANARY=true`, default for `https://api.ldtv.dev`):** the following probes must **PASS** (SKIP counts as failure):
+
+- `version.payment_runtime` (+ cash-only contract sub-probe when mode is `cash_only`)
+- `admin.auth`
+- `grpc.bootstrap`, `grpc.bootstrap.payment_methods`, `grpc.catalog`, `grpc.media_manifest`, `grpc.inventory`, `grpc.planogram`
+
+Non-strict developer smoke may emit `SMOKE_VERDICT=PASS_DEV_ONLY` when credentials or gRPC machine tokens are unset; **`READINESS_VERDICT` remains `NO-GO`** until strict probes pass.
 
 ---
 
@@ -67,7 +75,7 @@ curl -fsS https://api.ldtv.dev/version | jq .
 | `git_sha` matches deployed main commit | **Yes** | Compare to promotion manifest / image-metadata |
 | `build_time` non-empty | **Yes** | Link-time inject via `deployments/prod/Dockerfile` build-args |
 
-**Prior production state (pre-deploy):** readonly smoke artifacts showed `version.payment_runtime` **SKIP** (field absent). That state is **NO-GO** for canary claims regardless of HTTP health.
+**Prior production state (pre-deploy):** readonly smoke artifacts showed `version.payment_runtime` **SKIP** (field absent). That state is **NO-GO** for canary claims regardless of HTTP health — strict mode now **FAIL**s this case and never emits `GO-CANARY-ONLY`.
 
 ---
 

@@ -12,6 +12,9 @@
 #   ADMIN_EMAIL=... ADMIN_PASSWORD=... \
 #   bash scripts/e2e/production-readonly-smoke.sh
 #
+# Strict production canary gate (default true for https://api.ldtv.dev):
+#   PRODUCTION_SMOKE_STRICT_CANARY=true
+#
 # Optional MQTT config validation (no publish):
 #   MQTT_BROKER_URL=ssl://... MQTT_TOPIC_PREFIX=avf/devices
 
@@ -20,6 +23,8 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=lib/common.sh
 source "${ROOT}/scripts/e2e/lib/common.sh"
+# shellcheck source=lib/readonly-smoke-verdict.sh
+source "${ROOT}/scripts/e2e/lib/readonly-smoke-verdict.sh"
 
 e2e_require_cmd curl jq grpcurl
 e2e_init_run_dir "production-readonly-smoke"
@@ -28,15 +33,31 @@ BASE_URL="${BASE_URL:-${PRODUCTION_BASE_URL:-https://api.ldtv.dev}}"
 BASE_URL="${BASE_URL%/}"
 export BASE_URL
 
+PRODUCTION_SMOKE_STRICT_CANARY="$(e2e_strict_canary_default_for_base_url "$BASE_URL")"
+export PRODUCTION_SMOKE_STRICT_CANARY
+
 : >"${E2E_RUN_DIR}/probes.tsv"
 FAILURES=0
+CASH_ONLY_OK=0
 
 pass_probe() { e2e_record_probe "$1" "PASS" "${2:-}" "${3:-0}"; echo "PASS  $1 ${2:+($2)}"; }
 fail_probe() { e2e_record_probe "$1" "FAIL" "${2:-}" "${3:-0}"; echo "FAIL  $1 ${2:-}"; FAILURES=$((FAILURES + 1)); }
 skip_probe() { e2e_record_probe "$1" "SKIP" "${2:-}" "0"; echo "SKIP  $1 ${2:-}"; }
 
+skip_or_fail_strict() {
+  local name="$1"
+  local reason="$2"
+  local lat="${3:-0}"
+  if [[ "$PRODUCTION_SMOKE_STRICT_CANARY" == "true" ]] && e2e_is_strict_canary_probe "$name"; then
+    fail_probe "$name" "strict canary required: ${reason}" "$lat"
+  else
+    skip_probe "$name" "$reason"
+  fi
+}
+
 echo "== Production read-only smoke =="
 echo "base_url=${BASE_URL}"
+echo "strict_canary=${PRODUCTION_SMOKE_STRICT_CANARY}"
 echo "run_dir=${E2E_RUN_DIR}"
 
 for path in /health/live /health/ready /version; do
@@ -51,18 +72,28 @@ done
 
 # Payment runtime visibility (read-only) — required for any GO-CANARY-ONLY claim on deployed API.
 PAYMENT_RUNTIME_PROBE="SKIP"
+VERSION_BODY="${E2E_RUN_DIR}/raw/version-payment-runtime.body"
 url="${BASE_URL}/version"
 read -r code lat < <(e2e_curl_get "version-payment-runtime" "$url" "")
 if [[ "$code" == "200" ]]; then
-  if jq -e '.payment_runtime // .paymentRuntime' "${E2E_RUN_DIR}/raw/version-payment-runtime.body" >/dev/null 2>&1; then
-    mode="$(jq -r '.payment_runtime.payment_mode // .paymentRuntime.paymentMode // empty' "${E2E_RUN_DIR}/raw/version-payment-runtime.body")"
+  if jq -e '.payment_runtime // .paymentRuntime' "$VERSION_BODY" >/dev/null 2>&1; then
+    mode="$(jq -r '.payment_runtime.payment_mode // .paymentRuntime.paymentMode // empty' "$VERSION_BODY")"
     if [[ -n "$mode" ]]; then
       pass_probe "version.payment_runtime" "payment_mode=${mode}" "$lat"
       PAYMENT_RUNTIME_PROBE="PASS"
+      if cash_detail="$(e2e_validate_cash_only_payment_runtime "$VERSION_BODY" "$PRODUCTION_SMOKE_STRICT_CANARY" 2>&1)"; then
+        pass_probe "version.payment_runtime.cash_only_contract" "cash-only contract ok"
+      else
+        fail_probe "version.payment_runtime.cash_only_contract" "${cash_detail}"
+        PAYMENT_RUNTIME_PROBE="FAIL"
+      fi
     else
       fail_probe "version.payment_runtime" "payment_runtime present but payment_mode empty" "$lat"
       PAYMENT_RUNTIME_PROBE="FAIL"
     fi
+  elif [[ "$PRODUCTION_SMOKE_STRICT_CANARY" == "true" ]]; then
+    fail_probe "version.payment_runtime" "payment_runtime absent on deployed production (strict canary)" "$lat"
+    PAYMENT_RUNTIME_PROBE="FAIL"
   else
     skip_probe "version.payment_runtime" "field absent on this deployment"
   fi
@@ -83,7 +114,7 @@ if ADMIN_TOK="$(e2e_admin_token 2>/dev/null)"; then
     fi
   done
 else
-  skip_probe "admin.auth" "ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD not set"
+  skip_or_fail_strict "admin.auth" "ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD not set"
 fi
 
 if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
@@ -129,7 +160,7 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
       mqtt_prefix="$(jq -r '.mqtt.topicPrefix // .mqtt.topic_prefix // empty' "${E2E_RUN_DIR}/raw/grpc-bootstrap.response.json")"
       if [[ -n "$mqtt_url" && -n "$mqtt_prefix" ]]; then
         pass_probe "grpc.bootstrap.mqtt_config" "broker+prefix present"
-  if [[ -n "${MQTT_BROKER_URL:-}" && "$MQTT_BROKER_URL" != "$mqtt_url" ]]; then
+        if [[ -n "${MQTT_BROKER_URL:-}" && "$MQTT_BROKER_URL" != "$mqtt_url" ]]; then
           fail_probe "mqtt.config_match" "bootstrap broker ${mqtt_url} != env MQTT_BROKER_URL"
         else
           pass_probe "mqtt.config_match" "bootstrap MQTT config present"
@@ -159,7 +190,7 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
       if [[ -n "$pm" && "$pm" != "null" ]]; then
         pass_probe "grpc.bootstrap.payment_methods" "$(jq -c '.paymentMethods // .payment_methods' "${E2E_RUN_DIR}/raw/grpc-bootstrap.response.json")"
       else
-        skip_probe "grpc.bootstrap.payment_methods" "field absent"
+        skip_or_fail_strict "grpc.bootstrap.payment_methods" "field absent"
       fi
     else
       fail_probe "grpc.bootstrap" "GetBootstrap failed" "${E2E_GRPC_LAST_LAT:-0}"
@@ -219,32 +250,52 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
       skip_probe "grpc.telemetry_smoke" "ALLOW_TEST_MACHINE_TELEMETRY_PUSH=false"
     fi
   else
-    skip_probe "grpc.machine_runtime" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+    if [[ "$PRODUCTION_SMOKE_STRICT_CANARY" == "true" ]]; then
+      skip_or_fail_strict "grpc.bootstrap" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+      skip_or_fail_strict "grpc.bootstrap.payment_methods" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+      skip_or_fail_strict "grpc.catalog" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+      skip_or_fail_strict "grpc.media_manifest" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+      skip_or_fail_strict "grpc.inventory" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+      skip_or_fail_strict "grpc.planogram" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+    else
+      skip_probe "grpc.machine_runtime" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
+    fi
   fi
 else
-  skip_probe "grpc" "GRPC_ADDR / GRPC_TARGET unset"
+  if [[ "$PRODUCTION_SMOKE_STRICT_CANARY" == "true" ]]; then
+    skip_or_fail_strict "grpc.bootstrap" "GRPC_ADDR / GRPC_TARGET unset"
+    skip_or_fail_strict "grpc.bootstrap.payment_methods" "GRPC_ADDR / GRPC_TARGET unset"
+    skip_or_fail_strict "grpc.catalog" "GRPC_ADDR / GRPC_TARGET unset"
+    skip_or_fail_strict "grpc.media_manifest" "GRPC_ADDR / GRPC_TARGET unset"
+    skip_or_fail_strict "grpc.inventory" "GRPC_ADDR / GRPC_TARGET unset"
+    skip_or_fail_strict "grpc.planogram" "GRPC_ADDR / GRPC_TARGET unset"
+  else
+    skip_probe "grpc" "GRPC_ADDR / GRPC_TARGET unset"
+  fi
 fi
 
-VERDICT="PASS"
-# Readonly smoke never emits fleet GO — that requires canary live-sale evidence (production-canary-live-sale.sh).
-READINESS="GO-CANARY-ONLY"
-EXIT_CODE=0
-if [[ "$FAILURES" -gt 0 ]]; then
-  VERDICT="FAIL"
-  READINESS="NO-GO"
-  EXIT_CODE=1
-elif [[ "$PAYMENT_RUNTIME_PROBE" != "PASS" ]]; then
-  READINESS="GO-CANARY-ONLY"
-elif [[ -z "${GRPC_ADDR:-${GRPC_TARGET:-}}" || -z "${MACHINE_ACCESS_TOKEN:-}" || -z "${TEST_MACHINE_ID:-}" ]]; then
-  READINESS="GO-CANARY-ONLY"
+if [[ "$PAYMENT_RUNTIME_PROBE" == "PASS" ]]; then
+  if e2e_validate_cash_only_payment_runtime "$VERSION_BODY" "$PRODUCTION_SMOKE_STRICT_CANARY" >/dev/null 2>&1; then
+    CASH_ONLY_OK=0
+  else
+    CASH_ONLY_OK=1
+  fi
+else
+  CASH_ONLY_OK=1
 fi
+
+e2e_compute_readonly_smoke_verdicts "$PRODUCTION_SMOKE_STRICT_CANARY" "${E2E_RUN_DIR}/probes.tsv" "$FAILURES" "$CASH_ONLY_OK"
+SMOKE_VERDICT="${E2E_SMOKE_VERDICT}"
+READINESS_VERDICT="${E2E_READINESS_VERDICT}"
+EXIT_CODE="${E2E_EXIT_CODE}"
 
 {
   echo ""
   echo "== Readiness =="
-  echo "READINESS_VERDICT=${READINESS}"
-  echo "SMOKE_VERDICT=${VERDICT}"
+  echo "READINESS_VERDICT=${READINESS_VERDICT}"
+  echo "SMOKE_VERDICT=${SMOKE_VERDICT}"
+  echo "STRICT_CANARY=${PRODUCTION_SMOKE_STRICT_CANARY}"
 } | tee "${E2E_RUN_DIR}/READINESS.txt"
 
-e2e_finalize_report "production-readonly-smoke" "$VERDICT" "$EXIT_CODE"
+e2e_finalize_report "production-readonly-smoke" "$SMOKE_VERDICT" "$EXIT_CODE" "$READINESS_VERDICT" "$PRODUCTION_SMOKE_STRICT_CANARY"
 exit "$EXIT_CODE"
