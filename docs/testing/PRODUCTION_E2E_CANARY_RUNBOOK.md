@@ -15,7 +15,7 @@ Legacy wrappers remain under `scripts/test/`; prefer `scripts/e2e/` for new runs
 # - strict readonly smoke PASS (all required probes) → READINESS_VERDICT=GO-CANARY-ONLY
 # - strict readonly smoke FAIL or any required probe SKIP → READINESS_VERDICT=NO-GO
 # - non-strict developer smoke with skips → SMOKE_VERDICT=PASS_DEV_ONLY, READINESS_VERDICT=NO-GO
-# - canary live sale PASS on marked machine → supports fleet GO when combined with full smoke + deploy evidence
+# - canary live sale FAMILY_CANARY_VERDICT=PASS (real hardware) → supports fleet matrix; never READINESS_VERDICT=GO from this script
 
 ## Read-only smoke
 
@@ -110,13 +110,18 @@ export TEST_SITE_ID=<uuid>
 export TEST_SLOT_CODE=A1
 export TEST_PRODUCT_ID=<uuid>
 export TEST_PRICE_MINOR=12000
-export TEST_PAYMENT_METHOD=cash   # cash | qr | card
+export TEST_PAYMENT_METHOD=cash   # required for current cash-only production pilot
 export TEST_OPERATOR_NAME="QA Operator Name"
 export PRODUCTION_CANARY_ROLLBACK_PLAN="Refund order if unintended; restock slot A1; notify on-call."
+
+# Real hardware vend (default — required for FAMILY_CANARY_VERDICT=PASS)
+export SIMULATE_HARDWARE_VEND=false
 
 export ADMIN_EMAIL=...            # required — verifies canary machine
 export ADMIN_PASSWORD=...
 ```
+
+**Do not** set `SIMULATE_HARDWARE_VEND=true` against production unless `BACKEND_ONLY_DRY_RUN=true` (backend plumbing check only; never market GO).
 
 ### Protections
 
@@ -128,9 +133,11 @@ export ADMIN_PASSWORD=...
 | Price cap | `TEST_PRICE_MINOR` ≤ `PRODUCTION_E2E_MAX_PRICE_MINOR` (default **50000**) |
 | Canary machine | Name/code/serial contains `canary` or `e2e-test`, **or** UUID in `PRODUCTION_CANARY_MACHINE_ALLOWLIST` |
 | Site match | Admin machine `siteId` must equal `TEST_SITE_ID` |
-| Payment config | Bootstrap `cash_enabled` / `qr_card_enabled` must match `TEST_PAYMENT_METHOD` |
-| Inventory + planogram | Slot must exist; planogram product must match `TEST_PRODUCT_ID` |
+| Payment config | Bootstrap `cash_enabled` / `qr_card_enabled` must match `TEST_PAYMENT_METHOD`; `cash_only` blocks qr/card before mutation |
+| Simulated hardware | `SIMULATE_HARDWARE_VEND=true` on production refused unless `BACKEND_ONLY_DRY_RUN=true` |
+| Inventory delta | Required for market canary — skip/unavailable fails real canary |
 | Catalog price | `TEST_PRICE_MINOR` must match catalog snapshot for `TEST_PRODUCT_ID` |
+| Inventory + planogram | Slot must exist; planogram product must match `TEST_PRODUCT_ID` |
 | Non-canary | **Refused** |
 
 ### Flow
@@ -140,20 +147,35 @@ export ADMIN_PASSWORD=...
 3. `CreateOrder`
 4. `ConfirmCashPayment` **or** `CreatePaymentSession` (qr/card — fails if cash-only production)
 5. `StartVend`
-6. Wait for hardware **or** `SIMULATE_HARDWARE_VEND=true` for backend-only success
+6. Poll `GetOrderStatus` until **real hardware** reports completed/success (default)
 7. `ReportVendFailure` when hardware reports failure
-8. `GetOrder` reconcile + inventory delta check
-9. `PushTelemetryBatch` canary event
-10. Log all order IDs to `test-order-ids.log`
-11. Print rollback plan + cleanup instructions
+8. `GetOrder` reconcile — order must be `completed`/`success`
+9. Inventory before/after — slot qty must decrement on success
+10. `PushTelemetryBatch` canary event
+11. Log all order IDs to `test-order-ids.log`; write `CANARY_MANIFEST.json`
+12. Print rollback plan + cleanup instructions
 
-### Backend-only vend (no physical hardware)
+### Backend-only dry run (no physical hardware, not market validation)
 
 ```bash
+export BACKEND_ONLY_DRY_RUN=true
 export SIMULATE_HARDWARE_VEND=true
 ```
 
-Reports `ConfirmVendSuccess` after `StartVend` without waiting for device dispense.
+Calls `ConfirmVendSuccess` after `StartVend` without waiting for device dispense. Emits **`READINESS_VERDICT=BACKEND-ONLY-NO-MARKET-GO`** — never fleet **GO** or **`FAMILY_CANARY_VERDICT=PASS`**.
+
+### Output
+
+- **FAMILY_CANARY_VERDICT:** `PASS` / `FAIL` — single-machine real cash sale with hardware + inventory proof
+- **READINESS_VERDICT:** `NO-FLEET-GO` (real family pass) / `BACKEND-ONLY-NO-MARKET-GO` (simulated) / `NO-GO` (failures)
+- Evidence: `reports/e2e/production-canary-live-sale/<timestamp>/`
+  - `CANARY_MANIFEST.json`, `REPORT.md`, `READINESS.txt`, `CLEANUP.txt`, `raw/*.json`
+
+### Verdict unit tests
+
+```bash
+bash scripts/e2e/tests/canary-live-sale-verdict.test.sh
+```
 
 ### Marking a canary machine
 
