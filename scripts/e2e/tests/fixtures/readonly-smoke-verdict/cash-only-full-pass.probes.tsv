@@ -1,0 +1,12 @@
+http/health/live|PASS|100|status=200
+http/health/ready|PASS|100|status=200
+http/version|PASS|100|status=200
+version.payment_runtime|PASS|330|payment_mode=cash_only
+version.payment_runtime.cash_only_contract|PASS|0|cash-only contract ok
+admin.auth|PASS|0|token acquired
+grpc.bootstrap|PASS|500|ok
+grpc.bootstrap.payment_methods|PASS|0|{"cashEnabled":true}
+grpc.catalog|PASS|400|ok
+grpc.media_manifest|PASS|350|ok
+grpc.inventory|PASS|300|ok
+grpc.planogram|PASS|280|ok

@@ -223,16 +223,18 @@ PY
 
 e2e_finalize_report() {
   local mode="$1"
-  local verdict="$2"
+  local smoke_verdict="$2"
   local exit_code="$3"
+  local readiness_verdict="${4:-}"
+  local strict_canary="${5:-}"
   local json="${E2E_RUN_DIR}/report.json"
   local md="${E2E_RUN_DIR}/REPORT.md"
-  e2e_py - "$mode" "$verdict" "$exit_code" "$json" "$md" "${E2E_RUN_DIR}/probes.tsv" <<'PY'
+  e2e_py - "$mode" "$smoke_verdict" "$exit_code" "$readiness_verdict" "$strict_canary" "$json" "$md" "${E2E_RUN_DIR}/probes.tsv" <<'PY'
 import json, sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-mode, verdict, exit_code, json_path, md_path, tsv_path = sys.argv[1:7]
+mode, smoke_verdict, exit_code, readiness_verdict, strict_canary, json_path, md_path, tsv_path = sys.argv[1:9]
 probes = []
 p = Path(tsv_path)
 if p.is_file():
@@ -248,7 +250,10 @@ if p.is_file():
 payload = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "mode": mode,
-    "verdict": verdict,
+    "smoke_verdict": smoke_verdict,
+    "readiness_verdict": readiness_verdict or None,
+    "strict_canary": strict_canary == "true",
+    "verdict": smoke_verdict,
     "exit_code": int(exit_code),
     "probes": probes,
     "run_dir": str(Path(json_path).parent),
@@ -257,17 +262,23 @@ Path(json_path).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8
 lines = [
     f"# Production E2E — {mode}",
     "",
-    f"- **Verdict:** {verdict}",
+    f"- **SMOKE_VERDICT:** {smoke_verdict}",
+]
+if readiness_verdict:
+    lines.append(f"- **READINESS_VERDICT:** {readiness_verdict}")
+if strict_canary:
+    lines.append(f"- **Strict canary:** {strict_canary}")
+lines.extend([
     f"- **Exit code:** {exit_code}",
     f"- **Generated:** {payload['generated_at']}",
     "",
     "| Probe | Outcome | Latency ms | Detail |",
     "|---|---|---:|---|",
-]
+])
 for pr in probes:
     lines.append(f"| {pr['name']} | {pr['outcome']} | {pr['latency_ms']} | {pr['detail']} |")
 Path(md_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-print(verdict)
+print(smoke_verdict)
 PY
   echo "Report: ${md}"
   echo "JSON:   ${json}"
