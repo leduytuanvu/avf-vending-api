@@ -1,29 +1,27 @@
 # Backend market readiness report
 
-**Generated:** 2026-05-31 (UTC)  
+**Generated:** 2026-05-31T20:17:48Z (UTC)  
 **Repository:** `avf-vending-api`  
-**Git SHA (working tree baseline):** see `git rev-parse HEAD` at commit time  
+**Git SHA (main deployed candidate):** `51b93c55763426a4c2d049f1e262b5fd45ba8105`  
 **Branch:** `develop` → promoted to `main` for production deploy  
 **Production target:** `https://api.ldtv.dev`
 
-> **Verdict policy:** This document does **not** claim fleet **GO** without **deployed** evidence. Repository code/tests can pass while production still lags — `/version.payment_runtime` on the live API is the gate for cash-only canary readiness.
+> **Verdict policy:** This document does **not** claim fleet **GO** without **deployed** evidence. `/version.git_sha` must match the deployed **main** commit after env sync — stale `APP_GIT_SHA` on app-node blocks SHA proof until [PR #333](https://github.com/leduytuanvu/avf-vending-api/pull/333) merges and redeploys.
 
 ---
 
 ## Executive verdict
 
-| Verdict | **GO-CANARY-ONLY** (until deployed proof) |
-|---------|-------------------------------------------|
+| Verdict | **GO-CANARY-ONLY** |
+|---------|-------------------|
 
-**Rationale:** Backend code supports `PAYMENT_ENV=cash_only`, production config rejects unwired placeholder PSP keys, `/version` exposes `payment_runtime`, machine bootstrap exposes `payment_methods` (cash/QR flags, mode, provider status/reason), and commerce gRPC blocks QR/card sessions while allowing `ConfirmCashPayment`. Local `go test ./...` passes.
+**Rationale:** Production deploy run [`26722922299`](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26722922299) rolled digest `sha256:11a11179…` built from main @ `51b93c55`. Strict readonly smoke [`20260531T201748Z`](../../reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md) **PASS** with `READINESS_VERDICT=GO-CANARY-ONLY`, `payment_runtime.payment_mode=cash_only`, admin + gRPC strict probes green. **`/version.git_sha` still reports stale embed override `52a076e…` (fix pending PR #333 redeploy).**
 
-**Deployed production is not yet verified in this report** until post-deploy curl confirms:
+**Blockers before fleet GO or MARKET_READY:**
 
-1. `GET /version` includes `payment_runtime.payment_mode == "cash_only"`
-2. `git_sha` in `/version` matches the **main** commit SHA of the deployed image (link-time embed; do not override with stale `APP_GIT_SHA` on app nodes)
-3. Full readonly smoke (HTTP + gRPC + admin) and canary cash sale artifacts are archived under `reports/e2e/`
-
-**Do not claim general fleet GO** until all three are green. **Do not claim GO-CANARY-ONLY** from code alone if deployed `/version` lacks `payment_runtime`.
+1. `/version.git_sha` must equal main `51b93c55` after clearing stale `APP_GIT_SHA` on app-node
+2. Signed app APKs at current app SHA + `validate-release-ref.sh market-launch`
+3. Real-device canary matrix re-stamped at current SHAs (existing JSON is schema-valid but SHA-stale)
 
 ---
 
@@ -72,12 +70,22 @@ curl -fsS https://api.ldtv.dev/version | jq .
 
 | Check | Required | Evidence path |
 |-------|----------|---------------|
-| `payment_runtime` object present | **Yes** | `reports/e2e/production-readonly-smoke/<timestamp>/raw/version-payment-runtime.body` |
-| `payment_runtime.payment_mode == "cash_only"` | **Yes** | Same artifact + jq |
-| `git_sha` matches deployed main commit | **Yes** | Compare to promotion manifest / image-metadata |
-| `build_time` non-empty | **Yes** | Link-time inject via `deployments/prod/Dockerfile` build-args |
+| `payment_runtime` object present | **Yes** | `reports/e2e/production-readonly-smoke/20260531T201748Z/raw/version-payment-runtime.body` |
+| `payment_runtime.payment_mode == "cash_only"` | **Yes** | Same artifact + strict smoke probe PASS |
+| `git_sha` matches deployed main commit | **PARTIAL** | Deploy manifest `source_commit_sha=51b93c55`; live `/version.git_sha=52a076e` (stale `APP_GIT_SHA` override — fix in PR #333) |
+| Strict readonly smoke PASS | **Yes** | [`reports/e2e/production-readonly-smoke/20260531T201748Z/`](../../reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md) |
+| Deploy manifest archived | **Yes** | GitHub Actions run `26722922299` artifact `production-deployment-manifest` |
 
-**Prior production state (pre-deploy):** readonly smoke artifacts showed `version.payment_runtime` **SKIP** (field absent). That state is **NO-GO** for canary claims regardless of HTTP health — strict mode now **FAIL**s this case and never emits `GO-CANARY-ONLY`.
+**Deploy proof (2026-05-31):**
+
+| Field | Value |
+|-------|-------|
+| Deploy run | [`26722922299`](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26722922299) |
+| Build run | `26722767982` |
+| Security release | `26722859567` |
+| App digest | `sha256:11a11179c6b0e4f18da1c54ca3106eeebd0d630ed6e1da3346161b2324679f26` |
+| Main commit (manifest) | `51b93c55763426a4c2d049f1e262b5fd45ba8105` |
+| Live `/version.git_sha` (2026-05-31T20:17Z) | `52a076e340a15a69dad7787cad54d7e3000fcafe` (**mismatch**) |
 
 ---
 
