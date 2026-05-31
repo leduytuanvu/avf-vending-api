@@ -104,8 +104,11 @@ if app == "production":
     if stg_ref and host == stg_ref:
         print("error:production host matches staging ref", file=sys.stderr)
         sys.exit(2)
-    if pay and pay != "live":
-        print("error:production requires PAYMENT_ENV=live", file=sys.stderr)
+    if pay not in ("live", "cash_only"):
+        if not pay:
+            print("error:production requires PAYMENT_ENV=live or PAYMENT_ENV=cash_only (set explicitly)", file=sys.stderr)
+        else:
+            print("error:production requires PAYMENT_ENV=live or PAYMENT_ENV=cash_only", file=sys.stderr)
         sys.exit(2)
 
 print(f"scheme={u.scheme}")
