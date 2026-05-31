@@ -1,0 +1,11 @@
+http/health/live|PASS|100|status=200
+http/health/ready|PASS|100|status=200
+http/version|PASS|100|status=200
+version.payment_runtime|SKIP|0|field absent on this deployment
+admin.auth|SKIP|0|credentials not set
+grpc.bootstrap|SKIP|0|GRPC unset
+grpc.bootstrap.payment_methods|SKIP|0|GRPC unset
+grpc.catalog|SKIP|0|GRPC unset
+grpc.media_manifest|SKIP|0|GRPC unset
+grpc.inventory|SKIP|0|GRPC unset
+grpc.planogram|SKIP|0|GRPC unset

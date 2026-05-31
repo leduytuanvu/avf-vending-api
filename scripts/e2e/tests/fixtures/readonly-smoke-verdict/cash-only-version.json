@@ -1,0 +1,13 @@
+{
+  "name": "avf-vending-api",
+  "version": "0.0.0",
+  "git_sha": "abc123",
+  "payment_runtime": {
+    "payment_env": "cash_only",
+    "payment_mode": "cash_only",
+    "card_qr_provider_status": "unavailable",
+    "card_qr_sessions_available": false,
+    "cash_allowed_by_deployment": true,
+    "qr_card_unavailable_reason": "provider_unavailable"
+  }
+}
