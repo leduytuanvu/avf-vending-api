@@ -106,11 +106,6 @@ on:
         required: false
         default: ""
         type: string
-      storm_evidence_max_age_days:
-        description: "Reject storm evidence when completed_at_utc is older than this many days (maps to STORM_EVIDENCE_MAX_AGE_DAYS)"
-        required: false
-        default: "7"
-        type: string
       run_migration:
         description: "Run production database migration (goose up from embedded /app/migrations) during deploy. Default true; inline pg_dump backup runs on app node A before up. Set false only for image-only emergency rollouts."
         required: false
@@ -146,6 +141,11 @@ on:
         required: false
         default: false
         type: boolean
+      recovery_pre_deploy_reason:
+        description: "If non-empty, skip blocking pre-deploy public health SLO (recovery after failed rollout). Logged in summary and manifest."
+        required: false
+        default: ""
+        type: string
 
 # Production actions stay serialized under one stable gate.
 # Later runs queue behind the active rollout or rollback instead of canceling it.
@@ -198,6 +198,7 @@ jobs:
           INPUT_STAGING_EVIDENCE_MAX_AGE_HOURS: ${{ inputs.staging_evidence_max_age_hours || '168' }}
           INPUT_ALLOW_MISSING_STAGING_EVIDENCE: ${{ inputs.allow_missing_staging_evidence && 'true' || 'false' }}
           INPUT_MISSING_STAGING_EVIDENCE_REASON: ${{ inputs.missing_staging_evidence_reason || '' }}
+          INPUT_RECOVERY_PRE_DEPLOY_REASON: ${{ inputs.recovery_pre_deploy_reason || '' }}
           GH_TOKEN: ${{ github.token }}
           ROLLBACK_APP_IMAGE_REF: ${{ inputs.rollback_app_image_ref }}
           ROLLBACK_GOOSE_IMAGE_REF: ${{ inputs.rollback_goose_image_ref }}
@@ -479,6 +480,11 @@ jobs:
           STAGING_DIGEST_CROSS_CHECK_NOTE=""
 
           if [[ "${ACTION_MODE}" == "deploy" ]]; then
+            recovery_pre="${INPUT_RECOVERY_PRE_DEPLOY_REASON:-}"
+            recovery_pre="${recovery_pre//[[:space:]]/}"
+            if [[ -n "${recovery_pre}" ]]; then
+              echo "::warning::PRE-DEPLOY SLO BYPASS (recovery_pre_deploy_reason) — reason: ${INPUT_RECOVERY_PRE_DEPLOY_REASON}"
+            fi
             allow_miss="${INPUT_ALLOW_MISSING_STAGING_EVIDENCE:-false}"
             stg_id="${INPUT_STAGING_EVIDENCE_ID:-}"
             stg_id="${stg_id//[[:space:]]/}"
@@ -1499,7 +1505,7 @@ jobs:
           BYPASS_REASON: ${{ inputs.scale_gate_bypass_reason }}
           TELEMETRY_STORM_EVIDENCE_REPO_PATH: ${{ inputs.telemetry_storm_evidence_repo_path }}
           TELEMETRY_STORM_EVIDENCE_ARTIFACT_RUN_ID: ${{ inputs.telemetry_storm_evidence_artifact_run_id }}
-          STORM_EVIDENCE_MAX_AGE_DAYS: ${{ inputs.storm_evidence_max_age_days }}
+          STORM_EVIDENCE_MAX_AGE_DAYS: "7"
           GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
@@ -2299,7 +2305,7 @@ jobs:
         shell: bash
         env:
           BASE_URL: ${{ env.PRODUCTION_PUBLIC_BASE_URL }}
-          DEPLOY_SLO_CRITICAL: "1"
+          DEPLOY_SLO_CRITICAL: ${{ inputs.recovery_pre_deploy_reason != '' && '0' || '1' }}
           APP_NODE_A_HOST: ${{ env.APP_NODE_A_HOST }}
           APP_NODE_B_HOST: ${{ env.APP_NODE_B_HOST }}
           DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
@@ -2310,6 +2316,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           mkdir -p deployment-evidence
+          if [[ -n "${{ inputs.recovery_pre_deploy_reason }}" ]]; then
+            echo "::warning::Collecting pre-deploy SLO in non-blocking mode (recovery_pre_deploy_reason)"
+          fi
           bash scripts/deploy/monitoring/collect_deploy_slo_evidence.sh --json --phase pre_deploy --out deployment-evidence/slo-pre-deploy.json
 
       - name: Optionally deploy data-node fallback stack
@@ -2343,8 +2352,8 @@ jobs:
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_A_HOST }}
           SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
           SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
-          SMOKE_LEVEL: business-readonly
-          SMOKE_ENABLE_BUSINESS_SYNTHETIC: "0"
+          SMOKE_LEVEL: ${{ inputs.enable_business_synthetic_smoke && 'business-safe-synthetic' || 'business-readonly' }}
+          SMOKE_ENABLE_BUSINESS_SYNTHETIC: ${{ inputs.enable_business_synthetic_smoke && '1' || '0' }}
           SMOKE_BUSINESS_READONLY_SPECS: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS }}
           SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN }}
         run: |
@@ -2393,8 +2402,8 @@ jobs:
           SMOKE_CONNECT_TO_HOST: ${{ env.APP_NODE_B_HOST }}
           SMOKE_DB_READ_PATH: ${{ env.PRODUCTION_SMOKE_DB_READ_PATH }}
           SMOKE_DB_READ_MATCH_REGEX: ${{ env.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX }}
-          SMOKE_LEVEL: business-readonly
-          SMOKE_ENABLE_BUSINESS_SYNTHETIC: "0"
+          SMOKE_LEVEL: ${{ inputs.enable_business_synthetic_smoke && 'business-safe-synthetic' || 'business-readonly' }}
+          SMOKE_ENABLE_BUSINESS_SYNTHETIC: ${{ inputs.enable_business_synthetic_smoke && '1' || '0' }}
           SMOKE_BUSINESS_READONLY_SPECS: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS }}
           SMOKE_BUSINESS_READONLY_BEARER_TOKEN: ${{ env.PRODUCTION_SMOKE_BUSINESS_READONLY_BEARER_TOKEN }}
         run: |
