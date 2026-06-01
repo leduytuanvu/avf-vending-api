@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts" / "smoke"))
+sys.path.insert(0, str(ROOT / "scripts" / "deploy" / "smoke"))
 
 
 def _resolve_bash() -> str | None:

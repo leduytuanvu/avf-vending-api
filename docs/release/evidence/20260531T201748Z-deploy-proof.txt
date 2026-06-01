@@ -1,0 +1,9 @@
+deploy_run_id=26722922299
+build_run_id=26722767982
+security_release_run_id=26722859567
+main_commit_sha=51b93c55763426a4c2d049f1e262b5fd45ba8105
+app_image_digest=sha256:11a11179c6b0e4f18da1c54ca3106eeebd0d630ed6e1da3346161b2324679f26
+live_version_git_sha=52a076e340a15a69dad7787cad54d7e3000fcafe
+strict_smoke_run=20260531T201748Z
+strict_smoke_verdict=GO-CANARY-ONLY
+payment_mode=cash_only
