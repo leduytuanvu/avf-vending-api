@@ -84,7 +84,11 @@ resolve_machine_credentials() {
       log "FAIL admin machines list http=${code}"
       return 1
     fi
-    TEST_MACHINE_ID="$(jq -r --arg allow "${PRODUCTION_CANARY_MACHINE_ALLOWLIST:-019e702c-11c6-7ab0-89c7-5eb32f0b12cb}" '
+    if [[ -z "${PRODUCTION_CANARY_MACHINE_ALLOWLIST:-}" ]]; then
+      log "FAIL TEST_MACHINE_ID or PRODUCTION_CANARY_MACHINE_ALLOWLIST must be set — no hardcoded UUID default"
+      return 1
+    fi
+    TEST_MACHINE_ID="$(jq -r --arg allow "${PRODUCTION_CANARY_MACHINE_ALLOWLIST}" '
       ($allow | split(",") | map(gsub("^\\s+|\\s+$";"")) | map(select(length>0))) as $allowed |
       if ($allowed | length) > 0 then
         (.items // [])[] |
