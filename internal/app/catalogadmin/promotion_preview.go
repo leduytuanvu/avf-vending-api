@@ -174,11 +174,11 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		}
 		base := pln.EffectiveMinor
 
-		cat, err := s.q.PromotionAdminGetProductCategory(ctx)
+		cat, err := s.q.PromotionAdminGetProductCategory(ctx, pid)
 		if err != nil {
 			return nil, err
 		}
-		tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx)
+		tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx, pid)
 		if err != nil {
 			return nil, err
 		}

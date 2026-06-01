@@ -19,7 +19,7 @@ func TestInventoryAdminRefillForecastSlots_unknownCompanyEmpty(t *testing.T) {
 	rows, err := q.InventoryAdminRefillForecastSlots(ctx, db.InventoryAdminRefillForecastSlotsParams{
 		Column1: start,
 		Column2: end,
-		Column3: uuid.Nil,
+		Column3: uuid.MustParse("22222222-2222-2222-2222-222222222222"),
 		Column4: uuid.Nil,
 		Column5: uuid.Nil,
 		Column6: false,

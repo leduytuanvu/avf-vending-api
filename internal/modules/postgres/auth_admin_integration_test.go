@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/avf/avf-vending-api/internal/platform/id"
+	"strings"
 	"testing"
 	"time"
 
@@ -35,8 +36,16 @@ func testAuthServiceWithPool(t *testing.T, pool *pgxpool.Pool) *appauth.Service 
 	return svc
 }
 
-func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, _ uuid.UUID, email string, password string, roles []string, status string) {
+func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, _ uuid.UUID, email string, password string, roles []string, status string) string {
 	t.Helper()
+	if !strings.HasPrefix(email, "auth-regression-") {
+		local, domain, ok := strings.Cut(email, "@")
+		if !ok {
+			local = email
+			domain = "test.example.com"
+		}
+		email = "auth-regression-" + local + "@" + domain
+	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	require.NoError(t, err)
 	ctx := context.Background()
@@ -45,10 +54,20 @@ INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
 VALUES ($1,$2,$3,$4,$5)
 `, id, email, string(hash), roles, status)
 	require.NoError(t, err)
+	return email
+}
+
+func authTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool := testPool(t)
+	ctx := context.Background()
+	_, err := pool.Exec(ctx, `DELETE FROM platform_auth_accounts WHERE email LIKE '%@test.example.com'`)
+	require.NoError(t, err)
+	return pool
 }
 
 func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -76,7 +95,7 @@ func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
 }
 
 func TestAuthAdmin_InvalidRole(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -94,7 +113,7 @@ func TestAuthAdmin_InvalidRole(t *testing.T) {
 }
 
 func TestAuthAdmin_MachineRoleRejected(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -112,10 +131,10 @@ func TestAuthAdmin_MachineRoleRejected(t *testing.T) {
 }
 
 func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := id.NewUUIDV7()
+	org := testfixtures.DevCompanyID
 	actor := id.NewUUIDV7()
 	insertAuthAccount(t, pool, actor, org, "solo-admin-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
@@ -148,7 +167,7 @@ func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
 }
 
 func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -188,10 +207,10 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 }
 
 func TestAuthAdmin_PatchRemovesLastOrgAdminForbidden(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
-	org := id.NewUUIDV7()
+	org := testfixtures.DevCompanyID
 	actor := id.NewUUIDV7()
 	insertAuthAccount(t, pool, actor, org, "patch-last-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
@@ -201,14 +220,13 @@ func TestAuthAdmin_PatchRemovesLastOrgAdminForbidden(t *testing.T) {
 }
 
 func TestAuthAdmin_ChangePassword(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
 
 	id := id.NewUUIDV7()
-	email := "self-" + id.String()[:8] + "@test.example.com"
-	insertAuthAccount(t, pool, id, org, email, "oldpassword12", []string{"viewer"}, "active")
+	email := insertAuthAccount(t, pool, id, org, "self-"+id.String()[:8]+"@test.example.com", "oldpassword12", []string{"viewer"}, "active")
 
 	err := svc.ChangePassword(ctx, id, appauth.ChangePasswordRequest{
 		CurrentPassword: "oldpassword12",
@@ -224,7 +242,7 @@ func TestAuthAdmin_ChangePassword(t *testing.T) {
 }
 
 func TestAuthAdmin_ReplaceUserRoles(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -242,7 +260,7 @@ func TestAuthAdmin_ReplaceUserRoles(t *testing.T) {
 }
 
 func TestAuthAdmin_CrossCompanyGetUserDenied(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	orgA := testfixtures.DevCompanyID
@@ -256,14 +274,13 @@ func TestAuthAdmin_CrossCompanyGetUserDenied(t *testing.T) {
 }
 
 func TestAuthAdmin_DisabledUserCannotLogin(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
 
 	id := id.NewUUIDV7()
-	email := "disabled-" + id.String()[:8] + "@test.example.com"
-	insertAuthAccount(t, pool, id, org, email, "password12345", []string{"viewer"}, "disabled")
+	email := insertAuthAccount(t, pool, id, org, "disabled-"+id.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "disabled")
 
 	_, err := svc.Login(ctx, appauth.LoginRequest{
 		Email:    email,
@@ -273,7 +290,7 @@ func TestAuthAdmin_DisabledUserCannotLogin(t *testing.T) {
 }
 
 func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
@@ -282,8 +299,7 @@ func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "actor-revoke-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	target := id.NewUUIDV7()
-	email := "target-revoke-" + target.String()[:8] + "@test.example.com"
-	insertAuthAccount(t, pool, target, org, email, "password12345", []string{"viewer"}, "active")
+	email := insertAuthAccount(t, pool, target, org, "target-revoke-"+target.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
 
 	login, err := svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
 	require.NoError(t, err)
@@ -296,14 +312,13 @@ func TestAuthAdmin_RevokeSessionsInvalidatesRefreshToken(t *testing.T) {
 }
 
 func TestAuthAdmin_PasswordResetTokenOneTime(t *testing.T) {
-	pool := testPool(t)
+	pool := authTestPool(t)
 	svc := testAuthServiceWithPool(t, pool)
 	ctx := context.Background()
 	org := testfixtures.DevCompanyID
 
 	id := id.NewUUIDV7()
-	email := "reset-" + id.String()[:8] + "@test.example.com"
-	insertAuthAccount(t, pool, id, org, email, "password12345", []string{"viewer"}, "active")
+	email := insertAuthAccount(t, pool, id, org, "reset-"+id.String()[:8]+"@test.example.com", "password12345", []string{"viewer"}, "active")
 
 	issued, err := svc.RequestPasswordReset(ctx, appauth.PasswordResetRequest{Email: email})
 	require.NoError(t, err)

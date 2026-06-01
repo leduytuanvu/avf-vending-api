@@ -84,7 +84,7 @@ SET
     redemption_limit = $9,
     promotion_channel_kind = $10,
     updated_at = now()
-WHERE TRUE
+WHERE p.id = $11
 RETURNING *;
 
 -- name: PromotionAdminSetLifecycle :one
@@ -92,7 +92,7 @@ UPDATE promotions p
 SET
     lifecycle_status = $1,
     updated_at = now()
-WHERE TRUE
+WHERE p.id = $2
 RETURNING *;
 
 -- name: PromotionAdminListRulesForPromotion :many
@@ -154,7 +154,7 @@ SELECT
     tag_id,
     created_at
 FROM promotion_targets
-WHERE TRUE
+WHERE promotion_id = $1
 ORDER BY created_at ASC, id ASC;
 
 -- name: PromotionAdminGetPromotionTarget :one
@@ -169,7 +169,8 @@ SELECT
     tag_id,
     created_at
 FROM promotion_targets
-WHERE TRUE;
+WHERE id = $1
+  AND promotion_id = $2;
 
 -- name: PromotionAdminInsertPromotionTarget :one
 INSERT INTO promotion_targets (
@@ -193,7 +194,8 @@ RETURNING *;
 
 -- name: PromotionAdminDeletePromotionTarget :execrows
 DELETE FROM promotion_targets pt
-WHERE TRUE;
+WHERE pt.id = $1
+  AND pt.promotion_id = $2;
 
 -- name: PromotionAdminListPromotionsForPreview :many
 SELECT
@@ -248,9 +250,9 @@ ORDER BY promotion_id, created_at ASC;
 -- name: PromotionAdminListProductTagIDs :many
 SELECT tag_id
 FROM product_tags
-WHERE TRUE;
+WHERE product_id = $1;
 
 -- name: PromotionAdminGetProductCategory :one
 SELECT category_id
 FROM products
-WHERE TRUE;
+WHERE id = $1;

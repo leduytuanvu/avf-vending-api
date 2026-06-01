@@ -42,7 +42,7 @@ VALUES ($1, $2, 'cash', 'captured', 1000, 'USD', $3, $4, $4, 'matched', 'settled
 	require.NoError(t, err)
 
 	svc := appreporting.NewService(db.New(pool))
-	q := listscope.ReportingQuery{From: from, To: to, GroupBy: "none", Timezone: "UTC"}
+	q := listscope.ReportingQuery{From: from, To: to, GroupBy: "none", Timezone: "UTC", MachineIDFilter: machineID}
 	sales, err := svc.SalesSummary(ctx, q)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), sales.Summary.OrderCount)
@@ -103,7 +103,7 @@ VALUES ($1, $2, $3, $4, 'ambient', 'M1', 'active')`, machineID, siteID, "SN-"+ma
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO products (id, sku, name)
-VALUES ($1, 'SKU-A', 'Product A'), ($2, 'SKU-B', 'Product B')`, productID, otherProductID)
+VALUES ($1, $2, 'Product A'), ($3, $4, 'Product B')`, productID, "SKU-A-"+productID.String()[:8], otherProductID, "SKU-B-"+otherProductID.String()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
 INSERT INTO technicians (id, display_name, email)

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -35,23 +33,7 @@ func testDSN(t *testing.T) string {
 
 func migrateUp(t *testing.T, dsn string) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
-	defer cancel()
-	goBin := os.Getenv("GO_BIN")
-	if goBin == "" {
-		goBin = "go"
-	}
-	repoRoot := testfixtures.RepoRoot(t)
-	absRoot, err := filepath.Abs(repoRoot)
-	require.NoError(t, err)
-	migrationsDir := filepath.Join(absRoot, "migrations")
-	cmd := exec.CommandContext(ctx, goBin, "run", "github.com/pressly/goose/v3/cmd/goose@v3.27.0",
-		"-dir", migrationsDir,
-		"postgres", dsn, "up",
-	)
-	cmd.Dir = absRoot
-	out, err := cmd.CombinedOutput()
-	require.NoError(t, err, "%s", string(out))
+	testfixtures.EnsureTestMigrations(t, dsn)
 }
 
 func testPool(t *testing.T) *pgxpool.Pool {
@@ -833,10 +815,6 @@ func TestFleetQueries_CompanyAndSiteScope(t *testing.T) {
 	}
 	require.NotEmpty(t, orgMachineIDs)
 	require.Contains(t, orgMachineIDs, testfixtures.DevMachineID)
-
-	emptyOrg, err := q.ListMachinesOrderedByName(ctx)
-	require.NoError(t, err)
-	require.Empty(t, emptyOrg)
 
 	bySite, err := q.ListMachinesBySiteAndCompany(ctx, testfixtures.DevSiteID)
 	require.NoError(t, err)

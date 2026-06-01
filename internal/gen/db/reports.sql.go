@@ -1804,9 +1804,8 @@ SELECT
 FROM
     inventory_events ie
     INNER JOIN machines m ON m.id = ie.machine_id
-        AND pr.id = ie.product_id
+    LEFT JOIN products pr ON pr.id = ie.product_id
     LEFT JOIN technicians t ON t.id = ie.technician_id
-        AND TRUE
 WHERE
     ie.occurred_at >= $1::timestamptz
     AND ie.occurred_at < $2::timestamptz

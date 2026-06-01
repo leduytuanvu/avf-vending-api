@@ -29,11 +29,17 @@ func (q *Queries) PromotionAdminCountPromotions(ctx context.Context, dollar_1 bo
 
 const PromotionAdminDeletePromotionTarget = `-- name: PromotionAdminDeletePromotionTarget :execrows
 DELETE FROM promotion_targets pt
-WHERE TRUE
+WHERE pt.id = $1
+  AND pt.promotion_id = $2
 `
 
-func (q *Queries) PromotionAdminDeletePromotionTarget(ctx context.Context) (int64, error) {
-	result, err := q.db.Exec(ctx, PromotionAdminDeletePromotionTarget)
+type PromotionAdminDeletePromotionTargetParams struct {
+	ID          uuid.UUID
+	PromotionID uuid.UUID
+}
+
+func (q *Queries) PromotionAdminDeletePromotionTarget(ctx context.Context, arg PromotionAdminDeletePromotionTargetParams) (int64, error) {
+	result, err := q.db.Exec(ctx, PromotionAdminDeletePromotionTarget, arg.ID, arg.PromotionID)
 	if err != nil {
 		return 0, err
 	}
@@ -52,11 +58,11 @@ func (q *Queries) PromotionAdminDeleteRulesForPromotion(ctx context.Context, pro
 const PromotionAdminGetProductCategory = `-- name: PromotionAdminGetProductCategory :one
 SELECT category_id
 FROM products
-WHERE TRUE
+WHERE id = $1
 `
 
-func (q *Queries) PromotionAdminGetProductCategory(ctx context.Context) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, PromotionAdminGetProductCategory)
+func (q *Queries) PromotionAdminGetProductCategory(ctx context.Context, id uuid.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, PromotionAdminGetProductCategory, id)
 	var category_id pgtype.UUID
 	err := row.Scan(&category_id)
 	return category_id, err
@@ -115,11 +121,17 @@ SELECT
     tag_id,
     created_at
 FROM promotion_targets
-WHERE TRUE
+WHERE id = $1
+  AND promotion_id = $2
 `
 
-func (q *Queries) PromotionAdminGetPromotionTarget(ctx context.Context) (PromotionTarget, error) {
-	row := q.db.QueryRow(ctx, PromotionAdminGetPromotionTarget)
+type PromotionAdminGetPromotionTargetParams struct {
+	ID          uuid.UUID
+	PromotionID uuid.UUID
+}
+
+func (q *Queries) PromotionAdminGetPromotionTarget(ctx context.Context, arg PromotionAdminGetPromotionTargetParams) (PromotionTarget, error) {
+	row := q.db.QueryRow(ctx, PromotionAdminGetPromotionTarget, arg.ID, arg.PromotionID)
 	var i PromotionTarget
 	err := row.Scan(
 		&i.ID,
@@ -308,11 +320,11 @@ func (q *Queries) PromotionAdminInsertPromotionTarget(ctx context.Context, arg P
 const PromotionAdminListProductTagIDs = `-- name: PromotionAdminListProductTagIDs :many
 SELECT tag_id
 FROM product_tags
-WHERE TRUE
+WHERE product_id = $1
 `
 
-func (q *Queries) PromotionAdminListProductTagIDs(ctx context.Context) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, PromotionAdminListProductTagIDs)
+func (q *Queries) PromotionAdminListProductTagIDs(ctx context.Context, productID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, PromotionAdminListProductTagIDs, productID)
 	if err != nil {
 		return nil, err
 	}
@@ -589,12 +601,12 @@ SELECT
     tag_id,
     created_at
 FROM promotion_targets
-WHERE TRUE
+WHERE promotion_id = $1
 ORDER BY created_at ASC, id ASC
 `
 
-func (q *Queries) PromotionAdminListTargetsForPromotion(ctx context.Context) ([]PromotionTarget, error) {
-	rows, err := q.db.Query(ctx, PromotionAdminListTargetsForPromotion)
+func (q *Queries) PromotionAdminListTargetsForPromotion(ctx context.Context, promotionID uuid.UUID) ([]PromotionTarget, error) {
+	rows, err := q.db.Query(ctx, PromotionAdminListTargetsForPromotion, promotionID)
 	if err != nil {
 		return nil, err
 	}
@@ -628,12 +640,17 @@ UPDATE promotions p
 SET
     lifecycle_status = $1,
     updated_at = now()
-WHERE TRUE
+WHERE p.id = $2
 RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, promotion_channel_kind, created_at, updated_at
 `
 
-func (q *Queries) PromotionAdminSetLifecycle(ctx context.Context, lifecycleStatus string) (Promotion, error) {
-	row := q.db.QueryRow(ctx, PromotionAdminSetLifecycle, lifecycleStatus)
+type PromotionAdminSetLifecycleParams struct {
+	LifecycleStatus string
+	ID              uuid.UUID
+}
+
+func (q *Queries) PromotionAdminSetLifecycle(ctx context.Context, arg PromotionAdminSetLifecycleParams) (Promotion, error) {
+	row := q.db.QueryRow(ctx, PromotionAdminSetLifecycle, arg.LifecycleStatus, arg.ID)
 	var i Promotion
 	err := row.Scan(
 		&i.ID,
@@ -667,7 +684,7 @@ SET
     redemption_limit = $9,
     promotion_channel_kind = $10,
     updated_at = now()
-WHERE TRUE
+WHERE p.id = $11
 RETURNING id, name, approval_status, lifecycle_status, priority, stackable, starts_at, ends_at, budget_limit_minor, redemption_limit, promotion_channel_kind, created_at, updated_at
 `
 
@@ -682,6 +699,7 @@ type PromotionAdminUpdatePromotionParams struct {
 	BudgetLimitMinor     pgtype.Int8
 	RedemptionLimit      pgtype.Int4
 	PromotionChannelKind pgtype.Text
+	ID                   uuid.UUID
 }
 
 func (q *Queries) PromotionAdminUpdatePromotion(ctx context.Context, arg PromotionAdminUpdatePromotionParams) (Promotion, error) {
@@ -696,6 +714,7 @@ func (q *Queries) PromotionAdminUpdatePromotion(ctx context.Context, arg Promoti
 		arg.BudgetLimitMinor,
 		arg.RedemptionLimit,
 		arg.PromotionChannelKind,
+		arg.ID,
 	)
 	var i Promotion
 	err := row.Scan(
