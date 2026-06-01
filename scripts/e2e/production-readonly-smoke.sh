@@ -215,6 +215,40 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
     else
       fail_probe "grpc.media_delta" "rpc failed" "${E2E_GRPC_LAST_LAT:-0}"
     fi
+
+    # Check-in before inventory/planogram: active machines become online synchronously.
+    if [[ "${ALLOW_TEST_MACHINE_TELEMETRY_PUSH:-true}" == "true" ]]; then
+      ci_idem="e2e-readonly-checkin-${E2E_RUN_TS}"
+      ci_ts="$(e2e_now_utc)"
+      ci_ctx="$(jq -nc --arg ik "$ci_idem" --arg ce "$ci_idem-ce" --arg ts "$ci_ts" '{idempotencyKey:$ik,clientEventId:$ce,clientCreatedAt:$ts}')"
+      ci_body="$(jq -nc \
+        --argjson ctx "$ci_ctx" \
+        --arg mid "${TEST_MACHINE_ID}" \
+        --arg sn "phase-c-ro-${E2E_RUN_TS}" \
+        --arg pkg "dev.avf.e2e.phasec" \
+        --arg boot "phase-c-boot-${E2E_RUN_TS}" \
+        '{context:$ctx,machineId:$mid,androidId:$sn,packageName:$pkg,versionName:"1.0.0",versionCode:1,manufacturer:"avf",model:"phase-c-smoke",networkState:"connected",bootId:$boot}')"
+      if e2e_grpc_call "avf.machine.v1.MachineTelemetryService/CheckIn" "$ci_body" "grpc-check-in-smoke" machine "$ci_idem"; then
+        pass_probe "grpc.check_in_smoke" "machine check-in accepted" "${E2E_GRPC_LAST_LAT:-0}"
+      else
+        fail_probe "grpc.check_in_smoke" "CheckIn failed" "${E2E_GRPC_LAST_LAT:-0}"
+      fi
+
+      tel_idem="e2e-readonly-telemetry-${E2E_RUN_TS}"
+      tel_ts="$(e2e_now_utc)"
+      tel_ctx="$(jq -nc --arg ik "$tel_idem" --arg ce "$tel_idem-ce" --arg ts "$tel_ts" '{idempotencyKey:$ik,clientEventId:$ce,clientCreatedAt:$ts}')"
+      tel_body="$(jq -nc --argjson ctx "$tel_ctx" --argjson meta "$meta" --arg eid "$tel_idem" --arg ts "$tel_ts" \
+        '{context:$ctx, meta:$meta, events:[{eventId:$eid,eventType:"production_e2e_smoke_heartbeat",occurredAt:$ts}]}')"
+      if e2e_grpc_call "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch" "$tel_body" "grpc-telemetry-smoke" machine "$tel_idem"; then
+        pass_probe "grpc.telemetry_smoke" "test-machine heartbeat accepted" "${E2E_GRPC_LAST_LAT:-0}"
+      else
+        fail_probe "grpc.telemetry_smoke" "PushTelemetryBatch failed" "${E2E_GRPC_LAST_LAT:-0}"
+      fi
+    else
+      skip_probe "grpc.check_in_smoke" "ALLOW_TEST_MACHINE_TELEMETRY_PUSH=false"
+      skip_probe "grpc.telemetry_smoke" "ALLOW_TEST_MACHINE_TELEMETRY_PUSH=false"
+    fi
+
     if e2e_grpc_call "avf.machine.v1.MachineInventoryService/GetInventorySnapshot" "$inv_body" "grpc-inventory" machine ""; then
       pass_probe "grpc.inventory" "ok" "${E2E_GRPC_LAST_LAT:-0}"
     else
@@ -233,22 +267,6 @@ if [[ -n "${GRPC_ADDR:-${GRPC_TARGET:-}}" ]]; then
     pass_probe "safety.no_cash_confirm" "not invoked"
     pass_probe "safety.no_start_vend" "not invoked"
     pass_probe "safety.no_mqtt_command_publish" "not invoked"
-
-    # Test-machine-only telemetry heartbeat (non-commerce write).
-    if [[ "${ALLOW_TEST_MACHINE_TELEMETRY_PUSH:-true}" == "true" ]]; then
-      tel_idem="e2e-readonly-telemetry-${E2E_RUN_TS}"
-      tel_ts="$(e2e_now_utc)"
-      tel_ctx="$(jq -nc --arg ik "$tel_idem" --arg ce "$tel_idem-ce" --arg ts "$tel_ts" '{idempotencyKey:$ik,clientEventId:$ce,clientCreatedAt:$ts}')"
-      tel_body="$(jq -nc --argjson ctx "$tel_ctx" --argjson meta "$meta" --arg eid "$tel_idem" --arg ts "$tel_ts" \
-        '{context:$ctx, meta:$meta, events:[{eventId:$eid,eventType:"production_e2e_smoke_heartbeat",occurredAt:$ts}]}')"
-      if e2e_grpc_call "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch" "$tel_body" "grpc-telemetry-smoke" machine "$tel_idem"; then
-        pass_probe "grpc.telemetry_smoke" "test-machine heartbeat accepted" "${E2E_GRPC_LAST_LAT:-0}"
-      else
-        fail_probe "grpc.telemetry_smoke" "PushTelemetryBatch failed" "${E2E_GRPC_LAST_LAT:-0}"
-      fi
-    else
-      skip_probe "grpc.telemetry_smoke" "ALLOW_TEST_MACHINE_TELEMETRY_PUSH=false"
-    fi
   else
     if [[ "$PRODUCTION_SMOKE_STRICT_CANARY" == "true" ]]; then
       skip_or_fail_strict "grpc.bootstrap" "MACHINE_ACCESS_TOKEN and TEST_MACHINE_ID required"
