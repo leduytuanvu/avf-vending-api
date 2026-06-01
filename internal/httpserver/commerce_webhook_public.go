@@ -94,7 +94,7 @@ func commerceOrderMachinePtr(ord db.Order) *uuid.UUID {
 }
 
 func auditPaymentWebhookRejected(ctx context.Context, rec compliance.EnterpriseRecorder, scopeID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
-	if rec == nil || scopeID == uuid.Nil {
+	if rec == nil {
 		return nil
 	}
 	pid := paymentID.String()
@@ -115,7 +115,7 @@ func auditPaymentWebhookRejected(ctx context.Context, rec compliance.EnterpriseR
 }
 
 func auditPaymentWebhookIdempotencyConflict(ctx context.Context, rec compliance.EnterpriseRecorder, scopeID uuid.UUID, paymentID uuid.UUID, machineID *uuid.UUID, meta map[string]any) error {
-	if rec == nil || scopeID == uuid.Nil {
+	if rec == nil {
 		return nil
 	}
 	pid := paymentID.String()
@@ -136,7 +136,7 @@ func auditPaymentWebhookIdempotencyConflict(ctx context.Context, rec compliance.
 }
 
 func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit compliance.EnterpriseRecorder, scopeID uuid.UUID, ord db.Order, paymentID uuid.UUID, provider string, providerEventID int64, caseType, severity, reason string, meta map[string]any) error {
-	if q == nil || scopeID == uuid.Nil {
+	if q == nil {
 		return errors.New("webhook reconciliation case: persistence unavailable")
 	}
 	md, err := json.Marshal(meta)
