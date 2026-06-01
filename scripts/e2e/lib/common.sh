@@ -115,7 +115,7 @@ e2e_admin_token() {
     -d "$(jq -nc --arg e "${ADMIN_EMAIL}" --arg p "${ADMIN_PASSWORD}" '{email:$e,password:$p}')" \
     "${BASE_URL%/}/v1/auth/login")"
   [[ "$code" == "200" ]] || return 1
-  jq -r '.accessToken // .access_token // empty' "$out"
+  jq -r '.accessToken // .access_token // .tokens.accessToken // empty' "$out"
 }
 
 e2e_grpc_proto_args() {
