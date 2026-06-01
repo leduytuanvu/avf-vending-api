@@ -249,12 +249,14 @@ func (s *machineInventoryServer) submitInventoryMutation(ctx context.Context, wc
 			"line_count":      len(items),
 		})
 		machineIDStr := claims.MachineID.String()
+		machineID := claims.MachineID
 		_ = s.deps.EnterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
 			ActorType:    compliance.ActorMachine,
 			ActorID:      &machineIDStr,
 			Action:       auditAction,
 			ResourceType: "machine",
 			ResourceID:   &machineIDStr,
+			MachineID:    &machineID,
 			Metadata:     meta,
 		})
 	}

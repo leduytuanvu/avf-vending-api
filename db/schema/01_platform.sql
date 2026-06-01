@@ -1754,6 +1754,11 @@ CREATE UNIQUE INDEX ux_machine_offline_client_event_id ON machine_offline_events
 WHERE
     btrim(client_event_id) <> '';
 
+CREATE UNIQUE INDEX ux_machine_offline_events_machine_sequence ON machine_offline_events (
+    machine_id,
+    offline_sequence
+);
+
 CREATE INDEX ix_machine_offline_events_retention_terminal_received_at ON machine_offline_events (received_at ASC)
 WHERE
     processing_status IN (
@@ -1771,6 +1776,11 @@ CREATE TABLE machine_sync_cursors (
     last_sequence bigint NOT NULL DEFAULT 0,
     last_synced_at timestamptz,
     updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX ux_machine_sync_cursors_machine_stream ON machine_sync_cursors (
+    machine_id,
+    stream_name
 );
 
 CREATE TABLE critical_telemetry_event_status (
