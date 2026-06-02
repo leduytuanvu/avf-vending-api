@@ -114,7 +114,7 @@ INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credenti
 VALUES ($1, $2, $3, 'active', now(), 1)`, machineID, siteID, "sn-vend-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO products (id, sku, name) VALUES ($1, 'SKU1', 'Cola')`, productID)
+INSERT INTO products (id, sku, name) VALUES ($1, $2, 'Cola')`, productID, "SKU1-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	for i := 0; i < 3; i++ {
@@ -162,14 +162,14 @@ INSERT INTO machines (id, site_id, serial_number, status, last_seen_at, credenti
 VALUES ($1, $2, $3, 'online', now(), 1)`, machineID, siteID, "sn-rest-p24-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO products (id, sku, name) VALUES ($1, 'SKU2', 'Water')`, productID)
+INSERT INTO products (id, sku, name) VALUES ($1, $2, 'Water')`, productID, "SKU2-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 
 	fix := func(sql string, args ...any) {
 		_, e := pool.Exec(ctx, sql, args...)
 		require.NoError(t, e)
 	}
-	fix(`INSERT INTO planograms (id, name, revision, status) VALUES ($1, 'P1', 1, 'published')`, planogramID)
+	fix(`INSERT INTO planograms (id, name, revision, status) VALUES ($1, $2, 1, 'published')`, planogramID, "P24-"+uuid.NewString()[:8])
 	fix(`INSERT INTO slots (planogram_id, slot_index, product_id, max_quantity) VALUES ($1, 0, $2, 20)`, planogramID, productID)
 	fix(`INSERT INTO machine_slot_state (machine_id, planogram_id, slot_index, current_quantity, price_minor, planogram_revision_applied)
 VALUES ($1, $2, 0, 5, 100, 1)`, machineID, planogramID)

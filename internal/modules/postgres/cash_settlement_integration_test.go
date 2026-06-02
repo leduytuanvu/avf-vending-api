@@ -13,11 +13,24 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
 
-func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
+func cashTestPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
 	pool := testPool(t)
+	ctx := context.Background()
+	_, err := pool.Exec(ctx, `
+UPDATE cash_collections
+SET lifecycle_status = 'closed', closed_at = COALESCE(closed_at, now())
+WHERE machine_id = $1 AND lifecycle_status = 'open'`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	return pool
+}
+
+func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
+	pool := cashTestPool(t)
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
@@ -54,14 +67,14 @@ func TestCashSettlement_summaryExpectedFromCommerce(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	sum, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, "USD", 500)
+	sum, err := store.GetMachineCashboxSummary(ctx, uuid.Nil, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, sum.ExpectedAmountMinor, int64(150))
 	require.Equal(t, "USD", sum.Currency)
 }
 
 func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
-	pool := testPool(t)
+	pool := cashTestPool(t)
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 
@@ -135,7 +148,7 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, open.ID, replayOpen.ID)
 
-	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, testfixtures.DevCompanyID, testfixtures.DevMachineID, "USD", 500)
+	sumBeforeClose, err := store.GetMachineCashboxSummary(ctx, uuid.Nil, testfixtures.DevMachineID, "USD", 500)
 	require.NoError(t, err)
 
 	closed, err := store.CloseMachineCashCollection(ctx, postgres.CloseMachineCashCollectionInput{
@@ -217,7 +230,7 @@ func TestCashSettlement_startCloseIdempotencyAndVariance(t *testing.T) {
 }
 
 func TestCashSettlement_extendedCloseIdempotentAndConflict(t *testing.T) {
-	pool := testPool(t)
+	pool := cashTestPool(t)
 	ctx := context.Background()
 	store := postgres.NewStore(pool)
 

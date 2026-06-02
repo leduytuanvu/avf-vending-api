@@ -85,9 +85,11 @@ func TestPromotion_adminCRUD_preview_and_companyIsolation(t *testing.T) {
 	_, err = svc.ActivatePromotion(ctx, org, fixAmt.ID)
 	require.NoError(t, err)
 
+	prodWater := testfixtures.DevProductWater
 	tgt, err := svc.AssignPromotionTarget(ctx, appcatalogadmin.AssignPromotionTargetInput{
 		PromotionID: fixAmt.ID,
-		TargetType:  "global",
+		TargetType:  "product",
+		ProductID:   &prodWater,
 	})
 	require.NoError(t, err)
 	require.NoError(t, svc.DeletePromotionTarget(ctx, org, fixAmt.ID, tgt.ID))

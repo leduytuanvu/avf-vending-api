@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/listscope"
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/id"
@@ -493,6 +494,9 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 func (s *Service) AdminGetUser(ctx context.Context, companyID uuid.UUID, accountID uuid.UUID) (*AdminAccountView, error) {
 	if s == nil {
 		return nil, errors.New("auth service: nil")
+	}
+	if companyID != org.DefaultCompanyID {
+		return nil, ErrAccountNotFound
 	}
 	row, err := s.q.AuthAdminGetAccountByOrgAndID(ctx, accountID)
 	if err != nil {

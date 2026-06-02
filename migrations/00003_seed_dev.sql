@@ -73,7 +73,7 @@ VALUES (
     'bbbbbbbb-bbbb-bbbb-bbbb-000000000001',
     'Default USD',
     'USD',
-    now(),
+    '2020-01-01T00:00:00Z'::timestamptz,
     true,
     true,
     'global'
@@ -83,6 +83,100 @@ INSERT INTO price_book_items (price_book_id, product_id, unit_price_minor)
 VALUES
     ('bbbbbbbb-bbbb-bbbb-bbbb-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-000000000001', 150),
     ('bbbbbbbb-bbbb-bbbb-bbbb-000000000001', 'aaaaaaaa-aaaa-aaaa-aaaa-000000000002', 120);
+
+-- Ready primary media for dev catalog products (sell-readiness / slot publish gates).
+INSERT INTO media_assets (
+    id, kind, original_object_key, thumb_object_key, display_object_key,
+    source_type, original_url, mime_type, size_bytes, status
+)
+VALUES
+    (
+        'dddddddd-dddd-dddd-dddd-000000000101',
+        'product_image',
+        'dev/media/cola/original.png',
+        'dev/media/cola/thumb.png',
+        'dev/media/cola/display.png',
+        'external',
+        'https://example.test/dev/cola.png',
+        'image/png',
+        1024,
+        'ready'
+    ),
+    (
+        'dddddddd-dddd-dddd-dddd-000000000102',
+        'product_image',
+        'dev/media/water/original.png',
+        'dev/media/water/thumb.png',
+        'dev/media/water/display.png',
+        'external',
+        'https://example.test/dev/water.png',
+        'image/png',
+        1024,
+        'ready'
+    );
+
+INSERT INTO product_images (
+    id, product_id, storage_key, cdn_url, thumb_cdn_url, is_primary, media_asset_id, status
+)
+VALUES
+    (
+        'dddddddd-dddd-dddd-dddd-000000000201',
+        'aaaaaaaa-aaaa-aaaa-aaaa-000000000001',
+        'dev/media/cola/original.png',
+        'https://example.test/dev/cola.png',
+        'https://example.test/dev/cola-thumb.png',
+        true,
+        'dddddddd-dddd-dddd-dddd-000000000101',
+        'active'
+    ),
+    (
+        'dddddddd-dddd-dddd-dddd-000000000202',
+        'aaaaaaaa-aaaa-aaaa-aaaa-000000000002',
+        'dev/media/water/original.png',
+        'https://example.test/dev/water.png',
+        'https://example.test/dev/water-thumb.png',
+        true,
+        'dddddddd-dddd-dddd-dddd-000000000102',
+        'active'
+    );
+
+INSERT INTO product_media (
+    id, product_id, media_type, source_type, original_url, display_url, thumb_url,
+    mime_type, size_bytes, status
+)
+VALUES
+    (
+        'dddddddd-dddd-dddd-dddd-000000000201',
+        'aaaaaaaa-aaaa-aaaa-aaaa-000000000001',
+        'image',
+        'external',
+        'https://example.test/dev/cola.png',
+        'https://example.test/dev/cola.png',
+        'https://example.test/dev/cola-thumb.png',
+        'image/png',
+        1024,
+        'active'
+    ),
+    (
+        'dddddddd-dddd-dddd-dddd-000000000202',
+        'aaaaaaaa-aaaa-aaaa-aaaa-000000000002',
+        'image',
+        'external',
+        'https://example.test/dev/water.png',
+        'https://example.test/dev/water.png',
+        'https://example.test/dev/water-thumb.png',
+        'image/png',
+        1024,
+        'active'
+    );
+
+UPDATE products
+SET primary_image_id = 'dddddddd-dddd-dddd-dddd-000000000201'
+WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-000000000001';
+
+UPDATE products
+SET primary_image_id = 'dddddddd-dddd-dddd-dddd-000000000202'
+WHERE id = 'aaaaaaaa-aaaa-aaaa-aaaa-000000000002';
 
 INSERT INTO planograms (id, name, revision, status, meta)
 VALUES (
@@ -145,6 +239,22 @@ DELETE FROM machine_shadow WHERE machine_id = '55555555-5555-5555-5555-555555555
 DELETE FROM machine_slot_state WHERE machine_id = '55555555-5555-5555-5555-555555555555';
 DELETE FROM slots WHERE planogram_id = 'cccccccc-cccc-cccc-cccc-000000000001';
 DELETE FROM planograms WHERE id = 'cccccccc-cccc-cccc-cccc-000000000001';
+UPDATE products SET primary_image_id = NULL WHERE id IN (
+    'aaaaaaaa-aaaa-aaaa-aaaa-000000000001',
+    'aaaaaaaa-aaaa-aaaa-aaaa-000000000002'
+);
+DELETE FROM product_media WHERE id IN (
+    'dddddddd-dddd-dddd-dddd-000000000201',
+    'dddddddd-dddd-dddd-dddd-000000000202'
+);
+DELETE FROM product_images WHERE id IN (
+    'dddddddd-dddd-dddd-dddd-000000000201',
+    'dddddddd-dddd-dddd-dddd-000000000202'
+);
+DELETE FROM media_assets WHERE id IN (
+    'dddddddd-dddd-dddd-dddd-000000000101',
+    'dddddddd-dddd-dddd-dddd-000000000102'
+);
 DELETE FROM price_book_items WHERE price_book_id = 'bbbbbbbb-bbbb-bbbb-bbbb-000000000001';
 DELETE FROM price_books WHERE id = 'bbbbbbbb-bbbb-bbbb-bbbb-000000000001';
 DELETE FROM products WHERE sku IN ('SKU-COLA', 'SKU-WATER');

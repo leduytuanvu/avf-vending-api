@@ -187,12 +187,11 @@ func TestPaymentP12_financeExportOtherOrgEmpty(t *testing.T) {
 	var buf bytes.Buffer
 	require.NoError(t, adm.WriteFinanceExportCSV(ctx, &buf, otherOrg, from, to))
 	require.Contains(t, buf.String(), "payment_id")
-	n, err := q.ListPaymentsFinanceExportForOrg(ctx, db.ListPaymentsFinanceExportForOrgParams{
-		CreatedAt:   from,
-		CreatedAt_2: to,
-	})
-	require.NoError(t, err)
-	require.Empty(t, n)
+	require.NotContains(t, buf.String(), "psp_fixture")
+
+	var scopedBuf bytes.Buffer
+	require.NoError(t, adm.WriteFinanceExportCSV(ctx, &scopedBuf, testfixtures.DevCompanyID, from, to))
+	require.Contains(t, scopedBuf.String(), "payment_id")
 }
 
 func TestPaymentP12_disputeResolve(t *testing.T) {

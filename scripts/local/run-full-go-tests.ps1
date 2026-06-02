@@ -16,7 +16,7 @@ param(
 $ErrorActionPreference = 'Continue'
 Set-StrictMode -Version 3.0
 
-$Lib = Join-Path $PSScriptRoot '..' 'lib' '_pslib.ps1'
+$Lib = Join-Path (Join-Path (Join-Path $PSScriptRoot '..') 'lib') '_pslib.ps1'
 . $Lib
 
 $RepoRoot = Get-AvfRepoRoot -StartPath $PSScriptRoot
@@ -123,11 +123,11 @@ $gooseStatusArgs = @(
 go clean -testcache
 
 $ShortJsonl = Join-Path $RunDir 'go-test-short.jsonl'
-go test -short ./... -count=1 -json 2>&1 | Tee-Object -FilePath $ShortJsonl
+go test -short ./... -count=1 -p 1 -json 2>&1 | Tee-Object -FilePath $ShortJsonl
 $exitShort = $LASTEXITCODE
 
 $FullJsonl = Join-Path $RunDir 'go-test-full.jsonl'
-go test ./... -count=1 -json 2>&1 | Tee-Object -FilePath $FullJsonl
+go test ./... -count=1 -p 1 -json 2>&1 | Tee-Object -FilePath $FullJsonl
 $exitFull = $LASTEXITCODE
 
 $csv = Join-Path $RunDir 'go-test-packages.csv'

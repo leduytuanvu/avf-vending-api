@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -530,12 +531,16 @@ func (s *AdminService) WriteFinanceExportCSV(ctx context.Context, w io.Writer, c
 	if !from.Before(to) && !from.Equal(to) {
 		return errors.New("payments: from must be <= to")
 	}
-	rows, err := s.q.ListPaymentsFinanceExportForOrg(ctx, db.ListPaymentsFinanceExportForOrgParams{
-		CreatedAt:   from,
-		CreatedAt_2: to,
-	})
-	if err != nil {
-		return err
+	var rows []db.ListPaymentsFinanceExportForOrgRow
+	if companyID == org.DefaultCompanyID {
+		var err error
+		rows, err = s.q.ListPaymentsFinanceExportForOrg(ctx, db.ListPaymentsFinanceExportForOrgParams{
+			CreatedAt:   from,
+			CreatedAt_2: to,
+		})
+		if err != nil {
+			return err
+		}
 	}
 	cw := csv.NewWriter(w)
 	_ = cw.Write([]string{

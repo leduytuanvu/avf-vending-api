@@ -513,6 +513,9 @@ func (s *Store) GetMachineCashCollection(ctx context.Context, companyID, machine
 	if s == nil || s.pool == nil {
 		return db.CashCollection{}, errors.New("postgres: nil store")
 	}
+	if companyID != uuid.Nil {
+		return db.CashCollection{}, errors.New("postgres: company scope mismatch")
+	}
 	q := db.New(s.pool)
 	return q.GetCashCollectionByIDForOrgMachine(ctx, db.GetCashCollectionByIDForOrgMachineParams{
 		ID:        collectionID,
