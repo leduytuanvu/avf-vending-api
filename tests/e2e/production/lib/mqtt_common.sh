@@ -2,6 +2,27 @@
 # shellcheck shell=bash
 # MQTT topic resolution and mosquitto client helpers for production E2E.
 
+prod_e2e_mqtt_ensure_topic_layout() {
+  if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
+    prod_e2e_state_reload_key mqttTopicLayout || true
+  fi
+  [[ -n "${mqttTopicLayout:-}" && "${mqttTopicLayout}" != "null" ]] && return 0
+  local bootstrap="${PROD_E2E_RAW_DIR}/grpc-get-bootstrap.response.json"
+  [[ -f "$bootstrap" ]] || bootstrap="${PROD_E2E_RAW_DIR}/rest-machine-bootstrap.response.json"
+  [[ -f "$bootstrap" ]] || return 0
+  if command -v jq >/dev/null 2>&1; then
+    mqttTopicLayout="$(jq -r '.mqtt.topicLayout // .mqtt.topic_layout // empty' "$bootstrap" 2>/dev/null)"
+    mqttTopicLayout="${mqttTopicLayout//$'\r'/}"
+    [[ -n "$mqttTopicLayout" ]] || return 0
+    if declare -F prod_e2e_state_set >/dev/null 2>&1; then
+      prod_e2e_state_set mqttTopicLayout "$mqttTopicLayout"
+    else
+      export mqttTopicLayout
+    fi
+  fi
+  return 0
+}
+
 prod_e2e_mqtt_ensure_topic_prefix() {
   if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
     prod_e2e_state_reload_key mqttTopicPrefix || true
@@ -26,8 +47,10 @@ prod_e2e_mqtt_resolve_topics() {
   if declare -F prod_e2e_state_reload_key >/dev/null 2>&1; then
     prod_e2e_state_reload_key machineId || true
     prod_e2e_state_reload_key mqttTopicPrefix || true
+    prod_e2e_state_reload_key mqttTopicLayout || true
   fi
   prod_e2e_mqtt_ensure_topic_prefix
+  prod_e2e_mqtt_ensure_topic_layout
   local mid="${machineId:-${MACHINE_ID:-}}"
   mid="${mid//$'\r'/}"
   [[ -n "$mid" && "$mid" != "null" ]] || {
@@ -48,7 +71,11 @@ prod_e2e_mqtt_resolve_topics() {
   if [[ -n "${mqttTopicPrefix:-}" && "${mqttTopicPrefix}" != "null" ]]; then
     prefix="$(echo "$mqttTopicPrefix" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | sed 's:/*$::')"
     prefix="${prefix//$'\r'/}"
-    layout="legacy"
+    if [[ -n "${mqttTopicLayout:-}" && "${mqttTopicLayout}" != "null" ]]; then
+      layout="$(echo "$mqttTopicLayout" | tr '[:upper:]' '[:lower:]')"
+    else
+      layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
+    fi
   else
     layout="$(echo "${MQTT_TOPIC_LAYOUT:-enterprise}" | tr '[:upper:]' '[:lower:]')"
     prefix="${MQTT_TOPIC_PREFIX:-avf/prod}"

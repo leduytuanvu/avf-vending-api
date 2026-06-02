@@ -19,12 +19,12 @@ e2e_python() {
     echo "${E2E_PYTHON}"
     return 0
   fi
-  if command -v python3 >/dev/null 2>&1; then
-    echo python3
+  if command -v py >/dev/null 2>&1 && py -3 -c "import sys" >/dev/null 2>&1; then
+    echo "py -3"
     return 0
   fi
-  if command -v py >/dev/null 2>&1; then
-    echo "py -3"
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import sys" >/dev/null 2>&1; then
+    echo python3
     return 0
   fi
   echo python3
