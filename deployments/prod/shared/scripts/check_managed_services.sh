@@ -11,7 +11,14 @@ STRICT_MODE="$(normalize_bool "${CHECK_MANAGED_SERVICES_STRICT:-1}")"
 
 require_cmd bash
 require_cmd curl
-require_cmd python3
+if python3 -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+	PYTHON3=(python3)
+elif command -v py >/dev/null 2>&1 && py -3 -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
+	PYTHON3=(py -3)
+else
+	echo "working python3 or Windows py -3 launcher required" >&2
+	exit 1
+fi
 load_env_file "${ENV_FILE_PATH}"
 
 failures=0
@@ -52,7 +59,7 @@ fail_or_skip() {
 python_value() {
 	local mode="$1"
 	local value="$2"
-	python3 - "$mode" "$value" <<'PY'
+	"${PYTHON3[@]}" - "$mode" "$value" <<'PY'
 import sys
 from urllib.parse import urlsplit
 
@@ -101,7 +108,7 @@ PY
 tcp_check() {
 	local host="$1"
 	local port="$2"
-	python3 - "$host" "$port" <<'PY'
+	"${PYTHON3[@]}" - "$host" "$port" <<'PY'
 import socket
 import sys
 
