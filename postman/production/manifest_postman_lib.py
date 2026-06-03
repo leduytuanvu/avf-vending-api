@@ -208,6 +208,9 @@ def collect_manifest_rest_flows(
         if handler == "media_presigned_upload":
             if postman_only and (flow.get("phase") or "") in exclude:
                 continue
+            skip_env = flow.get("skip_if_env")
+            if skip_env and os.environ.get(str(skip_env)):
+                continue
             for sub in (flow.get("init_flow"), flow.get("complete_flow")):
                 if sub and sub.get("method"):
                     entry = dict(sub)
@@ -216,6 +219,9 @@ def collect_manifest_rest_flows(
             continue
         if handler == "media_cloudinary_upload":
             if postman_only and (flow.get("phase") or "") in exclude:
+                continue
+            skip_env = flow.get("skip_if_env")
+            if skip_env and os.environ.get(str(skip_env)):
                 continue
             sub = flow.get("upload_flow")
             if sub and sub.get("method"):

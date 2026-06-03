@@ -1,6 +1,6 @@
 # Production REST route coverage
 
-- **Generated:** `2026-05-25T07:22:46Z`
+- **Generated:** `2026-06-01T21:19:09Z`
 - **Swagger source:** `.tmp-swagger-prod.json`
 - **Total routes:** 330
 - **Coverage buckets:** `{'readonly_smoke': 70, 'documented_skip': 75, 'auth_negative': 146, 'success': 38, 'permission_negative': 1}`

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated_at": "2026-05-25T07:22:46Z",
+  "generated_at": "2026-06-01T21:19:09Z",
   "swagger_source": ".tmp-swagger-prod.json",
   "total_routes": 330,
   "routes": {
@@ -3836,9 +3836,9 @@
         "REST-MEDIA-001"
       ],
       "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Manifest skip_if_env PROD_E2E_USE_MEDIA_PIPE is set",
       "openapi_summary": "Start enterprise media upload (camelCase contract)",
       "openapi_tags": [
         "Catalog Admin"
@@ -3854,9 +3854,9 @@
         "REST-MEDIA-002"
       ],
       "skip_reason": null,
-      "postman": true,
-      "non_postman": false,
-      "non_postman_reason": null,
+      "postman": false,
+      "non_postman": true,
+      "non_postman_reason": "Manifest skip_if_env PROD_E2E_USE_MEDIA_PIPE is set",
       "openapi_summary": "Finalize media upload (uploads/{mediaId}/complete alias)",
       "openapi_tags": [
         "Catalog Admin"

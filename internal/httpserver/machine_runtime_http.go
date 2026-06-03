@@ -96,6 +96,10 @@ func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "insert_failed", err.Error())
 			return
 		}
+		if err := app.TelemetryStore.UpsertHeartbeatSnapshot(r.Context(), machineID, occurredAt.UTC()); err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "snapshot_update_failed", err.Error())
+			return
+		}
 		_ = q.UpdateMachineCurrentSnapshotLastCheckIn(r.Context(), db.UpdateMachineCurrentSnapshotLastCheckInParams{
 			MachineID:     machineID,
 			LastCheckInAt: pgtype.Timestamptz{Time: occurredAt.UTC(), Valid: true},

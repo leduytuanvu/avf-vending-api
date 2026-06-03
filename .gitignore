@@ -56,6 +56,15 @@ Thumbs.db
 .e2e-runs/
 .production-latency-runs/
 .production-smoke-runs/
+market-readiness-runs/
+reports/e2e/
+reports/test/
+*.apk
+*.aab
+logcat*.txt
+*logcat*
+production*.log
+unredacted*.log
 
 # Local Go integration / PowerShell workflow output (.test-runs/<timestamp>/)
 .test-runs/

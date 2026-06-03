@@ -10,6 +10,7 @@ ARTIFACT_ROOT="${2:-}"
 if [[ -n "$ARTIFACT_ROOT" ]]; then
   export E2E_RUN_DIR="${ARTIFACT_ROOT}/${ARTIFACT_SUB}"
   mkdir -p "${E2E_RUN_DIR}/raw"
+  export E2E_RUN_TS="${E2E_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
 fi
 
 if [[ -z "${E2E_TEST_MACHINE_ID:-}" && -z "${TEST_MACHINE_ID:-}" ]]; then
