@@ -29,6 +29,9 @@ func NewOrgRepository(pool *pgxpool.Pool) *OrgRepository {
 }
 
 func (r *OrgRepository) GetByID(ctx context.Context, id uuid.UUID) (org.Company, error) {
+	if id == org.DefaultCompanyID {
+		return org.Company{ID: id, Name: "Local Dev Org", Status: "active"}, nil
+	}
 	return org.Company{ID: id, Status: "active"}, nil
 }
 

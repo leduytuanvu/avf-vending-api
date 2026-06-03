@@ -19,7 +19,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$Lib = Join-Path $PSScriptRoot '..' 'lib' '_pslib.ps1'
+$Lib = Join-Path (Join-Path (Join-Path $PSScriptRoot '..') 'lib') '_pslib.ps1'
 . $Lib
 
 $BashExe = 'C:\Program Files\Git\bin\bash.exe'

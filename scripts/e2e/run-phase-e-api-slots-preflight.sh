@@ -10,9 +10,14 @@ ARTIFACT_ROOT="${2:-}"
 if [[ -n "$ARTIFACT_ROOT" ]]; then
   export E2E_RUN_DIR="${ARTIFACT_ROOT}/${ARTIFACT_SUB}"
   mkdir -p "${E2E_RUN_DIR}/raw"
+  export E2E_RUN_TS="${E2E_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
 fi
 
-eval "$(bash scripts/e2e/mint-production-machine-token.sh "${E2E_TEST_MACHINE_ID:-019e702c-11c6-7ab0-89c7-5eb32f0b12cb}")"
+if [[ -z "${E2E_TEST_MACHINE_ID:-}" && -z "${TEST_MACHINE_ID:-}" ]]; then
+  echo "FAIL: E2E_TEST_MACHINE_ID (or TEST_MACHINE_ID) must be set in env — no hardcoded machine UUID default." >&2
+  exit 2
+fi
+eval "$(bash scripts/e2e/mint-production-machine-token.sh "${E2E_TEST_MACHINE_ID:-${TEST_MACHINE_ID}}")"
 
 export E2E_ALLOW_WRITES=false
 export E2E_ALLOW_REAL_DISPENSE=false

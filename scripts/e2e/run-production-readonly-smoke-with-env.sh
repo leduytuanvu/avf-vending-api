@@ -10,6 +10,7 @@ source "${E2E_SCRIPT_DIR}/lib/e2e_common.sh"
 source "${E2E_SCRIPT_DIR}/lib/e2e_production_destructive_aliases.sh"
 
 export E2E_ALLOW_WRITES=false
+unset E2E_RUN_TS E2E_RUN_DIR E2E_OUTPUT_DIR || true
 CANARY_ENV="${ROOT}/tests/e2e/production/.env.production.e2e.local"
 load_env "${E2E_ENV_FILE:-${ROOT}/tests/e2e/.env.production.destructive.local}"
 if [[ -f "$CANARY_ENV" ]]; then

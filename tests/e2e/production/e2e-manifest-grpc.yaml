@@ -35,6 +35,9 @@ flows:
     auth: machine
     request_template: {}
     expected_code: OK
+    capture:
+      mqttTopicPrefix: mqtt.topicPrefix
+      mqttTopicLayout: mqtt.topicLayout
     cleanup: none
 
   - id: GRPC-BOOT-002

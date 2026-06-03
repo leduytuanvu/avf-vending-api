@@ -754,11 +754,12 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	if corr != nil {
 		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
 	}
-	if _, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex); err != nil {
+	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if err := svc.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, orderID, slotIndex); err != nil {
-		return nil, mapCommerceGRPCErr(err)
+	if st.Vend.State != "in_progress" {
+		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}
 
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
@@ -842,8 +843,8 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if err := svc.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, orderID, slotIndex); err != nil {
-		return nil, mapCommerceGRPCErr(err)
+	if st.Vend.State != "in_progress" {
+		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}
 
 	vendReplay := st.Vend.State == "failed"

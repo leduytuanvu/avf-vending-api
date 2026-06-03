@@ -550,6 +550,31 @@ def load_online_payment_exclude_profile() -> dict[str, Any]:
     return (data.get("profiles") or {}).get("all-no-online-payment") or {}
 
 
+def apply_manifest_skip_env_exclusions(entries: dict[str, CoverageEntry], manifest_path: Path) -> None:
+    """Mark routes non-Postman when manifest skip_if_env is active (production media wiring)."""
+    manifest = load_yaml(manifest_path)
+
+    def visit(flow: dict[str, Any], inherited_skip: str | None) -> None:
+        skip = flow.get("skip_if_env") or inherited_skip
+        method = flow.get("method")
+        path = flow.get("path")
+        if skip and os.environ.get(str(skip)) and method and path:
+            key = entry_key(str(method).upper(), normalize_manifest_path(str(path)))
+            ent = entries.get(key)
+            if ent:
+                ent.postman = False
+                ent.non_postman = True
+                ent.non_postman_reason = f"Manifest skip_if_env {skip} is set"
+        for sub_key in ("init_flow", "complete_flow", "upload_flow"):
+            sub = flow.get(sub_key)
+            if isinstance(sub, dict):
+                visit(sub, str(skip) if skip else inherited_skip)
+
+    for flow in manifest.get("flows") or []:
+        if isinstance(flow, dict):
+            visit(flow, None)
+
+
 def apply_online_payment_exclusions(entries: dict[str, CoverageEntry]) -> None:
     cfg = load_online_payment_exclude_profile()
     if not cfg:
@@ -798,6 +823,7 @@ def main() -> int:
             source="manifest_only",
         )
 
+    apply_manifest_skip_env_exclusions(entries, MANIFEST_MAIN)
     apply_online_payment_exclusions(entries)
 
     # Attach auto flows

@@ -7,13 +7,14 @@ import (
 
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFleetAdminP05_CredentialLifecycleAndSoftArchive(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	companyID := id.NewUUIDV7()
+	companyID := uuid.Nil
 	siteID := id.NewUUIDV7()
 	machineID := id.NewUUIDV7()
 	_, err := pool.Exec(ctx, `
@@ -56,7 +57,7 @@ VALUES ($1, $2, $3, $4, 'P05 Machine', 'active', 7)
 func TestFleetAdminP05_TechnicianAssignmentExplicitRelease(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
-	companyID := id.NewUUIDV7()
+	companyID := uuid.Nil
 	siteID := id.NewUUIDV7()
 	machineID := id.NewUUIDV7()
 	techID := id.NewUUIDV7()

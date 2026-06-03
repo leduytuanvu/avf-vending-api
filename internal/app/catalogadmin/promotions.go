@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -154,6 +155,9 @@ func (s *Service) GetPromotion(ctx context.Context, scopeID, promotionID uuid.UU
 	}
 	if promotionID == uuid.Nil {
 		return db.Promotion{}, ErrInvalidArgument
+	}
+	if scopeID != org.DefaultCompanyID {
+		return db.Promotion{}, ErrNotFound
 	}
 	row, err := s.q.PromotionAdminGetPromotion(ctx, promotionID)
 	if err != nil {
@@ -325,6 +329,7 @@ func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.
 		BudgetLimitMinor:     budget,
 		RedemptionLimit:      red,
 		PromotionChannelKind: ch,
+		ID:                   promotionID,
 	})
 	if err != nil {
 		return db.Promotion{}, err
@@ -358,7 +363,10 @@ func (s *Service) PatchPromotion(ctx context.Context, scopeID, promotionID uuid.
 }
 
 func (s *Service) setLifecycle(ctx context.Context, scopeID, promotionID uuid.UUID, next string, auditAction string) (db.Promotion, error) {
-	row, err := s.q.PromotionAdminSetLifecycle(ctx, next)
+	row, err := s.q.PromotionAdminSetLifecycle(ctx, db.PromotionAdminSetLifecycleParams{
+		LifecycleStatus: next,
+		ID:              promotionID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.Promotion{}, ErrNotFound
@@ -436,7 +444,10 @@ func (s *Service) DeletePromotionTarget(ctx context.Context, scopeID, promotionI
 	if promotionID == uuid.Nil || targetID == uuid.Nil {
 		return ErrInvalidArgument
 	}
-	tgt, err := s.q.PromotionAdminGetPromotionTarget(ctx)
+	tgt, err := s.q.PromotionAdminGetPromotionTarget(ctx, db.PromotionAdminGetPromotionTargetParams{
+		ID:          targetID,
+		PromotionID: promotionID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return ErrNotFound
@@ -446,7 +457,10 @@ func (s *Service) DeletePromotionTarget(ctx context.Context, scopeID, promotionI
 	if tgt.PromotionID != promotionID {
 		return ErrNotFound
 	}
-	n, err := s.q.PromotionAdminDeletePromotionTarget(ctx)
+	n, err := s.q.PromotionAdminDeletePromotionTarget(ctx, db.PromotionAdminDeletePromotionTargetParams{
+		ID:          targetID,
+		PromotionID: promotionID,
+	})
 	if err != nil {
 		return err
 	}
@@ -465,5 +479,5 @@ func (s *Service) ListPromotionTargets(ctx context.Context, scopeID, promotionID
 	if promotionID == uuid.Nil {
 		return nil, ErrInvalidArgument
 	}
-	return s.q.PromotionAdminListTargetsForPromotion(ctx)
+	return s.q.PromotionAdminListTargetsForPromotion(ctx, promotionID)
 }

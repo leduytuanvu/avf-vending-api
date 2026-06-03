@@ -132,11 +132,11 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 	}
 	machPtr := &b.machineID
 	sitePtr := &b.siteID
-	cat, err := b.q.PromotionAdminGetProductCategory(ctx)
+	cat, err := b.q.PromotionAdminGetProductCategory(ctx, in.ProductID)
 	if err != nil {
 		return out, err
 	}
-	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx)
+	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx, in.ProductID)
 	if err != nil {
 		return out, err
 	}

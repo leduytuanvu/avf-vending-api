@@ -84,11 +84,21 @@ else
   # Align Postman {{base_url}} with harness BASE_URL (avoid stale localhost:8080 in checked-in env JSON).
   if [[ -n "${BASE_URL:-}" ]]; then
     extra_args+=(--env-var "base_url=${BASE_URL}")
+    extra_args+=(--env-var "baseUrl=${BASE_URL}")
   fi
   # Canary/admin-write folders gate POST /v1/admin/sites unless explicitly enabled.
   if [[ "${E2E_TARGET:-}" == "local" ]]; then
     extra_args+=(--env-var "allow_destructive=true")
   fi
+  if [[ -n "${ADMIN_EMAIL:-}" ]]; then
+    extra_args+=(--env-var "adminEmail=${ADMIN_EMAIL}")
+    extra_args+=(--env-var "admin_email=${ADMIN_EMAIL}")
+  fi
+  if [[ -n "${ADMIN_PASSWORD:-}" ]]; then
+    extra_args+=(--env-var "adminPassword=${ADMIN_PASSWORD}")
+    extra_args+=(--env-var "admin_password=${ADMIN_PASSWORD}")
+  fi
+  extra_args+=(--env-var "auth_type=admin")
 fi
 
 set +e

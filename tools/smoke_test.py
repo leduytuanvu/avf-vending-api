@@ -432,7 +432,10 @@ def _http_json(
             raw = resp.read().decode("utf-8", errors="replace")
             if not raw.strip():
                 return resp.status, None
-            return resp.status, json.loads(raw)
+            try:
+                return resp.status, json.loads(raw)
+            except json.JSONDecodeError:
+                return resp.status, raw
     except urllib.error.HTTPError as e:
         raw = e.read().decode("utf-8", errors="replace")
         try:
@@ -619,7 +622,7 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
             "sku": sku,
             "name": "Smoke Product",
             "description": "created by smoke_test.py local",
-            "active": True,
+            "active": False,
             "categoryId": cat_id,
             "brandId": brand_id,
             "ageRestricted": False,
@@ -713,6 +716,30 @@ def main_local_e2e(argv: list[str] | None = None) -> int:
             timeout=timeout,
         )
         log_ok("GET /v1/machines/{machineId}/sale-catalog")
+
+        checkin_body = {
+            "package_name": "com.avf.smoke",
+            "version_name": "1.0.0",
+            "version_code": 1,
+            "android_release": "14",
+            "sdk_int": 35,
+            "manufacturer": "AVF",
+            "model": "SmokeDevice",
+            "timezone": "UTC",
+            "network_state": "online",
+            "boot_id": f"smoke-{uuid.uuid4().hex[:12]}",
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "metadata": {"source": "local_field_smoke"},
+        }
+        _http_expect_ok(
+            "POST /v1/machines/{machineId}/check-ins",
+            "POST",
+            urljoin(base + "/", f"v1/machines/{machine_id}/check-ins"),
+            headers=auth_headers,
+            json_body=checkin_body,
+            timeout=timeout,
+        )
+        log_ok("POST /v1/machines/{machineId}/check-ins")
 
         _http_expect_ok(
             "GET telemetry snapshot",

@@ -31,6 +31,23 @@ BASH = _resolve_bash()
 requires_bash = unittest.skipUnless(BASH is not None, "bash not found (install Git for Windows or add bash to PATH)")
 
 
+def _subprocess_env() -> dict[str, str]:
+    """Minimal env so check_managed_services.sh tests do not inherit host REDIS_URL/NATS_URL."""
+    keep = (
+        "PATH",
+        "SystemRoot",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "HOME",
+        "USERPROFILE",
+        "TEMP",
+        "TMP",
+        "APPDATA",
+        "LOCALAPPDATA",
+    )
+    return {k: os.environ[k] for k in keep if k in os.environ}
+
+
 @requires_bash
 class CheckManagedServicesNatsTests(unittest.TestCase):
     def test_production_requires_nats_url(self) -> None:
@@ -48,6 +65,7 @@ class CheckManagedServicesNatsTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=120,
+                env=_subprocess_env(),
             )
         self.assertNotEqual(proc.returncode, 0)
         combined = proc.stderr + proc.stdout
@@ -69,6 +87,7 @@ class CheckManagedServicesNatsTests(unittest.TestCase):
                 capture_output=True,
                 text=True,
                 timeout=120,
+                env=_subprocess_env(),
             )
         self.assertNotEqual(proc.returncode, 0)
         combined = proc.stderr + proc.stdout

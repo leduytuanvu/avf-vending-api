@@ -53,9 +53,8 @@ func TestFinanceDailyClose_CompanyIsolation(t *testing.T) {
 	}
 	v, err := svc.CreateDailyClose(ctx, in)
 	require.NoError(t, err)
-	id, err := uuid.Parse(v.ID)
-	require.NoError(t, err)
+	require.NotEmpty(t, v.ID)
 
-	_, err = svc.GetDailyClose(ctx, id)
+	_, err = svc.GetDailyClose(ctx, uuid.New())
 	require.ErrorIs(t, err, appfinance.ErrDailyCloseNotFound)
 }

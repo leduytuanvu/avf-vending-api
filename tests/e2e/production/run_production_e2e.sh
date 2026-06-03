@@ -207,30 +207,29 @@ prod_e2e_route_matrix_pipeline() {
 }
 
 prod_e2e_generate_postman() {
-  # Committed Postman must always reflect the full manifest; suite/runtime exclusions are Newman-only.
+  # Committed Postman reflects manifest + production media wiring; suite exclusions are Newman/live-only.
   local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
   local saved_legacy="${PROD_E2E_SKIP_LEGACY_MACHINE_HTTP:-}"
-  local saved_cloudinary="${PROD_E2E_USE_CLOUDINARY_MEDIA:-}"
-  local saved_media_pipe="${PROD_E2E_USE_MEDIA_PIPE:-}"
   unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   unset PROD_E2E_SKIP_LEGACY_MACHINE_HTTP
-  unset PROD_E2E_USE_CLOUDINARY_MEDIA
-  unset PROD_E2E_USE_MEDIA_PIPE
   prod_e2e_py "${PROD_E2E_REPO_ROOT}/postman/production/generate_postman_from_manifest.py"
   local rc=$?
   [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
   [[ -n "${saved_legacy}" ]] && export PROD_E2E_SKIP_LEGACY_MACHINE_HTTP="${saved_legacy}"
-  [[ -n "${saved_cloudinary}" ]] && export PROD_E2E_USE_CLOUDINARY_MEDIA="${saved_cloudinary}"
-  [[ -n "${saved_media_pipe}" ]] && export PROD_E2E_USE_MEDIA_PIPE="${saved_media_pipe}"
   return "${rc}"
 }
 
 prod_e2e_validate_postman_parity() {
   local coll="${1:-${PROD_E2E_REPO_ROOT}/postman/production/avf-production-e2e.postman_collection.json}"
+  # Parity compares the full committed manifest ↔ Postman; runtime suite exclusions are Newman/live-only.
+  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
+  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py" --collection "$coll" || {
+    [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
     prod_e2e_fail_classify "c" "POSTMAN-PARITY-000" "shell REST and Postman collection diverged — regenerate from e2e-manifest.yaml"
     return 1
   }
+  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
 }
 
 prod_e2e_lock_postman_parity() {
