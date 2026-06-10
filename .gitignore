@@ -15,6 +15,7 @@ deployments/prod/**/.env.app-node
 deployments/prod/**/.env.data-node
 /repomix-output.xml
 repomix-output*.xml
+repomix-*.xml
 .repomix/
 /bin/
 /dist/
