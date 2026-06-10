@@ -1,0 +1,22 @@
+{
+  "cabinets": [
+    { "code": "A", "title": "Cabinet A", "sort_order": 1 },
+    { "code": "B", "title": "Cabinet B", "sort_order": 2 }
+  ],
+  "layouts": [
+    {
+      "cabinet_code": "A",
+      "layout_key": "grid-2x3",
+      "revision": 1,
+      "layout_spec": {},
+      "status": "published"
+    },
+    {
+      "cabinet_code": "B",
+      "layout_key": "belt-8",
+      "revision": 2,
+      "layout_spec": {},
+      "status": "published"
+    }
+  ]
+}

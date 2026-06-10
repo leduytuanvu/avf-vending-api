@@ -98,14 +98,25 @@ e2e_curl_get() {
   echo "$code" "$lat"
 }
 
+e2e_admin_token_trim() {
+  local tok="${1:-}"
+  tok="${tok#"${tok%%[![:space:]]*}"}"
+  tok="${tok%"${tok##*[![:space:]]}"}"
+  printf '%s' "$tok"
+}
+
 e2e_admin_token() {
-  if [[ -n "${ADMIN_TOKEN:-}" ]]; then
-    printf '%s' "${ADMIN_TOKEN}"
+  local trimmed
+  trimmed="$(e2e_admin_token_trim "${ADMIN_TOKEN:-}")"
+  if [[ -n "$trimmed" ]]; then
+    printf '%s' "$trimmed"
     return 0
   fi
   if [[ -z "${ADMIN_EMAIL:-}" || -z "${ADMIN_PASSWORD:-}" ]]; then
+    E2E_ADMIN_AUTH_HTTP_CODE=""
     return 1
   fi
+  mkdir -p "${E2E_RUN_DIR}/raw"
   local out="${E2E_RUN_DIR}/raw/admin-login.json"
   local code
   code="$(curl -sS -o "$out" -w '%{http_code}' -X POST \
@@ -114,6 +125,7 @@ e2e_admin_token() {
     --connect-timeout 8 --max-time 20 \
     -d "$(jq -nc --arg e "${ADMIN_EMAIL}" --arg p "${ADMIN_PASSWORD}" '{email:$e,password:$p}')" \
     "${BASE_URL%/}/v1/auth/login")"
+  E2E_ADMIN_AUTH_HTTP_CODE="$code"
   [[ "$code" == "200" ]] || return 1
   jq -r '.accessToken // .access_token // .tokens.accessToken // empty' "$out"
 }

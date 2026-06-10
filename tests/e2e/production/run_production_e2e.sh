@@ -221,15 +221,13 @@ prod_e2e_generate_postman() {
 
 prod_e2e_validate_postman_parity() {
   local coll="${1:-${PROD_E2E_REPO_ROOT}/postman/production/avf-production-e2e.postman_collection.json}"
-  # Parity compares the full committed manifest ↔ Postman; runtime suite exclusions are Newman/live-only.
-  local saved_exclude="${PROD_E2E_EXCLUDE_ONLINE_PAYMENT:-}"
-  unset PROD_E2E_EXCLUDE_ONLINE_PAYMENT
+  # Parity must use the same suite filter as the collection under test.
+  # Full suites leave PROD_E2E_EXCLUDE_ONLINE_PAYMENT unset; no-online-payment
+  # suites generate and validate against the filtered runtime collection.
   prod_e2e_py "${PROD_E2E_SCRIPT_DIR}/scripts/validate_postman_shell_parity.py" --collection "$coll" || {
-    [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
     prod_e2e_fail_classify "c" "POSTMAN-PARITY-000" "shell REST and Postman collection diverged — regenerate from e2e-manifest.yaml"
     return 1
   }
-  [[ -n "${saved_exclude}" ]] && export PROD_E2E_EXCLUDE_ONLINE_PAYMENT="${saved_exclude}"
 }
 
 prod_e2e_lock_postman_parity() {
@@ -463,6 +461,14 @@ prod_e2e_run_flows_from_manifest() {
   local manifest="$1"
   local failures=0
   local last_phase=""
+  local flows_jsonl
+  flows_jsonl="$(mktemp)"
+  prod_e2e_py -c "
+import yaml, json, sys
+m = yaml.safe_load(open(sys.argv[1], encoding='utf-8'))
+for f in m.get('flows', []):
+    print(json.dumps(f, separators=(',', ':')))
+" "$manifest" >"$flows_jsonl"
   while IFS= read -r flow; do
     [[ -n "$flow" ]] || continue
     local protocol phase fid fpath skip_reason
@@ -517,12 +523,8 @@ prod_e2e_run_flows_from_manifest() {
         ;;
       *) echo "unknown protocol: ${protocol}" >&2; failures=$((failures + 1)) ;;
     esac
-  done < <(prod_e2e_py -c "
-import yaml, json, sys
-m = yaml.safe_load(open(sys.argv[1], encoding='utf-8'))
-for f in m.get('flows', []):
-    print(json.dumps(f, separators=(',', ':')))
-" "$manifest")
+  done <"$flows_jsonl"
+  rm -f "$flows_jsonl"
   return "$failures"
 }
 

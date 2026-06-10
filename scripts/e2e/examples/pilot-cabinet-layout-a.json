@@ -1,0 +1,22 @@
+{
+  "cabinets": [
+    {
+      "code": "A",
+      "title": "Cabinet A",
+      "sort_order": 1,
+      "metadata": {}
+    }
+  ],
+  "layouts": [
+    {
+      "cabinet_code": "A",
+      "layout_key": "grid-4x6",
+      "revision": 1,
+      "layout_spec": {
+        "rows": 4,
+        "cols": 6
+      },
+      "status": "published"
+    }
+  ]
+}
