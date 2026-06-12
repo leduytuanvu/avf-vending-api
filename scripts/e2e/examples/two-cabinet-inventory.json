@@ -1,0 +1,9 @@
+{
+  "inventory": [
+    { "cabinet_code": "A", "slot_code": "A1", "quantity": 5 },
+    { "cabinet_code": "A", "slot_code": "A2", "quantity": 5 },
+    { "cabinet_code": "A", "slot_code": "A3", "quantity": 0 },
+    { "cabinet_code": "B", "slot_code": "B1", "quantity": 3 },
+    { "cabinet_code": "B", "slot_code": "B2", "quantity": 3 }
+  ]
+}

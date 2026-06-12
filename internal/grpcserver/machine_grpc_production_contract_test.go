@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 // machineGRPCUnauthenticatedMethods mirrors isUnauthenticatedGRPCMethod in interceptors.go.
@@ -265,4 +266,41 @@ func TestMachineProductionContract_BootstrapExposesSellReadiness(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, resp.GetRuntimeHints())
 	require.NotNil(t, resp.GetRuntimeHints().GetSellReadiness())
+}
+
+func TestMachineProductionContract_BootstrapTopologyIncludesCabinetMetadata(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineBootstrapServiceClient(conn)
+
+	resp, err := cli.GetBootstrap(md, &machinev1.GetBootstrapRequest{})
+	require.NoError(t, err)
+	require.NotNil(t, resp.GetTopology())
+	require.NotEmpty(t, resp.GetTopology().GetCabinets())
+	first := resp.GetTopology().GetCabinets()[0]
+	require.NotNil(t, first.GetMetadata(), "cabinet metadata struct must be present (possibly empty before repair)")
+}
+
+func TestBootstrapCabinetMetadata_StructRoundTrip(t *testing.T) {
+	meta := map[string]any{
+		"machine_type":      "tcn",
+		"board_protocol":    "tcn",
+		"bill_protocol":     "ict_bc_v1",
+		"cash_topology":     "direct_bill",
+		"payment_authority": "local",
+		"transport_type":    "serial",
+		"baud_rate":         float64(9600),
+		"driver_options": map[string]any{
+			"billBusKey":               "/dev/ttyS1",
+			"billSharesBoardSerialBus": "false",
+		},
+	}
+	s, err := structpb.NewStruct(meta)
+	require.NoError(t, err)
+	require.Equal(t, "tcn", s.GetFields()["board_protocol"].GetStringValue())
+	require.Equal(t, "local", s.GetFields()["payment_authority"].GetStringValue())
+	require.NotNil(t, s.GetFields()["driver_options"].GetStructValue())
 }

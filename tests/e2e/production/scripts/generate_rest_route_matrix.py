@@ -132,15 +132,19 @@ def openapi_path_to_manifest(path: str, param_map: dict[str, str]) -> str:
     return PARAM_RE.sub(repl, path)
 
 
-def walk_manifest_flows(obj: Any, out: list[dict[str, Any]]) -> None:
+def walk_manifest_flows(obj: Any, out: list[dict[str, Any]], parent_handler: str | None = None) -> None:
     if isinstance(obj, dict):
+        handler = str(obj.get("handler") or parent_handler or "")
         if obj.get("method") and obj.get("path"):
+            if handler and not obj.get("handler"):
+                obj = dict(obj)
+                obj["_parent_handler"] = handler
             out.append(obj)
         for v in obj.values():
-            walk_manifest_flows(v, out)
+            walk_manifest_flows(v, out, handler or parent_handler)
     elif isinstance(obj, list):
         for item in obj:
-            walk_manifest_flows(item, out)
+            walk_manifest_flows(item, out, parent_handler)
 
 
 def collect_manifest_routes(manifest_path: Path) -> dict[str, list[dict[str, Any]]]:
@@ -762,6 +766,17 @@ def main() -> int:
             flows = manifest_main[key]
             cov = infer_manifest_coverage(flows[0])
             has_handler = bool(flows[0].get("handler"))
+            parent_handler = str(flows[0].get("_parent_handler") or "")
+            is_media_handler = has_handler and flows[0].get("handler") == "media_presigned_upload"
+            is_media_subflow = parent_handler == "media_presigned_upload"
+            if flows[0].get("phase") == "negative":
+                non_postman_reason = "Negative phase excluded from Postman per manifest postman.exclude_phases"
+            elif is_media_handler:
+                non_postman_reason = "Media handler parent — init/complete sub-flows are in Postman"
+            elif is_media_subflow:
+                non_postman_reason = "Media handler sub-flow — exercised by shell media handler"
+            else:
+                non_postman_reason = None
             ent = CoverageEntry(
                 method=method,
                 path=path,
@@ -769,14 +784,9 @@ def main() -> int:
                 flow_ids=[str(f.get("id")) for f in flows if f.get("id")],
                 postman=flows[0].get("phase") not in ("negative",),
                 non_postman=flows[0].get("phase") == "negative"
-                or (has_handler and flows[0].get("handler") == "media_presigned_upload"),
-                non_postman_reason="Negative phase excluded from Postman per manifest postman.exclude_phases"
-                if flows[0].get("phase") == "negative"
-                else (
-                    "Media handler parent — init/complete sub-flows are in Postman"
-                    if has_handler and flows[0].get("handler") == "media_presigned_upload"
-                    else None
-                ),
+                or is_media_handler
+                or is_media_subflow,
+                non_postman_reason=non_postman_reason,
                 openapi_summary=summ[:300],
                 openapi_tags=tags,
                 source="manifest",
@@ -804,6 +814,17 @@ def main() -> int:
         method, path = parts[0], parts[1]
         cov = infer_manifest_coverage(flows[0])
         has_handler = bool(flows[0].get("handler"))
+        parent_handler = str(flows[0].get("_parent_handler") or "")
+        is_media_handler = has_handler and flows[0].get("handler") == "media_presigned_upload"
+        is_media_subflow = parent_handler == "media_presigned_upload"
+        if flows[0].get("phase") == "negative":
+            non_postman_reason = "Negative phase excluded from Postman per manifest postman.exclude_phases"
+        elif is_media_handler:
+            non_postman_reason = "Media handler parent — init/complete sub-flows are in Postman"
+        elif is_media_subflow:
+            non_postman_reason = "Media handler sub-flow — exercised by shell media handler"
+        else:
+            non_postman_reason = None
         entries[key] = CoverageEntry(
             method=method,
             path=path,
@@ -811,20 +832,25 @@ def main() -> int:
             flow_ids=[str(f.get("id")) for f in flows if f.get("id")],
             postman=flows[0].get("phase") not in ("negative",),
             non_postman=flows[0].get("phase") == "negative"
-            or (has_handler and flows[0].get("handler") == "media_presigned_upload"),
-            non_postman_reason="Negative phase excluded from Postman per manifest postman.exclude_phases"
-            if flows[0].get("phase") == "negative"
-            else (
-                "Media handler parent — init/complete sub-flows are in Postman"
-                if has_handler and flows[0].get("handler") == "media_presigned_upload"
-                else None
-            ),
+            or is_media_handler
+            or is_media_subflow,
+            non_postman_reason=non_postman_reason,
             openapi_summary="Main E2E manifest route (pending OpenAPI sync)",
             source="manifest_only",
         )
 
     apply_manifest_skip_env_exclusions(entries, MANIFEST_MAIN)
     apply_online_payment_exclusions(entries)
+    postman_routes = load_postman_routes(POSTMAN_COLL)
+    param_map = overrides.get("param_state_map") or {}
+
+    for pr in postman_routes:
+        ok = postman_route_to_openapi_key(pr, param_map, swagger_ops)
+        ent = entries.get(ok)
+        if ent and ent.non_postman and ent.coverage != "documented_skip":
+            ent.postman = True
+            ent.non_postman = False
+            ent.non_postman_reason = None
 
     # Attach auto flows
     auto_entries = [e for e in entries.values() if e.source != "manifest" and e.coverage != "documented_skip"]
@@ -863,8 +889,6 @@ def main() -> int:
     OUT_JSON.write_text(json.dumps(matrix, indent=2) + "\n", encoding="utf-8")
     print(f"WROTE {OUT_JSON.relative_to(REPO_ROOT)}")
 
-    postman_routes = load_postman_routes(POSTMAN_COLL)
-    param_map = overrides.get("param_state_map") or {}
     errors = validate_matrix(
         entries,
         swagger_ops,

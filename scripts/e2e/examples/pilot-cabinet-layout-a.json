@@ -1,0 +1,28 @@
+{
+  "cabinets": [
+    {
+      "code": "A",
+      "title": "Cabinet A",
+      "sort_order": 1,
+      "metadata": {
+        "board_protocol": "tcn",
+        "bill_protocol": "ict_bc_v1",
+        "cash_topology": "direct_bill",
+        "transport_type": "serial",
+        "payment_authority": "backend"
+      }
+    }
+  ],
+  "layouts": [
+    {
+      "cabinet_code": "A",
+      "layout_key": "grid-4x6",
+      "revision": 1,
+      "layout_spec": {
+        "rows": 4,
+        "cols": 6
+      },
+      "status": "published"
+    }
+  ]
+}

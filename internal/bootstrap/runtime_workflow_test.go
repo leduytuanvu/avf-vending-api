@@ -18,6 +18,17 @@ func TestBuildRuntime_WorkflowOrchestrationWhenTemporalDisabled(t *testing.T) {
 	t.Setenv("TEMPORAL_ENABLED", "false")
 	t.Setenv("DATABASE_URL", "")
 	t.Setenv("REDIS_ADDR", "")
+	for _, key := range []string{
+		"MQTT_BROKER_URL",
+		"MQTT_CLIENT_ID",
+		"MQTT_CLIENT_ID_API",
+		"MQTT_CLIENT_ID_INGEST",
+		"MQTT_USERNAME",
+		"MQTT_PASSWORD",
+		"MQTT_TOPIC_PREFIX",
+	} {
+		t.Setenv(key, "")
+	}
 
 	cfg, err := config.Load()
 	if err != nil {
