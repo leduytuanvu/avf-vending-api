@@ -48,10 +48,12 @@ load_env() {
     env_file="${E2E_SCRIPT_DIR}/.env"
   fi
   if [[ -f "$env_file" ]]; then
-    # Normalize CRLF .env files (common on Windows) so values don't include `\r`.
+    # Normalize CRLF .env files (common on Windows) and ignore local note/header
+    # lines so they are not executed as shell syntax.
     local _env_tmp=""
     _env_tmp="$(mktemp)"
-    tr -d '\r' <"$env_file" >"$_env_tmp"
+    tr -d '\r' <"$env_file" |
+      awk '/^[[:space:]]*($|#|[A-Za-z_][A-Za-z0-9_]*=|export[[:space:]]+[A-Za-z_][A-Za-z0-9_]*=)/ { print }' >"$_env_tmp"
     set -a
     # shellcheck disable=SC1090
     source "$_env_tmp"
