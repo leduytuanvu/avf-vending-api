@@ -4,7 +4,13 @@
       "code": "A",
       "title": "Cabinet A",
       "sort_order": 1,
-      "metadata": {}
+      "metadata": {
+        "board_protocol": "tcn",
+        "bill_protocol": "ict_bc_v1",
+        "cash_topology": "direct_bill",
+        "transport_type": "serial",
+        "payment_authority": "backend"
+      }
     }
   ],
   "layouts": [

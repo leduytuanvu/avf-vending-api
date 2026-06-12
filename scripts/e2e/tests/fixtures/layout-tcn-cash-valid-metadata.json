@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "machine_id": "019eb4d7-f821-78f4-9b2c-48166006af73",
+  "hardware_profile": "TCN",
+  "payment_profile": { "mode": "cash_only" },
+  "destructive_test_scope": { "cabinet": "A", "slot_indexes": "1-1" },
+  "cabinets": [
+    {
+      "code": "A",
+      "title": "Cabinet A",
+      "sort_order": 1,
+      "metadata": {
+        "board_protocol": "tcn",
+        "bill_protocol": "ict_bc_v1",
+        "cash_topology": "direct_bill",
+        "transport_type": "serial",
+        "payment_authority": "backend"
+      }
+    }
+  ],
+  "layouts": [
+    {
+      "cabinet_code": "A",
+      "layout_key": "default",
+      "revision": 1,
+      "layout_spec": { "rows": 1, "cols": 1 },
+      "status": "published"
+    }
+  ],
+  "slots": [
+    {
+      "cabinet_code": "A",
+      "slot_code": "A1",
+      "slot_index": 1,
+      "enabled": true,
+      "sellable": true,
+      "destructive_test": true,
+      "inventory_quantity": 1,
+      "product": { "sku": "TEST-A1", "name": "Test", "status": "active" },
+      "price_minor": 1000
+    }
+  ]
+}

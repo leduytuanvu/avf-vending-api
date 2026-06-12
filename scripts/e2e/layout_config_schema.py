@@ -9,6 +9,12 @@ from typing import Any
 
 SUPPORTED_SCHEMA_VERSIONS = {1}
 _SLOT_INDEX_RANGE = re.compile(r"^(\d+)-(\d+)$")
+TCN_CASH_CABINET_METADATA_KEYS = (
+    "board_protocol",
+    "bill_protocol",
+    "cash_topology",
+    "transport_type",
+)
 
 
 class LayoutValidationError(ValueError):
@@ -19,6 +25,38 @@ class LayoutValidationError(ValueError):
 
 def _err(errors: list[str], msg: str) -> None:
     errors.append(msg)
+
+
+def _is_tcn_cash_layout(doc: dict[str, Any]) -> bool:
+    hw = str(doc.get("hardware_profile") or "").strip().upper()
+    pay = doc.get("payment_profile") or {}
+    mode = str(pay.get("mode") or "").strip()
+    return hw == "TCN" and mode == "cash_only"
+
+
+def validate_tcn_cash_cabinet_metadata(doc: dict[str, Any]) -> list[str]:
+    """Require bootstrap contract keys on every cabinet for TCN cash-only layouts."""
+    errors: list[str] = []
+    if not _is_tcn_cash_layout(doc):
+        return errors
+    cabinets = doc.get("cabinets")
+    if not isinstance(cabinets, list):
+        return errors
+    for i, cab in enumerate(cabinets):
+        if not isinstance(cab, dict):
+            continue
+        code = str(cab.get("code") or f"index_{i}")
+        meta = cab.get("metadata")
+        if not isinstance(meta, dict):
+            meta = {}
+        for key in TCN_CASH_CABINET_METADATA_KEYS:
+            val = meta.get(key)
+            if val is None or not str(val).strip():
+                _err(
+                    errors,
+                    f"cabinets[{code}].metadata.{key} required for TCN cash_only layout",
+                )
+    return errors
 
 
 def _parse_slot_index_range(spec: str) -> tuple[int, int] | None:
@@ -180,6 +218,8 @@ def validate_layout(doc: dict[str, Any]) -> list[str]:
                 "destructive_test_scope includes unconfigured slot indexes: "
                 + ",".join(str(x) for x in missing),
             )
+
+    errors.extend(validate_tcn_cash_cabinet_metadata(doc))
 
     return errors
 

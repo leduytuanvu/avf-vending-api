@@ -234,6 +234,26 @@ OP_SID="$(jq -r '.session.id // empty' "${E2E_RUN_DIR}/raw/operator-login.body")
   exit 2
 }
 
+# --- Cabinet metadata contract (TCN cash_only — fail before topology PUT) ---
+metadata_err="${E2E_RUN_DIR}/raw/layout-metadata-contract.err"
+if ! e2e_py -c "
+import json, sys
+from pathlib import Path
+sys.path.insert(0, '${ROOT}/scripts/e2e')
+from layout_config_schema import validate_tcn_cash_cabinet_metadata
+doc = json.loads(Path('${LAYOUT_JSON}').read_text(encoding='utf-8'))
+errors = validate_tcn_cash_cabinet_metadata(doc)
+if errors:
+    for e in errors:
+        print(e, file=sys.stderr)
+    sys.exit(2)
+print('OK')
+" >"${E2E_RUN_DIR}/raw/layout-metadata-contract.out" 2>"$metadata_err"; then
+  fail_step "cabinet metadata contract failed: $(tr '\n' '; ' <"$metadata_err" 2>/dev/null || echo unknown)"
+  write_readiness FAIL
+  exit 2
+fi
+
 # --- Topology ---
 TOPO_JSON="$(jq -c --arg sid "$OP_SID" '{
   operator_session_id:$sid,
