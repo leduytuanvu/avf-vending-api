@@ -18,6 +18,7 @@ RUN apk add --no-cache git \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/goose ./cmd/goose
 
 FROM alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && apk upgrade --no-cache libcrypto3 libssl3 openssl
 COPY --from=build /out/goose /usr/local/bin/goose
 ENTRYPOINT ["/usr/local/bin/goose"]
