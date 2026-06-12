@@ -1,0 +1,338 @@
+name: Production Backup Evidence
+
+# Manual production backup evidence only. This workflow must not deploy,
+# migrate, restart services, or upload the database dump.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backup-evidence
+  cancel-in-progress: false
+
+jobs:
+  production-backup-evidence:
+    name: Generate production backup evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || vars.PRODUCTION_DEPLOY_ROOT || vars.PROD_DEPLOY_PATH || vars.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      TARGET_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST || secrets.PROD_APP_A_HOST || secrets.APP_A_HOST || vars.PRODUCTION_APP_NODE_A_HOST || vars.PROD_APP_A_HOST || vars.APP_A_HOST || secrets.PRODUCTION_DATA_NODE_HOST || secrets.PROD_DATA_NODE_HOST || secrets.DATA_HOST || vars.PRODUCTION_DATA_NODE_HOST || vars.PROD_DATA_NODE_HOST || vars.DATA_HOST }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.PROD_SSH_PORT || vars.PROD_SSH_PORT || secrets.SSH_PORT || vars.SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || secrets.PROD_SSH_USER || vars.PROD_SSH_USER || secrets.SSH_USER || vars.SSH_USER }}
+      POSTGRES_TOOLS_IMAGE: postgres:17-alpine
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+
+      - name: Validate backup workflow inputs
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          [[ -n "${PRODUCTION_DEPLOY_ROOT}" ]] || fail "missing production deploy root"
+          [[ -n "${TARGET_HOST}" ]] || fail "missing production backup target host"
+          [[ -n "${SSH_USER}" ]] || fail "missing production SSH user"
+          [[ -n "${SSH_PORT}" ]] || fail "missing production SSH port"
+          [[ "${SSH_PORT}" =~ ^[0-9]+$ ]] || fail "SSH_PORT must be numeric"
+          [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]] || fail "missing pinned production SSH known_hosts content"
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || fail "missing production SSH private key"
+
+      - name: Install production SSH credentials and trust
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_backup_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          {
+            echo 'Host *'
+            echo '  BatchMode yes'
+            echo '  IdentitiesOnly yes'
+            echo "  IdentityFile ${identity_file}"
+            echo '  StrictHostKeyChecking yes'
+            echo '  UserKnownHostsFile ~/.ssh/known_hosts'
+            echo '  GlobalKnownHostsFile ~/.ssh/known_hosts'
+          } > ~/.ssh/config
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+            echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate pinned production host identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ssh-keygen -F "${TARGET_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            exit 0
+          fi
+          if ssh-keygen -F "[${TARGET_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            exit 0
+          fi
+          echo "error: known_hosts does not contain a pinned SSH identity for ${TARGET_HOST}:${SSH_PORT}" >&2
+          exit 1
+
+      - name: Run server-side backup and verification
+        id: backup
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p backup-evidence
+          target="${SSH_USER}@${TARGET_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+
+          remote_script="$(mktemp)"
+          cat > "${remote_script}" <<'REMOTE_BACKUP_SCRIPT'
+          set -Eeuo pipefail
+          umask 077
+          fail() {
+            echo "production-backup: error: $*" >&2
+            exit 1
+          }
+          read_env_value_from_file() {
+            local file="$1"
+            local key="$2"
+            local line
+            line="$(grep -E "^${key}=" "${file}" 2>/dev/null | tail -n1 || true)"
+            [[ -n "${line}" ]] || return 1
+            line="${line#"${key}="}"
+            line="${line%$'\r'}"
+            if [[ "${line}" == \"*\" ]]; then
+              line="${line#\"}"
+              line="${line%\"}"
+            fi
+            printf '%s' "${line}"
+          }
+          load_env_file() {
+            local path="$1"
+            [[ -f "${path}" ]] || fail "env file not found"
+            set -a
+            # shellcheck disable=SC1090
+            source "${path}"
+            set +a
+          }
+
+          [[ -n "${PRODUCTION_DEPLOY_ROOT:-}" ]] || fail "PRODUCTION_DEPLOY_ROOT is empty"
+          POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
+          timestamp="$(date -u +"%Y%m%dT%H%M%SZ")"
+          backup_id="prod-db-${timestamp}"
+          created_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          backup_root="/var/backups/avf/prod"
+          if ! mkdir -p "${backup_root}" 2>/dev/null; then
+            backup_root="${PRODUCTION_DEPLOY_ROOT}/shared/backups/prod"
+            mkdir -p "${backup_root}"
+          fi
+          backup_path="${backup_root}/avf-prod-db-${timestamp}.dump"
+          restore_list_path="${backup_path}.restore-list.txt"
+          sha_path="${backup_path}.sha256"
+          evidence_path="${backup_path}.backup-evidence.json"
+
+          app_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+          app_compose="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml"
+          data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
+          data_compose="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/docker-compose.data-node.yml"
+
+          backup_source="database_url_client_container"
+          if [[ -f "${data_compose}" && -f "${data_env}" ]]; then
+            data_project="$(read_env_value_from_file "${data_env}" COMPOSE_PROJECT_NAME || true)"
+            data_compose_cmd=(docker compose --env-file "${data_env}" -f "${data_compose}")
+            if [[ -n "${data_project}" ]]; then
+              data_compose_cmd+=(--project-name "${data_project}")
+            fi
+            if "${data_compose_cmd[@]}" ps --services 2>/dev/null | grep -qx 'postgres'; then
+              backup_source="postgres_compose_service"
+              "${data_compose_cmd[@]}" exec -T postgres sh -lc 'set -Eeuo pipefail; user="${POSTGRES_USER:-postgres}"; db="${POSTGRES_DB:-${user}}"; pg_dump -U "${user}" -d "${db}" --format=custom --no-owner --no-privileges' > "${backup_path}"
+            fi
+          fi
+
+          if [[ "${backup_source}" != "postgres_compose_service" ]]; then
+            [[ -f "${app_env}" ]] || fail "app-node env file not found"
+            [[ -f "${app_compose}" ]] || fail "app-node compose file not found"
+            load_env_file "${app_env}"
+            [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is empty in server context"
+            app_project="$(read_env_value_from_file "${app_env}" COMPOSE_PROJECT_NAME || true)"
+            client_dump_args=(
+              --rm
+              --env-file "${app_env}"
+              -e "DATABASE_URL=${DATABASE_URL}"
+              -v "${backup_root}:/backup"
+            )
+            if ! docker run "${client_dump_args[@]}" "${POSTGRES_TOOLS_IMAGE}" \
+              pg_dump "${DATABASE_URL}" --format=custom --no-owner --no-privileges --file "/backup/$(basename "${backup_path}")"; then
+              rm -f "${backup_path}"
+              internal_network=""
+              if [[ -n "${app_project}" ]] && docker network inspect "${app_project}_internal" >/dev/null 2>&1; then
+                internal_network="${app_project}_internal"
+              fi
+              [[ -n "${internal_network}" ]] || fail "pg_dump failed and no app compose internal network was available for retry"
+              docker run "${client_dump_args[@]}" --network "${internal_network}" "${POSTGRES_TOOLS_IMAGE}" \
+                pg_dump "${DATABASE_URL}" --format=custom --no-owner --no-privileges --file "/backup/$(basename "${backup_path}")"
+            fi
+          fi
+
+          [[ -s "${backup_path}" ]] || fail "backup file is empty"
+          docker run --rm \
+            -v "${backup_root}:/backup:ro" \
+            "${POSTGRES_TOOLS_IMAGE}" \
+            pg_restore --list "/backup/$(basename "${backup_path}")" > "${restore_list_path}"
+          [[ -s "${restore_list_path}" ]] || fail "restore list is empty"
+          sha256sum "${backup_path}" > "${sha_path}"
+          sha256="$(awk '{print $1}' "${sha_path}")"
+          size_bytes="$(wc -c < "${backup_path}" | tr -d '[:space:]')"
+          [[ "${size_bytes}" =~ ^[0-9]+$ ]] || fail "invalid backup size"
+          (( size_bytes > 0 )) || fail "backup size is zero"
+
+          {
+            printf '{\n'
+            printf '  "backup_required": true,\n'
+            printf '  "reason": "production live suites may write scoped production test data",\n'
+            printf '  "mode": "server_side_pg_dump_custom",\n'
+            printf '  "backup_provider": "production_server_pg_dump",\n'
+            printf '  "backup_id_or_snapshot_id": "%s",\n' "${backup_id}"
+            printf '  "created_at": "%s",\n' "${created_at}"
+            printf '  "scope": "full_db",\n'
+            printf '  "database_environment": "production",\n'
+            printf '  "server_path": "%s",\n' "${backup_path}"
+            printf '  "sha256": "%s",\n' "${sha256}"
+            printf '  "size_bytes": %s,\n' "${size_bytes}"
+            printf '  "restore_list_verified": true,\n'
+            printf '  "restore_drill_reference_if_available": null,\n'
+            printf '  "verified_by": "github-actions-production-workflow",\n'
+            printf '  "redacted": true\n'
+            printf '}\n'
+          } > "${evidence_path}"
+
+          printf 'backup_id=%s\n' "${backup_id}"
+          printf 'server_path=%s\n' "${backup_path}"
+          printf 'evidence_path=%s\n' "${evidence_path}"
+          printf 'restore_list_path=%s\n' "${restore_list_path}"
+          printf 'sha_path=%s\n' "${sha_path}"
+          printf 'size_bytes=%s\n' "${size_bytes}"
+          printf 'sha256=%s\n' "${sha256}"
+          REMOTE_BACKUP_SCRIPT
+
+          metadata_file="backup-evidence/remote-backup-metadata.txt"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            env "PRODUCTION_DEPLOY_ROOT=${PRODUCTION_DEPLOY_ROOT}" "POSTGRES_TOOLS_IMAGE=${POSTGRES_TOOLS_IMAGE}" \
+            'bash -s' < "${remote_script}" > "${metadata_file}"
+
+          evidence_path="$(awk -F= '$1=="evidence_path"{print $2}' "${metadata_file}")"
+          restore_list_path="$(awk -F= '$1=="restore_list_path"{print $2}' "${metadata_file}")"
+          sha_path="$(awk -F= '$1=="sha_path"{print $2}' "${metadata_file}")"
+          backup_id="$(awk -F= '$1=="backup_id"{print $2}' "${metadata_file}")"
+          [[ -n "${evidence_path}" && -n "${restore_list_path}" && -n "${sha_path}" && -n "${backup_id}" ]]
+
+          read -r -a scp_opts <<< "${SCP_OPTS}"
+          scp "${scp_opts[@]}" -P "${SSH_PORT}" "${target}:${evidence_path}" "backup-evidence/production-backup-evidence.json"
+          scp "${scp_opts[@]}" -P "${SSH_PORT}" "${target}:${restore_list_path}" "backup-evidence/restore-list.txt"
+          scp "${scp_opts[@]}" -P "${SSH_PORT}" "${target}:${sha_path}" "backup-evidence/sha256.txt"
+
+          echo "backup_id=${backup_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate redacted backup evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          evidence_path = Path("backup-evidence/production-backup-evidence.json")
+          evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+          required = [
+              "backup_required",
+              "reason",
+              "mode",
+              "backup_provider",
+              "backup_id_or_snapshot_id",
+              "created_at",
+              "scope",
+              "database_environment",
+              "server_path",
+              "sha256",
+              "size_bytes",
+              "restore_list_verified",
+              "verified_by",
+              "redacted",
+          ]
+          missing = [key for key in required if evidence.get(key) in ("", None)]
+          if missing:
+              raise SystemExit(f"missing evidence fields: {', '.join(missing)}")
+          if evidence["mode"] != "server_side_pg_dump_custom":
+              raise SystemExit("unexpected backup mode")
+          if evidence["backup_provider"] != "production_server_pg_dump":
+              raise SystemExit("unexpected backup provider")
+          if evidence["scope"] != "full_db":
+              raise SystemExit("unexpected backup scope")
+          if evidence["database_environment"] != "production":
+              raise SystemExit("unexpected database environment")
+          if evidence["redacted"] is not True:
+              raise SystemExit("evidence redacted must be true")
+          if evidence["restore_list_verified"] is not True:
+              raise SystemExit("restore_list_verified must be true")
+          if not isinstance(evidence["size_bytes"], int) or evidence["size_bytes"] <= 0:
+              raise SystemExit("backup size must be a positive integer")
+          if not re.fullmatch(r"[0-9a-f]{64}", evidence["sha256"]):
+              raise SystemExit("sha256 must be 64 lowercase hex chars")
+          if not str(evidence["backup_id_or_snapshot_id"]).startswith("prod-db-"):
+              raise SystemExit("backup id must be a real prod-db timestamp id")
+          for forbidden in ("postgres://", "postgresql://", "PASSWORD=", "TOKEN=", "SECRET=", "PRIVATE KEY"):
+              if forbidden in evidence_path.read_text(encoding="utf-8"):
+                  raise SystemExit(f"evidence contains forbidden secret marker: {forbidden}")
+          for forbidden_name in ("*.dump", "*.sql"):
+              if list(Path("backup-evidence").glob(forbidden_name)):
+                  raise SystemExit(f"backup dump was copied into artifact staging: {forbidden_name}")
+          if not Path("backup-evidence/restore-list.txt").read_text(encoding="utf-8").strip():
+              raise SystemExit("restore-list.txt is empty")
+          if not Path("backup-evidence/sha256.txt").read_text(encoding="utf-8").strip():
+              raise SystemExit("sha256.txt is empty")
+          PY
+
+      - name: Summarize production backup evidence
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(Path("backup-evidence/production-backup-evidence.json").read_text(encoding="utf-8"))
+          print("## Production backup evidence")
+          print(f"- backup id: `{evidence['backup_id_or_snapshot_id']}`")
+          print(f"- mode: `{evidence['mode']}`")
+          print(f"- scope: `{evidence['scope']}`")
+          print(f"- size_bytes: `{evidence['size_bytes']}`")
+          print(f"- restore_list_verified: `{evidence['restore_list_verified']}`")
+          print("- DB dump upload: `NO`")
+          PY
+
+      - name: Upload redacted production backup evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: production-backup-evidence
+          path: |
+            backup-evidence/production-backup-evidence.json
+            backup-evidence/restore-list.txt
+            backup-evidence/sha256.txt
+          if-no-files-found: error
+          retention-days: 30
