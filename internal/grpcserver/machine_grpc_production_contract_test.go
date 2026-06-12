@@ -286,13 +286,13 @@ func TestMachineProductionContract_BootstrapTopologyIncludesCabinetMetadata(t *t
 
 func TestBootstrapCabinetMetadata_StructRoundTrip(t *testing.T) {
 	meta := map[string]any{
-		"machine_type":     "tcn",
-		"board_protocol":   "tcn",
-		"bill_protocol":    "ict_bc_v1",
-		"cash_topology":    "direct_bill",
+		"machine_type":      "tcn",
+		"board_protocol":    "tcn",
+		"bill_protocol":     "ict_bc_v1",
+		"cash_topology":     "direct_bill",
 		"payment_authority": "local",
-		"transport_type":   "serial",
-		"baud_rate":        float64(9600),
+		"transport_type":    "serial",
+		"baud_rate":         float64(9600),
 		"driver_options": map[string]any{
 			"billBusKey":               "/dev/ttyS1",
 			"billSharesBoardSerialBus": "false",
