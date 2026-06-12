@@ -84,9 +84,17 @@ Assert-Test "repair_dry_run_blocked_without_admin_creds" {
     $savedEmail = $env:AVF_ADMIN_EMAIL
     $savedPass = $env:AVF_ADMIN_PASSWORD
     $savedToken = $env:AVF_ADMIN_TOKEN
+    $savedAdminEmail = $env:ADMIN_EMAIL
+    $savedAdminPass = $env:ADMIN_PASSWORD
+    $savedE2eEmail = $env:E2E_PROD_ADMIN_EMAIL
+    $savedE2ePass = $env:E2E_PROD_ADMIN_PASSWORD
     $env:AVF_ADMIN_EMAIL = $null
     $env:AVF_ADMIN_PASSWORD = $null
     $env:AVF_ADMIN_TOKEN = $null
+    $env:ADMIN_EMAIL = $null
+    $env:ADMIN_PASSWORD = $null
+    $env:E2E_PROD_ADMIN_EMAIL = $null
+    $env:E2E_PROD_ADMIN_PASSWORD = $null
     $env:AVF_NONINTERACTIVE = "1"
     try {
         & $RepairScript -DryRun -NonInteractive
@@ -95,6 +103,23 @@ Assert-Test "repair_dry_run_blocked_without_admin_creds" {
         $env:AVF_ADMIN_EMAIL = $savedEmail
         $env:AVF_ADMIN_PASSWORD = $savedPass
         $env:AVF_ADMIN_TOKEN = $savedToken
+        $env:ADMIN_EMAIL = $savedAdminEmail
+        $env:ADMIN_PASSWORD = $savedAdminPass
+        $env:E2E_PROD_ADMIN_EMAIL = $savedE2eEmail
+        $env:E2E_PROD_ADMIN_PASSWORD = $savedE2ePass
+    }
+}
+
+Assert-Test "repair_script_no_unsafe_json_write_pattern" {
+    $content = Get-Content $RepairScript -Raw
+    if ($content -match 'ForEach-Object\s*\{\s*Set-Utf8JsonFile') {
+        throw "UNSAFE_JSON_WRITE_PATTERN_PRESENT"
+    }
+    if ($content -match 'jq[^\n\r]*\|\s*ForEach-Object') {
+        throw "UNSAFE_JSON_WRITE_PATTERN_PRESENT jq pipeline ForEach-Object"
+    }
+    if ($content -match 'jq[^\n\r]*\|\s*%\s*\{') {
+        throw "UNSAFE_JSON_WRITE_PATTERN_PRESENT jq pipeline %"
     }
 }
 
