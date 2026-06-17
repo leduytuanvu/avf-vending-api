@@ -28,3 +28,33 @@ CREATE INDEX IF NOT EXISTS ix_orders_simulated ON orders (simulated) WHERE simul
 CREATE INDEX IF NOT EXISTS ix_payments_simulated ON payments (simulated) WHERE simulated = true;
 CREATE INDEX IF NOT EXISTS ix_vend_sessions_simulated ON vend_sessions (simulated) WHERE simulated = true;
 -- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP INDEX IF EXISTS ix_vend_sessions_simulated;
+DROP INDEX IF EXISTS ix_payments_simulated;
+DROP INDEX IF EXISTS ix_orders_simulated;
+
+ALTER TABLE outbox_events DROP COLUMN IF EXISTS simulation_scenario;
+ALTER TABLE outbox_events DROP COLUMN IF EXISTS simulation_run_id;
+ALTER TABLE outbox_events DROP COLUMN IF EXISTS simulated;
+
+ALTER TABLE payments DROP COLUMN IF EXISTS simulation_metadata;
+ALTER TABLE payments DROP COLUMN IF EXISTS fake_board;
+ALTER TABLE payments DROP COLUMN IF EXISTS fake_bill;
+ALTER TABLE payments DROP COLUMN IF EXISTS simulation_scenario;
+ALTER TABLE payments DROP COLUMN IF EXISTS simulation_run_id;
+ALTER TABLE payments DROP COLUMN IF EXISTS simulated;
+
+ALTER TABLE vend_sessions DROP COLUMN IF EXISTS simulation_metadata;
+ALTER TABLE vend_sessions DROP COLUMN IF EXISTS simulation_scenario;
+ALTER TABLE vend_sessions DROP COLUMN IF EXISTS simulation_run_id;
+ALTER TABLE vend_sessions DROP COLUMN IF EXISTS simulated;
+
+ALTER TABLE orders DROP COLUMN IF EXISTS simulation_metadata;
+ALTER TABLE orders DROP COLUMN IF EXISTS fake_board;
+ALTER TABLE orders DROP COLUMN IF EXISTS fake_bill;
+ALTER TABLE orders DROP COLUMN IF EXISTS simulation_scenario;
+ALTER TABLE orders DROP COLUMN IF EXISTS simulation_run_id;
+ALTER TABLE orders DROP COLUMN IF EXISTS simulated;
+-- +goose StatementEnd

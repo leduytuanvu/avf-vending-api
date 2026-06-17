@@ -26,6 +26,10 @@ Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check
 
 `postman/generated/` — expanded REST/gRPC/MQTT inventories from `scripts/postman/generate_complete_api_suite.py`. Regenerate locally; directory is **gitignored** (see root `.gitignore`).
 
+## Production E2E Postman (CI parity)
+
+[`production/`](production/) — collection + environment generated from `tests/e2e/production/e2e-manifest.yaml`. Required by `scripts/ci/verify_production_postman_parity.sh`.
+
 ## Production verification suite (removed from repo)
 
 The former `postman/suites/full-production-suite/` tree was slimmed in 2026 cleanup. Regenerate expanded inventories with `scripts/postman/generate_complete_api_suite.py` (output under `postman/generated/`, gitignored) or use CI collections above plus OpenAPI import.
