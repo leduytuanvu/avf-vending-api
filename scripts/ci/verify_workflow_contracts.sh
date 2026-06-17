@@ -551,12 +551,12 @@ grep -qF "production-db-backup-evidence" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must reference artifact name production-db-backup-evidence for backup resolution by run id"
 grep -qF "backup-evidence/backup-evidence.json" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must resolve backup-evidence/backup-evidence.json inside the backup evidence artifact"
-grep -qF "docs/operations/production-backup-restore-drill.md" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod.yml must link operators to docs/operations/production-backup-restore-drill.md in backup error paths"
-grep -qF "docs/operations/two-vps-rolling-production-deploy.md" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod.yml must reference docs/operations/two-vps-rolling-production-deploy.md (2-VPS rolling topology)"
-grep -qF "docs/operations/production-smoke-tests.md" "${WF}/deploy-prod.yml" || \
-  fail "deploy-prod.yml must reference docs/operations/production-smoke-tests.md (enterprise production smoke)"
+grep -qF "docs/production/production-backup-restore-drill.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must link operators to docs/production/production-backup-restore-drill.md in backup error paths"
+grep -qF "docs/deployment/two-vps-rolling-production-deploy.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must reference docs/deployment/two-vps-rolling-production-deploy.md (2-VPS rolling topology)"
+grep -qF "docs/production/production-smoke-tests.md" "${WF}/deploy-prod.yml" || \
+  fail "deploy-prod.yml must reference docs/production/production-smoke-tests.md (enterprise production smoke)"
 grep -qF "SMOKE_LEVEL" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must set SMOKE_LEVEL for tiered production smoke"
 grep -qF "enable_business_synthetic_smoke" "${WF}/deploy-prod.yml" || \
@@ -575,8 +575,8 @@ grep -qF "security-release-audit-package" "${WF}/security-release.yml" || \
   fail "security-release must upload security-release-audit-package"
 grep -qF "production-release-audit-package" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod must upload production-release-audit-package"
-test -f "docs/operations/release-evidence-retention.md" || \
-  fail "docs/operations/release-evidence-retention.md is required (release evidence retention runbook)"
+test -f "docs/deployment/release-evidence-retention.md" || \
+  fail "docs/deployment/release-evidence-retention.md is required (release evidence retention runbook)"
 grep -qF "rollout-timeline.json" "${WF}/deploy-prod.yml" || \
   fail "deploy-prod.yml must write deployment-evidence/rollout-timeline.json (2-VPS rolling evidence)"
 grep -qF "rollout_outcome_summary" "${WF}/deploy-prod.yml" || \

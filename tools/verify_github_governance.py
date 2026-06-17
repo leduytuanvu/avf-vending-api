@@ -131,7 +131,7 @@ MANUAL_GOVERNANCE_CHECKLIST: str = """
 === Manual GitHub UI governance (repo owner) ===
 Code in this repository cannot create or lock branch protection, repository rules, or
 environment settings. The repo owner (or org admin) must apply these in the GitHub UI
-(step-by-step: docs/operations/github-governance.md; full runbook: docs/runbooks/github-governance.md).
+(step-by-step: docs/deployment/github-governance.md; full runbook: docs/runbooks/github-governance.md).
 
 This repository uses **Repository rulesets** as the primary way to protect `main` and `develop`.
 In **Settings → Rules → Rulesets** (or org rules), ensure **active** branch rulesets target
@@ -566,7 +566,7 @@ def _check_branch_protection_classic(
             f"Branch {branch!r}: `GET /branches/{branch}/protection` is 404. "
             + not_found_prefix
             + "Configure an **active** **repository ruleset** for this ref or classic branch protection. "
-            "See docs/operations/github-governance.md and docs/runbooks/github-governance.md."
+            "See docs/deployment/github-governance.md and docs/runbooks/github-governance.md."
         )
         return
     if code != 0 or not isinstance(data, dict):
@@ -860,7 +860,7 @@ def main() -> int:
     if not tok:
         msg = (
             "verify_github_governance: GOVERNANCE_AUDIT_TOKEN, GH_TOKEN, or GITHUB_TOKEN is not set; skipping GitHub API governance checks.\n"
-            "Set a token with repo read access and re-run, or see docs/operations/github-governance.md for manual setup."
+            "Set a token with repo read access and re-run, or see docs/deployment/github-governance.md for manual setup."
         )
         if _enforce() and _is_ci():
             print(
@@ -950,7 +950,7 @@ def main() -> int:
             )
         _print_manual_checklist(sys.stdout)
         print(
-            "GOVERNANCE_CHECK: MANUAL_REVIEW_REQUIRED (token cannot read rulesets, branch protection, or environments; verify in GitHub UI — docs/operations/github-governance.md, docs/runbooks/github-governance.md)",
+            "GOVERNANCE_CHECK: MANUAL_REVIEW_REQUIRED (token cannot read rulesets, branch protection, or environments; verify in GitHub UI — docs/deployment/github-governance.md, docs/runbooks/github-governance.md)",
             file=sys.stderr,
         )
         return 0
@@ -972,7 +972,7 @@ def main() -> int:
         ):
             print(
                 "verify_github_governance: some failures may be API limits, missing **repository rulesets**, or classic **branch protection**; "
-                "use the manual checklist and docs/operations/github-governance.md",
+                "use the manual checklist and docs/deployment/github-governance.md",
                 file=sys.stderr,
             )
             _print_manual_checklist(sys.stderr)
