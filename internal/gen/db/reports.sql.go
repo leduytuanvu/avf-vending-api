@@ -154,6 +154,7 @@ WHERE
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR vs.product_id = $5::uuid)
+    AND o.simulated = false
 `
 
 type ReportingFailedVendsCountFilteredParams struct {
@@ -645,6 +646,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1,
     p.provider,
@@ -740,6 +742,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1
 ORDER BY
@@ -817,6 +820,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     p.provider,
     p.state
@@ -927,6 +931,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 `
 
 type ReportingPaymentsTotalsFilteredParams struct {
@@ -1161,6 +1166,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1
 ORDER BY
@@ -1246,6 +1252,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     o.machine_id
 ORDER BY
@@ -1332,6 +1339,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     p.provider
 ORDER BY
@@ -1435,6 +1443,7 @@ WHERE
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR vs.product_id = $5::uuid)
+    AND o.simulated = false
 GROUP BY
     vs.product_id
 ORDER BY
@@ -1522,6 +1531,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     m.site_id
 ORDER BY
@@ -1605,6 +1615,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 `
 
 type ReportingSalesTotalsFilteredParams struct {
@@ -1637,6 +1648,66 @@ func (q *Queries) ReportingSalesTotalsFiltered(ctx context.Context, arg Reportin
 		&i.TaxMinor,
 		&i.SubtotalMinor,
 		&i.OrderCount,
+	)
+	return i, err
+}
+
+const ReportingSalesTotalsWithSimulationOption = `-- name: ReportingSalesTotalsWithSimulationOption :one
+SELECT
+    COALESCE(SUM(o.total_minor), 0)::bigint AS gross_total_minor,
+    COALESCE(SUM(o.tax_minor), 0)::bigint AS tax_minor,
+    COALESCE(SUM(o.subtotal_minor), 0)::bigint AS subtotal_minor,
+    COUNT(*)::bigint AS order_count,
+    COUNT(*) FILTER (WHERE o.simulated = true)::bigint AS simulated_order_count
+FROM
+    orders o
+    INNER JOIN machines m ON m.id = o.machine_id
+WHERE
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR o.machine_id = $4::uuid)
+    AND (
+        $5::boolean IS TRUE
+        OR o.simulated = false)
+`
+
+type ReportingSalesTotalsWithSimulationOptionParams struct {
+	Column1          time.Time
+	Column2          time.Time
+	Column3          uuid.UUID
+	Column4          uuid.UUID
+	IncludeSimulated pgtype.Bool
+}
+
+type ReportingSalesTotalsWithSimulationOptionRow struct {
+	GrossTotalMinor     int64
+	TaxMinor            int64
+	SubtotalMinor       int64
+	OrderCount          int64
+	SimulatedOrderCount int64
+}
+
+// Diagnostic: revenue totals with optional simulated rows (testing only).
+func (q *Queries) ReportingSalesTotalsWithSimulationOption(ctx context.Context, arg ReportingSalesTotalsWithSimulationOptionParams) (ReportingSalesTotalsWithSimulationOptionRow, error) {
+	row := q.db.QueryRow(ctx, ReportingSalesTotalsWithSimulationOption,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.IncludeSimulated,
+	)
+	var i ReportingSalesTotalsWithSimulationOptionRow
+	err := row.Scan(
+		&i.GrossTotalMinor,
+		&i.TaxMinor,
+		&i.SubtotalMinor,
+		&i.OrderCount,
+		&i.SimulatedOrderCount,
 	)
 	return i, err
 }
@@ -1994,6 +2065,7 @@ WHERE
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR vs.product_id = $5::uuid)
+    AND o.simulated = false
 `
 
 type ReportingVendSummaryTotalsParams struct {

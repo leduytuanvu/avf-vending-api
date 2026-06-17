@@ -98,13 +98,18 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		orderInserted = false
 	case isNoRows(err):
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
-			MachineID:      in.MachineID,
-			Status:         in.OrderStatus,
-			Currency:       in.Currency,
-			SubtotalMinor:  in.SubtotalMinor,
-			TaxMinor:       in.TaxMinor,
-			TotalMinor:     in.TotalMinor,
-			IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
+			MachineID:          in.MachineID,
+			Status:             in.OrderStatus,
+			Currency:           in.Currency,
+			SubtotalMinor:      in.SubtotalMinor,
+			TaxMinor:           in.TaxMinor,
+			TotalMinor:         in.TotalMinor,
+			IdempotencyKey:     optionalStringToPgText(in.IdempotencyKey),
+			Simulated:          in.Simulated,
+			SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
+			SimulationScenario: optionalStringToPgText(in.SimulationScenario),
+			FakeBill:           in.FakeBill,
+			FakeBoard:          in.FakeBoard,
 		})
 		if err != nil {
 			if isUniqueViolation(err) {
@@ -153,11 +158,14 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 	}
 
 	vRow, err := q.InsertVendSession(ctx, db.InsertVendSessionParams{
-		OrderID:   orderRow.ID,
-		MachineID: in.MachineID,
-		SlotIndex: in.SlotIndex,
-		ProductID: in.ProductID,
-		State:     in.VendState,
+		OrderID:            orderRow.ID,
+		MachineID:          in.MachineID,
+		SlotIndex:          in.SlotIndex,
+		ProductID:          in.ProductID,
+		State:              in.VendState,
+		Simulated:          in.Simulated,
+		SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
+		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
 	})
 	if err != nil {
 		return commerce.CreateOrderVendResult{}, err
@@ -241,12 +249,15 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		}
 
 		obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-			Topic:          in.OutboxTopic,
-			EventType:      in.OutboxEventType,
-			Payload:        in.OutboxPayload,
-			AggregateType:  in.OutboxAggregateType,
-			AggregateID:    in.OutboxAggregateID,
-			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
+			Topic:              in.OutboxTopic,
+			EventType:          in.OutboxEventType,
+			Payload:            in.OutboxPayload,
+			AggregateType:      in.OutboxAggregateType,
+			AggregateID:        in.OutboxAggregateID,
+			IdempotencyKey:     optionalStringToPgText(in.OutboxIdempotencyKey),
+			Simulated:          in.Simulated,
+			SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
+			SimulationScenario: optionalStringToPgText(in.SimulationScenario),
 		})
 		if insErr != nil {
 			return commerce.PaymentOutboxResult{}, insErr
@@ -265,24 +276,32 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 	}
 
 	pRow, err := q.InsertPayment(ctx, db.InsertPaymentParams{
-		OrderID:        in.OrderID,
-		Provider:       in.Provider,
-		State:          in.PaymentState,
-		AmountMinor:    in.AmountMinor,
-		Currency:       in.Currency,
-		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
+		OrderID:            in.OrderID,
+		Provider:           in.Provider,
+		State:              in.PaymentState,
+		AmountMinor:        in.AmountMinor,
+		Currency:           in.Currency,
+		IdempotencyKey:     optionalStringToPgText(in.IdempotencyKey),
+		Simulated:          in.Simulated,
+		SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
+		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
+		FakeBill:           in.FakeBill,
+		FakeBoard:          in.FakeBoard,
 	})
 	if err != nil {
 		return commerce.PaymentOutboxResult{}, err
 	}
 
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
-		Topic:          in.OutboxTopic,
-		EventType:      in.OutboxEventType,
-		Payload:        in.OutboxPayload,
-		AggregateType:  in.OutboxAggregateType,
-		AggregateID:    in.OutboxAggregateID,
-		IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
+		Topic:              in.OutboxTopic,
+		EventType:          in.OutboxEventType,
+		Payload:            in.OutboxPayload,
+		AggregateType:      in.OutboxAggregateType,
+		AggregateID:        in.OutboxAggregateID,
+		IdempotencyKey:     optionalStringToPgText(in.OutboxIdempotencyKey),
+		Simulated:          in.Simulated,
+		SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
+		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
 	})
 	if err != nil {
 		return commerce.PaymentOutboxResult{}, err

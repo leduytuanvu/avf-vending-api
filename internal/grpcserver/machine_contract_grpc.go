@@ -88,6 +88,23 @@ func (s *machineBootstrapServer) AckConfigVersion(ctx context.Context, req *mach
 				LastAcknowledgedPlanogramVersionID: pgtype.UUID{Bytes: uid, Valid: true},
 			})
 		}
+		if req.GetEffectiveDeviceConfig() != nil && len(req.GetEffectiveDeviceConfig().GetFields()) > 0 {
+			if b, err := protojson.Marshal(req.GetEffectiveDeviceConfig()); err == nil && json.Valid(b) && string(b) != "{}" {
+				_ = q.SnapshotUpdateEffectiveDeviceConfig(ctx, db.SnapshotUpdateEffectiveDeviceConfigParams{
+					EffectiveDeviceConfig: b,
+					MachineID:             claims.MachineID,
+				})
+			}
+		}
+		if ack := req.GetFieldAck(); len(ack) > 0 {
+			b, err := json.Marshal(ack)
+			if err == nil && json.Valid(b) {
+				_ = q.SnapshotUpdateDeviceConfigFieldAck(ctx, db.SnapshotUpdateDeviceConfigFieldAckParams{
+					DeviceConfigFieldAck: b,
+					MachineID:            claims.MachineID,
+				})
+			}
+		}
 	}
 	var rid string
 	if req != nil && req.GetMeta() != nil {

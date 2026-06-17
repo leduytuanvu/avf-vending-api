@@ -2,6 +2,7 @@ package fleetadmin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -134,7 +135,16 @@ func baseItemFromFleetDetailRow(m db.FleetAdminGetMachineDetailRow) AdminMachine
 		AssignedTechnicians: nil,
 		CurrentOperator:     nil,
 		InventorySummary:    AdminMachineInventorySummary{},
+		EffectiveDeviceConfig: jsonbRawOrNil(m.EffectiveDeviceConfig),
+		DeviceConfigFieldAck:  jsonbRawOrNil(m.DeviceConfigFieldAck),
 	}
+}
+
+func jsonbRawOrNil(raw []byte) json.RawMessage {
+	if len(raw) == 0 || string(raw) == "{}" || string(raw) == "null" {
+		return nil
+	}
+	return json.RawMessage(raw)
 }
 
 func (s *Service) applyMachineEnrichment(

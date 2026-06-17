@@ -18,6 +18,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
+	"github.com/avf/avf-vending-api/internal/domain/deviceconfig"
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -855,6 +856,15 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 			}
 			if !json.Valid(meta) {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_metadata", "cabinet metadata must be JSON")
+				return
+			}
+			if err := deviceconfig.ValidateMetadataDeviceConfig(meta); err != nil {
+				var ve deviceconfig.ValidationError
+				if errors.As(err, &ve) {
+					writeAPIError(w, r.Context(), http.StatusBadRequest, ve.Code, ve.Message)
+					return
+				}
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "device_config_invalid", err.Error())
 				return
 			}
 			cabs = append(cabs, setupapp.CabinetUpsert{

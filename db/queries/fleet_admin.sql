@@ -53,6 +53,8 @@ SELECT
     snap.app_version,
     snap.firmware_version,
     snap.last_heartbeat_at,
+    snap.effective_device_config,
+    snap.device_config_field_ack,
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,

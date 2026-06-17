@@ -190,7 +190,7 @@ type Querier interface {
 	CommerceAdminGetRefundRequestByIdempotencyKey(ctx context.Context, idempotencyKey pgtype.Text) (RefundRequest, error)
 	CommerceAdminInsertRefundRequest(ctx context.Context, arg CommerceAdminInsertRefundRequestParams) (RefundRequest, error)
 	CommerceAdminListOrderTimeline(ctx context.Context, arg CommerceAdminListOrderTimelineParams) ([]OrderTimeline, error)
-	CommerceAdminListOrders(ctx context.Context, arg CommerceAdminListOrdersParams) ([]Order, error)
+	CommerceAdminListOrders(ctx context.Context, arg CommerceAdminListOrdersParams) ([]CommerceAdminListOrdersRow, error)
 	CommerceAdminListPayments(ctx context.Context, arg CommerceAdminListPaymentsParams) ([]CommerceAdminListPaymentsRow, error)
 	CommerceAdminListReconciliationCases(ctx context.Context, arg CommerceAdminListReconciliationCasesParams) ([]CommerceReconciliationCase, error)
 	CommerceAdminListRefundRequests(ctx context.Context, arg CommerceAdminListRefundRequestsParams) ([]RefundRequest, error)
@@ -452,7 +452,7 @@ type Querier interface {
 	MarkMachineIdempotencySucceeded(ctx context.Context, arg MarkMachineIdempotencySucceededParams) (MachineIdempotencyKey, error)
 	MarkMachineRuntimeRefreshTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkMachineSessionUsedByID(ctx context.Context, id uuid.UUID) error
-	MarkOutboxEventPublished(ctx context.Context, id int64) (OutboxEvent, error)
+	MarkOutboxEventPublished(ctx context.Context, id int64) (MarkOutboxEventPublishedRow, error)
 	MarkRolloutCampaignCancelled(ctx context.Context, id uuid.UUID) (RolloutCampaign, error)
 	MarkRolloutCampaignCompleted(ctx context.Context, id uuid.UUID) (RolloutCampaign, error)
 	MarkRolloutCampaignRolledBack(ctx context.Context, id uuid.UUID) (RolloutCampaign, error)
@@ -576,6 +576,8 @@ type Querier interface {
 	ReportingSalesTotals(ctx context.Context, arg ReportingSalesTotalsParams) (ReportingSalesTotalsRow, error)
 	// Filtered sales/payments (site, machine, product) for admin reports. Sentinel nil UUID = unset.
 	ReportingSalesTotalsFiltered(ctx context.Context, arg ReportingSalesTotalsFilteredParams) (ReportingSalesTotalsFilteredRow, error)
+	// Diagnostic: revenue totals with optional simulated rows (testing only).
+	ReportingSalesTotalsWithSimulationOption(ctx context.Context, arg ReportingSalesTotalsWithSimulationOptionParams) (ReportingSalesTotalsWithSimulationOptionRow, error)
 	ReportingStockMovement(ctx context.Context, arg ReportingStockMovementParams) ([]ReportingStockMovementRow, error)
 	ReportingStockMovementCount(ctx context.Context, arg ReportingStockMovementCountParams) (int64, error)
 	ReportingTechnicianFillOps(ctx context.Context, arg ReportingTechnicianFillOpsParams) ([]ReportingTechnicianFillOpsRow, error)
@@ -604,6 +606,8 @@ type Querier interface {
 	RuntimeListProductImagesForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeListProductImagesForProductsRow, error)
 	RuntimeProductPrimaryMediaReady(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeProductPrimaryMediaReadyRow, error)
 	SettlementReferencedPaymentsTotalForOrg(ctx context.Context, arg SettlementReferencedPaymentsTotalForOrgParams) (SettlementReferencedPaymentsTotalForOrgRow, error)
+	SnapshotUpdateDeviceConfigFieldAck(ctx context.Context, arg SnapshotUpdateDeviceConfigFieldAckParams) error
+	SnapshotUpdateEffectiveDeviceConfig(ctx context.Context, arg SnapshotUpdateEffectiveDeviceConfigParams) error
 	SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error)
 	TechnicianActiveAssignmentExists(ctx context.Context, arg TechnicianActiveAssignmentExistsParams) (bool, error)
 	TelemetryRetentionCountCriticalLinkedDeviceEvents(ctx context.Context, receivedAt time.Time) (int64, error)

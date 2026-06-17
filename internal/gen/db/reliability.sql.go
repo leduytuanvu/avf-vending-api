@@ -32,7 +32,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM outbox_events
 WHERE
     topic = $1
@@ -67,6 +70,9 @@ func (q *Queries) GetOutboxByTopicAndIdempotency(ctx context.Context, arg GetOut
 		&i.LockedUntil,
 		&i.UpdatedAt,
 		&i.MaxPublishAttempts,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
 	)
 	return i, err
 }
@@ -160,7 +166,10 @@ INSERT INTO outbox_events (
     payload,
     aggregate_type,
     aggregate_id,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 )
 VALUES (
     $1,
@@ -168,37 +177,24 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7,
+    $8,
+    $9
 )
-RETURNING
-    id,
-    topic,
-    event_type,
-    payload,
-    aggregate_type,
-    aggregate_id,
-    idempotency_key,
-    created_at,
-    published_at,
-    publish_attempt_count,
-    last_publish_error,
-    last_publish_attempt_at,
-    next_publish_after,
-    dead_lettered_at,
-    status,
-    locked_by,
-    locked_until,
-    updated_at,
-    max_publish_attempts
+RETURNING id, topic, event_type, payload, aggregate_type, aggregate_id, idempotency_key, created_at, published_at, publish_attempt_count, last_publish_error, last_publish_attempt_at, next_publish_after, dead_lettered_at, status, locked_by, locked_until, updated_at, max_publish_attempts, simulated, simulation_run_id, simulation_scenario
 `
 
 type InsertOutboxEventParams struct {
-	Topic          string
-	EventType      string
-	Payload        []byte
-	AggregateType  string
-	AggregateID    uuid.UUID
-	IdempotencyKey pgtype.Text
+	Topic              string
+	EventType          string
+	Payload            []byte
+	AggregateType      string
+	AggregateID        uuid.UUID
+	IdempotencyKey     pgtype.Text
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
 }
 
 func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error) {
@@ -209,6 +205,9 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		arg.AggregateType,
 		arg.AggregateID,
 		arg.IdempotencyKey,
+		arg.Simulated,
+		arg.SimulationRunID,
+		arg.SimulationScenario,
 	)
 	var i OutboxEvent
 	err := row.Scan(
@@ -231,6 +230,9 @@ func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventPa
 		&i.LockedUntil,
 		&i.UpdatedAt,
 		&i.MaxPublishAttempts,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
 	)
 	return i, err
 }
@@ -296,7 +298,10 @@ RETURNING
     o.locked_by,
     o.locked_until,
     o.updated_at,
-    o.max_publish_attempts
+    o.max_publish_attempts,
+    o.simulated,
+    o.simulation_run_id,
+    o.simulation_scenario
 `
 
 type LeaseOutboxForPublishParams struct {
@@ -340,6 +345,9 @@ func (q *Queries) LeaseOutboxForPublish(ctx context.Context, arg LeaseOutboxForP
 			&i.LockedUntil,
 			&i.UpdatedAt,
 			&i.MaxPublishAttempts,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
 		); err != nil {
 			return nil, err
 		}
@@ -371,7 +379,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM outbox_events
 WHERE
     published_at IS NULL
@@ -426,6 +437,9 @@ func (q *Queries) ListOutboxUnpublished(ctx context.Context, limit int32) ([]Out
 			&i.LockedUntil,
 			&i.UpdatedAt,
 			&i.MaxPublishAttempts,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
 		); err != nil {
 			return nil, err
 		}

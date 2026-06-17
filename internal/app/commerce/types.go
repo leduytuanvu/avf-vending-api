@@ -22,6 +22,11 @@ type CreateOrderInput struct {
 	TaxMinor       int64
 	TotalMinor     int64
 	IdempotencyKey string
+	Simulated          bool
+	SimulationRunID    string
+	SimulationScenario string
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 // StartPaymentInput binds a payment row and optional outbox fan-out; provider is an opaque label from the caller.
@@ -39,6 +44,12 @@ type StartPaymentInput struct {
 	OutboxAggregateType  string
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
+
+	Simulated          bool
+	SimulationRunID    string
+	SimulationScenario string
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.

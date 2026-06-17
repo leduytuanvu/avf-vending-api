@@ -30,7 +30,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM
     outbox_events
 WHERE
@@ -60,6 +63,9 @@ func (q *Queries) AdminGetOutboxEventByID(ctx context.Context, id int64) (Outbox
 		&i.LockedUntil,
 		&i.UpdatedAt,
 		&i.MaxPublishAttempts,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
 	)
 	return i, err
 }
@@ -84,7 +90,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM
     outbox_events
 WHERE
@@ -145,6 +154,9 @@ func (q *Queries) AdminListOutboxEventsPendingWindow(ctx context.Context, arg Ad
 			&i.LockedUntil,
 			&i.UpdatedAt,
 			&i.MaxPublishAttempts,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
 		); err != nil {
 			return nil, err
 		}

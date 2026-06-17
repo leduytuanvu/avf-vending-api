@@ -1503,6 +1503,8 @@ type V1AdminMachineListItem struct {
 	AssignedTechnicians []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
 	CurrentOperator     *V1AdminCurrentOperator        `json:"currentOperator"`
 	InventorySummary    V1AdminMachineInventorySummary `json:"inventorySummary"`
+	EffectiveDeviceConfig json.RawMessage              `json:"effectiveDeviceConfig,omitempty"`
+	DeviceConfigFieldAck  json.RawMessage              `json:"deviceConfigFieldAck,omitempty"`
 }
 
 // V1MachineTelemetrySnapshotResponse is GET /v1/machines/{machineId}/telemetry/snapshot.

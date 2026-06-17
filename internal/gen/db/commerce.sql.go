@@ -61,6 +61,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -85,6 +89,10 @@ func (q *Queries) GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.U
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -103,7 +111,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     order_id = $1
@@ -128,6 +142,12 @@ func (q *Queries) GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUI
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -142,6 +162,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -161,6 +187,12 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.TaxMinor,
 		&i.TotalMinor,
 		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -177,6 +209,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -196,6 +234,12 @@ func (q *Queries) GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey p
 		&i.TaxMinor,
 		&i.TotalMinor,
 		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -215,7 +259,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     id = $1
@@ -237,6 +287,12 @@ func (q *Queries) GetPaymentByID(ctx context.Context, id uuid.UUID) (Payment, er
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -254,7 +310,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     order_id = $1
@@ -282,6 +344,12 @@ func (q *Queries) GetPaymentByOrderAndIdempotencyKey(ctx context.Context, arg Ge
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -519,6 +587,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -546,6 +618,10 @@ func (q *Queries) GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendS
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -559,7 +635,12 @@ INSERT INTO orders (
     subtotal_minor,
     tax_minor,
     total_minor,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board
 )
 VALUES (
     $1,
@@ -568,19 +649,29 @@ VALUES (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
 )
-RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, created_at, updated_at
+RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, created_at, updated_at
 `
 
 type InsertOrderParams struct {
-	MachineID      uuid.UUID
-	Status         string
-	Currency       string
-	SubtotalMinor  int64
-	TaxMinor       int64
-	TotalMinor     int64
-	IdempotencyKey pgtype.Text
+	MachineID          uuid.UUID
+	Status             string
+	Currency           string
+	SubtotalMinor      int64
+	TaxMinor           int64
+	TotalMinor         int64
+	IdempotencyKey     pgtype.Text
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order, error) {
@@ -592,6 +683,11 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		arg.TaxMinor,
 		arg.TotalMinor,
 		arg.IdempotencyKey,
+		arg.Simulated,
+		arg.SimulationRunID,
+		arg.SimulationScenario,
+		arg.FakeBill,
+		arg.FakeBoard,
 	)
 	var i Order
 	err := row.Scan(
@@ -603,6 +699,12 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		&i.TaxMinor,
 		&i.TotalMinor,
 		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -616,7 +718,12 @@ INSERT INTO payments (
     state,
     amount_minor,
     currency,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board
 )
 VALUES (
     $1,
@@ -624,30 +731,28 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
 )
-RETURNING
-    id,
-    order_id,
-    provider,
-    state,
-    amount_minor,
-    currency,
-    idempotency_key,
-    created_at,
-    updated_at,
-    reconciliation_status,
-    settlement_status,
-    settlement_batch_id
+RETURNING id, order_id, provider, state, amount_minor, currency, idempotency_key, created_at, updated_at, reconciliation_status, settlement_status, settlement_batch_id, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata
 `
 
 type InsertPaymentParams struct {
-	OrderID        uuid.UUID
-	Provider       string
-	State          string
-	AmountMinor    int64
-	Currency       string
-	IdempotencyKey pgtype.Text
+	OrderID            uuid.UUID
+	Provider           string
+	State              string
+	AmountMinor        int64
+	Currency           string
+	IdempotencyKey     pgtype.Text
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (Payment, error) {
@@ -658,6 +763,11 @@ func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (P
 		arg.AmountMinor,
 		arg.Currency,
 		arg.IdempotencyKey,
+		arg.Simulated,
+		arg.SimulationRunID,
+		arg.SimulationScenario,
+		arg.FakeBill,
+		arg.FakeBoard,
 	)
 	var i Payment
 	err := row.Scan(
@@ -673,6 +783,12 @@ func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (P
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -923,14 +1039,20 @@ INSERT INTO vend_sessions (
     machine_id,
     slot_index,
     product_id,
-    state
+    state,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 )
 VALUES (
     $1,
     $2,
     $3,
     $4,
-    $5
+    $5,
+    $6,
+    $7,
+    $8
 )
 RETURNING
     id,
@@ -944,15 +1066,22 @@ RETURNING
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 `
 
 type InsertVendSessionParams struct {
-	OrderID   uuid.UUID
-	MachineID uuid.UUID
-	SlotIndex int32
-	ProductID uuid.UUID
-	State     string
+	OrderID            uuid.UUID
+	MachineID          uuid.UUID
+	SlotIndex          int32
+	ProductID          uuid.UUID
+	State              string
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
 }
 
 func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionParams) (VendSession, error) {
@@ -962,6 +1091,9 @@ func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionPa
 		arg.SlotIndex,
 		arg.ProductID,
 		arg.State,
+		arg.Simulated,
+		arg.SimulationRunID,
+		arg.SimulationScenario,
 	)
 	var i VendSession
 	err := row.Scan(
@@ -976,6 +1108,10 @@ func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionPa
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -991,6 +1127,12 @@ SELECT DISTINCT
     o.tax_minor,
     o.total_minor,
     o.idempotency_key,
+    o.simulated,
+    o.simulation_run_id,
+    o.simulation_scenario,
+    o.fake_bill,
+    o.fake_board,
+    o.simulation_metadata,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -1027,6 +1169,12 @@ func (q *Queries) ListOrdersWithUnresolvedPayment(ctx context.Context, arg ListO
 			&i.TaxMinor,
 			&i.TotalMinor,
 			&i.IdempotencyKey,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
+			&i.FakeBill,
+			&i.FakeBoard,
+			&i.SimulationMetadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1189,7 +1337,13 @@ SELECT
     p.updated_at,
     p.reconciliation_status,
     p.settlement_status,
-    p.settlement_batch_id
+    p.settlement_batch_id,
+    p.simulated,
+    p.simulation_run_id,
+    p.simulation_scenario,
+    p.fake_bill,
+    p.fake_board,
+    p.simulation_metadata
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
@@ -1228,6 +1382,12 @@ func (q *Queries) ListPaymentsForRefundReview(ctx context.Context, arg ListPayme
 			&i.ReconciliationStatus,
 			&i.SettlementStatus,
 			&i.SettlementBatchID,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
+			&i.FakeBill,
+			&i.FakeBoard,
+			&i.SimulationMetadata,
 		); err != nil {
 			return nil, err
 		}
@@ -1252,7 +1412,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     state IN ('created', 'authorized')
@@ -1289,6 +1455,12 @@ func (q *Queries) ListPaymentsPendingTimeout(ctx context.Context, arg ListPaymen
 			&i.ReconciliationStatus,
 			&i.SettlementStatus,
 			&i.SettlementBatchID,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
+			&i.FakeBill,
+			&i.FakeBoard,
+			&i.SimulationMetadata,
 		); err != nil {
 			return nil, err
 		}
@@ -1313,7 +1485,13 @@ SELECT
     p.updated_at,
     p.reconciliation_status,
     p.settlement_status,
-    p.settlement_batch_id
+    p.settlement_batch_id,
+    p.simulated,
+    p.simulation_run_id,
+    p.simulation_scenario,
+    p.fake_bill,
+    p.fake_board,
+    p.simulation_metadata
 FROM payments p
 WHERE
     EXISTS (
@@ -1359,6 +1537,12 @@ func (q *Queries) ListPotentialDuplicatePayments(ctx context.Context, arg ListPo
 			&i.ReconciliationStatus,
 			&i.SettlementStatus,
 			&i.SettlementBatchID,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
+			&i.FakeBill,
+			&i.FakeBoard,
+			&i.SimulationMetadata,
 		); err != nil {
 			return nil, err
 		}
@@ -1603,6 +1787,10 @@ SELECT
     v.started_at,
     v.completed_at,
     v.final_command_attempt_id,
+    v.simulated,
+    v.simulation_run_id,
+    v.simulation_scenario,
+    v.simulation_metadata,
     v.created_at,
     o.status AS order_status
 FROM vend_sessions v
@@ -1633,6 +1821,10 @@ type ListVendSessionsStuckForReconciliationRow struct {
 	StartedAt             pgtype.Timestamptz
 	CompletedAt           pgtype.Timestamptz
 	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
 	CreatedAt             time.Time
 	OrderStatus           string
 }
@@ -1658,6 +1850,10 @@ func (q *Queries) ListVendSessionsStuckForReconciliation(ctx context.Context, ar
 			&i.StartedAt,
 			&i.CompletedAt,
 			&i.FinalCommandAttemptID,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
+			&i.SimulationMetadata,
 			&i.CreatedAt,
 			&i.OrderStatus,
 		); err != nil {
@@ -1681,6 +1877,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -1702,6 +1904,12 @@ func (q *Queries) LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID
 		&i.TaxMinor,
 		&i.TotalMinor,
 		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1721,6 +1929,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -1749,6 +1961,10 @@ func (q *Queries) LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, ar
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1787,9 +2003,31 @@ RETURNING
     max_publish_attempts
 `
 
-func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (OutboxEvent, error) {
+type MarkOutboxEventPublishedRow struct {
+	ID                   int64
+	Topic                string
+	EventType            string
+	Payload              []byte
+	AggregateType        string
+	AggregateID          uuid.UUID
+	IdempotencyKey       pgtype.Text
+	CreatedAt            time.Time
+	PublishedAt          pgtype.Timestamptz
+	PublishAttemptCount  int32
+	LastPublishError     pgtype.Text
+	LastPublishAttemptAt pgtype.Timestamptz
+	NextPublishAfter     pgtype.Timestamptz
+	DeadLetteredAt       pgtype.Timestamptz
+	Status               string
+	LockedBy             pgtype.Text
+	LockedUntil          pgtype.Timestamptz
+	UpdatedAt            time.Time
+	MaxPublishAttempts   int32
+}
+
+func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (MarkOutboxEventPublishedRow, error) {
 	row := q.db.QueryRow(ctx, MarkOutboxEventPublished, id)
-	var i OutboxEvent
+	var i MarkOutboxEventPublishedRow
 	err := row.Scan(
 		&i.ID,
 		&i.Topic,
@@ -1848,6 +2086,12 @@ RETURNING
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 `
@@ -1869,6 +2113,12 @@ func (q *Queries) UpdateOrderStatusByOrg(ctx context.Context, arg UpdateOrderSta
 		&i.TaxMinor,
 		&i.TotalMinor,
 		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1894,7 +2144,13 @@ RETURNING
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 `
 
 type UpdatePaymentStateParams struct {
@@ -1918,6 +2174,12 @@ func (q *Queries) UpdatePaymentState(ctx context.Context, arg UpdatePaymentState
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -1942,7 +2204,13 @@ RETURNING
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 `
 
 type UpdatePaymentStateForReconciliationParams struct {
@@ -1966,6 +2234,12 @@ func (q *Queries) UpdatePaymentStateForReconciliation(ctx context.Context, arg U
 		&i.ReconciliationStatus,
 		&i.SettlementStatus,
 		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
 	)
 	return i, err
 }
@@ -1999,6 +2273,10 @@ RETURNING
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 `
 
@@ -2029,6 +2307,10 @@ func (q *Queries) UpdateVendSessionStateByOrderSlot(ctx context.Context, arg Upd
 		&i.StartedAt,
 		&i.CompletedAt,
 		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
 		&i.CreatedAt,
 	)
 	return i, err

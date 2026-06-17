@@ -1,6 +1,7 @@
 package fleetadmin
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/listscope"
@@ -58,6 +59,8 @@ type AdminMachineListItem struct {
 	AssignedTechnicians []AdminAssignedTechnician    `json:"assignedTechnicians"`
 	CurrentOperator     *AdminCurrentOperator        `json:"currentOperator"`
 	InventorySummary    AdminMachineInventorySummary `json:"inventorySummary"`
+	EffectiveDeviceConfig json.RawMessage            `json:"effectiveDeviceConfig,omitempty"`
+	DeviceConfigFieldAck  json.RawMessage            `json:"deviceConfigFieldAck,omitempty"`
 }
 
 // MachinesListResponse is returned by GET /v1/admin/machines.
