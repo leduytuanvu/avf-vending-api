@@ -1,5 +1,7 @@
 # Release process (enterprise)
 
+> **Scope:** Operator-oriented enterprise release flow (develop → main → production). For artifact tables and workflow chain details, see [runbooks/release-process.md](../runbooks/release-process.md).
+
 This page is the **operator-oriented** end-to-end map from code merge to production. It complements the maintainer entry point [docs/runbooks/cicd-release.md](../runbooks/cicd-release.md), artifact details in [docs/runbooks/release-process.md](../runbooks/release-process.md), and the staging contract in [staging-preprod-gate.md](staging-preprod-gate.md).
 
 **Production deploy is manual only:** there is **no** `on.push` or `workflow_run` path that starts **Deploy Production**. Operators run it from the GitHub **Actions** UI on branch **`main`** using **`workflow_dispatch`**.
@@ -71,7 +73,7 @@ Use these as **recordkeeping fields** in your change ticket. Replace placeholder
 | **Build run id** | **Build and Push Images** run that produced the **release-candidate** / image digests you deploy | Production deploy |
 | **Security Release run id** | Run that published **`verdict: pass`** for those images | Production deploy |
 | **Staging evidence run id** | **Staging Deployment Contract** run with **`staging-deploy-evidence`** | Strict production path (unless a documented, noisy bypass is used with reason) |
-| **Backup evidence id** | Run id or id from backup drill JSON when `run_migration` and backup policy require it | Migrations with backup policy—see [production-backup-restore-drill.md](production-backup-restore-drill.md) and [backup-evidence-for-production-migrations.md](../runbooks/backup-evidence-for-production-migrations.md) if present |
+| **Backup evidence id** | Run id or id from backup drill JSON when `run_migration` and backup policy require it | Migrations with backup policy—see [../production/production-backup-restore-drill.md](../production/production-backup-restore-drill.md) and [backup-evidence-for-production-migrations.md](../runbooks/backup-evidence-for-production-migrations.md) if present |
 | **App / goose image digest** | `...@sha256:<64-hex>` | Always for production; immutable coordinates |
 
 **Never** paste GitHub **personal access tokens**, **SSH private keys**, or **webhook secrets** into tickets or these docs. Use run links and artifact names only.
@@ -80,8 +82,8 @@ Use these as **recordkeeping fields** in your change ticket. Replace placeholder
 
 ## 6. Related documentation
 
-- [ci-cd-enterprise-contract.md](ci-cd-enterprise-contract.md) — what is “enterprise” vs manual vs not guaranteed
-- [production-release-checklist.md](production-release-checklist.md) — pre-flight checklist
-- [field-rollout-checklist.md](field-rollout-checklist.md) — post-deploy, machine-facing validation
+- [../cicd/ci-cd-enterprise-contract.md](../cicd/ci-cd-enterprise-contract.md) — what is “enterprise” vs manual vs not guaranteed
+- [../production/production-release-checklist.md](../production/production-release-checklist.md) — pre-flight checklist
+- [../production/field-rollout-checklist.md](../production/field-rollout-checklist.md) — post-deploy, machine-facing validation
 - [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md) — topology, drain, rollback posture
-- [production-smoke-tests.md](production-smoke-tests.md) — public smoke tiers
+- [../production/production-smoke-tests.md](../production/production-smoke-tests.md) — public smoke tiers

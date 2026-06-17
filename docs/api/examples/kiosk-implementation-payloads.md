@@ -1,5 +1,7 @@
 # Kiosk implementation — HTTP payload & idempotency reference
 
+> **Scope:** Raw examples — HTTP route/idempotency tables and payload reference. For narrative overview, see [kiosk-implementation-payloads.md](../kiosk-implementation-payloads.md).
+
 Companion to [kiosk-app-implementation-checklist.md](../kiosk-app-implementation-checklist.md). **Field-level schemas:** `docs/swagger/swagger.json` (run `make swagger`).
 
 ## Idempotency-Key header

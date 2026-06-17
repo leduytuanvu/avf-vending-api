@@ -1,3 +1,5 @@
 # Kiosk HTTP payloads & idempotency
 
-This content lives beside the checklist under **[examples/kiosk-implementation-payloads.md](examples/kiosk-implementation-payloads.md)** (single source). Open that file for route tables and vend success atomicity/idempotency notes.
+> **Scope:** Narrative pointer for kiosk HTTP idempotency. For route tables and payload reference, see [examples/kiosk-implementation-payloads.md](examples/kiosk-implementation-payloads.md).
+
+Kiosk apps must send a stable **`Idempotency-Key`** (or **`X-Idempotency-Key`**) on every mutating commerce route and retry with the **same key** after timeouts. Route-level requirements, vend/inventory coupling, and field notes live in the examples doc above; OpenAPI field schemas are in `docs/swagger/swagger.json` (`make swagger`).

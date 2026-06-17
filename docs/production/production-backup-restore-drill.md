@@ -1,5 +1,7 @@
 # Production database backup, restore drill, and migration evidence
 
+> **Scope:** Production checklist for backup/drill evidence required by **Deploy Production** migrations. Operational DR runbook: [runbooks/production-backup-restore-dr.md](../runbooks/production-backup-restore-dr.md).
+
 Production schema migrations (goose `Up` during **Deploy Production**) are gated on **verifiable** backup and restore-drill evidence. A free-text ticket id alone is **not** enough when `run_migration` is `true`.
 
 ## When backup and drill evidence is required

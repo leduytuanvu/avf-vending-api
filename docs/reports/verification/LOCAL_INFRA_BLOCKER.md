@@ -14,13 +14,13 @@ On this workstation, `BASE_URL=http://127.0.0.1:8080` returned **404** for those
 
 From the repository root:
 
-1. **Dependencies (Postgres, optional broker profile):** see [`docs/runbooks/local-dev.md`](../runbooks/local-dev.md)
+1. **Dependencies (Postgres, optional broker profile):** see [`../../runbooks/local-dev.md`](../../runbooks/local-dev.md)
 
    ```bash
    make dev-up
    ```
 
-2. **Database:** configure `.env` from [`.env.local.example`](../../.env.local.example) and run:
+2. **Database:** configure `.env` from [`.env.local.example`](../../../.env.local.example) and run:
 
    ```bash
    make dev-migrate
@@ -32,9 +32,9 @@ From the repository root:
    make run-api
    ```
 
-   For gRPC on `127.0.0.1:9090`, set `GRPC_ENABLED=true` and `GRPC_ADDR=127.0.0.1:9090` before starting (see [`docs/testing/grpc-local-test.md`](../testing/grpc-local-test.md)).
+   For gRPC on `127.0.0.1:9090`, set `GRPC_ENABLED=true` and `GRPC_ADDR=127.0.0.1:9090` before starting (see [`../../testing/grpc-local-test.md`](../../testing/grpc-local-test.md)).
 
-4. **E2E env:** copy or symlink secrets into `tests/e2e/.env` (from [`tests/e2e/.env.example`](../../tests/e2e/.env.example)); or use **`E2E_ENV_FILE=tests/e2e/.env.local`** for non-secret defaults and add `ADMIN_TOKEN` / machine tokens as required by Web Admin and machine flows.
+4. **E2E env:** copy or symlink secrets into `tests/e2e/.env` (from [`tests/e2e/.env.example`](../../../tests/e2e/.env.example)); or use **`E2E_ENV_FILE=tests/e2e/.env.local`** for non-secret defaults and add `ADMIN_TOKEN` / machine tokens as required by Web Admin and machine flows.
 
 5. **Toolchain (Windows):**
 

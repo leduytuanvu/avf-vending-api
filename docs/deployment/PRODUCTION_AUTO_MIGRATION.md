@@ -64,7 +64,7 @@ docker run --rm \
   pg_restore -d "${DATABASE_URL}" --clean --if-exists "/backup/$(basename "${BACKUP}")"
 ```
 
-Review [production backup restore drill](../operations/production-backup-restore-drill.md) before any production restore.
+Review [production backup restore drill](../production/production-backup-restore-drill.md) before any production restore.
 
 ## Inspecting migration state
 
@@ -123,4 +123,4 @@ bash scripts/deploy/production-migrate.sh --validate-only \
 | `deployments/prod/Dockerfile` | Embeds migrations + migrate binary |
 | `deployments/prod/app-node/scripts/release_app_node.sh` | Calls migrate before drain |
 | `.github/workflows/deploy-prod.yml` | `run_migration` default `true`, concurrency `production-deploy` |
-| `docs/audits/PRODUCTION_AUTO_MIGRATION_DEPLOY_AUDIT.md` | Pre-implementation audit |
+| `docs/archive/audits/PRODUCTION_AUTO_MIGRATION_DEPLOY_AUDIT.md` | Pre-implementation audit (archived) |

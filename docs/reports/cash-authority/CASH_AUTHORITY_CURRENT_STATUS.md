@@ -10,8 +10,8 @@
 
 | Scope | Verdict |
 |-------|---------|
-| Focused F6/F7 | **`STOREFRONT_READY`** + **`CHECKOUT_PREPAYMENT_READY`** — [`072500Z`](fresh-install-storefront-checkout-focused-20260615T072500Z/) |
-| Full orchestrator | **`FULL_RUN_PROOF_PENDING_CASH_AUTHORITY_AMBIGUOUS`** — [`073255Z`](fresh-install-e2e-20260615T073255Z/) |
+| Focused F6/F7 | **`STOREFRONT_READY`** + **`CHECKOUT_PREPAYMENT_READY`** — ``072500Z`` |
+| Full orchestrator | **`FULL_RUN_PROOF_PENDING_CASH_AUTHORITY_AMBIGUOUS`** — ``073255Z`` |
 | F8 live sale | **`BLOCKED_OPERATOR_TOKEN_REQUIRED`** |
 
 ## Proven gates (do not re-litigate)
@@ -61,9 +61,9 @@ No backend metadata drift between focused pass and full fail.
 
 | Run | Path | Outcome |
 |-----|------|---------|
-| Focused PASS | [`fresh-install-storefront-checkout-focused-20260615T072500Z/`](fresh-install-storefront-checkout-focused-20260615T072500Z/) | F6/F7 prepayment |
-| Full FAIL | [`fresh-install-e2e-20260615T073255Z/`](fresh-install-e2e-20260615T073255Z/) | Checkout blocked by `CASH_AUTHORITY_AMBIGUOUS` |
+| Focused PASS | ``fresh-install-storefront-checkout-focused-20260615T072500Z/`` | F6/F7 prepayment |
+| Full FAIL | ``fresh-install-e2e-20260615T073255Z/`` | Checkout blocked by `CASH_AUTHORITY_AMBIGUOUS` |
 
 ## Single source of truth
 
-[`POST_STICKY_FATAL_CURRENT_BLOCKERS.md`](POST_STICKY_FATAL_CURRENT_BLOCKERS.md)
+``POST_STICKY_FATAL_CURRENT_BLOCKERS.md``

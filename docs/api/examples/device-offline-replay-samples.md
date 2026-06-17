@@ -1,5 +1,7 @@
 # Device offline replay — sample payloads
 
+> **Scope:** Raw examples — MQTT topic patterns and `testdata/telemetry/` fixture index. For gRPC offline sync narrative, see [device-offline-replay-samples.md](../device-offline-replay-samples.md).
+
 Canonical copies live under **`testdata/telemetry/`** in the repository root. Use them in integration tests and as fixtures for mobile/device teams.
 
 ## Topic pattern

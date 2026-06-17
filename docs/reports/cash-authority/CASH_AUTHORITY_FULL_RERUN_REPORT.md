@@ -19,8 +19,8 @@
 
 | Run | Artifact | Outcome | Failure point |
 |-----|----------|---------|---------------|
-| 1 | [`094321Z`](fresh-install-storefront-checkout-focused-20260615T092129Z/) | **INSTRUMENTATION_FAILED** | `SERVICE_READY after ConfigApply` — MachineSetup wizard timeout (~16 min) |
-| 2 | [`094321Z`](fresh-install-storefront-checkout-focused-20260615T094321Z/) | **INSTRUMENTATION_FAILED** | `Port bindings persisted` — commissioning step before F6/F7 |
+| 1 | ``094321Z`` | **INSTRUMENTATION_FAILED** | `SERVICE_READY after ConfigApply` — MachineSetup wizard timeout (~16 min) |
+| 2 | ``094321Z`` | **INSTRUMENTATION_FAILED** | `Port bindings persisted` — commissioning step before F6/F7 |
 
 Neither rerun reached F6/F7 checkout. Failures are **commissioning/wizard automation**, not `CASH_AUTHORITY_AMBIGUOUS`.
 
@@ -32,8 +32,8 @@ Not rerun in this session — blocked on same fresh-install commissioning instab
 
 | Run | Verdict |
 |-----|---------|
-| [`072500Z`](fresh-install-storefront-checkout-focused-20260615T072500Z/) | **CHECKOUT_PREPAYMENT_READY** (pre-fix baseline) |
-| [`073255Z`](fresh-install-e2e-20260615T073255Z/) | **FULL_RUN_PROOF_PENDING_CASH_AUTHORITY_AMBIGUOUS** (root cause classified + fix applied) |
+| ``072500Z`` | **CHECKOUT_PREPAYMENT_READY** (pre-fix baseline) |
+| ``073255Z`` | **FULL_RUN_PROOF_PENDING_CASH_AUTHORITY_AMBIGUOUS** (root cause classified + fix applied) |
 
 ## Expected post-fix behavior (when F5 completes)
 

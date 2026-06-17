@@ -1,5 +1,7 @@
 # Device Offline Replay Samples
 
+> **Scope:** Narrative — gRPC `SyncOfflineEvents` batch semantics and idempotency. For MQTT/testdata fixture index, see [examples/device-offline-replay-samples.md](examples/device-offline-replay-samples.md).
+
 `MachineOfflineSyncService.SyncOfflineEvents` accepts events in strict `offline_sequence` order per machine. Each event payload is JSON using the same proto JSON field names as the owning machine gRPC request.
 
 Online and offline-dispatched mutations share the same **PostgreSQL mutation idempotency ledger** when `MACHINE_GRPC_REQUIRE_IDEMPOTENCY` is enabled (default in production wiring): stable `idempotency_key`, canonical payload hash, stored response replay, and `FailedPrecondition` / `idempotency_payload_mismatch` on hash conflict. See [`machine-grpc.md`](machine-grpc.md) § Idempotency ledger.

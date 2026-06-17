@@ -1,6 +1,6 @@
 # Production E2E input checklist
 
-Use before running destructive production E2E. Audit-only references: [`production-e2e-missing-inputs.md`](production-e2e-missing-inputs.md), [`production-e2e-input-audit.json`](production-e2e-input-audit.json).
+Use before running destructive production E2E. Audit-only references: [`production-e2e-missing-inputs.md`](production-e2e-missing-inputs.md), [`../archive/testing/production-e2e-input-audit.json`](../archive/testing/production-e2e-input-audit.json).
 
 ## Environment & Git
 

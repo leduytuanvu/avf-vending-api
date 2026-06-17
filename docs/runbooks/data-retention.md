@@ -1,5 +1,7 @@
 # Enterprise Data Retention
 
+> **Scope:** Operational runbook (configuration, legal hold, worker toggles). For architecture layers and partitioning strategy, see [architecture/data-retention.md](../architecture/data-retention.md).
+
 PostgreSQL remains the source of truth. Retention cleanup is a bounded worker job, not part of local API startup.
 Destructive cleanup defaults off for local/test unless `RETENTION_ALLOW_DESTRUCTIVE_LOCAL=true` is set.
 

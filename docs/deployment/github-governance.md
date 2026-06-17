@@ -1,5 +1,7 @@
 # GitHub repository governance (Settings-only)
 
+> **Scope:** Settings-only governance policy (GitHub UI steps for branch rulesets and the `production` environment). For workflow matrices, check names, and triage, see [runbooks/github-governance.md](../runbooks/github-governance.md).
+
 This page lists **exact UI steps** to configure **Repository rulesets** (and optionally **classic branch protection**) for `main` and `develop`, plus the **`production` environment**, so that manual production deploys and required CI gates match enterprise policy. **Nothing in this repository can create these settings** — only org/repo admins in the GitHub **Settings** UI (or org rulesets) can do so.
 
 **Validation:** `scripts/ci/verify_github_governance.sh` (uses `gh api` via `tools/verify_github_governance.py`) **reads** the GitHub REST API, **preferring** repository **rulesets** and **falling back** to classic `.../branches/.../protection` when no active ruleset covers a ref. If checks fail, the **Deploy Production** workflow is **not** enterprise-ready until GitHub is configured (no application code change fixes missing GitHub settings).

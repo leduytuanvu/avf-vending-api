@@ -10,12 +10,12 @@ This returns **OpenAPI 3.0 JSON**, not a Postman collection. Postman will genera
 
 ## 2. Import native Postman files (guards, variables, headers)
 
-The repository ships separate artifacts under [`postman/collections/`](../../postman/collections/) and [`postman/environments/`](../../postman/environments/) (these are **not** substitutes for `/swagger/doc.json`):
+The repository ships collections under [`postman/collections/`](../../postman/collections/) (these are **not** substitutes for `/swagger/doc.json`):
 
 - `postman/collections/avf-vending-api.postman_collection.json` — collection with `{{base_url}}`, `{{api_prefix}}`, and collection scripts (request IDs, staging/production safety checks, production mutation block).
-- `postman/environments/avf-local.postman_environment.json` — local development.
-- `postman/environments/avf-staging.postman_environment.json` — staging.
-- `postman/environments/avf-production.postman_environment.json` — production (read-only by default in Postman).
+- `postman/collections/avf-vending-api-function-path.postman_collection.json` — function-path export used by some E2E defaults.
+
+Environment JSON (`postman/environments/avf-local.postman_environment.json`, `avf-staging.postman_environment.json`, `avf-production.postman_environment.json`) is generated or maintained per operator workflow — not always present in git. Create from `.env` / runbook values or import after `make postman-generate` when your branch checks them in.
 
 In Postman: **Import → File** and select the collection, then the environment(s). Set the **active environment** before sending requests.
 

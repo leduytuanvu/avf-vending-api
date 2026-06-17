@@ -4,7 +4,7 @@ Use this list **before** clicking **Run workflow** on **Deploy Production** (`de
 
 **Production deployment is manual only** (`workflow_dispatch` on `main`). A green merge or a green **Security Release** alone does not deploy to production.
 
-**Two-VPS note:** a successful rolling job in CI does **not** by itself prove global zero downtime. Confirm traffic drain / load-balancer behavior per [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md).
+**Two-VPS note:** a successful rolling job in CI does **not** by itself prove global zero downtime. Confirm traffic drain / load-balancer behavior per [../deployment/two-vps-rolling-production-deploy.md](../deployment/two-vps-rolling-production-deploy.md).
 
 **Priority tags (documentation only — aligns with `[production-release-readiness.md](../runbooks/production-release-readiness.md)` tiers):**
 
@@ -34,13 +34,13 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 
 ## Staging and evidence
 
-- [ ] **Staging evidence run id** is recorded: a successful **Staging Deployment Contract** run when using the **strict** gate (`promotion_eligible: true`, `deployment_mode: real_staging`, digest match). See [staging-preprod-gate.md](staging-preprod-gate.md).
+- [ ] **Staging evidence run id** is recorded: a successful **Staging Deployment Contract** run when using the **strict** gate (`promotion_eligible: true`, `deployment_mode: real_staging`, digest match). See [../deployment/staging-preprod-gate.md](../deployment/staging-preprod-gate.md).
 - [ ] If your process allows **missing staging evidence** only in exception cases, the bypass inputs are set with a **non-empty business reason** and the exception is **approved** (not the default path).
 
 ## Migrations and data safety
 
 - [ ] **`run_migration`** decision matches the change (image-only vs schema change).
-- [ ] If migrations run, **backup evidence id** (or other required backup proof) is on hand per [production-backup-restore-drill.md](production-backup-restore-drill.md) and [backup-evidence-for-production-migrations.md](../runbooks/backup-evidence-for-production-migrations.md) if present.
+- [ ] If migrations run, **backup evidence id** (or other required backup proof) is on hand per [../production/production-backup-restore-drill.md](../production/production-backup-restore-drill.md) and [backup-evidence-for-production-migrations.md](../runbooks/backup-evidence-for-production-migrations.md) if present.
 - [ ] Data migration review has followed [production-data-migration-safety.md](production-data-migration-safety.md), including replay/idempotency checks for outbox, payment webhooks, and machine offline events.
 - [ ] DR readiness context is known: `APP_REGION`, `APP_NODE_NAME`, and `APP_INSTANCE_ID` values for every production process match [multi-region-dr-readiness.md](../runbooks/multi-region-dr-readiness.md).
 
@@ -52,7 +52,7 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 ## Smoke and observability
 
 - [ ] **Smoke** inputs for production are understood: [production-smoke-tests.md](production-smoke-tests.md) (tiering, read-only business probes, optional synthetic GET when enabled).
-- [ ] **SLO / deploy evidence** expectations are understood: [deploy-monitoring-slo.md](deploy-monitoring-slo.md) (pre/post JSON artifacts; optional SSH snapshots).
+- [ ] **SLO / deploy evidence** expectations are understood: [../deployment/deploy-monitoring-slo.md](../deployment/deploy-monitoring-slo.md) (pre/post JSON artifacts; optional SSH snapshots).
 
 ## Final approval
 
@@ -65,4 +65,4 @@ Record **run ids and names** in the change ticket; do **not** record secrets, to
 
 Use [field-rollout-checklist.md](field-rollout-checklist.md) for **machine- and field-level** checks. Populate **[`../testing/field-test-cases.md`](../testing/field-test-cases.md)** rows for pilots; use [field-pilot-checklist.md](field-pilot-checklist.md) for **before / during / after** pilot sequencing. **`P2` fleet readiness** (storm JSON, expanded field matrix for 100–1000) is governed by **[`../runbooks/production-release-readiness.md`](../runbooks/production-release-readiness.md)** — not by this checklist alone.
 
-For rollback steps, see [../runbooks/production-rollback.md](../runbooks/production-rollback.md), [../runbooks/production-cutover-rollback.md](../runbooks/production-cutover-rollback.md) (2-VPS topology), and [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md).
+For rollback steps, see [../runbooks/production-rollback.md](../runbooks/production-rollback.md), [../runbooks/production-cutover-rollback.md](../runbooks/production-cutover-rollback.md) (2-VPS topology), and [../deployment/two-vps-rolling-production-deploy.md](../deployment/two-vps-rolling-production-deploy.md).

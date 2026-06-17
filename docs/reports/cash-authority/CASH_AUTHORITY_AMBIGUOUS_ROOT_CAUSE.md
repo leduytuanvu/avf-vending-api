@@ -20,14 +20,14 @@ Not classified: backend mapping conflict, recycler_count_zero alone, stale payme
 
 | Layer | File | Function / rule |
 |-------|------|-----------------|
-| Verdict | [`SellReadinessEvaluator.kt`](../avf-vending-app/app/src/main/java/com/avf/vending/readiness/SellReadinessEvaluator.kt) L141–148 | Rule: `if (s.billRecyclerAmbiguousLocked)` → `SellBlockReason.CASH_AUTHORITY_AMBIGUOUS` |
-| Snapshot input | [`SellReadinessDependencySourceImpl.kt`](../avf-vending-app/app/src/main/java/com/avf/vending/readiness/SellReadinessDependencySourceImpl.kt) L325 | `billRecyclerAmbiguousLocked = recyclerState.isAmbiguousLocked` |
-| Durable lock | [`HardwareEventObserver.kt`](../avf-vending-app/app/src/main/java/com/avf/vending/observability/HardwareEventObserver.kt) L56–57 | `bill_record_ambiguous` → `recyclerStateRepository.applyBillAmbiguous()` |
-| Persistence | [`RecyclerStateDataStore.kt`](../avf-vending-app/data/data-local/src/main/kotlin/com/avf/vending/local/datastore/RecyclerStateDataStore.kt) L126–131 | Sets `AMBIGUOUS_LOCKED=true` |
-| Trigger | [`ICTBillDriver.kt`](../avf-vending-app/hardware/hardware-bill/src/main/kotlin/com/avf/vending/hardware/bill/ICTBillDriver.kt) L1037–1047 | First poll after READY publishes `bill_record_ambiguous` when tracker flags ambiguous |
-| Tracker | [`BillPollRecordTracker.kt`](../avf-vending-app/hardware/hardware-bill/src/main/kotlin/com/avf/vending/hardware/bill/BillPollRecordTracker.kt) L120–122 | `current.size >= maxRecords` → `record_buffer_full_possible_overflow` |
+| Verdict | ``SellReadinessEvaluator.kt`` L141–148 | Rule: `if (s.billRecyclerAmbiguousLocked)` → `SellBlockReason.CASH_AUTHORITY_AMBIGUOUS` |
+| Snapshot input | ``SellReadinessDependencySourceImpl.kt`` L325 | `billRecyclerAmbiguousLocked = recyclerState.isAmbiguousLocked` |
+| Durable lock | ``HardwareEventObserver.kt`` L56–57 | `bill_record_ambiguous` → `recyclerStateRepository.applyBillAmbiguous()` |
+| Persistence | ``RecyclerStateDataStore.kt`` L126–131 | Sets `AMBIGUOUS_LOCKED=true` |
+| Trigger | ``ICTBillDriver.kt`` L1037–1047 | First poll after READY publishes `bill_record_ambiguous` when tracker flags ambiguous |
+| Tracker | ``BillPollRecordTracker.kt`` L120–122 | `current.size >= maxRecords` → `record_buffer_full_possible_overflow` |
 
-Storefront gate: [`StorefrontContract.purchaseInteractionEnabled`](../avf-vending-app/feature/feature-storefront/src/main/kotlin/com/avf/vending/feature/storefront/StorefrontContract.kt) requires `!isSalesBlocked`, which mirrors full sell readiness today.
+Storefront gate: ``StorefrontContract.purchaseInteractionEnabled`` requires `!isSalesBlocked`, which mirrors full sell readiness today.
 
 ---
 
@@ -35,7 +35,7 @@ Storefront gate: [`StorefrontContract.purchaseInteractionEnabled`](../avf-vendin
 
 | Input | Value |
 |-------|-------|
-| Backend `payment_authority` | `backend` ([`merged-layout.json`](fresh-install-e2e-20260615T073255Z/merged-layout.json)) |
+| Backend `payment_authority` | `backend` (``merged-layout.json``) |
 | App `cashTopology` | `direct_bill` (`BOOTSTRAP_METADATA_SUMMARY`) |
 | `billRecyclerAmbiguousLocked` | **true** (after `applyBillAmbiguous`) |
 | `recyclerState.isAmbiguousLocked` | **true** |
@@ -60,7 +60,7 @@ Storefront gate: [`StorefrontContract.purchaseInteractionEnabled`](../avf-vendin
 | 15:36:16.299 | **`CASH_AUTHORITY_AMBIGUOUS`** — `salesBlocked=true` |
 | 15:36:20.288 | `ADD_TO_CART_CLICKED` — checkout sheet not opened |
 
-Instrumentation failure: `AssertionError: Checkout sheet visible` ([`FreshInstallFullPipelineInstrumentedTest`](../avf-vending-app/app/src/androidTest/java/com/avf/vending/FreshInstallFullPipelineInstrumentedTest.kt)).
+Instrumentation failure: `AssertionError: Checkout sheet visible` (``FreshInstallFullPipelineInstrumentedTest``).
 
 ---
 
@@ -114,10 +114,10 @@ This is a **timing/consistency** gap between harness pass criteria and post-reco
 
 | Artifact | Path |
 |----------|------|
-| Full run logcat | [`fresh-install-e2e-20260615T073255Z/logcat-instrument-com-avf-vending-FreshInstallFullPipelineInstrumentedTest.log`](fresh-install-e2e-20260615T073255Z/logcat-instrument-com-avf-vending-FreshInstallFullPipelineInstrumentedTest.log) |
-| Focused logcat | [`fresh-install-storefront-checkout-focused-20260615T072500Z/logcat-instrument-com-avf-vending-FreshInstallStorefrontCheckoutInstrumentedTest.log`](fresh-install-storefront-checkout-focused-20260615T072500Z/logcat-instrument-com-avf-vending-FreshInstallStorefrontCheckoutInstrumentedTest.log) |
-| Focused checkout verdict | [`checkout-verdict.json`](fresh-install-storefront-checkout-focused-20260615T072500Z/checkout-verdict.json) |
-| App local state (focused) | [`app-local-state.json`](fresh-install-storefront-checkout-focused-20260615T072500Z/app-local-state.json) |
+| Full run logcat | ``fresh-install-e2e-20260615T073255Z/logcat-instrument-com-avf-vending-FreshInstallFullPipelineInstrumentedTest.log`` |
+| Focused logcat | ``fresh-install-storefront-checkout-focused-20260615T072500Z/logcat-instrument-com-avf-vending-FreshInstallStorefrontCheckoutInstrumentedTest.log`` |
+| Focused checkout verdict | ``checkout-verdict.json`` |
+| App local state (focused) | ``app-local-state.json`` |
 
 ---
 

@@ -11,26 +11,26 @@
 
 ### 3A — Idle first-poll record buffer
 
-[`ICTBillDriver.kt`](../avf-vending-app/hardware/hardware-bill/src/main/kotlin/com/avf/vending/hardware/bill/ICTBillDriver.kt):
+``ICTBillDriver.kt``:
 
 - When poll flags `record_buffer_full_possible_overflow` with **no active cash session** and **no new credit records**, log `BILL_STATE_DIAG` + warning but **do not** publish durable `bill_record_ambiguous` event.
 - Active session, new records, misalignment, odd-length buffer, register jump — **unchanged** (still durable-lock).
 
 ### 3B — Prepayment vs live cash readiness split
 
-[`SellReadiness.kt`](../avf-vending-app/core/core-domain/src/main/kotlin/com/avf/vending/domain/model/SellReadiness.kt):
+``SellReadiness.kt``:
 
 - Added `isPrepaymentStorefrontReady` — allows storefront when blockers are **only** `CASH_AUTHORITY_AMBIGUOUS` and/or `CASH_NOT_READY`.
 - Live sale / BILL enable / payment confirm still gated on `isSellReady`.
 
-[`StorefrontReadinessObserver.kt`](../avf-vending-app/feature/feature-storefront/src/main/kotlin/com/avf/vending/feature/storefront/StorefrontReadinessObserver.kt):
+``StorefrontReadinessObserver.kt``:
 
 - Maps `isSalesBlocked = !isPrepaymentStorefrontReady` for browse/cart/checkout sheet.
 - `StorefrontCheckoutHandler.liveSellReadyBlockMessage()` unchanged — blocks confirm/payment without live sell ready.
 
 ### Harness
 
-[`FreshInstallE2eAutomator`](../avf-vending-app/app/src/androidTest/java/com/avf/vending/FreshInstallE2eAutomator.kt): `waitForBillRuntimeStableBeforeCheckout()` before checkout flow.
+``FreshInstallE2eAutomator``: `waitForBillRuntimeStableBeforeCheckout()` before checkout flow.
 
 ## Not done (by design)
 
