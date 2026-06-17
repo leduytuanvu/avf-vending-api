@@ -78,5 +78,5 @@ New allowlist entries require review — prefer fixing the call site to use v7 o
 
 ## Related docs
 
-- Audit: [`docs/audits/UUID_V7_STANDARDIZATION_AUDIT.md`](../audits/UUID_V7_STANDARDIZATION_AUDIT.md)
+- Audit: [`docs/archive/audits/UUID_V7_STANDARDIZATION_AUDIT.md`](../archive/audits/UUID_V7_STANDARDIZATION_AUDIT.md)
 - Migration safety: [`docs/runbooks/migration-safety.md`](../runbooks/migration-safety.md)

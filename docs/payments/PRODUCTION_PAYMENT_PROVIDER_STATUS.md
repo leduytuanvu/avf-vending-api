@@ -87,7 +87,7 @@ Feature flags on the machine (via `RuntimeHints.feature_flags`):
 
 - [Machine gRPC production contract](../api/machine-grpc-production-contract.md)
 - [Payment webhooks](../api/payment.md)
-- [Backend production app contract audit](../audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md)
+- [Backend production app contract audit](../archive/audits/audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md)
 
 ## Contract tests
 

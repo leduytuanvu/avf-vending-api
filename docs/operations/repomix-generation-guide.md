@@ -58,4 +58,4 @@ python postman/suites/full-production-suite/generate_full_postman_suite.py
 python postman/suites/full-production-suite/validate_generated_assets.py
 ```
 
-See also [`../audits/project-cleanup-audit.md`](../audits/project-cleanup-audit.md).
+See also [`../archive/audits/project-cleanup-audit.md`](../archive/audits/project-cleanup-audit.md).

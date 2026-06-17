@@ -60,4 +60,4 @@ Do not add high-cardinality labels (raw path, accountId, machineId, tokens).
 
 - [Production resource sizing](./production-resource-sizing.md)
 - [Production performance deploy checklist](./production-performance-deploy-checklist.md)
-- [Baseline audit](../audits/production-latency-and-surface-audit.md)
+- [Baseline audit](../archive/audits/production-latency-and-surface-audit.md) (archived)
