@@ -37,7 +37,6 @@ if (-not $env:CONFIRM_PRODUCTION_TEST_WRITE_ON_TEST_MACHINE) {
 Write-Host "TCN cash-only setup (A1-A10) machine=$TargetMachineId site=$TargetSiteId"
 $args = @{
     MachineId            = $TargetMachineId
-    SiteId               = $TargetSiteId
     CabinetLayoutPath    = (Join-Path $Examples "pilot-cabinet-layout-a.json")
     SlotAssignmentPath   = (Join-Path $Examples "pilot-slot-assignments-a1-a10.json")
     InventoryPath        = (Join-Path $Examples "pilot-inventory-a1-a10.json")

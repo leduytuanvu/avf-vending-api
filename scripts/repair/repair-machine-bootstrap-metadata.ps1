@@ -34,8 +34,9 @@ $DryRunPointerPath = Join-Path $WorkspaceRoot "reports\latest-bootstrap-repair-d
 $DryRunArtifactTtlMinutes = 30
 
 $ReportsDir = Join-Path $WorkspaceRoot "reports"
-New-Item -ItemType Directory -Force -Path $ReportsDir | Out-Null
-$RunDir = Join-Path $ReportsDir ("bootstrap-repair-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
+$RunsDir = Join-Path $ReportsDir "runs"
+New-Item -ItemType Directory -Force -Path $RunsDir | Out-Null
+$RunDir = Join-Path $RunsDir ("bootstrap-repair-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
 New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
 $BeforePath = Join-Path $ReportsDir "bootstrap-metadata-before.json"
 $AfterPath = Join-Path $ReportsDir "bootstrap-metadata-after.json"
@@ -401,8 +402,12 @@ function Ensure-MachineJwtForBootstrap {
     if ($jwt -match '^eyJ') { return $jwt }
     if ($env:AVF_ACTIVATION_CODE) {
         . (Join-Path $ScriptsLib "invoke-machine-claim-activation.ps1")
-        $null = Invoke-AvfMachineClaimActivation -ActivationCode $env:AVF_ACTIVATION_CODE -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
-        if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+        try {
+            $null = Invoke-AvfMachineClaimActivation -ActivationCode $env:AVF_ACTIVATION_CODE -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
+            if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+        } catch {
+            Write-Host "REPAIR_JWT_CLAIM_SKIPPED reason=$($_.Exception.Message)"
+        }
     }
     $createBodyFile = Join-Path $RunDir "activation-create-body.json"
     Set-Utf8JsonFile -Path $createBodyFile -Content '{"expiresInMinutes":120,"maxUses":1,"notes":"bootstrap-repair-refetch"}'
@@ -414,8 +419,12 @@ function Ensure-MachineJwtForBootstrap {
         $plain = (Get-Content $createOut -Raw | ConvertFrom-Json).activationCode
         if ($plain) {
             . (Join-Path $ScriptsLib "invoke-machine-claim-activation.ps1")
-            $null = Invoke-AvfMachineClaimActivation -ActivationCode $plain -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
-            if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+            try {
+                $null = Invoke-AvfMachineClaimActivation -ActivationCode $plain -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
+                if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+            } catch {
+                Write-Host "REPAIR_JWT_CLAIM_SKIPPED reason=$($_.Exception.Message)"
+            }
         }
     }
     return ""
@@ -437,6 +446,12 @@ function Resolve-BootstrapSnapshot {
             Set-Utf8JsonFile -Path $bootstrapFile -Content (($snap | ConvertTo-Json -Depth 12 -Compress))
             return "http_setup_bootstrap"
         }
+    }
+
+    if ($env:AVF_REPAIR_SKIP_MACHINE_JWT -eq '1') {
+        $synth = New-SynthesizedBootstrapSnapshot -TargetCabinetCode $CabinetCode
+        Set-Utf8JsonFile -Path $bootstrapFile -Content $synth
+        return "synthesized_admin_fallback"
     }
 
     if ([string]::IsNullOrWhiteSpace($MachineJwt)) {

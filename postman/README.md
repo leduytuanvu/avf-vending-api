@@ -26,9 +26,9 @@ Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check
 
 `postman/generated/` — expanded REST/gRPC/MQTT inventories from `scripts/postman/generate_complete_api_suite.py`. Regenerate locally; directory is **gitignored** (see root `.gitignore`).
 
-## Production verification suite
+## Production verification suite (removed from repo)
 
-[`suites/full-production-suite/`](suites/full-production-suite/) — full REST + gRPC + MQTT production inventory. Separate from CI-native collections above.
+The former `postman/suites/full-production-suite/` tree was slimmed in 2026 cleanup. Regenerate expanded inventories with `scripts/postman/generate_complete_api_suite.py` (output under `postman/generated/`, gitignored) or use CI collections above plus OpenAPI import.
 
 ## Reports
 
