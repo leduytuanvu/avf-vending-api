@@ -24,27 +24,27 @@ var standardDenominationsVND = map[int]struct{}{
 }
 
 type billDeviceConfig struct {
-	EnabledDenominationsVND []int  `json:"enabledDenominationsVnd"`
-	ChangeDenominationVND   int    `json:"changeDenominationVnd"`
-	EscrowEnabled           bool   `json:"escrowEnabled"`
-	RecyclingCapacity       *int   `json:"recyclingCapacity"`
+	EnabledDenominationsVND []int `json:"enabledDenominationsVnd"`
+	ChangeDenominationVND   int   `json:"changeDenominationVnd"`
+	EscrowEnabled           bool  `json:"escrowEnabled"`
+	RecyclingCapacity       *int  `json:"recyclingCapacity"`
 }
 
 type tcnDeviceConfig struct {
-	LaneMode               int    `json:"laneMode"`
-	ShakeCount             int    `json:"shakeCount"`
-	DropWaitSeconds        int    `json:"dropWaitSeconds"`
-	LightsOn               bool   `json:"lightsOn"`
-	CoolingCapable         bool   `json:"coolingCapable"`
-	TempControlEnabled     bool   `json:"tempControlEnabled"`
-	CoolingMode            string `json:"coolingMode"`
-	TargetTempC            int    `json:"targetTempC"`
-	TempHysteresisC        int    `json:"tempHysteresisC"`
-	TempCompensationC      int    `json:"tempCompensationC"`
-	DefrostMinutes         int    `json:"defrostMinutes"`
-	CompressorWorkMinutes  int    `json:"compressorWorkMinutes"`
-	FanStopMinutes         int    `json:"fanStopMinutes"`
-	GlassHeaterOn          bool   `json:"glassHeaterOn"`
+	LaneMode              int    `json:"laneMode"`
+	ShakeCount            int    `json:"shakeCount"`
+	DropWaitSeconds       int    `json:"dropWaitSeconds"`
+	LightsOn              bool   `json:"lightsOn"`
+	CoolingCapable        bool   `json:"coolingCapable"`
+	TempControlEnabled    bool   `json:"tempControlEnabled"`
+	CoolingMode           string `json:"coolingMode"`
+	TargetTempC           int    `json:"targetTempC"`
+	TempHysteresisC       int    `json:"tempHysteresisC"`
+	TempCompensationC     int    `json:"tempCompensationC"`
+	DefrostMinutes        int    `json:"defrostMinutes"`
+	CompressorWorkMinutes int    `json:"compressorWorkMinutes"`
+	FanStopMinutes        int    `json:"fanStopMinutes"`
+	GlassHeaterOn         bool   `json:"glassHeaterOn"`
 }
 
 type deviceConfig struct {
