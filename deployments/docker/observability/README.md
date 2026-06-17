@@ -1,15 +1,12 @@
-# Operations assets
+# Local Docker observability stack
 
-Sample configs for local or lab stacks live under subfolders (`prometheus`, `loki`, `otel`, `grafana`).
+Grafana, Loki, and dashboard provisioning for **local** `deployments/docker/docker-compose.yml`.
 
-For the hardened 2-VPS production topology, use the deployable assets under `deployments/prod/observability/` together with the app-node overlay `deployments/prod/docker-compose.observability.yml`.
+## Intentional duplication with production
 
-**Primary support doc:** [RUNBOOK.md](RUNBOOK.md) — incidents, log fields, SQL checks, and alert ideas.
+`deployments/prod/observability/` contains **parallel copies** of the same dashboard/datasource YAML and JSON (not symlinks). Reasons:
 
-**Production day-2 docs:** `docs/runbooks/production-cutover-rollback.md`, `docs/runbooks/production-backup-restore-dr.md`, and `docs/runbooks/production-day-2-incidents.md`.
+- Docker Compose on Windows and Ubuntu VPS expects stable, path-local files per profile.
+- Local stack may use different datasource URLs than production nodes.
 
-**Metrics reality:** [METRICS.md](METRICS.md) — what is scraped today vs what is log-derived.
-
-**Process / capability map:** [PROCESSES.md](PROCESSES.md) — which binary is required for which feature.
-
-**Local Docker:** [../README.md](../README.md) — compose profiles (`broker`, `observability`, `experimental`).
+When updating dashboards, update **both** trees unless the change is environment-specific (document which tree in the commit message).
