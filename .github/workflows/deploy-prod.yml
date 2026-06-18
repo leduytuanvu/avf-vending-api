@@ -1590,7 +1590,8 @@ jobs:
   deploy-prod:
     if: github.ref == 'refs/heads/main'
     name: Deploy production release
-    runs-on: ubuntu-latest
+    # Self-hosted on app-node A (72.62.244.94): GitHub-hosted runners cannot reach VPS SSH :22.
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
     needs:
       - resolve-build-run-id
       - resolve-previous-production-deployment

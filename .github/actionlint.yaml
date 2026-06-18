@@ -1,0 +1,7 @@
+# Custom self-hosted runner labels for production deploy (srv1582786-prod-app-a).
+self-hosted-runner:
+  labels:
+    - production
+    - avf-prod-app-a
+    - Linux
+    - X64
