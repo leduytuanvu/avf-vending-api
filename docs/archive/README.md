@@ -19,6 +19,7 @@ Historical audits, verification reports, and one-off gate evidence. **Not canoni
 - **Do not delete** archive files without a replacement evidence trail; link from active docs when historical context is needed.
 - **Link checker** (`tools/check_markdown_links.py`) skips `docs/archive/**`; fix broken links inside archive only when editing those files.
 - **New one-off reports** from completed gates should land here (under the matching subfolder), not in `docs/audits/` or `docs/reports/verification/`.
+- **2026-06 cleanup manifest:** [`../reports/cleanup/2026-06-repo-cleanup-manifest.md`](../reports/cleanup/2026-06-repo-cleanup-manifest.md)
 
 ## Active pointers
 

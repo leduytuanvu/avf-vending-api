@@ -12,6 +12,7 @@ PROTO_BREAKING_PATH ?= avf/machine/v1
 SQLC_VERSION := v1.31.1
 SQLC_GEN := $(GO) run github.com/sqlc-dev/sqlc/cmd/sqlc@$(SQLC_VERSION)
 # Python 3 for OpenAPI/Swagger generation (use `PY=python` on Windows if `python3` is not on PATH).
+# Most `make` script targets require bash (Git Bash or WSL on Windows); see scripts/README.md.
 PY ?= python3
 
 tidy:

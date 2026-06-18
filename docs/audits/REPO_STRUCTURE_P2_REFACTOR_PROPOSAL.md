@@ -63,11 +63,13 @@ Nine packages today: `cash`, `commerce`, `compliance`, `device`, `fleet`, `opera
 
 **Coverage is partial.** Most business rules live in `internal/app/*`; `internal/domain/*` holds types and some pure logic. There is **no** domain package per bounded context (e.g. no `catalog`, `telemetry`, `payments` domain root).
 
-**Placeholders (unused):**
+**Removed placeholders (2026-06 cleanup, Phase 1):**
 
-- `internal/repository/cash/doc.go`
-- `internal/service/cash/doc.go`
-- `pkg/doc.go` (reserved external library tree; zero imports)
+- ~~`internal/repository/cash/doc.go`~~ — deleted (doc-only; cash settlement uses `internal/modules/postgres` + admin HTTP)
+- ~~`internal/service/cash/doc.go`~~ — deleted (same)
+- ~~`pkg/doc.go`~~ — deleted (zero imports; no external public library yet)
+
+Reintroduce `pkg/` or context-specific `service`/`repository` packages only when implementing the P2 port/adapter split (PR 4), not as empty placeholders.
 
 ### 1.4 Infrastructure and adapters
 
@@ -259,7 +261,7 @@ avf-vending-api/
 
 **Deliverables:**
 
-- Consolidate or remove placeholders: `pkg/`, `internal/repository/cash`, `internal/service/cash` (either implement or delete with explicit ADR)
+- ~~Consolidate or remove placeholders: `pkg/`, `internal/repository/cash`, `internal/service/cash`~~ — **done (2026-06 Phase 1 cleanup)**; next PR 2 work is pure helpers + port interfaces
 - Extract **pure** utilities with no postgres/MQTT imports from fat handlers into:
   - `internal/kernel/httputil` (or keep in `internal/apierr` / small `internal/kernel/ptr` if warranted)
   - Domain pure functions from `internal/app/*` into matching `internal/<context>/domain` **without moving stateful services yet**
