@@ -2,7 +2,7 @@
 
 **Scope:** Read-only audit of `tests/e2e/.env.production.destructive.local` against `https://api.ldtv.dev`. No destructive calls, no login, no MQTT publish, no DB access.
 
-**Machine-readable:** [`production-e2e-input-audit.json`](production-e2e-input-audit.json)
+**Machine-readable:** [`../archive/testing/production-e2e-input-audit.json`](../archive/testing/production-e2e-input-audit.json)
 
 **Checklist:** [`production-e2e-input-checklist.md`](production-e2e-input-checklist.md)
 

@@ -576,7 +576,7 @@ jobs:
             echo "- \`app_image_ref\` (digest-pinned): \`${APP_REF}\`"
             echo "- \`goose_image_ref\` (digest-pinned): \`${GOOSE_REF}\`"
             echo "- **\`promotion_eligible\`**: \`false\` — see artifact \`staging-deploy-evidence\` (not valid for production promotion)"
-            echo "- Set \`vars.ENABLE_REAL_STAGING_DEPLOY=true\` and see \`docs/operations/staging-preprod-gate.md\` / \`docs/runbooks/staging-preprod.md\` for a real host deploy."
+            echo "- Set \`vars.ENABLE_REAL_STAGING_DEPLOY=true\` and see \`docs/deployment/staging-preprod-gate.md\` / \`docs/runbooks/staging-preprod.md\` for a real host deploy."
           } >> "$GITHUB_STEP_SUMMARY"
           {
             echo "contract_validated=true"

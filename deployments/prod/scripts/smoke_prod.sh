@@ -63,7 +63,7 @@ Environment (high level):
   SMOKE_PYTHON — interpreter for emit_production_smoke_json.py and URL helpers (default: python3)
 
 This script only issues GET. It must never trigger real payment, dispense, inventory
-changes, or MQTT. See docs/operations/production-smoke-tests.md
+changes, or MQTT. See docs/production/production-smoke-tests.md
 EOF
 	exit 0
 fi

@@ -556,5 +556,5 @@ go test ./internal/grpcserver/... -run Idempotency
 
 ## Related audits
 
-- Android gap analysis: [`../audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md`](../audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md)
+- Android gap analysis: [`../archive/audits/audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md`](../archive/audits/audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md)
 - Transport boundary: [`../architecture/transport-boundary.md`](../architecture/transport-boundary.md)

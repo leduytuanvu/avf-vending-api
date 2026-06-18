@@ -568,12 +568,12 @@ def main() -> None:
             )
             raise SystemExit(1)
     for needle in (
-        "docs/operations/two-vps-rolling-production-deploy.md",
+        "docs/deployment/two-vps-rolling-production-deploy.md",
         "rollout-timeline.json",
         "rollout_outcome_summary",
         "TRAFFIC_DRAIN_MODE",
         "traffic_drain_hook.sh",
-        "docs/operations/production-smoke-tests.md",
+        "docs/production/production-smoke-tests.md",
         "SMOKE_LEVEL",
         "enable_business_synthetic_smoke",
         "emit_production_smoke_json.py",
@@ -581,7 +581,7 @@ def main() -> None:
         "release-audit-package",
         "security-release-audit-package",
         "production-release-audit-package",
-        "docs/operations/release-evidence-retention.md",
+        "docs/deployment/release-evidence-retention.md",
     ):
         if needle not in prod_st:
             print(

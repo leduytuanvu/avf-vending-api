@@ -1,4 +1,7 @@
-# Proto workspace for buf lint/generate. Includes avf/v1 (internal queries) and avf/machine/v1 (machine app).
+# Proto workspace for buf lint/generate.
+# - avf/machine/v1: machine app gRPC (production)
+# - avf/internal/v1: internal query sources → generated Go in internal/gen/avfinternalv1 (see buf.gen.avfinternal.yaml)
+# - avf/v1: codegen smoke test (skeleton.proto) + legacy avf.v1 compatibility stubs (not registered; see proto/README.md)
 # CI drift gate: `make proto-check` runs buf lint + breaking compare + git diff on generated outputs (see Makefile).
 version: v2
 modules:

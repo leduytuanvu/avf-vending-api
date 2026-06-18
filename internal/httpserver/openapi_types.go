@@ -1482,27 +1482,29 @@ type V1AdminCurrentOperator struct {
 
 // V1AdminMachineListItem is one machine in GET /v1/admin/machines and GET /v1/admin/machines/{machineId}.
 type V1AdminMachineListItem struct {
-	MachineID           string                         `json:"machineId"`
-	MachineName         string                         `json:"machineName"`
-	SiteID              string                         `json:"siteId"`
-	SiteName            string                         `json:"siteName"`
-	HardwareProfileID   *string                        `json:"hardwareProfileId,omitempty"`
-	SerialNumber        string                         `json:"serialNumber"`
-	Name                string                         `json:"name"`
-	Status              string                         `json:"status"`
-	CommandSequence     int64                          `json:"commandSequence"`
-	CreatedAt           string                         `json:"createdAt"`
-	UpdatedAt           string                         `json:"updatedAt"`
-	AndroidID           *string                        `json:"androidId,omitempty"`
-	SimSerial           *string                        `json:"simSerial,omitempty"`
-	SimIccid            *string                        `json:"simIccid,omitempty"`
-	AppVersion          *string                        `json:"appVersion,omitempty"`
-	FirmwareVersion     *string                        `json:"firmwareVersion,omitempty"`
-	LastHeartbeatAt     *string                        `json:"lastHeartbeatAt,omitempty"`
-	EffectiveTimezone   string                         `json:"effectiveTimezone"`
-	AssignedTechnicians []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
-	CurrentOperator     *V1AdminCurrentOperator        `json:"currentOperator"`
-	InventorySummary    V1AdminMachineInventorySummary `json:"inventorySummary"`
+	MachineID             string                         `json:"machineId"`
+	MachineName           string                         `json:"machineName"`
+	SiteID                string                         `json:"siteId"`
+	SiteName              string                         `json:"siteName"`
+	HardwareProfileID     *string                        `json:"hardwareProfileId,omitempty"`
+	SerialNumber          string                         `json:"serialNumber"`
+	Name                  string                         `json:"name"`
+	Status                string                         `json:"status"`
+	CommandSequence       int64                          `json:"commandSequence"`
+	CreatedAt             string                         `json:"createdAt"`
+	UpdatedAt             string                         `json:"updatedAt"`
+	AndroidID             *string                        `json:"androidId,omitempty"`
+	SimSerial             *string                        `json:"simSerial,omitempty"`
+	SimIccid              *string                        `json:"simIccid,omitempty"`
+	AppVersion            *string                        `json:"appVersion,omitempty"`
+	FirmwareVersion       *string                        `json:"firmwareVersion,omitempty"`
+	LastHeartbeatAt       *string                        `json:"lastHeartbeatAt,omitempty"`
+	EffectiveTimezone     string                         `json:"effectiveTimezone"`
+	AssignedTechnicians   []V1AdminAssignedTechnician    `json:"assignedTechnicians"`
+	CurrentOperator       *V1AdminCurrentOperator        `json:"currentOperator"`
+	InventorySummary      V1AdminMachineInventorySummary `json:"inventorySummary"`
+	EffectiveDeviceConfig json.RawMessage                `json:"effectiveDeviceConfig,omitempty"`
+	DeviceConfigFieldAck  json.RawMessage                `json:"deviceConfigFieldAck,omitempty"`
 }
 
 // V1MachineTelemetrySnapshotResponse is GET /v1/machines/{machineId}/telemetry/snapshot.

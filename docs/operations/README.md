@@ -1,11 +1,12 @@
-# Moved
+# Day-2 operations documentation
 
-Operations documentation was reorganized in Phase 2 (2026-05-20).
+This directory holds **day-2 operational** docs (latency runbooks, resource sizing, repomix guides, go-live checklists). Canonical locations for other layers:
 
-| Former path | New location |
-|-------------|--------------|
-| `docs/operations/production-*.md`, `field-*.md` | [`docs/production/`](../production/) |
-| `docs/operations/release-*.md`, `staging-*.md`, `deployment-*.md`, etc. | [`docs/deployment/`](../deployment/) |
-| `docs/operations/ci-cd-enterprise-contract.md` | [`docs/cicd/ci-cd-enterprise-contract.md`](../cicd/ci-cd-enterprise-contract.md) |
+| Topic | Canonical path |
+| --- | --- |
+| Production checklists (`production-smoke-tests`, backup drill, release checklist) | [`docs/production/`](../production/) |
+| Deployment policy (`release-process`, staging gate, two-VPS, governance settings, SLO) | [`docs/deployment/`](../deployment/) |
+| Operational runbooks (incidents, governance triage, data retention ops) | [`docs/runbooks/`](../runbooks/) |
+| CI/CD enterprise contract | [`docs/cicd/ci-cd-enterprise-contract.md`](../cicd/ci-cd-enterprise-contract.md) |
 
-See the full index: [`docs/README.md`](../README.md).
+Full index: [`docs/README.md`](../README.md).

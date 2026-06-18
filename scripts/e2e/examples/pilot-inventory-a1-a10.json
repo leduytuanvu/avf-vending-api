@@ -1,14 +1,14 @@
 {
   "inventory": [
-    { "cabinet_code": "A", "slot_code": "A1", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A2", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A3", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A4", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A5", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A6", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A7", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A8", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A9", "quantity": 10 },
-    { "cabinet_code": "A", "slot_code": "A10", "quantity": 10 }
+    { "cabinet_code": "CAB-A", "slot_code": "A1", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A2", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A3", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A4", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A5", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A6", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A7", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A8", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A9", "quantity": 10 },
+    { "cabinet_code": "CAB-A", "slot_code": "A10", "quantity": 10 }
   ]
 }

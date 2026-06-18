@@ -1,6 +1,6 @@
 # Postman assets
 
-## Canonical CI collections & environments
+## Canonical CI collections & environments (tracked)
 
 | Path | Description |
 |------|-------------|
@@ -10,10 +10,10 @@
 | [`environments/avf-staging.postman_environment.json`](environments/avf-staging.postman_environment.json) | Staging / pre-prod |
 | [`environments/avf-production.postman_environment.json`](environments/avf-production.postman_environment.json) | Production (mutations locked) |
 
-Regenerate: `make postman-generate` or `scripts/postman/generate_collection.sh`  
-Validate: `make postman-check` or `python tools/check_postman_artifacts.py`
+**Regenerate:** `make postman-generate` (runs after `make swagger`)  
+**Drift gate:** `make postman-check` — diffs only `postman/collections/` and `postman/environments/`
 
-## Scripts
+## Scripts (tracked)
 
 | Path | Role |
 |------|------|
@@ -22,16 +22,24 @@ Validate: `make postman-check` or `python tools/check_postman_artifacts.py`
 
 Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check_artifacts.sh`
 
-## Production verification suite
+## Generated / optional inventories (not CI drift-gated)
 
-[`suites/full-production-suite/`](suites/full-production-suite/) — full REST + gRPC + MQTT production inventory (325/325/85/28 counts). Separate from CI-native collections above.
+`postman/generated/` — expanded REST/gRPC/MQTT inventories from `scripts/postman/generate_complete_api_suite.py`. Regenerate locally; directory is **gitignored** (see root `.gitignore`).
+
+## Production E2E Postman (CI parity)
+
+[`production/`](production/) — collection + environment generated from `tests/e2e/production/e2e-manifest.yaml`. Required by `scripts/ci/verify_production_postman_parity.sh`.
+
+## Production verification suite (removed from repo)
+
+The former `postman/suites/full-production-suite/` tree was slimmed in 2026 cleanup. Regenerate expanded inventories with `scripts/postman/generate_complete_api_suite.py` (output under `postman/generated/`, gitignored) or use CI collections above plus OpenAPI import.
 
 ## Reports
 
-[`reports/`](reports/) — intentionally committed Newman/audit outputs only. Local Newman CLI output is gitignored (see root `.gitignore`).
+[`reports/`](reports/) — intentionally committed Newman/audit outputs only. Local Newman CLI output is gitignored.
 
 ## OpenAPI source
 
-Postman collections are generated from route inventory + OpenAPI; live spec: [`../docs/swagger/swagger.json`](../docs/swagger/swagger.json) (also served at `/swagger/doc.json` when enabled).
+Postman collections are generated from route inventory + OpenAPI; live spec: [`../docs/swagger/swagger.json`](../docs/swagger/swagger.json).
 
-**Moved:** former `docs/postman/*.json` → `postman/collections/` + `postman/environments/`. See [`docs/postman/README.md`](../docs/postman/README.md) for redirect.
+Operator guide: [`docs/postman/README.md`](../docs/postman/README.md) and [`docs/runbooks/postman.md`](../docs/runbooks/postman.md).

@@ -18,7 +18,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM
     outbox_events
 WHERE
@@ -61,7 +64,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM
     outbox_events
 WHERE

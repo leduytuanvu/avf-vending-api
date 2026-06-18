@@ -64,4 +64,4 @@ The script records **only** files that were copied; it never pads missing entrie
 ## Related
 
 - [artifact-retention.md](artifact-retention.md) (repository-wide policy discussion)
-- [production-smoke-tests.md](production-smoke-tests.md) (operational evidence referenced inside deploy JSON)
+- [../production/production-smoke-tests.md](../production/production-smoke-tests.md) (operational evidence referenced inside deploy JSON)

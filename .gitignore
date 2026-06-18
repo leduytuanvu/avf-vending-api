@@ -82,6 +82,8 @@ postman/specs/
 postman/**/*.zip
 postman/**/newman/
 postman/**/newman-report/
+# Optional expanded inventories under postman/generated/ are not CI drift-gated (regenerate locally)
+postman/generated/
 postman/reports/**/*
 !postman/reports/README.md
 postman/**/*-report.html
@@ -161,8 +163,8 @@ postman/production-enterprise/AVF_PRODUCTION_ENTERPRISE_IMPORT.zip
 flow-test/*LOCAL*.postman_environment.json
 flow-test/*.local.postman_environment.json
 
-# Local full-system verification run output in docs tree
-docs/testing/_verify*.txt
+# Internal gRPC proto sources only — generated Go stubs live in internal/gen/avfinternalv1/
+proto/avf/internal/v1/*.pb.go
 
 # Regenerable E2E / Postman audit reports (keep README + matrix + RECHECK only in git)
 docs/testing/production-e2e/RESULTS_*.md
@@ -182,3 +184,5 @@ postman/suites/full-production-suite/POSTMAN_IMPORT_VALIDATION_REPORT.md
 postman/production-enterprise/*_POSTMAN_PROJECT/
 flow-test/API_COVERAGE_AUDIT_CHECK_*.md
 flow-test/AVF_PRODUCTION_HAPPY_CASE_FULL/
+
+tests/e2e/.e2e-runs/

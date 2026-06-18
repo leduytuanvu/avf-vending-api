@@ -49,5 +49,5 @@ Verified in `internal/httpserver/server.go` and `mount*` helpers:
 
 ## Related
 
-- [Production release readiness](./production-release-readiness.md)
+- [Production release readiness](../runbooks/production-release-readiness.md)
 - [API surface audit](../api/api-surface-audit.md)

@@ -5,7 +5,10 @@ INSERT INTO outbox_events (
     payload,
     aggregate_type,
     aggregate_id,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 )
 VALUES (
     $1,
@@ -13,28 +16,12 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7,
+    $8,
+    $9
 )
-RETURNING
-    id,
-    topic,
-    event_type,
-    payload,
-    aggregate_type,
-    aggregate_id,
-    idempotency_key,
-    created_at,
-    published_at,
-    publish_attempt_count,
-    last_publish_error,
-    last_publish_attempt_at,
-    next_publish_after,
-    dead_lettered_at,
-    status,
-    locked_by,
-    locked_until,
-    updated_at,
-    max_publish_attempts;
+RETURNING *;
 
 -- name: ListOutboxUnpublished :many
 SELECT
@@ -56,7 +43,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM outbox_events
 WHERE
     published_at IS NULL
@@ -142,7 +132,10 @@ RETURNING
     o.locked_by,
     o.locked_until,
     o.updated_at,
-    o.max_publish_attempts;
+    o.max_publish_attempts,
+    o.simulated,
+    o.simulation_run_id,
+    o.simulation_scenario;
 
 -- name: RecordOutboxPublishFailure :exec
 UPDATE outbox_events
@@ -246,7 +239,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM outbox_events
 WHERE
     topic = $1

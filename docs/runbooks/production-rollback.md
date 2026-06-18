@@ -7,7 +7,7 @@ Use this when you need a **controlled, digest-pinned rollback** in production, w
 1. **Evidence + validation (this repo):** `.github/workflows/rollback-prod.yml` — **Rollback (Production — Incident)** — `workflow_dispatch` only, **`environment: production`**, uploads **`production-rollback-evidence`**. It **does not SSH**; it resolves a prior manifest or explicit `ghcr.io/...@sha256:...` app/goose refs and validates them **before** any operator action that touches hosts.
 2. **Execution:** `.github/workflows/deploy-prod.yml` — **Deploy Production** with **`action_mode: rollback`**, `rollback_app_image_ref`, and `rollback_goose_image_ref` set to the **same** digest-pinned refs you validated, **or** on-host scripts (e.g. `deployments/prod/app-node/scripts/rollback_app_node.sh` in your topology).
 
-Legacy single-host reference: [deployments/prod/scripts/rollback_prod.sh](../deployments/prod/scripts/rollback_prod.sh) (requires `ALLOW_LEGACY_SINGLE_HOST=1`).
+Legacy single-host reference: [`deployments/prod/scripts/rollback_prod.sh`](../../deployments/prod/scripts/rollback_prod.sh) (requires `ALLOW_LEGACY_SINGLE_HOST=1`).
 
 ## When to use the incident workflow
 
@@ -40,4 +40,4 @@ Legacy single-host reference: [deployments/prod/scripts/rollback_prod.sh](../dep
 
 If the only failure is **invalid final smoke JSON** (CI evidence / stdout formatting — check `deployment-evidence/smoke-cluster-final.json`, `smoke-cluster-final.log`, and `release-events.jsonl` for `evidence_format_failure`), the workflow **skips** automatic rollback so production is **not** repinned to an older image while nodes are already healthy. The job still **fails** for audit integrity. Treat **`rollback_result=failed`** in workflow outputs as "rollback command or healthcheck did not complete cleanly"; it does **not** guarantee production matches the attempted previous digests—verify live health and image digests on the hosts.
 
-See also: [production-backup-restore-drill.md](production-backup-restore-drill.md), [../deployment/two-vps-rolling-production-deploy.md](../deployment/two-vps-rolling-production-deploy.md).
+See also: [../production/production-backup-restore-drill.md](../production/production-backup-restore-drill.md), [../deployment/two-vps-rolling-production-deploy.md](../deployment/two-vps-rolling-production-deploy.md).

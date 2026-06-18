@@ -1,5 +1,7 @@
 # GitHub governance — branch protection and environments
 
+> **Scope:** Operational runbook (workflow inventory, required checks, triage). For Settings-only quick steps, see [deployment/github-governance.md](../deployment/github-governance.md).
+
 **Settings-only quick steps (branch rules + `production` environment):** [../deployment/github-governance.md](../deployment/github-governance.md)
 
 **Maintainer index (pipelines, branches, and triage):** [cicd-release.md](./cicd-release.md).

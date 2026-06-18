@@ -837,7 +837,7 @@ jobs:
             echo "- **goose_image_ref**: \`${GOOSE_REF}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # security-release-audit-package: see docs/operations/release-evidence-retention.md
+      # security-release-audit-package: see docs/deployment/release-evidence-retention.md
       - name: Build release audit package (security phase)
         if: always()
         shell: bash

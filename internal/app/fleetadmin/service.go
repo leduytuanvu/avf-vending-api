@@ -2,6 +2,7 @@ package fleetadmin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -113,28 +114,37 @@ func baseItemFromFleetListRow(m db.FleetAdminListMachinesRow) AdminMachineListIt
 
 func baseItemFromFleetDetailRow(m db.FleetAdminGetMachineDetailRow) AdminMachineListItem {
 	return AdminMachineListItem{
-		MachineID:           m.ID.String(),
-		MachineName:         m.Name,
-		SiteID:              m.SiteID.String(),
-		SiteName:            m.SiteName,
-		HardwareProfileID:   pgUUIDStringPtr(m.HardwareProfileID),
-		SerialNumber:        m.SerialNumber,
-		Name:                m.Name,
-		Status:              m.Status,
-		CommandSequence:     m.CommandSequence,
-		CreatedAt:           m.CreatedAt.UTC().Format(time.RFC3339Nano),
-		UpdatedAt:           m.UpdatedAt.UTC().Format(time.RFC3339Nano),
-		AndroidID:           pgTextStringPtr(m.AndroidID),
-		SimSerial:           pgTextStringPtr(m.SimSerial),
-		SimIccid:            pgTextStringPtr(m.SimIccid),
-		AppVersion:          pgTextStringPtr(m.AppVersion),
-		FirmwareVersion:     pgTextStringPtr(m.FirmwareVersion),
-		LastHeartbeatAt:     pgTimestamptzRFC3339NanoString(m.LastHeartbeatAt),
-		EffectiveTimezone:   m.EffectiveTimezone,
-		AssignedTechnicians: nil,
-		CurrentOperator:     nil,
-		InventorySummary:    AdminMachineInventorySummary{},
+		MachineID:             m.ID.String(),
+		MachineName:           m.Name,
+		SiteID:                m.SiteID.String(),
+		SiteName:              m.SiteName,
+		HardwareProfileID:     pgUUIDStringPtr(m.HardwareProfileID),
+		SerialNumber:          m.SerialNumber,
+		Name:                  m.Name,
+		Status:                m.Status,
+		CommandSequence:       m.CommandSequence,
+		CreatedAt:             m.CreatedAt.UTC().Format(time.RFC3339Nano),
+		UpdatedAt:             m.UpdatedAt.UTC().Format(time.RFC3339Nano),
+		AndroidID:             pgTextStringPtr(m.AndroidID),
+		SimSerial:             pgTextStringPtr(m.SimSerial),
+		SimIccid:              pgTextStringPtr(m.SimIccid),
+		AppVersion:            pgTextStringPtr(m.AppVersion),
+		FirmwareVersion:       pgTextStringPtr(m.FirmwareVersion),
+		LastHeartbeatAt:       pgTimestamptzRFC3339NanoString(m.LastHeartbeatAt),
+		EffectiveTimezone:     m.EffectiveTimezone,
+		AssignedTechnicians:   nil,
+		CurrentOperator:       nil,
+		InventorySummary:      AdminMachineInventorySummary{},
+		EffectiveDeviceConfig: jsonbRawOrNil(m.EffectiveDeviceConfig),
+		DeviceConfigFieldAck:  jsonbRawOrNil(m.DeviceConfigFieldAck),
 	}
+}
+
+func jsonbRawOrNil(raw []byte) json.RawMessage {
+	if len(raw) == 0 || string(raw) == "{}" || string(raw) == "null" {
+		return nil
+	}
+	return json.RawMessage(raw)
 }
 
 func (s *Service) applyMachineEnrichment(

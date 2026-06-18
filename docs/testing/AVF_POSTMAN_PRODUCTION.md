@@ -1,12 +1,13 @@
 # Postman production suite (AVF vending API)
 
-**Canonical FULL100 pack:** [`postman/suites/full-production-suite/`](../../postman/suites/full-production-suite/).
+**Canonical collections:** [`postman/collections/`](../../postman/collections/).
 
-- **REST (import Postman):** [`AVF_FULL_100.postman_collection.json`](../../postman/suites/full-production-suite/AVF_FULL_100.postman_collection.json)
-- **Environment:** [`AVF_FULL_100.postman_environment.json`](../../postman/suites/full-production-suite/AVF_FULL_100.postman_environment.json)
-- **Legacy matrix build:** `AVF_REST_365_FULL.postman_collection.json` + `AVF_PRODUCTION.postman_environment.json` (same OpenAPI parity count)
-- Generator: `python postman/suites/full-production-suite/generate_full_postman_suite.py`
-- Validator: `python postman/suites/full-production-suite/validate_generated_assets.py`
-- Zip pack: [`avf_full_100_postman_suite.zip`](../../postman/suites/full-production-suite/avf_full_100_postman_suite.zip)
+- **Primary REST collection:** `postman/collections/avf-vending-api.postman_collection.json`
+- **Function-path export:** `postman/collections/avf-vending-api-function-path.postman_collection.json`
+- **Domain-grouped YAML suite:** `postman/collections/AVF Vending Backend Production API Suite — Domain Grouped —/`
+
+Regenerate from OpenAPI: `make postman-generate` (after `make swagger`).
+
+Historical generated packs under `postman/suites/full-production-suite/` (for example `AVF_FULL_100.postman_collection.json`) were removed in the 2026 cleanup — use the collections above or import OpenAPI from `https://api.ldtv.dev/swagger/doc.json`.
 
 Execution order: [05_PRODUCTION_TEST_EXECUTION_ORDER.md](05_PRODUCTION_TEST_EXECUTION_ORDER.md)

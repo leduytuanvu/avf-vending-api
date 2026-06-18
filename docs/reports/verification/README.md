@@ -1,11 +1,14 @@
-# Verification reports
+# Verification reports (active)
 
-Generated verification and readiness outputs (REST, gRPC, MQTT, E2E, Postman, full-system gates). These are **historical artifacts** — use [`../../testing/`](../testing/) for active test guides.
+Ongoing protocol and gate verification outputs. **`FINAL_*` and full-system signoff reports** are archived under [`../../archive/verification/`](../../archive/verification/).
+
+Use [`../../testing/`](../../testing/) for active test guides.
 
 | Report | Scope |
 |--------|--------|
-| `FULL_SYSTEM_*`, `FINAL_*` | Full-system / pre-merge verification |
 | `REST_*`, `GRPC_*`, `MQTT_*`, `E2E_*` | Protocol verification |
 | `DATABASE_MIGRATION_VERIFICATION.md` | Migration verification |
 | `POSTMAN_*` | Postman collection/environment audits |
-| `LOCAL_INFRA_BLOCKER.md`, `e2e-stabilization-final-report.md` | Local infra / E2E stabilization |
+| `LOCAL_INFRA_BLOCKER.md` | Local infra blockers |
+
+**Archive index:** [`../../archive/README.md`](../../archive/README.md)

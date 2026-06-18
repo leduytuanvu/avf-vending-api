@@ -80,8 +80,8 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 
 ## Audits and archives
 
-- [Project cleanup audit](audits/project-cleanup-audit.md) — nonessential artifact inventory
-- [Historical cleanup audits](archive/cleanup/README.md) — superseded; not canonical
+- [Active audits](audits/README.md) — enterprise readiness and gap analysis
+- [Documentation archive](archive/README.md) — historical audits, verification FINALs, git-deploy reports
 
 ## HTTP API (integration)
 
@@ -110,9 +110,9 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
 - **Audits (readiness / gap / cleanup):** [`audits/README.md`](audits/README.md)
 - **Generated phase reports:** [`reports/README.md`](reports/README.md)
   - [Production deploy reports](reports/production-deploy/) — failure analysis, recovery, migration evidence
-  - [Verification reports](reports/verification/) — REST/gRPC/MQTT/E2E/Postman/full-system verification output
-  - [Test coverage reports](reports/test/) — e.g. MQTT full coverage
-- **Repository cleanup:** [`audits/DEEP_REPO_CLEANUP_AUDIT.md`](audits/DEEP_REPO_CLEANUP_AUDIT.md)
+  - [Verification reports](reports/verification/) — ongoing protocol verification (non-FINAL)
+  - [Archived FINAL / git-deploy evidence](archive/README.md) — historical signoff and deploy reports
+  - Test coverage reports under `reports/test/` — e.g. MQTT full coverage (generated artifacts)
 
 ## Local dependencies
 

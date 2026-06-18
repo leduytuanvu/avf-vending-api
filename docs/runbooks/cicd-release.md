@@ -1,6 +1,6 @@
 # CI/CD and release operation (maintainer guide)
 
-This document is the **entry point** for how GitHub Actions tie together for the AVF vending **API** backend. Workflow **file names** and **display names** match `.github/workflows/*.y` as of the last doc refresh. Deeper detail: [release-process.md](./release-process.md) (artifacts), [github-governance.md](./github-governance.md) (GitHub **Settings**), [supply-chain-security.md](./supply-chain-security.md) (images, SBOM, signing, action pins), [CI_CD_FINAL_AUDIT.md](../../CI_CD_FINAL_AUDIT.md) (enterprise audit).
+This document is the **entry point** for how GitHub Actions tie together for the AVF vending **API** backend. Workflow **file names** and **display names** match `.github/workflows/*.y` as of the last doc refresh. Deeper detail: [release-process.md](./release-process.md) (artifacts), [github-governance.md](./github-governance.md) (GitHub **Settings**), [supply-chain-security.md](./supply-chain-security.md) (images, SBOM, signing, action pins), [CI_CD_FINAL_AUDIT.md](../cicd/CI_CD_FINAL_AUDIT.md) (enterprise audit).
 
 ---
 
@@ -89,7 +89,7 @@ The repository **code** does not set branch rules or environment rules. A **GitH
 
 ## 8. Final audit and related documents
 
-- **Enterprise readiness, manual tasks, limitations, and optional improvements** are recorded in [CI_CD_FINAL_AUDIT.md](../../CI_CD_FINAL_AUDIT.md). Re-validate that file after **material workflow or policy changes**.
+- **Enterprise readiness, manual tasks, limitations, and optional improvements** are recorded in [CI_CD_FINAL_AUDIT.md](../cicd/CI_CD_FINAL_AUDIT.md). Re-validate that file after **material workflow or policy changes**.
 
 ---
 

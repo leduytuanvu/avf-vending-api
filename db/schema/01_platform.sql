@@ -750,11 +750,18 @@ CREATE TABLE orders (
     tax_minor bigint NOT NULL DEFAULT 0 CHECK (tax_minor >= 0),
     total_minor bigint NOT NULL DEFAULT 0 CHECK (total_minor >= 0),
     idempotency_key text,
+    simulated boolean NOT NULL DEFAULT false,
+    simulation_run_id text,
+    simulation_scenario text,
+    fake_bill boolean NOT NULL DEFAULT false,
+    fake_board boolean NOT NULL DEFAULT false,
+    simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX ix_orders_machine_id ON orders (machine_id);
+CREATE INDEX ix_orders_simulated ON orders (simulated) WHERE simulated = true;
 
 CREATE TABLE vend_sessions (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
@@ -768,10 +775,15 @@ CREATE TABLE vend_sessions (
     started_at timestamptz,
     completed_at timestamptz,
     final_command_attempt_id uuid,
+    simulated boolean NOT NULL DEFAULT false,
+    simulation_run_id text,
+    simulation_scenario text,
+    simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX ix_vend_sessions_order_id ON vend_sessions (order_id);
+CREATE INDEX ix_vend_sessions_simulated ON vend_sessions (simulated) WHERE simulated = true;
 CREATE INDEX ix_vend_sessions_machine_id ON vend_sessions (machine_id);
 CREATE INDEX ix_vend_sessions_final_command_attempt ON vend_sessions (final_command_attempt_id)
     WHERE final_command_attempt_id IS NOT NULL;
@@ -902,7 +914,13 @@ CREATE TABLE payments (
     settlement_status text NOT NULL DEFAULT 'unsettled' CHECK (
         settlement_status IN ('unsettled', 'batched', 'settled', 'written_off')
     ),
-    settlement_batch_id uuid REFERENCES settlement_batches (id) ON DELETE SET NULL
+    settlement_batch_id uuid REFERENCES settlement_batches (id) ON DELETE SET NULL,
+    simulated boolean NOT NULL DEFAULT false,
+    simulation_run_id text,
+    simulation_scenario text,
+    fake_bill boolean NOT NULL DEFAULT false,
+    fake_board boolean NOT NULL DEFAULT false,
+    simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE UNIQUE INDEX ux_payments_order_idempotency ON payments (order_id, idempotency_key)
@@ -913,6 +931,7 @@ CREATE INDEX ix_payments_reconciliation_queue ON payments (provider, updated_at 
     WHERE reconciliation_status <> 'matched';
 CREATE INDEX ix_payments_settlement_batch ON payments (settlement_batch_id)
     WHERE settlement_batch_id IS NOT NULL;
+CREATE INDEX ix_payments_simulated ON payments (simulated) WHERE simulated = true;
 
 COMMENT ON COLUMN payments.reconciliation_status IS 'Provider vs internal ledger alignment; use payment_reconciliations for detail.';
 COMMENT ON COLUMN payments.settlement_status IS 'PSP settlement lifecycle; settlement_batch_id when batched.';
@@ -1439,6 +1458,9 @@ CREATE TABLE outbox_events (
     locked_until timestamptz,
     updated_at timestamptz NOT NULL DEFAULT now(),
     max_publish_attempts integer NOT NULL DEFAULT 24,
+    simulated boolean NOT NULL DEFAULT false,
+    simulation_run_id text,
+    simulation_scenario text,
     CONSTRAINT chk_outbox_events_status CHECK (
         status IN (
             'pending',
@@ -2487,6 +2509,12 @@ ADD COLUMN last_acknowledged_config_revision INT NULL;
 
 ALTER TABLE machine_current_snapshot
 ADD COLUMN last_acknowledged_planogram_version_id UUID NULL;
+
+ALTER TABLE machine_current_snapshot
+ADD COLUMN effective_device_config jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+ALTER TABLE machine_current_snapshot
+ADD COLUMN device_config_field_ack jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),

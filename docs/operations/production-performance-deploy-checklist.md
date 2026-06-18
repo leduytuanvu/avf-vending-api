@@ -31,4 +31,4 @@
 - [ ] Redeploy last-known-good image digest via existing rollback workflow
 - [ ] Roll back immediately if health/ready fail, 5xx spike, or severe p95 regression
 
-Record results in `docs/audits/production-latency-and-surface-final-report.md`.
+Record results in `docs/archive/audits/production-latency-and-surface-final-report.md` (archived template).

@@ -414,5 +414,5 @@ Run from repository root after **each PR** in the migration sequence.
 - [Enterprise target model](../architecture/enterprise-target-model.md)
 - [Transport boundary](../architecture/transport-boundary.md)
 - [P0/P1/P2 implementation roadmap](../architecture/p0-p1-p2-implementation-roadmap.md)
-- [Deep repository cleanup audit](./DEEP_REPO_CLEANUP_AUDIT.md)
+- [Deep repository cleanup audit](../archive/cleanup/DEEP_REPO_CLEANUP_AUDIT.md)
 - [API contract checks](../api/api-contract-checks.md)

@@ -107,16 +107,21 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 		return CreateOrderResult{}, err
 	}
 	base, err := s.orders.CreateOrderWithVendSession(ctx, domaincommerce.CreateOrderVendInput{
-		MachineID:      in.MachineID,
-		ProductID:      in.ProductID,
-		SlotIndex:      line.SlotIndex,
-		Currency:       strings.ToUpper(strings.TrimSpace(in.Currency)),
-		SubtotalMinor:  line.SubtotalMinor,
-		TaxMinor:       line.TaxMinor,
-		TotalMinor:     line.TotalMinor,
-		IdempotencyKey: strings.TrimSpace(in.IdempotencyKey),
-		OrderStatus:    "created",
-		VendState:      "pending",
+		MachineID:          in.MachineID,
+		ProductID:          in.ProductID,
+		SlotIndex:          line.SlotIndex,
+		Currency:           strings.ToUpper(strings.TrimSpace(in.Currency)),
+		SubtotalMinor:      line.SubtotalMinor,
+		TaxMinor:           line.TaxMinor,
+		TotalMinor:         line.TotalMinor,
+		IdempotencyKey:     strings.TrimSpace(in.IdempotencyKey),
+		OrderStatus:        "created",
+		VendState:          "pending",
+		Simulated:          in.Simulated,
+		SimulationRunID:    strings.TrimSpace(in.SimulationRunID),
+		SimulationScenario: strings.TrimSpace(in.SimulationScenario),
+		FakeBill:           in.FakeBill,
+		FakeBoard:          in.FakeBoard,
 	})
 	if err != nil {
 		return CreateOrderResult{}, err
@@ -164,6 +169,11 @@ func (s *Service) StartPaymentWithOutbox(ctx context.Context, in StartPaymentInp
 		OutboxAggregateType:  strings.TrimSpace(in.OutboxAggregateType),
 		OutboxAggregateID:    in.OutboxAggregateID,
 		OutboxIdempotencyKey: strings.TrimSpace(in.OutboxIdempotencyKey),
+		Simulated:            in.Simulated,
+		SimulationRunID:      strings.TrimSpace(in.SimulationRunID),
+		SimulationScenario:   strings.TrimSpace(in.SimulationScenario),
+		FakeBill:             in.FakeBill,
+		FakeBoard:            in.FakeBoard,
 	})
 }
 

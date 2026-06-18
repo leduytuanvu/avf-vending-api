@@ -7,16 +7,21 @@ import (
 
 func mapOrder(row db.Order) commerce.Order {
 	return commerce.Order{
-		ID:             row.ID,
-		MachineID:      row.MachineID,
-		Status:         row.Status,
-		Currency:       row.Currency,
-		SubtotalMinor:  row.SubtotalMinor,
-		TaxMinor:       row.TaxMinor,
-		TotalMinor:     row.TotalMinor,
-		IdempotencyKey: pgTextToStringPtr(row.IdempotencyKey),
-		CreatedAt:      row.CreatedAt,
-		UpdatedAt:      row.UpdatedAt,
+		ID:                 row.ID,
+		MachineID:          row.MachineID,
+		Status:             row.Status,
+		Currency:           row.Currency,
+		SubtotalMinor:      row.SubtotalMinor,
+		TaxMinor:           row.TaxMinor,
+		TotalMinor:         row.TotalMinor,
+		IdempotencyKey:     pgTextToStringPtr(row.IdempotencyKey),
+		Simulated:          row.Simulated,
+		SimulationRunID:    pgTextToStringPtr(row.SimulationRunID),
+		SimulationScenario: pgTextToStringPtr(row.SimulationScenario),
+		FakeBill:           row.FakeBill,
+		FakeBoard:          row.FakeBoard,
+		CreatedAt:          row.CreatedAt,
+		UpdatedAt:          row.UpdatedAt,
 	}
 }
 
@@ -29,6 +34,9 @@ func mapVend(row db.VendSession) commerce.VendSession {
 		ProductID:             row.ProductID,
 		State:                 row.State,
 		FinalCommandAttemptID: pgUUIDToPtr(row.FinalCommandAttemptID),
+		Simulated:             row.Simulated,
+		SimulationRunID:       pgTextToStringPtr(row.SimulationRunID),
+		SimulationScenario:    pgTextToStringPtr(row.SimulationScenario),
 		CreatedAt:             row.CreatedAt,
 	}
 }
@@ -42,6 +50,9 @@ func mapVendFromStuckReconcileRow(row db.ListVendSessionsStuckForReconciliationR
 		ProductID:             row.ProductID,
 		State:                 row.State,
 		FinalCommandAttemptID: pgUUIDToPtr(row.FinalCommandAttemptID),
+		Simulated:             row.Simulated,
+		SimulationRunID:       pgTextToStringPtr(row.SimulationRunID),
+		SimulationScenario:    pgTextToStringPtr(row.SimulationScenario),
 		CreatedAt:             row.CreatedAt,
 	}
 }
@@ -58,6 +69,11 @@ func mapPayment(row db.Payment) commerce.Payment {
 		ReconciliationStatus: row.ReconciliationStatus,
 		SettlementStatus:     row.SettlementStatus,
 		SettlementBatchID:    pgUUIDToPtr(row.SettlementBatchID),
+		Simulated:            row.Simulated,
+		SimulationRunID:      pgTextToStringPtr(row.SimulationRunID),
+		SimulationScenario:   pgTextToStringPtr(row.SimulationScenario),
+		FakeBill:             row.FakeBill,
+		FakeBoard:            row.FakeBoard,
 		CreatedAt:            row.CreatedAt,
 	}
 }
@@ -83,5 +99,8 @@ func mapOutbox(row db.OutboxEvent) commerce.OutboxEvent {
 		LockedUntil:          pgTimestamptzToTimePtr(row.LockedUntil),
 		UpdatedAt:            row.UpdatedAt,
 		MaxPublishAttempts:   row.MaxPublishAttempts,
+		Simulated:            row.Simulated,
+		SimulationRunID:      pgTextToStringPtr(row.SimulationRunID),
+		SimulationScenario:   pgTextToStringPtr(row.SimulationScenario),
 	}
 }

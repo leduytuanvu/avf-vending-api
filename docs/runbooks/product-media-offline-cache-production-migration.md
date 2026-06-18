@@ -343,7 +343,7 @@ Subscribe for command ACKs on the topic prefix configured for your fleet, publis
 
 ## Verification SQL (reference)
 
-These mirror **`docs/reports/product-media-offline-cache/local-migration-verification.md`** and **`scripts/db/verify_product_media_migration.sh`**.
+These mirror **`docs/archive/reports/product-media-offline-cache/local-migration-verification.md`** and **`scripts/db/verify_product_media_migration.sh`**.
 
 ### Goose revision **4** applied
 
@@ -432,4 +432,4 @@ Investigate any **non-zero** result before declaring catalog healthy.
 - **`docs/runbooks/migration-safety.md`**
 - **`docs/runbooks/backup-evidence-for-production-migrations.md`**
 - **`deployments/prod/app-node/README.md`**
-- **`docs/reports/product-media-offline-cache/server-migration-verification-template.md`**
+- **`docs/archive/reports/product-media-offline-cache/server-migration-verification-template.md`**

@@ -1,5 +1,7 @@
 # Release process (main → Security Release → production)
 
+> **Scope:** Release artifact runbook (what is produced, where it lives, manifest chain). For the operator end-to-end map, see [deployment/release-process.md](../deployment/release-process.md).
+
 **For the full branch flow (develop, main) and triage, start at** [cicd-release.md](./cicd-release.md).
 
 This runbook describes **release artifacts** for the AVF vending API backend: what is produced, where it lives, and how it chains into production deploy.

@@ -550,7 +550,7 @@ jobs:
           if-no-files-found: error
           retention-days: 180
 
-      # release-audit-package: canonical layout in docs/operations/release-evidence-retention.md
+      # release-audit-package: canonical layout in docs/deployment/release-evidence-retention.md
       - name: Build release audit package (build phase)
         shell: bash
         run: |

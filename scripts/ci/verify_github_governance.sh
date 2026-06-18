@@ -10,7 +10,7 @@
 #   Set GOVERNANCE_PR_IS_FORK=true to skip (fork pull_request — no base-repo governance gate in CI).
 #   Set ENFORCE_GITHUB_GOVERNANCE=true to fail in CI if token is missing when enforcement is on.
 #
-# See: docs/operations/github-governance.md, docs/runbooks/github-governance.md
+# See: docs/deployment/github-governance.md, docs/runbooks/github-governance.md
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -107,7 +107,7 @@ fi
 repo_api="repos/${GITHUB_REPOSITORY}"
 if ! GH_TOKEN="${token}" GITHUB_TOKEN="${token}" gh api -H "Accept: application/vnd.github+json" "repos/${GITHUB_REPOSITORY}" --jq '."full_name"' >/dev/null 2>&1; then
   if [[ "${GOVERNANCE_SKIP_ON_API_AUTH_FAIL:-}" == "true" ]]; then
-    echo "GOVERNANCE_CHECK: SKIPPED (GitHub API not readable with current token; see docs/operations/github-governance.md)"
+    echo "GOVERNANCE_CHECK: SKIPPED (GitHub API not readable with current token; see docs/deployment/github-governance.md)"
     exit 0
   fi
   fail "gh api could not read repository ${GITHUB_REPOSITORY} (check token scopes: repo or contents read)"

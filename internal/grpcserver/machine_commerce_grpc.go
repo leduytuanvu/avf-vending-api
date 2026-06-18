@@ -282,15 +282,25 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 		return nil, status.Error(codes.InvalidArgument, "currency must be a 3-letter ISO code")
 	}
 
+	simMeta := parseSimulationContext(req.GetSimulation())
+	if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
+		return nil, err
+	}
+
 	out, err := svc.CreateOrder(ctx, appcommerce.CreateOrderInput{
-		MachineID:      claims.MachineID,
-		ProductID:      productID,
-		SlotID:         slotID,
-		CabinetCode:    cab,
-		SlotCode:       sc,
-		SlotIndex:      slotIdx,
-		Currency:       cur,
-		IdempotencyKey: wctx.IdempotencyKey,
+		MachineID:          claims.MachineID,
+		ProductID:          productID,
+		SlotID:             slotID,
+		CabinetCode:        cab,
+		SlotCode:           sc,
+		SlotIndex:          slotIdx,
+		Currency:           cur,
+		IdempotencyKey:     wctx.IdempotencyKey,
+		Simulated:          simMeta.Simulated,
+		SimulationRunID:    simMeta.SimulationRunID,
+		SimulationScenario: simMeta.SimulationScenario,
+		FakeBill:           simMeta.FakeBill,
+		FakeBoard:          simMeta.FakeBoard,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -476,6 +486,15 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 	payKey := idem + ":cash:payment"
 	outboxIdem := idem + ":cash:payment:outbox:" + orderID.String()
 
+	simMeta := parseSimulationContext(req.GetSimulation())
+	if simMeta.Simulated {
+		if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
+			return nil, err
+		}
+	} else {
+		simMeta = simulationMetaFromOrder(o.Simulated, o.SimulationRunID, o.SimulationScenario, o.FakeBill, o.FakeBoard)
+	}
+
 	payRes, err := svc.StartPaymentWithOutbox(ctx, appcommerce.StartPaymentInput{
 		OrderID:              orderID,
 		Provider:             "cash",
@@ -489,6 +508,11 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		OutboxAggregateType:  aggType,
 		OutboxAggregateID:    orderID,
 		OutboxIdempotencyKey: outboxIdem,
+		Simulated:            simMeta.Simulated,
+		SimulationRunID:      simMeta.SimulationRunID,
+		SimulationScenario:   simMeta.SimulationScenario,
+		FakeBill:             simMeta.FakeBill,
+		FakeBoard:            simMeta.FakeBoard,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)

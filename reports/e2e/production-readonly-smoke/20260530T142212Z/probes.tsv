@@ -1,6 +1,0 @@
-http/health/live|PASS|1095|status=200
-http/health/ready|PASS|715|status=200
-http/version|PASS|489|status=200
-version.payment_runtime|SKIP|0|field absent on this deployment
-admin.auth|SKIP|0|ADMIN_TOKEN or ADMIN_EMAIL+ADMIN_PASSWORD not set
-grpc|SKIP|0|GRPC_ADDR / GRPC_TARGET unset

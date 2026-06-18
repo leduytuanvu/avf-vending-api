@@ -18,7 +18,9 @@ def parse_range(spec):
     return int(m.group(1)), int(m.group(2))
 
 def slot_codes(cab, a, b):
-    return [f"{cab}{i}" for i in range(a, b+1)]
+    # TCN pilot: cabinet CAB-A uses legacy slot codes A1..An (not CAB-A1).
+    prefix = "A" if str(cab).upper().startswith("CAB-") else str(cab)
+    return [f"{prefix}{i}" for i in range(a, b+1)]
 
 def media_ok(item, ready):
     pm = (item or {}).get("primaryMedia") or (item or {}).get("primary_media") or {}
@@ -139,7 +141,24 @@ def main():
         wtsv(art/"sellable-slots-all-machine.tsv", sellable_rows)
         wtsv(art/"destructive-test-slots.tsv", [dest[c] for c in sorted(pilot) if c in dest])
         wtsv(art/"hidden-reasons.tsv", [r for r in rows.values() if r.get("hidden_reason")])
-    summary = {"verdict": "PASS" if not failures else "BLOCKED", "machine_id": a.machine_id, "hardware_profile": hw, "destructive_scope": {"cabinet": a.destructive_cabinet, "slot_indexes": a.destructive_slot_indexes, "slot_codes": sorted(pilot)}, "sellable_slots_all_machine_count": len(sellable_rows), "app_facing_catalog_item_count": len(app_items), "destructive_test_slots_count": len(dest), "hidden_reason_count": sum(1 for r in rows.values() if r.get("hidden_reason")), "cash_only_runtime": cash_only, "failures": failures}
+    pv_id = pick(bootstrap, "publishedPlanogramVersionId", "published_planogram_version_id")
+    pv_no = pick(bootstrap, "publishedPlanogramVersionNo", "published_planogram_version_no")
+    grpc_plano_slots = len((plano or {}).get("slots") or [])
+    summary = {
+        "verdict": "PASS" if not failures else "BLOCKED",
+        "machine_id": a.machine_id,
+        "hardware_profile": hw,
+        "destructive_scope": {"cabinet": a.destructive_cabinet, "slot_indexes": a.destructive_slot_indexes, "slot_codes": sorted(pilot)},
+        "sellable_slots_all_machine_count": len(sellable_rows),
+        "app_facing_catalog_item_count": len(app_items),
+        "destructive_test_slots_count": len(dest),
+        "hidden_reason_count": sum(1 for r in rows.values() if r.get("hidden_reason")),
+        "cash_only_runtime": cash_only,
+        "published_planogram_version_id": pv_id,
+        "published_planogram_version_no": pv_no,
+        "grpc_planogram_slot_count": grpc_plano_slots,
+        "failures": failures,
+    }
     (art/"diagnose-summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
     return 0 if summary["verdict"]=="PASS" else 2
