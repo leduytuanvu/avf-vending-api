@@ -209,6 +209,38 @@ The production deploy job now runs in this order:
 
 For the current 2-VPS snapshot, prefer a single active app node until you have evidence that managed Postgres pool capacity is sufficient for both app nodes.
 
+## Self-hosted deploy runner (app-node A)
+
+GitHub-hosted `ubuntu-latest` runners cannot reach production VPS SSH (`:22` timeout from Azure egress). The **`deploy-prod`** job in [`.github/workflows/deploy-prod.yml`](../../.github/workflows/deploy-prod.yml) runs on a **repo self-hosted runner** co-located on app-node A:
+
+| Field | Value |
+| --- | --- |
+| Host | `srv1582786` / `72.62.244.94` |
+| Runner name | `srv1582786-prod-app-a` |
+| Labels | `self-hosted`, `Linux`, `X64`, `production`, `avf-prod-app-a` |
+| Service user | `github-runner` (not root) |
+| Install path | `/home/github-runner/actions-runner` |
+| systemd unit | `actions.runner.leduytuanvu-avf-vending-api.srv1582786-prod-app-a.service` |
+
+**Install / reinstall** (registration token from GitHub → Settings → Actions → Runners → New self-hosted runner):
+
+```bash
+# on VPS as root
+useradd -m -s /bin/bash github-runner 2>/dev/null || true
+apt-get update && apt-get install -y curl jq tar
+su - github-runner
+mkdir -p ~/actions-runner && cd ~/actions-runner
+curl -fsSL -o actions-runner-linux-x64-2.321.0.tar.gz \
+  https://github.com/actions/runner/releases/download/v2.321.0/actions-runner-linux-x64-2.321.0.tar.gz
+tar xzf actions-runner-linux-x64-2.321.0.tar.gz
+./config.sh --url https://github.com/leduytuanvu/avf-vending-api \
+  --token <REGISTRATION_TOKEN> --name srv1582786-prod-app-a \
+  --labels self-hosted,linux,production,avf-prod-app-a --unattended --replace
+sudo ./svc.sh install github-runner && sudo ./svc.sh start && sudo ./svc.sh status
+```
+
+**Day-2:** `sudo systemctl status actions.runner.*` · re-register with a fresh token if offline · restrict who can `workflow_dispatch` Deploy Production (runner receives `production` environment secrets).
+
 ## Required GitHub environment configuration
 
 Recommended `production` environment variables:
