@@ -18,7 +18,7 @@ Usage: collect_deploy_slo_evidence.sh --json --phase PHASE [--out PATH]
   --out    Write JSON to PATH (default: stdout)
   --json   Required.
 
-See docs/operations/deploy-monitoring-slo.md for environment variables.
+See docs/deployment/deploy-monitoring-slo.md for environment variables.
 EOF
 }
 

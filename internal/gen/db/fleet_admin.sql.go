@@ -415,6 +415,8 @@ SELECT
     snap.app_version,
     snap.firmware_version,
     snap.last_heartbeat_at,
+    snap.effective_device_config,
+    snap.device_config_field_ack,
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,
@@ -428,23 +430,25 @@ WHERE
 `
 
 type FleetAdminGetMachineDetailRow struct {
-	ID                uuid.UUID
-	SiteID            uuid.UUID
-	HardwareProfileID pgtype.UUID
-	SerialNumber      string
-	Name              string
-	Status            string
-	CommandSequence   int64
-	CreatedAt         time.Time
-	UpdatedAt         time.Time
-	SiteName          string
-	AndroidID         pgtype.Text
-	SimSerial         pgtype.Text
-	SimIccid          pgtype.Text
-	AppVersion        pgtype.Text
-	FirmwareVersion   pgtype.Text
-	LastHeartbeatAt   pgtype.Timestamptz
-	EffectiveTimezone string
+	ID                    uuid.UUID
+	SiteID                uuid.UUID
+	HardwareProfileID     pgtype.UUID
+	SerialNumber          string
+	Name                  string
+	Status                string
+	CommandSequence       int64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	SiteName              string
+	AndroidID             pgtype.Text
+	SimSerial             pgtype.Text
+	SimIccid              pgtype.Text
+	AppVersion            pgtype.Text
+	FirmwareVersion       pgtype.Text
+	LastHeartbeatAt       pgtype.Timestamptz
+	EffectiveDeviceConfig []byte
+	DeviceConfigFieldAck  []byte
+	EffectiveTimezone     string
 }
 
 func (q *Queries) FleetAdminGetMachineDetail(ctx context.Context, id uuid.UUID) (FleetAdminGetMachineDetailRow, error) {
@@ -467,6 +471,8 @@ func (q *Queries) FleetAdminGetMachineDetail(ctx context.Context, id uuid.UUID) 
 		&i.AppVersion,
 		&i.FirmwareVersion,
 		&i.LastHeartbeatAt,
+		&i.EffectiveDeviceConfig,
+		&i.DeviceConfigFieldAck,
 		&i.EffectiveTimezone,
 	)
 	return i, err

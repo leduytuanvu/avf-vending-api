@@ -101,7 +101,7 @@ HTTP handler increments; labels must stay low-cardinality.
 
 - New file e.g. [`internal/httpserver/telemetry_reconcile_http.go`](../../internal/httpserver/telemetry_reconcile_http.go): `mountTelemetryReconcileRoutes(r, app, deps)`.
 - Wire in [`server.go`](../../internal/httpserver/server.go) under `/v1/device/machines/{machineId}` alongside vend-results/poll (same auth + rate-limit group as other device POSTs if applicable).
-- Service layer: [`internal/app/telemetryapp/reconcile_service.go`](../../internal/app/telemetryapp/reconcile_service.go) (batch + single status) calling postgres/sqlc.
+- Service layer: `internal/app/telemetryapp/reconcile_service.go` (batch + single status) calling postgres/sqlc.
 
 ## Ingest enforcement
 
@@ -128,7 +128,7 @@ HTTP handler increments; labels must stay low-cardinality.
 
 - [`docs/api/mqtt-contract.md`](mqtt-contract.md): replace “gap — P0” with links to these routes; restate **outbox deletion only on `processed`**.
 - [`docs/api/api-surface-audit.md`](api-surface-audit.md): mark reconcile **implemented** when mounted.
-- [`docs/README.md`](README.md): link this handoff until the feature is merged.
+- [`docs/README.md`](../README.md): link this handoff until the feature is merged.
 
 ## Acceptance
 

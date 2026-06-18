@@ -1,7 +1,7 @@
 {
   "cabinets": [
     {
-      "code": "A",
+      "code": "CAB-A",
       "title": "Cabinet A",
       "sort_order": 1,
       "metadata": {
@@ -9,13 +9,18 @@
         "bill_protocol": "ict_bc_v1",
         "cash_topology": "direct_bill",
         "transport_type": "serial",
-        "payment_authority": "backend"
+        "payment_authority": "backend",
+        "primary_port": "/dev/ttyS4",
+        "serial_port": "/dev/ttyS4",
+        "driver_options": {
+          "billBusKey": "/dev/ttyS1"
+        }
       }
     }
   ],
   "layouts": [
     {
-      "cabinet_code": "A",
+      "cabinet_code": "CAB-A",
       "layout_key": "grid-4x6",
       "revision": 1,
       "layout_spec": {

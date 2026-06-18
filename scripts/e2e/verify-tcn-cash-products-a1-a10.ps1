@@ -1,15 +1,25 @@
 param(
-    [string]$MachineId = "019e702c-11c6-7ab0-89c7-5eb32f0b12cb",
+    [string]$MachineId = "",
     [string]$ArtifactDir = "",
     [string]$ReportsDir = ""
 )
 $ErrorActionPreference = "Stop"
 $ScriptDir = $PSScriptRoot
+$ApiRoot = Split-Path (Split-Path $ScriptDir -Parent) -Parent
+$WorkspaceRoot = Split-Path $ApiRoot -Parent
+$ScriptsLib = Join-Path $WorkspaceRoot "scripts\lib"
+. (Join-Path $ScriptsLib "autonomous-e2e-common.ps1")
 $Examples = Join-Path $ScriptDir "examples"
 
-Write-Host "TCN cash-only pilot verify (A1-A10)"
+$TargetMachineId = if ($MachineId) { $MachineId.Trim() }
+                     elseif ($env:AVF_MACHINE_ID) { $env:AVF_MACHINE_ID.Trim() }
+                     elseif ($env:AVF_AUTONOMOUS_TARGET_MACHINE_ID) { $env:AVF_AUTONOMOUS_TARGET_MACHINE_ID.Trim() }
+                     else { (Get-AutonomousTargetMachineId) }
+Assert-AutonomousTargetMachineId -MachineId $TargetMachineId -AllowOverride
+
+Write-Host "TCN cash-only pilot verify (A1-A10) machine=$TargetMachineId"
 $args = @{
-    MachineId            = $MachineId
+    MachineId            = $TargetMachineId
     CabinetLayoutPath    = (Join-Path $Examples "pilot-cabinet-layout-a.json")
     SlotAssignmentPath   = (Join-Path $Examples "pilot-slot-assignments-a1-a10.json")
     InventoryPath        = (Join-Path $Examples "pilot-inventory-a1-a10.json")

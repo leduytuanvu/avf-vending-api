@@ -669,6 +669,8 @@ type MachineCurrentSnapshot struct {
 	UpdatedAt                          time.Time
 	LastAcknowledgedConfigRevision     pgtype.Int4
 	LastAcknowledgedPlanogramVersionID pgtype.UUID
+	EffectiveDeviceConfig              []byte
+	DeviceConfigFieldAck               []byte
 }
 
 type MachineDeviceCertificate struct {
@@ -1068,16 +1070,22 @@ type MessagingConsumerDedupe struct {
 }
 
 type Order struct {
-	ID             uuid.UUID
-	MachineID      uuid.UUID
-	Status         string
-	Currency       string
-	SubtotalMinor  int64
-	TaxMinor       int64
-	TotalMinor     int64
-	IdempotencyKey pgtype.Text
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	Status             string
+	Currency           string
+	SubtotalMinor      int64
+	TaxMinor           int64
+	TotalMinor         int64
+	IdempotencyKey     pgtype.Text
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+	FakeBill           bool
+	FakeBoard          bool
+	SimulationMetadata []byte
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).
@@ -1170,6 +1178,9 @@ type OutboxEvent struct {
 	LockedUntil          pgtype.Timestamptz
 	UpdatedAt            time.Time
 	MaxPublishAttempts   int32
+	Simulated            bool
+	SimulationRunID      pgtype.Text
+	SimulationScenario   pgtype.Text
 }
 
 type PasswordResetToken struct {
@@ -1196,8 +1207,14 @@ type Payment struct {
 	// Provider vs internal ledger alignment; use payment_reconciliations for detail.
 	ReconciliationStatus string
 	// PSP settlement lifecycle; settlement_batch_id when batched.
-	SettlementStatus  string
-	SettlementBatchID pgtype.UUID
+	SettlementStatus   string
+	SettlementBatchID  pgtype.UUID
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+	FakeBill           bool
+	FakeBoard          bool
+	SimulationMetadata []byte
 }
 
 type PaymentAttempt struct {
@@ -1689,5 +1706,9 @@ type VendSession struct {
 	CompletedAt   pgtype.Timestamptz
 	// Set when vend outcome is tied to a specific command attempt; NULL when inferred without command trace.
 	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
 	CreatedAt             time.Time
 }

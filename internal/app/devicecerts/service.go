@@ -1,5 +1,9 @@
 package devicecerts
 
+// Package devicecerts implements machine device certificate lifecycle helpers (issue, revoke, audit).
+// Not wired into the default API bootstrap today; reserved for enterprise device PKI rollout.
+// See docs/runbooks/ and fleet/compliance domain ports when enabling.
+
 import (
 	"context"
 	"crypto/sha256"

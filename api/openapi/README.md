@@ -1,6 +1,6 @@
 # OpenAPI (canonical generated artifacts)
 
-**Canonical location:** [`../docs/swagger/`](../docs/swagger/)
+**Canonical location:** [`../../docs/swagger/`](../../docs/swagger/)
 
 OpenAPI 3.0 JSON and the Go embed package live under `docs/swagger/` because `internal/httpserver` imports `github.com/avf/avf-vending-api/docs/swagger` with `//go:embed swagger.json`. Moving embed paths would require Go import changes.
 

@@ -1,6 +1,6 @@
 # Production E2E harness
 
-Manifest-driven production release verification. **Single source of truth:** [`tests/e2e/production/e2e-manifest.yaml`](../../tests/e2e/production/e2e-manifest.yaml).
+Manifest-driven production release verification. **Single source of truth:** [`tests/e2e/production/e2e-manifest.yaml`](../../../tests/e2e/production/e2e-manifest.yaml).
 
 ## Quick start
 
@@ -57,7 +57,7 @@ After a successful live REST run, the harness **regenerates Postman from the man
 
 Every production `method+path` from `https://api.ldtv.dev/swagger/doc.json` is mapped in:
 
-- [`tests/e2e/production/generated/rest-route-matrix.json`](../../tests/e2e/production/generated/rest-route-matrix.json)
+- [`tests/e2e/production/generated/rest-route-matrix.json`](../../../tests/e2e/production/generated/rest-route-matrix.json)
 - [`docs/testing/production-e2e/rest-route-coverage.md`](rest-route-coverage.md)
 
 Regenerate from live swagger + validate Postman parity:
@@ -66,9 +66,9 @@ Regenerate from live swagger + validate Postman parity:
 bash tests/e2e/production/run_production_e2e.sh --mode route-matrix --suite rest --fetch-swagger
 ```
 
-Coverage kinds: `success` (main manifest E2E flows), `readonly_smoke`, `auth_negative`, `permission_negative`, `documented_skip` (with reason in [`rest-route-overrides.yaml`](../../tests/e2e/production/rest-route-overrides.yaml)).
+Coverage kinds: `success` (main manifest E2E flows), `readonly_smoke`, `auth_negative`, `permission_negative`, `documented_skip` (with reason in [`rest-route-overrides.yaml`](../../../tests/e2e/production/rest-route-overrides.yaml)).
 
-Auto-generated auth/readonly probes: [`tests/e2e/production/e2e-manifest-rest-coverage.yaml`](../../tests/e2e/production/e2e-manifest-rest-coverage.yaml) — do not hand-edit; rerun the generator.
+Auto-generated auth/readonly probes: [`tests/e2e/production/e2e-manifest-rest-coverage.yaml`](../../../tests/e2e/production/e2e-manifest-rest-coverage.yaml) — do not hand-edit; rerun the generator.
 
 Contract mode for `--suite rest` runs the matrix pipeline and fails on uncovered routes or undocumented skips. **Postman parity** (main manifest only) is enforced by `validate_postman_shell_parity.py` and CI `scripts/ci/verify_production_postman_parity.sh`.
 

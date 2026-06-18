@@ -10,4 +10,4 @@
 | [production-canary-test-guide.md](production-canary-test-guide.md) | Canary testing |
 
 E2E scripts: [`../../tests/e2e/README.md`](../../tests/e2e/README.md).  
-Verification reports (archived): [`../reports/verification/`](../reports/verification/).
+Verification reports (archived FINALs): [`../archive/verification/`](../archive/verification/). Ongoing protocol reports: [`../reports/verification/`](../reports/verification/).

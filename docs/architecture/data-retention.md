@@ -1,5 +1,7 @@
 # Data retention architecture (PostgreSQL)
 
+> **Scope:** Retention architecture (layers, partitioning strategy, safety model). For env vars and operational procedures, see [runbooks/data-retention.md](../runbooks/data-retention.md).
+
 Operational telemetry, append-only ledgers, command traces, webhook evidence, and outbox publishes accumulate continuously. Retention keeps OLTP tables bounded without deleting authoritative commerce facts (`payments`, `orders`) directly — evidence tables (`payment_provider_events`) prune only under safe predicates (terminal payment state, reconciliation matched / not required, `legal_hold=false`).
 
 ## Layers

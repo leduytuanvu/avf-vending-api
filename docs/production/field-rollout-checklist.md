@@ -4,7 +4,7 @@ Apply **after** a production API deploy coordinates with **edge/kiosk firmware**
 
 **Normative contract:** **[`../architecture/production-final-contract.md`](../architecture/production-final-contract.md)** (Admin REST · machine gRPC · MQTT · payments · media).
 
-**Infrastructure:** Default production story is **2 × app VPS** (+ optional data node / managed MQTT) per **[`../runbooks/production-2-vps.md`](../runbooks/production-2-vps.md)** — **managed PostgreSQL, Redis, object storage**, and either **managed MQTT** or **data-node** EMQX; **contradicts** documenting single-host Compose as primary. Rolling traffic + smoke: **[`two-vps-rolling-production-deploy.md`](two-vps-rolling-production-deploy.md)**.
+**Infrastructure:** Default production story is **2 × app VPS** (+ optional data node / managed MQTT) per **[`../runbooks/production-2-vps.md`](../runbooks/production-2-vps.md)** — **managed PostgreSQL, Redis, object storage**, and either **managed MQTT** or **data-node** EMQX; **contradicts** documenting single-host Compose as primary. Rolling traffic + smoke: **[`../deployment/two-vps-rolling-production-deploy.md`](../deployment/two-vps-rolling-production-deploy.md)**.
 
 **Secrets:** No MQTT passwords / API keys / PSP secrets / SSH keys in tickets — reference vault paths; logs **redacted**.
 
@@ -113,6 +113,6 @@ Every section below: record **Evidence owner**, **Evidence link/id**, **Date (UT
 
 ## Related
 
-- [`release-process.md`](release-process.md) — cadence (**do not confuse** **`deploy-production.yml` pointer-only** vs **`deploy-prod.yml`** — see **`production-release-readiness`**).
+- [`../deployment/release-process.md`](../deployment/release-process.md) — cadence (**do not confuse** **`deploy-production.yml` pointer-only** vs **`deploy-prod.yml`** — see **`production-release-readiness`**).
 - [`production-smoke-tests.md`](production-smoke-tests.md) — CI **`GET`** smoke tiers.
 - [`../testing/field-test-cases.md`](../testing/field-test-cases.md) — spreadsheet-style matrix.

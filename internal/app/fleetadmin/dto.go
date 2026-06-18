@@ -1,6 +1,7 @@
 package fleetadmin
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/listscope"
@@ -37,27 +38,29 @@ type AdminCurrentOperator struct {
 
 // AdminMachineListItem is a normalized machine row for fleet admin lists and GET /v1/admin/machines/{machineId}.
 type AdminMachineListItem struct {
-	MachineID           string                       `json:"machineId"`
-	MachineName         string                       `json:"machineName"`
-	SiteID              string                       `json:"siteId"`
-	SiteName            string                       `json:"siteName"`
-	HardwareProfileID   *string                      `json:"hardwareProfileId,omitempty"`
-	SerialNumber        string                       `json:"serialNumber"`
-	Name                string                       `json:"name"`
-	Status              string                       `json:"status"`
-	CommandSequence     int64                        `json:"commandSequence"`
-	CreatedAt           string                       `json:"createdAt"`
-	UpdatedAt           string                       `json:"updatedAt"`
-	AndroidID           *string                      `json:"androidId,omitempty"`
-	SimSerial           *string                      `json:"simSerial,omitempty"`
-	SimIccid            *string                      `json:"simIccid,omitempty"`
-	AppVersion          *string                      `json:"appVersion,omitempty"`
-	FirmwareVersion     *string                      `json:"firmwareVersion,omitempty"`
-	LastHeartbeatAt     *string                      `json:"lastHeartbeatAt,omitempty"`
-	EffectiveTimezone   string                       `json:"effectiveTimezone"`
-	AssignedTechnicians []AdminAssignedTechnician    `json:"assignedTechnicians"`
-	CurrentOperator     *AdminCurrentOperator        `json:"currentOperator"`
-	InventorySummary    AdminMachineInventorySummary `json:"inventorySummary"`
+	MachineID             string                       `json:"machineId"`
+	MachineName           string                       `json:"machineName"`
+	SiteID                string                       `json:"siteId"`
+	SiteName              string                       `json:"siteName"`
+	HardwareProfileID     *string                      `json:"hardwareProfileId,omitempty"`
+	SerialNumber          string                       `json:"serialNumber"`
+	Name                  string                       `json:"name"`
+	Status                string                       `json:"status"`
+	CommandSequence       int64                        `json:"commandSequence"`
+	CreatedAt             string                       `json:"createdAt"`
+	UpdatedAt             string                       `json:"updatedAt"`
+	AndroidID             *string                      `json:"androidId,omitempty"`
+	SimSerial             *string                      `json:"simSerial,omitempty"`
+	SimIccid              *string                      `json:"simIccid,omitempty"`
+	AppVersion            *string                      `json:"appVersion,omitempty"`
+	FirmwareVersion       *string                      `json:"firmwareVersion,omitempty"`
+	LastHeartbeatAt       *string                      `json:"lastHeartbeatAt,omitempty"`
+	EffectiveTimezone     string                       `json:"effectiveTimezone"`
+	AssignedTechnicians   []AdminAssignedTechnician    `json:"assignedTechnicians"`
+	CurrentOperator       *AdminCurrentOperator        `json:"currentOperator"`
+	InventorySummary      AdminMachineInventorySummary `json:"inventorySummary"`
+	EffectiveDeviceConfig json.RawMessage              `json:"effectiveDeviceConfig,omitempty"`
+	DeviceConfigFieldAck  json.RawMessage              `json:"deviceConfigFieldAck,omitempty"`
 }
 
 // MachinesListResponse is returned by GET /v1/admin/machines.

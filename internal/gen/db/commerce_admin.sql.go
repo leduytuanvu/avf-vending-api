@@ -236,7 +236,20 @@ type CommerceAdminListOrdersParams struct {
 	Offset  int32
 }
 
-func (q *Queries) CommerceAdminListOrders(ctx context.Context, arg CommerceAdminListOrdersParams) ([]Order, error) {
+type CommerceAdminListOrdersRow struct {
+	ID             uuid.UUID
+	MachineID      uuid.UUID
+	Status         string
+	Currency       string
+	SubtotalMinor  int64
+	TaxMinor       int64
+	TotalMinor     int64
+	IdempotencyKey pgtype.Text
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) CommerceAdminListOrders(ctx context.Context, arg CommerceAdminListOrdersParams) ([]CommerceAdminListOrdersRow, error) {
 	rows, err := q.db.Query(ctx, CommerceAdminListOrders,
 		arg.Column1,
 		arg.Column2,
@@ -253,9 +266,9 @@ func (q *Queries) CommerceAdminListOrders(ctx context.Context, arg CommerceAdmin
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Order{}
+	items := []CommerceAdminListOrdersRow{}
 	for rows.Next() {
-		var i Order
+		var i CommerceAdminListOrdersRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.MachineID,

@@ -15,7 +15,9 @@ function Parse-DestructiveScope([string]$Scope) {
         if ($part -match '^slot_indexes=(.+)$') { $slotRange = $Matches[1].Trim() }
     }
     if ($slotRange -notmatch '^(\d+)-(\d+)$') { throw "Invalid slot_indexes: $slotRange" }
-    $codes = @(); for ($i = [int]$Matches[1]; $i -le [int]$Matches[2]; $i++) { $codes += "$cabinet$i" }
+    $codes = @()
+    $prefix = if ($cabinet -match '^CAB-') { "A" } else { $cabinet }
+    for ($i = [int]$Matches[1]; $i -le [int]$Matches[2]; $i++) { $codes += "$prefix$i" }
     return @{ Cabinet = $cabinet; SlotRange = $slotRange; SlotCodes = $codes }
 }
 $scope = Parse-DestructiveScope $DestructiveSlotScope

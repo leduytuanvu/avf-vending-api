@@ -1,6 +1,6 @@
 # Android proto sync index (generated)
 
-**Generated:** `2026-05-29T17:13:49Z` by `scripts/ci/generate_android_proto_sync_doc.py`
+**Generated:** `2026-06-17T21:37:17Z` by `scripts/ci/generate_android_proto_sync_doc.py`
 
 Copy `proto/avf/machine/v1/*.proto` into the Android app (Buf, Gradle protobuf, or manual sync).
 Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc-production-contract.md).

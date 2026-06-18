@@ -127,7 +127,7 @@ jobs:
             echo "## GitHub repository governance"
             echo "- **GOVERNANCE_CHECK**: \`SKIPPED\` — **pull_request** from a **fork**. The governance script calls the GitHub API for the **base** repository; fork PRs skip this job so contributor PRs are not blocked by org token or environment API quirks."
             echo "- **When it runs**: pushes to \`main\` / \`develop\`, **same-repo** pull requests, and **workflow_dispatch**."
-            echo "- **Docs**: [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
+            echo "- **Docs**: [docs/deployment/github-governance.md](../../docs/deployment/github-governance.md)"
           } >> "${GITHUB_STEP_SUMMARY}"
           echo "GOVERNANCE_CHECK: SKIPPED (fork pull_request)"
 
@@ -165,7 +165,7 @@ jobs:
             echo "- **Script**: \`scripts/ci/verify_github_governance.sh\` (uses \`gh api\` via \`tools/verify_github_governance.py\`)."
             echo "- **Result line**: \`GOVERNANCE_CHECK: PASS\` / \`FAIL\` / \`SKIPPED\` / (same-repo **pull_request** only) \`MANUAL_REVIEW_REQUIRED\` when the token still cannot read admin APIs — not a passing audit. Prefer repository secret \`GOVERNANCE_AUDIT_TOKEN\` (read-only; see docs) so CI can verify settings."
             echo "- **Full runbook**: [docs/runbooks/github-governance.md](../../docs/runbooks/github-governance.md)"
-            echo "- **Configure GitHub** (branches + \`production\` environment): [docs/operations/github-governance.md](../../docs/operations/github-governance.md)"
+            echo "- **Configure GitHub** (branches + \`production\` environment): [docs/deployment/github-governance.md](../../docs/deployment/github-governance.md)"
           } >> "${GITHUB_STEP_SUMMARY}"
 
   go-ci:

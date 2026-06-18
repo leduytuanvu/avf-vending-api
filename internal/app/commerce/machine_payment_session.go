@@ -104,6 +104,11 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		OutboxAggregateType:  in.OutboxAggregate,
 		OutboxAggregateID:    in.OrderID,
 		OutboxIdempotencyKey: outboxIdem,
+		Simulated:            o.Simulated,
+		SimulationRunID:      derefString(o.SimulationRunID),
+		SimulationScenario:   derefString(o.SimulationScenario),
+		FakeBill:             o.FakeBill,
+		FakeBoard:            o.FakeBoard,
 	})
 	if err != nil {
 		return out, err

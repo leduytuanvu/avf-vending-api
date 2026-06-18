@@ -15,7 +15,7 @@
 | Verdict | **GO-CANARY-ONLY** |
 |---------|-------------------|
 
-**Rationale:** Production deploy run [`26722922299`](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26722922299) rolled digest `sha256:11a11179…` built from main @ `51b93c55`. Strict readonly smoke [`20260531T201748Z`](../../reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md) **PASS** with `READINESS_VERDICT=GO-CANARY-ONLY`, `payment_runtime.payment_mode=cash_only`, admin + gRPC strict probes green. **`/version.git_sha` still reports stale embed override `52a076e…` (fix pending PR #333 redeploy).**
+**Rationale:** Production deploy run [`26722922299`](https://github.com/leduytuanvu/avf-vending-api/actions/runs/26722922299) rolled digest `sha256:11a11179…` built from main @ `51b93c55`. Strict readonly smoke `reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md` **PASS** with `READINESS_VERDICT=GO-CANARY-ONLY`, `payment_runtime.payment_mode=cash_only`, admin + gRPC strict probes green. **`/version.git_sha` still reports stale embed override `52a076e…` (fix pending PR #333 redeploy).**
 
 **Blockers before fleet GO or MARKET_READY:**
 
@@ -73,7 +73,7 @@ curl -fsS https://api.ldtv.dev/version | jq .
 | `payment_runtime` object present | **Yes** | `reports/e2e/production-readonly-smoke/20260531T201748Z/raw/version-payment-runtime.body` |
 | `payment_runtime.payment_mode == "cash_only"` | **Yes** | Same artifact + strict smoke probe PASS |
 | `git_sha` matches deployed main commit | **PARTIAL** | Deploy manifest `source_commit_sha=51b93c55`; live `/version.git_sha=52a076e` (stale `APP_GIT_SHA` override — fix in PR #333) |
-| Strict readonly smoke PASS | **Yes** | [`reports/e2e/production-readonly-smoke/20260531T201748Z/`](../../reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md) |
+| Strict readonly smoke PASS | **Yes** | `reports/e2e/production-readonly-smoke/20260531T201748Z/REPORT.md` |
 | Deploy manifest archived | **Yes** | GitHub Actions run `26722922299` artifact `production-deployment-manifest` |
 
 **Deploy proof (2026-05-31):**

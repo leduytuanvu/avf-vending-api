@@ -2085,7 +2085,7 @@ func loadHTTPRateLimitConfig() HTTPRateLimitConfig {
 }
 
 func loadExternalProductImageConfig() ExternalProductImageConfig {
-	hosts := splitCSV(getenv("PRODUCT_IMAGE_EXTERNAL_URL_ALLOWED_HOSTS", "adm.avf.vn"))
+	hosts := splitCSV(getenv("PRODUCT_IMAGE_EXTERNAL_URL_ALLOWED_HOSTS", "adm.avf.vn,res.cloudinary.com"))
 	maxB := int64(getenvInt("PRODUCT_IMAGE_EXTERNAL_URL_MAX_BYTES", 5<<20))
 	if maxB <= 0 {
 		maxB = 5 << 20

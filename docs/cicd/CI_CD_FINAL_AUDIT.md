@@ -5,7 +5,7 @@
 
 **Scope:** `.github/workflows`, `scripts/ci`, `scripts/security`, `scripts/release`, `scripts/deploy`, `tools`, `docs/runbooks`, `.gitignore`.
 
-**Maintainer index** (pipelines, required **Settings** in GitHub, triage): [docs/runbooks/cicd-release.md](docs/runbooks/cicd-release.md).
+**Maintainer index** (pipelines, required **Settings** in GitHub, triage): [../runbooks/cicd-release.md](../runbooks/cicd-release.md).
 
 **Contract automation:** `scripts/ci/verify_workflow_contracts.sh` (shell) and `tools/verify_github_workflow_cicd_contract.py` (Python) enforce the same enterprise graph, explicit `permissions`, no deploy on `on.pull_request`, deploy-only-from-Security-Release, `security-verdict` from **security-release.yml** only, digest-pinned deploy refs, and related rules; violations print `CONTRACT VIOLATION: .github/workflows/…` with **Violated contract** and **Expected behavior** lines.
 
@@ -17,7 +17,7 @@ The repository implements a **single promotion chain** for releasable artifacts:
 
 **Overall enterprise readiness: 9 / 10** — one point reserved for **manual** GitHub configuration (branch protection rules, environment approvers, and protected storage for credentials and other sensitive values in **Settings**) that cannot be fully proven from the repo without an authenticated governance run.
 
-**Code cannot fully enforce GitHub UI settings by itself** — this repository can define workflows (for example `environment: production` on the **Deploy Production** job), run offline contract verifiers, and run **read-only** governance checks with `tools/verify_github_governance.py`, but **only a repo or admin** can lock down **Settings → Branches** and **Settings → Environments** in GitHub. See [docs/runbooks/github-governance.md](docs/runbooks/github-governance.md) and the “Remaining manual” / “Limitations” sections below.
+**Code cannot fully enforce GitHub UI settings by itself** — this repository can define workflows (for example `environment: production` on the **Deploy Production** job), run offline contract verifiers, and run **read-only** governance checks with `tools/verify_github_governance.py`, but **only a repo or admin** can lock down **Settings → Branches** and **Settings → Environments** in GitHub. See [../runbooks/github-governance.md](../runbooks/github-governance.md) and the “Remaining manual” / “Limitations” sections below.
 
 ---
 
@@ -160,7 +160,7 @@ Does NOT appear in the promotion chain for deploy authorization
 |-------------|--------|--------|
 | No committed `__pycache__` / `*.pyc` | **OK** | Tree clean at audit; `.gitignore` includes `**/__pycache__/` and `*.pyc`. |
 | Local cache / ephemeral outputs | **OK** | `.gitignore` includes `/security-reports/`, `trivy-*.txt`, `**/*.exitcode`, `.cache/`, `/artifacts/`, `/tmp-ci/`, and similar at repo root. |
-| Active vs legacy workflows | **OK** | [docs/runbooks/github-governance.md#active-github-actions-workflows-in-this-repository](docs/runbooks/github-governance.md#active-github-actions-workflows-in-this-repository) lists deploy paths; `deploy-production.yml` is pointer-only. |
+| Active vs legacy workflows | **OK** | [../runbooks/github-governance.md#active-github-actions-workflows-in-this-repository](../runbooks/github-governance.md#active-github-actions-workflows-in-this-repository) lists deploy paths; `deploy-production.yml` is pointer-only. |
 | No committed secrets | **OK** | Examples only; prod paths ignored (discipline). |
 | No accidental duplicate deploy | **OK** | `deploy-production.yml` pointer-only + documented; no second staging workflow file. |
 
@@ -222,7 +222,7 @@ bash scripts/ci/verify_enterprise_release.sh
 
 - **Branch protection** on `develop` / `main`: required status checks aligned with `tools/verify_github_governance.py` recommendations (CI, Security, Enterprise release verification, etc.).
 - **`production` environment**: deployment branches (**main** only), **required reviewers**, optional wait timer — see `docs/runbooks/github-governance.md`.
-- **Repository variables** and **Environments** (GitHub **Settings**): set feature flags and integration endpoints referenced by workflow `vars` (see [docs/runbooks/github-governance.md](docs/runbooks/github-governance.md) and [docs/runbooks/supply-chain-security.md](docs/runbooks/supply-chain-security.md) for policy-related names).
+- **Repository variables** and **Environments** (GitHub **Settings**): set feature flags and integration endpoints referenced by workflow `vars` (see [../runbooks/github-governance.md](../runbooks/github-governance.md) and [../runbooks/supply-chain-security.md](../runbooks/supply-chain-security.md) for policy-related names).
 - **Artifact retention:** Build / Security Release artifacts must remain available long enough for downstream resolution.
 - **Org toggles:** `ENABLE_DEPENDENCY_REVIEW`, `ENABLE_CODE_SCANNING` — document intentional skips when not `true`.
 

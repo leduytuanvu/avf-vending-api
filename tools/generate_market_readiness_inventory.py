@@ -12,7 +12,7 @@ SWAGGER = REPO / "docs" / "swagger" / "swagger.json"
 PROTO_MACHINE = REPO / "proto" / "avf" / "machine" / "v1"
 PROTO_INTERNAL = REPO / "proto" / "avf" / "internal" / "v1"
 TOPICS_GO = REPO / "internal" / "platform" / "mqtt" / "topics.go"
-OUT_MD = REPO / "docs" / "audits" / "api-grpc-mqtt-full-inventory.md"
+OUT_MD = REPO / "docs" / "archive" / "audits" / "api-grpc-mqtt-full-inventory.md"
 OUT_JSON = REPO / "build" / "reports" / "api-grpc-mqtt-full-inventory.json"
 
 LEGACY_REST_PREFIXES = (

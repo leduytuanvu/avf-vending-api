@@ -63,11 +63,11 @@ Automatic rollback in the workflow is **selective** to limit blast radius (diges
 - **Node A OK, node B deploy fails:** Roll back **B**; node A may remain on the new version; evidence records `failed_at_node_B_node_A_on_new_rollback_B_eligible`.
 - **Final public smoke fails** after a successful B step: the workflow’s auto-rollback job decides scope from outcomes (e.g. both nodes or the minimal set per policy); see `release-events.jsonl` and `rollout_outcome_summary`.
 
-**Manual recovery:** If automatic rollback does not complete, use the same digest-pinned images and [`rollback_prod.sh`](../../deployments/prod/scripts/rollback_prod.sh) / remote `rollback_app_node.sh` as in [production backup/restore](production-backup-restore-drill.md) runbooks, and do **not** assume DB state reverted (migrations are not auto-reversed).
+**Manual recovery:** If automatic rollback does not complete, use the same digest-pinned images and [`rollback_prod.sh`](../../deployments/prod/scripts/rollback_prod.sh) / remote `rollback_app_node.sh` as in [production backup/restore](../production/production-backup-restore-drill.md) runbooks, and do **not** assume DB state reverted (migrations are not auto-reversed).
 
 ## Related files
 
 - [`deployments/prod/shared/scripts/traffic_drain_hook.sh`](../../deployments/prod/shared/scripts/traffic_drain_hook.sh)
 - [`deployments/prod/shared/scripts/release_app_cluster.sh`](../../deployments/prod/shared/scripts/release_app_cluster.sh)
-- [`production-smoke-tests.md`](production-smoke-tests.md) (tiered health + business-readonly + optional synthetic)
-- [`production-backup-restore-drill.md`](production-backup-restore-drill.md) when `run_migration=true`
+- [`../production/production-smoke-tests.md`](../production/production-smoke-tests.md) (tiered health + business-readonly + optional synthetic)
+- [`../production/production-backup-restore-drill.md`](../production/production-backup-restore-drill.md) when `run_migration=true`

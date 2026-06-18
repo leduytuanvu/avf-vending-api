@@ -1210,8 +1210,12 @@ type AckConfigVersionRequest struct {
 	Meta                           *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
 	AcknowledgedConfigVersion      int64                  `protobuf:"varint,2,opt,name=acknowledged_config_version,json=acknowledgedConfigVersion,proto3" json:"acknowledged_config_version,omitempty"`
 	AcknowledgedPlanogramVersionId string                 `protobuf:"bytes,3,opt,name=acknowledged_planogram_version_id,json=acknowledgedPlanogramVersionId,proto3" json:"acknowledged_planogram_version_id,omitempty"`
-	unknownFields                  protoimpl.UnknownFields
-	sizeCache                      protoimpl.SizeCache
+	// Machine-reported effective device config after apply (BILL + TCN); optional on legacy clients.
+	EffectiveDeviceConfig *structpb.Struct `protobuf:"bytes,4,opt,name=effective_device_config,json=effectiveDeviceConfig,proto3" json:"effective_device_config,omitempty"`
+	// Per-field apply ACK map (field path -> status token, e.g. "applied", "pending", "failed").
+	FieldAck      map[string]string `protobuf:"bytes,5,rep,name=field_ack,json=fieldAck,proto3" json:"field_ack,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AckConfigVersionRequest) Reset() {
@@ -1263,6 +1267,20 @@ func (x *AckConfigVersionRequest) GetAcknowledgedPlanogramVersionId() string {
 		return x.AcknowledgedPlanogramVersionId
 	}
 	return ""
+}
+
+func (x *AckConfigVersionRequest) GetEffectiveDeviceConfig() *structpb.Struct {
+	if x != nil {
+		return x.EffectiveDeviceConfig
+	}
+	return nil
+}
+
+func (x *AckConfigVersionRequest) GetFieldAck() map[string]string {
+	if x != nil {
+		return x.FieldAck
+	}
+	return nil
 }
 
 type AckConfigVersionResponse struct {
@@ -1608,11 +1626,16 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"a\n" +
 	"&MachineBootstrapServiceCheckInResponse\x127\n" +
-	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xdc\x01\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xbe\x03\n" +
 	"\x17AckConfigVersionRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12>\n" +
 	"\x1backnowledged_config_version\x18\x02 \x01(\x03R\x19acknowledgedConfigVersion\x12I\n" +
-	"!acknowledged_planogram_version_id\x18\x03 \x01(\tR\x1eacknowledgedPlanogramVersionId\"S\n" +
+	"!acknowledged_planogram_version_id\x18\x03 \x01(\tR\x1eacknowledgedPlanogramVersionId\x12O\n" +
+	"\x17effective_device_config\x18\x04 \x01(\v2\x17.google.protobuf.StructR\x15effectiveDeviceConfig\x12R\n" +
+	"\tfield_ack\x18\x05 \x03(\v25.avf.machine.v1.AckConfigVersionRequest.FieldAckEntryR\bfieldAck\x1a;\n" +
+	"\rFieldAckEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"S\n" +
 	"\x18AckConfigVersionResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xdc\x01\n" +
 	"\x16CheckForUpdatesRequest\x12/\n" +
@@ -1648,7 +1671,7 @@ func file_avf_machine_v1_bootstrap_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_bootstrap_proto_rawDescData
 }
 
-var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*GetBootstrapRequest)(nil),                    // 0: avf.machine.v1.GetBootstrapRequest
 	(*MqttConfigMetadata)(nil),                     // 1: avf.machine.v1.MqttConfigMetadata
@@ -1671,16 +1694,17 @@ var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*CheckForUpdatesResponse)(nil),                // 18: avf.machine.v1.CheckForUpdatesResponse
 	nil,                                            // 19: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
 	nil,                                            // 20: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	(*MachineRequestMeta)(nil),                     // 21: avf.machine.v1.MachineRequestMeta
-	(*timestamppb.Timestamp)(nil),                  // 22: google.protobuf.Timestamp
-	(*structpb.Struct)(nil),                        // 23: google.protobuf.Struct
-	(*MachineResponseMeta)(nil),                    // 24: avf.machine.v1.MachineResponseMeta
+	nil,                                            // 21: avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
+	(*MachineRequestMeta)(nil),                     // 22: avf.machine.v1.MachineRequestMeta
+	(*timestamppb.Timestamp)(nil),                  // 23: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                        // 24: google.protobuf.Struct
+	(*MachineResponseMeta)(nil),                    // 25: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_bootstrap_proto_depIdxs = []int32{
-	21, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	22, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
-	22, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
-	23, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
+	22, // 0: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	23, // 1: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
+	23, // 2: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
+	24, // 3: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
 	3,  // 4: avf.machine.v1.BootstrapCabinet.slots:type_name -> avf.machine.v1.BootstrapSlot
 	4,  // 5: avf.machine.v1.BootstrapTopology.cabinets:type_name -> avf.machine.v1.BootstrapCabinet
 	6,  // 6: avf.machine.v1.BootstrapCatalog.products:type_name -> avf.machine.v1.BootstrapCatalogProduct
@@ -1690,29 +1714,31 @@ var file_avf_machine_v1_bootstrap_proto_depIdxs = []int32{
 	2,  // 10: avf.machine.v1.GetBootstrapResponse.machine:type_name -> avf.machine.v1.BootstrapMachine
 	5,  // 11: avf.machine.v1.GetBootstrapResponse.topology:type_name -> avf.machine.v1.BootstrapTopology
 	7,  // 12: avf.machine.v1.GetBootstrapResponse.catalog:type_name -> avf.machine.v1.BootstrapCatalog
-	22, // 13: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
+	23, // 13: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
 	1,  // 14: avf.machine.v1.GetBootstrapResponse.mqtt:type_name -> avf.machine.v1.MqttConfigMetadata
 	9,  // 15: avf.machine.v1.GetBootstrapResponse.runtime_hints:type_name -> avf.machine.v1.RuntimeHints
-	24, // 16: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	25, // 16: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	11, // 17: avf.machine.v1.GetBootstrapResponse.payment_methods:type_name -> avf.machine.v1.PaymentMethodsConfig
-	21, // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	22, // 18: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	20, // 19: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	24, // 20: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	21, // 21: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	24, // 22: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	0,  // 23: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
-	13, // 24: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	15, // 25: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
-	17, // 26: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
-	12, // 27: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
-	14, // 28: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	16, // 29: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
-	18, // 30: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
-	27, // [27:31] is the sub-list for method output_type
-	23, // [23:27] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	25, // 20: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	22, // 21: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	24, // 22: avf.machine.v1.AckConfigVersionRequest.effective_device_config:type_name -> google.protobuf.Struct
+	21, // 23: avf.machine.v1.AckConfigVersionRequest.field_ack:type_name -> avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
+	25, // 24: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	0,  // 25: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
+	13, // 26: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	15, // 27: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
+	17, // 28: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
+	12, // 29: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
+	14, // 30: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	16, // 31: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
+	18, // 32: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
+	29, // [29:33] is the sub-list for method output_type
+	25, // [25:29] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_bootstrap_proto_init() }
@@ -1727,7 +1753,7 @@ func file_avf_machine_v1_bootstrap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_bootstrap_proto_rawDesc), len(file_avf_machine_v1_bootstrap_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   21,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

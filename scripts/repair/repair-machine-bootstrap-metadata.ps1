@@ -34,8 +34,9 @@ $DryRunPointerPath = Join-Path $WorkspaceRoot "reports\latest-bootstrap-repair-d
 $DryRunArtifactTtlMinutes = 30
 
 $ReportsDir = Join-Path $WorkspaceRoot "reports"
-New-Item -ItemType Directory -Force -Path $ReportsDir | Out-Null
-$RunDir = Join-Path $ReportsDir ("bootstrap-repair-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
+$RunsDir = Join-Path $ReportsDir "runs"
+New-Item -ItemType Directory -Force -Path $RunsDir | Out-Null
+$RunDir = Join-Path $RunsDir ("bootstrap-repair-" + (Get-Date).ToUniversalTime().ToString("yyyyMMddTHHmmssZ"))
 New-Item -ItemType Directory -Force -Path $RunDir | Out-Null
 $BeforePath = Join-Path $ReportsDir "bootstrap-metadata-before.json"
 $AfterPath = Join-Path $ReportsDir "bootstrap-metadata-after.json"
@@ -117,6 +118,29 @@ function Write-RepairDebugMarker {
         $parts += "$k=$v"
     }
     Write-Host ($parts -join " ")
+}
+
+function Get-RedactedApiPath {
+    param([string]$Url)
+    $p = $Url
+    if (-not [string]::IsNullOrWhiteSpace($BaseUrl)) {
+        $p = $p -replace [regex]::Escape($BaseUrl), '<base>'
+    }
+    # never echo query-string secrets (defensive; this API uses header auth)
+    $p = $p -replace '([?&](token|access_token|code|activationCode)=)[^&]*', '$1<redacted>'
+    return $p
+}
+
+function Invoke-RepairApiCurl {
+    param(
+        [string]$Method,
+        [string]$Url,
+        [string[]]$CurlArgs
+    )
+    Write-RepairDebugMarker -Name "API_REQ" -Fields @{ method = $Method; path = (Get-RedactedApiPath $Url) }
+    $code = & curl.exe @CurlArgs
+    Write-RepairDebugMarker -Name "API_RES" -Fields @{ method = $Method; path = (Get-RedactedApiPath $Url); httpCode = $code }
+    return $code
 }
 
 function Test-RepairContractKeysPresent {
@@ -378,19 +402,29 @@ function Ensure-MachineJwtForBootstrap {
     if ($jwt -match '^eyJ') { return $jwt }
     if ($env:AVF_ACTIVATION_CODE) {
         . (Join-Path $ScriptsLib "invoke-machine-claim-activation.ps1")
-        $null = Invoke-AvfMachineClaimActivation -ActivationCode $env:AVF_ACTIVATION_CODE -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
-        if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+        try {
+            $null = Invoke-AvfMachineClaimActivation -ActivationCode $env:AVF_ACTIVATION_CODE -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
+            if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+        } catch {
+            Write-Host "REPAIR_JWT_CLAIM_SKIPPED reason=$($_.Exception.Message)"
+        }
     }
     $createBodyFile = Join-Path $RunDir "activation-create-body.json"
     Set-Utf8JsonFile -Path $createBodyFile -Content '{"expiresInMinutes":120,"maxUses":1,"notes":"bootstrap-repair-refetch"}'
     $createOut = Join-Path $RunDir "activation-create.json"
-    $createCode = curl.exe -sS @Headers -o $createOut -w "%{http_code}" -X POST "$BaseUrl/v1/admin/machines/$MachineId/activation-codes" -H "Content-Type: application/json" --data-binary "@$createBodyFile"
+    $createUrl = "$BaseUrl/v1/admin/machines/$MachineId/activation-codes"
+    $createArgs = @("-sS") + $Headers + @("-o", $createOut, "-w", "%{http_code}", "-X", "POST", $createUrl, "-H", "Content-Type: application/json", "--data-binary", "@$createBodyFile")
+    $createCode = Invoke-RepairApiCurl -Method "POST" -Url $createUrl -CurlArgs $createArgs
     if ($createCode -eq "201") {
         $plain = (Get-Content $createOut -Raw | ConvertFrom-Json).activationCode
         if ($plain) {
             . (Join-Path $ScriptsLib "invoke-machine-claim-activation.ps1")
-            $null = Invoke-AvfMachineClaimActivation -ActivationCode $plain -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
-            if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+            try {
+                $null = Invoke-AvfMachineClaimActivation -ActivationCode $plain -AdbSerial $adbSerial -MachineId $MachineId -SiteId $SiteId -RunPrefix "bootstrap-repair"
+                if ($env:AVF_MACHINE_TOKEN -match '^eyJ') { return $env:AVF_MACHINE_TOKEN.Trim() }
+            } catch {
+                Write-Host "REPAIR_JWT_CLAIM_SKIPPED reason=$($_.Exception.Message)"
+            }
         }
     }
     return ""
@@ -403,13 +437,21 @@ function Resolve-BootstrapSnapshot {
         [switch]$RequireGrpcAfterWrite
     )
     if (-not $RequireGrpcAfterWrite) {
-        $httpCode = curl.exe -sS @Headers -o $bootstrapFile -w "%{http_code}" "$BaseUrl/v1/setup/machines/$MachineId/bootstrap"
+        $bootUrl = "$BaseUrl/v1/setup/machines/$MachineId/bootstrap"
+        $bootArgs = @("-sS") + $Headers + @("-o", $bootstrapFile, "-w", "%{http_code}", $bootUrl)
+        $httpCode = Invoke-RepairApiCurl -Method "GET" -Url $bootUrl -CurlArgs $bootArgs
         if ($httpCode -eq "200") {
             $snap = Get-Content $bootstrapFile -Raw | ConvertFrom-Json
             $snap | Add-Member -NotePropertyName bootstrapSource -NotePropertyValue "http_setup_bootstrap" -Force
             Set-Utf8JsonFile -Path $bootstrapFile -Content (($snap | ConvertTo-Json -Depth 12 -Compress))
             return "http_setup_bootstrap"
         }
+    }
+
+    if ($env:AVF_REPAIR_SKIP_MACHINE_JWT -eq '1') {
+        $synth = New-SynthesizedBootstrapSnapshot -TargetCabinetCode $CabinetCode
+        Set-Utf8JsonFile -Path $bootstrapFile -Content $synth
+        return "synthesized_admin_fallback"
     }
 
     if ([string]::IsNullOrWhiteSpace($MachineJwt)) {
@@ -475,7 +517,9 @@ $Headers = @("-H", "Authorization: Bearer $Token", "-H", "Accept: application/js
 
 # --- Preflight: admin machine ---
 $machineFile = Join-Path $RunDir "machine-admin.json"
-$mCode = curl.exe -sS @Headers -o $machineFile -w "%{http_code}" "$BaseUrl/v1/admin/machines/$MachineId"
+$machineUrl = "$BaseUrl/v1/admin/machines/$MachineId"
+$machineArgs = @("-sS") + $Headers + @("-o", $machineFile, "-w", "%{http_code}", $machineUrl)
+$mCode = Invoke-RepairApiCurl -Method "GET" -Url $machineUrl -CurlArgs $machineArgs
 if ($mCode -eq "404") {
     Exit-RepairVerdict -Verdict "TARGET_MACHINE_NOT_FOUND" -ExitCode 5
 }
@@ -536,7 +580,9 @@ if ($unexpectedKeys.Count -gt 0) {
 
 # --- Preflight: slots (layout preservation source) ---
 $slotsFile = Join-Path $RunDir "slots-admin.json"
-$sCode = curl.exe -sS @Headers -o $slotsFile -w "%{http_code}" "$BaseUrl/v1/admin/machines/$MachineId/slots"
+$slotsUrl = "$BaseUrl/v1/admin/machines/$MachineId/slots"
+$slotsArgs = @("-sS") + $Headers + @("-o", $slotsFile, "-w", "%{http_code}", $slotsUrl)
+$sCode = Invoke-RepairApiCurl -Method "GET" -Url $slotsUrl -CurlArgs $slotsArgs
 $slotsAvailable = ($sCode -eq "200")
 if (-not $slotsAvailable) {
     Set-Utf8TextFile -Path $slotsFile -Content "{}"
@@ -824,7 +870,9 @@ Copy-Item $bootstrapFile $LiveBeforePath -Force
 $opBodyFile = Join-Path $RunDir "operator-start-body.json"
 Set-Utf8JsonFile -Path $opBodyFile -Content '{"force_admin_takeover":true,"auth_method":"oidc"}'
 $opOut = Join-Path $RunDir "operator.json"
-$opCode = curl.exe -sS @Headers -o $opOut -w "%{http_code}" -X POST "$BaseUrl/v1/admin/machines/$MachineId/operator-sessions/start" -H "Content-Type: application/json" --data-binary "@$opBodyFile"
+$opUrl = "$BaseUrl/v1/admin/machines/$MachineId/operator-sessions/start"
+$opArgs = @("-sS") + $Headers + @("-o", $opOut, "-w", "%{http_code}", "-X", "POST", $opUrl, "-H", "Content-Type: application/json", "--data-binary", "@$opBodyFile")
+$opCode = Invoke-RepairApiCurl -Method "POST" -Url $opUrl -CurlArgs $opArgs
 if ($opCode -ne "200") {
     Exit-RepairVerdict -Verdict "OPERATOR_SESSION_FAILED" -ExitCode 7 -Extra @{ http_code = $opCode }
 }
@@ -839,7 +887,9 @@ $putBodyFile = Join-Path $RunDir "topology-put-with-session.json"
 Invoke-JqToFile -Path $putBodyFile --arg sid $opSid -f $putWrapJq $topologyFile
 
 $putOut = Join-Path $RunDir "put-response.txt"
-$putCode = curl.exe -sS @Headers -o $putOut -w "%{http_code}" -X PUT "$BaseUrl/v1/admin/machines/$MachineId/topology" -H "Content-Type: application/json" --data-binary "@$putBodyFile"
+$putUrl = "$BaseUrl/v1/admin/machines/$MachineId/topology"
+$putArgs = @("-sS") + $Headers + @("-o", $putOut, "-w", "%{http_code}", "-X", "PUT", $putUrl, "-H", "Content-Type: application/json", "--data-binary", "@$putBodyFile")
+$putCode = Invoke-RepairApiCurl -Method "PUT" -Url $putUrl -CurlArgs $putArgs
 $liveAfterPayload = @{
     http_code = $putCode
     response = (Get-Content $putOut -Raw -ErrorAction SilentlyContinue)

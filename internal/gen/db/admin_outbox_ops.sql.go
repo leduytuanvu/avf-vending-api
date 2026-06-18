@@ -57,7 +57,10 @@ SELECT
     locked_by,
     locked_until,
     updated_at,
-    max_publish_attempts
+    max_publish_attempts,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 FROM
     outbox_events
 ORDER BY
@@ -100,6 +103,9 @@ func (q *Queries) ListOutboxOpsRows(ctx context.Context, arg ListOutboxOpsRowsPa
 			&i.LockedUntil,
 			&i.UpdatedAt,
 			&i.MaxPublishAttempts,
+			&i.Simulated,
+			&i.SimulationRunID,
+			&i.SimulationScenario,
 		); err != nil {
 			return nil, err
 		}

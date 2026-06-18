@@ -1,6 +1,6 @@
 # Production E2E — Postman import guide
 
-The Postman collection and environment are **generated from** [`tests/e2e/production/e2e-manifest.yaml`](../../tests/e2e/production/e2e-manifest.yaml) only. They mirror the shell REST harness that runs in production E2E live mode. After a successful REST run, the harness regenerates these files, validates structural parity, runs Newman, and records SHA-256 checksums in `RESULTS_<runId>.md`.
+The Postman collection and environment are **generated from** [`tests/e2e/production/e2e-manifest.yaml`](../../../tests/e2e/production/e2e-manifest.yaml) only. They mirror the shell REST harness that runs in production E2E live mode. After a successful REST run, the harness regenerates these files, validates structural parity, runs Newman, and records SHA-256 checksums in `RESULTS_<runId>.md`.
 
 ## Files
 
@@ -9,7 +9,7 @@ The Postman collection and environment are **generated from** [`tests/e2e/produc
 | `postman/production/avf-production-e2e.postman_collection.json` | All main-manifest REST requests (method, path, body, auth, assertions) |
 | `postman/production/avf-production-e2e.postman_environment.json` | **Placeholder values only** — safe to commit and share |
 
-Do not hand-edit the collection. Change [`e2e-manifest.yaml`](../../tests/e2e/production/e2e-manifest.yaml) and regenerate:
+Do not hand-edit the collection. Change [`e2e-manifest.yaml`](../../../tests/e2e/production/e2e-manifest.yaml) and regenerate:
 
 ```bash
 python postman/production/generate_postman_from_manifest.py

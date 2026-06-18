@@ -154,6 +154,10 @@ message AckConfigVersionRequest {
   MachineRequestMeta meta = 1;
   int64 acknowledged_config_version = 2;
   string acknowledged_planogram_version_id = 3;
+  // Machine-reported effective device config after apply (BILL + TCN); optional on legacy clients.
+  google.protobuf.Struct effective_device_config = 4;
+  // Per-field apply ACK map (field path -> status token, e.g. "applied", "pending", "failed").
+  map<string, string> field_ack = 5;
 }
 
 message AckConfigVersionResponse {

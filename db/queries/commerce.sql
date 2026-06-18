@@ -6,7 +6,12 @@ INSERT INTO orders (
     subtotal_minor,
     tax_minor,
     total_minor,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board
 )
 VALUES (
     $1,
@@ -15,7 +20,12 @@ VALUES (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12
 )
 RETURNING *;
 
@@ -25,14 +35,20 @@ INSERT INTO vend_sessions (
     machine_id,
     slot_index,
     product_id,
-    state
+    state,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
 )
 VALUES (
     $1,
     $2,
     $3,
     $4,
-    $5
+    $5,
+    $6,
+    $7,
+    $8
 )
 RETURNING
     id,
@@ -46,6 +62,10 @@ RETURNING
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at;
 
 -- name: InsertPayment :one
@@ -55,7 +75,12 @@ INSERT INTO payments (
     state,
     amount_minor,
     currency,
-    idempotency_key
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board
 )
 VALUES (
     $1,
@@ -63,21 +88,14 @@ VALUES (
     $3,
     $4,
     $5,
-    $6
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11
 )
-RETURNING
-    id,
-    order_id,
-    provider,
-    state,
-    amount_minor,
-    currency,
-    idempotency_key,
-    created_at,
-    updated_at,
-    reconciliation_status,
-    settlement_status,
-    settlement_batch_id;
+RETURNING *;
 
 -- name: GetPaymentByOrderAndIdempotencyKey :one
 SELECT
@@ -92,7 +110,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     order_id = $1
@@ -108,6 +132,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -124,6 +154,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -140,6 +176,12 @@ SELECT
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at
 FROM orders
@@ -161,6 +203,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -181,6 +227,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -200,6 +250,10 @@ SELECT
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at
 FROM vend_sessions
 WHERE
@@ -221,7 +275,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     state IN ('created', 'authorized')
@@ -240,6 +300,12 @@ SELECT DISTINCT
     o.tax_minor,
     o.total_minor,
     o.idempotency_key,
+    o.simulated,
+    o.simulation_run_id,
+    o.simulation_scenario,
+    o.fake_bill,
+    o.fake_board,
+    o.simulation_metadata,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -265,6 +331,10 @@ SELECT
     v.started_at,
     v.completed_at,
     v.final_command_attempt_id,
+    v.simulated,
+    v.simulation_run_id,
+    v.simulation_scenario,
+    v.simulation_metadata,
     v.created_at,
     o.status AS order_status
 FROM vend_sessions v
@@ -290,7 +360,13 @@ SELECT
     p.updated_at,
     p.reconciliation_status,
     p.settlement_status,
-    p.settlement_batch_id
+    p.settlement_batch_id,
+    p.simulated,
+    p.simulation_run_id,
+    p.simulation_scenario,
+    p.fake_bill,
+    p.fake_board,
+    p.simulation_metadata
 FROM payments p
 WHERE
     EXISTS (
@@ -321,7 +397,13 @@ SELECT
     p.updated_at,
     p.reconciliation_status,
     p.settlement_status,
-    p.settlement_batch_id
+    p.settlement_batch_id,
+    p.simulated,
+    p.simulation_run_id,
+    p.simulation_scenario,
+    p.fake_bill,
+    p.fake_board,
+    p.simulation_metadata
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
@@ -439,6 +521,12 @@ RETURNING
     tax_minor,
     total_minor,
     idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
     created_at,
     updated_at;
 
@@ -471,6 +559,10 @@ RETURNING
     started_at,
     completed_at,
     final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
     created_at;
 
 -- name: GetLatestPaymentForOrder :one
@@ -486,7 +578,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     order_id = $1
@@ -507,7 +605,13 @@ SELECT
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata
 FROM payments
 WHERE
     id = $1;
@@ -552,7 +656,13 @@ RETURNING
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id;
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata;
 
 -- name: UpdatePaymentState :one
 UPDATE payments
@@ -573,7 +683,13 @@ RETURNING
     updated_at,
     reconciliation_status,
     settlement_status,
-    settlement_batch_id;
+    settlement_batch_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata;
 
 -- name: GetPaymentProviderEventByProviderRef :one
 SELECT

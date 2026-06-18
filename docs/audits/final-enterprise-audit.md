@@ -2,7 +2,7 @@
 
 **Purpose:** Single checklist for executives and release managers. **Docs-only** routes or roadmap bullets are **not** treated as implemented. **Scale-1000** requires **1000×500** storm evidence with strict accounting fields — not documentation claims.
 
-**Evidence:** Run `make verify-enterprise-release` and capture `emit_verify_enterprise_result_json.sh`. Storm tiers: [production-release-readiness.md](./production-release-readiness.md).
+**Evidence:** Run `make verify-enterprise-release` and capture `emit_verify_enterprise_result_json.sh`. Storm tiers: [production-release-readiness.md](../runbooks/production-release-readiness.md).
 
 ---
 
@@ -71,7 +71,7 @@ Treat as **missing** until present in **`docs/swagger/swagger.json`** **and** mo
 
 - Postgres pool exhaustion under storm reconnect.
 - JetStream retention / max bytes vs peak telemetry.
-- Reconnect storms from kiosk fleet after outage ([telemetry-production-rollout.md](./telemetry-production-rollout.md)).
+- Reconnect storms from kiosk fleet after outage ([telemetry-production-rollout.md](../runbooks/telemetry-production-rollout.md)).
 
 ---
 
@@ -99,5 +99,5 @@ If storm evidence is incomplete for the claimed tier, the recommendation must be
 
 ## Related
 
-- [Production release readiness](./production-release-readiness.md)
+- [Production release readiness](../runbooks/production-release-readiness.md)
 - [API surface audit](../api/api-surface-audit.md)

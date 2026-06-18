@@ -8,16 +8,21 @@ import (
 
 // Order is a domain projection of a persisted customer order.
 type Order struct {
-	ID             uuid.UUID
-	MachineID      uuid.UUID
-	Status         string
-	Currency       string
-	SubtotalMinor  int64
-	TaxMinor       int64
-	TotalMinor     int64
-	IdempotencyKey *string
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	Status             string
+	Currency           string
+	SubtotalMinor      int64
+	TaxMinor           int64
+	TotalMinor         int64
+	IdempotencyKey     *string
+	Simulated          bool
+	SimulationRunID    *string
+	SimulationScenario *string
+	FakeBill           bool
+	FakeBoard          bool
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
 }
 
 // VendSession tracks a single vend attempt for an order line.
@@ -29,6 +34,9 @@ type VendSession struct {
 	ProductID             uuid.UUID
 	State                 string
 	FinalCommandAttemptID *uuid.UUID
+	Simulated             bool
+	SimulationRunID       *string
+	SimulationScenario    *string
 	CreatedAt             time.Time
 }
 
@@ -44,6 +52,11 @@ type Payment struct {
 	ReconciliationStatus string
 	SettlementStatus     string
 	SettlementBatchID    *uuid.UUID
+	Simulated            bool
+	SimulationRunID      *string
+	SimulationScenario   *string
+	FakeBill             bool
+	FakeBoard            bool
 	CreatedAt            time.Time
 }
 
@@ -68,6 +81,10 @@ type OutboxEvent struct {
 	Status      string
 	LockedBy    *string
 	LockedUntil *time.Time
+
+	Simulated          bool
+	SimulationRunID    *string
+	SimulationScenario *string
 
 	UpdatedAt          time.Time
 	MaxPublishAttempts int32

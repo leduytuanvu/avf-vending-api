@@ -19,6 +19,12 @@ type CreateOrderVendInput struct {
 	IdempotencyKey string
 	OrderStatus    string
 	VendState      string
+	// Simulation metadata (additive; never counted as real revenue when simulated=true).
+	Simulated          bool
+	SimulationRunID    string
+	SimulationScenario string
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 // CreateOrderVendResult is the outcome of CreateOrderWithVendSession.
@@ -49,6 +55,11 @@ type PaymentOutboxInput struct {
 	OutboxAggregateType  string
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
+	Simulated            bool
+	SimulationRunID      string
+	SimulationScenario   string
+	FakeBill             bool
+	FakeBoard            bool
 }
 
 // PaymentOutboxResult is the outcome of CreatePaymentWithOutbox.

@@ -66,4 +66,4 @@ Includes (among others): `level`, `started_at_utc`, `completed_at_utc`, `health_
 - **MQTT publish** to production device topics from the workflow runner.
 - Disabling auth “just to get a 200” on a sensitive write route.
 
-See also: [two-vps-rolling-production-deploy.md](two-vps-rolling-production-deploy.md) for when per-node vs final public smoke runs.
+See also: [../deployment/two-vps-rolling-production-deploy.md](../deployment/two-vps-rolling-production-deploy.md) for when per-node vs final public smoke runs.

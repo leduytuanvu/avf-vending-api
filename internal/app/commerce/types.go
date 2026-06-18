@@ -18,10 +18,15 @@ type CreateOrderInput struct {
 	SlotIndex *int32
 	Currency  string
 	// SubtotalMinor, TaxMinor, TotalMinor are deprecated and must be zero (pricing is server-authoritative).
-	SubtotalMinor  int64
-	TaxMinor       int64
-	TotalMinor     int64
-	IdempotencyKey string
+	SubtotalMinor      int64
+	TaxMinor           int64
+	TotalMinor         int64
+	IdempotencyKey     string
+	Simulated          bool
+	SimulationRunID    string
+	SimulationScenario string
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 // StartPaymentInput binds a payment row and optional outbox fan-out; provider is an opaque label from the caller.
@@ -39,6 +44,12 @@ type StartPaymentInput struct {
 	OutboxAggregateType  string
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
+
+	Simulated          bool
+	SimulationRunID    string
+	SimulationScenario string
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.

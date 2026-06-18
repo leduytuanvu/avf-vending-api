@@ -48,6 +48,7 @@ WHERE
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
         OR vs.product_id = $5::uuid)
+    AND o.simulated = false
 GROUP BY
     vs.product_id
 ORDER BY
@@ -83,7 +84,8 @@ WHERE
         OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $5::uuid);
+        OR vs.product_id = $5::uuid)
+    AND o.simulated = false;
 
 -- name: ReportingStockMovementCount :one
 SELECT
@@ -276,7 +278,8 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $5::uuid));
+                AND vs.product_id = $5::uuid))
+    AND o.simulated = false;
 
 -- name: ReportingSalesByDayFiltered :many
 SELECT
@@ -307,6 +310,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1
 ORDER BY
@@ -341,6 +345,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     m.site_id
 ORDER BY
@@ -375,6 +380,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     o.machine_id
 ORDER BY
@@ -412,6 +418,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     p.provider
 ORDER BY
@@ -473,7 +480,8 @@ WHERE
                 vend_sessions vs
             WHERE
                 vs.order_id = o.id
-                AND vs.product_id = $5::uuid));
+                AND vs.product_id = $5::uuid))
+    AND o.simulated = false;
 
 -- name: ReportingPaymentsByDayFiltered :many
 SELECT
@@ -503,6 +511,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1
 ORDER BY
@@ -537,6 +546,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $5::uuid))
+    AND o.simulated = false
 GROUP BY
     p.provider,
     p.state
@@ -575,6 +585,7 @@ WHERE
             WHERE
                 vs.order_id = o.id
                 AND vs.product_id = $6::uuid))
+    AND o.simulated = false
 GROUP BY
     1,
     p.provider,
@@ -678,7 +689,8 @@ WHERE
         OR o.machine_id = $4::uuid)
     AND (
         $5::uuid = '00000000-0000-0000-0000-000000000000'::uuid
-        OR vs.product_id = $5::uuid);
+        OR vs.product_id = $5::uuid)
+    AND o.simulated = false;
 
 -- name: ReportingFailedVendsFiltered :many
 SELECT
@@ -884,3 +896,27 @@ WHERE
 ORDER BY
     ie.occurred_at DESC
 LIMIT $6 OFFSET $7;
+
+-- Diagnostic: revenue totals with optional simulated rows (testing only).
+-- name: ReportingSalesTotalsWithSimulationOption :one
+SELECT
+    COALESCE(SUM(o.total_minor), 0)::bigint AS gross_total_minor,
+    COALESCE(SUM(o.tax_minor), 0)::bigint AS tax_minor,
+    COALESCE(SUM(o.subtotal_minor), 0)::bigint AS subtotal_minor,
+    COUNT(*)::bigint AS order_count,
+    COUNT(*) FILTER (WHERE o.simulated = true)::bigint AS simulated_order_count
+FROM
+    orders o
+    INNER JOIN machines m ON m.id = o.machine_id
+WHERE
+    o.created_at >= $1::timestamptz
+    AND o.created_at < $2::timestamptz
+    AND (
+        $3::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR m.site_id = $3::uuid)
+    AND (
+        $4::uuid = '00000000-0000-0000-0000-000000000000'::uuid
+        OR o.machine_id = $4::uuid)
+    AND (
+        sqlc.narg('include_simulated')::boolean IS TRUE
+        OR o.simulated = false);

@@ -178,4 +178,4 @@ Fill in:
 ## 6. Related docs
 
 - [swagger-openapi-appendix.md](../api/swagger-openapi-appendix.md)  
-- [enterprise-api-backend-audit-report.md](enterprise-api-backend-audit-report.md) (honest API completeness)
+- [enterprise-api-backend-audit-report.md](../audits/enterprise-api-backend-audit-report.md) (honest API completeness)

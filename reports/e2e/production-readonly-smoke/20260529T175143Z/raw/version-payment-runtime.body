@@ -1,1 +1,0 @@
-{"name":"avf-vending-api","version":"v1.0.01","git_sha":"52a076e340a15a69dad7787cad54d7e3000fcafe","app_env":"production","process":"api","runtime_role":"api","region":"ap-southeast-1","node_name":"app-node-a","instance_id":"app-node-a","public_base_url":"https://api.ldtv.dev","machine_public_base_url":"https://api.ldtv.dev"}

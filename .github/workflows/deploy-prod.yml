@@ -7,7 +7,7 @@ name: Deploy Production
 # Production policy: this workflow is manual-only. Trigger is on.workflow_dispatch (Operators → Actions
 # → run workflow) on the main branch. There is no on.push, on.schedule, on.workflow_run, or other
 # Release audit: production-release-audit-package (this workflow), release-audit-package (Build and Push),
-# security-release-audit-package (Security Release) — see docs/operations/release-evidence-retention.md
+# security-release-audit-package (Security Release) — see docs/deployment/release-evidence-retention.md
 # automatic start for production. Operators provide build_run_id, security_release_run_id, digest-pinned
 # image refs, staging_evidence_id (run id of Staging Deployment Contract with artifact staging-deploy-evidence),
 # and confirmation text per the inputs below. Staging is the default release gate: without allow_missing_staging_evidence
@@ -1652,7 +1652,7 @@ jobs:
       PRODUCTION_PUBLIC_BASE_URL: ${{ secrets.PRODUCTION_PUBLIC_BASE_URL || vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PROD_PUBLIC_BASE_URL || vars.PROD_PUBLIC_BASE_URL || secrets.PUBLIC_BASE_URL || vars.PUBLIC_BASE_URL || '' }}
       PRODUCTION_SMOKE_DB_READ_PATH: ${{ secrets.PRODUCTION_SMOKE_DB_READ_PATH || vars.PRODUCTION_SMOKE_DB_READ_PATH || secrets.PROD_SMOKE_DB_READ_PATH || vars.PROD_SMOKE_DB_READ_PATH || secrets.SMOKE_DB_READ_PATH || vars.SMOKE_DB_READ_PATH || '' }}
       PRODUCTION_SMOKE_DB_READ_MATCH_REGEX: ${{ secrets.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || vars.PRODUCTION_SMOKE_DB_READ_MATCH_REGEX || secrets.PROD_SMOKE_DB_READ_MATCH_REGEX || vars.PROD_SMOKE_DB_READ_MATCH_REGEX || secrets.SMOKE_DB_READ_MATCH_REGEX || vars.SMOKE_DB_READ_MATCH_REGEX || '' }}
-      # Enterprise smoke tiers: docs/operations/production-smoke-tests.md
+      # Enterprise smoke tiers: docs/production/production-smoke-tests.md
       PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS: ${{ vars.PRODUCTION_SMOKE_BUSINESS_READONLY_SPECS || '' }}
       PRODUCTION_SMOKE_SYNTHETIC_GET_PATH: ${{ vars.PRODUCTION_SMOKE_SYNTHETIC_GET_PATH || '' }}
       PRODUCTION_SMOKE_SYNTHETIC_MATCH_REGEX: ${{ vars.PRODUCTION_SMOKE_SYNTHETIC_MATCH_REGEX || '' }}
@@ -1765,10 +1765,10 @@ jobs:
           fi
 
           if [[ "${ACTION_MODE}" == "deploy" && "${PRODUCTION_ALLOW_SINGLE_APP_NODE:-0}" != "1" ]]; then
-            [[ -n "${APP_NODE_B_HOST:-}" ]] || fail "two-VPS rolling production requires app node B host (PRODUCTION_APP_NODE_B_HOST or equivalent); set org var PRODUCTION_ALLOW_SINGLE_APP_NODE=1 for single app-node only. See docs/operations/two-vps-rolling-production-deploy.md"
+            [[ -n "${APP_NODE_B_HOST:-}" ]] || fail "two-VPS rolling production requires app node B host (PRODUCTION_APP_NODE_B_HOST or equivalent); set org var PRODUCTION_ALLOW_SINGLE_APP_NODE=1 for single app-node only. See docs/deployment/two-vps-rolling-production-deploy.md"
             if [[ -n "${APP_NODE_A_HOST:-}" && -n "${APP_NODE_B_HOST:-}" && "${APP_NODE_A_HOST}" == "${APP_NODE_B_HOST}" ]]; then
               if [[ "${ALLOW_IDENTICAL_PRODUCTION_APP_NODES:-0}" != "1" ]]; then
-                fail "APP_NODE_A_HOST and APP_NODE_B_HOST must be different for sequential rolling deploy (or set var ALLOW_IDENTICAL_PRODUCTION_APP_NODES=1 for documented dry-runs only). See docs/operations/two-vps-rolling-production-deploy.md"
+                fail "APP_NODE_A_HOST and APP_NODE_B_HOST must be different for sequential rolling deploy (or set var ALLOW_IDENTICAL_PRODUCTION_APP_NODES=1 for documented dry-runs only). See docs/deployment/two-vps-rolling-production-deploy.md"
               fi
             fi
           fi
@@ -1848,7 +1848,7 @@ jobs:
               st_attempt=$((st_attempt + 1))
             done
             [[ -n "${st_artifact_id}" ]] || \
-              fail "no artifact named production-db-backup-evidence on run ${stg_id} (see docs/operations/production-backup-restore-drill.md)"
+              fail "no artifact named production-db-backup-evidence on run ${stg_id} (see docs/production/production-backup-restore-drill.md)"
             st_z=1
             while [[ "${st_z}" -le 5 ]]; do
               if gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${st_artifact_id}/zip" > backup-evidence-bundle/bundle.zip; then
@@ -1872,7 +1872,7 @@ jobs:
             [[ -n "${found}" ]] || fail "archive did not contain backup-evidence/backup-evidence.json (or backup-evidence.json)"
             ev_file="${found}"
           else
-            fail "backup_evidence_id must be only digits (GitHub Actions run id) or path:relative/path/backup-evidence.json — got unsupported value (see docs/operations/production-backup-restore-drill.md)"
+            fail "backup_evidence_id must be only digits (GitHub Actions run id) or path:relative/path/backup-evidence.json — got unsupported value (see docs/production/production-backup-restore-drill.md)"
           fi
 
           python3 scripts/ci/validate_backup_evidence.py --for-production-migration --expect-repository "${GITHUB_REPOSITORY}" "${ev_file}"
