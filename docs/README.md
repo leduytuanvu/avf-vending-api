@@ -2,6 +2,18 @@
 
 Central map for AVF Vending API documentation. Repository root [`README.md`](../README.md) covers build, layout, and CI gates.
 
+## Canonical vs non-canonical
+
+| Use this (canonical) | Not for day-to-day ops |
+|----------------------|-------------------------|
+| [`runbooks/README.md`](runbooks/README.md) | [`archive/`](archive/) — historical audits, FINAL reports, old gate evidence |
+| [`audits/final-enterprise-audit.md`](audits/final-enterprise-audit.md) | [`archive/audits/`](archive/audits/) — superseded readiness snapshots |
+| [`architecture/current-architecture.md`](architecture/current-architecture.md) | [`archive/cleanup/`](archive/cleanup/) — prior cleanup inventories |
+| [`reports/README.md`](reports/README.md) — active phase reports | [`archive/verification/`](archive/verification/) — archived FINAL signoffs |
+| [`testing/README.md`](testing/README.md) | Point-in-time reports under `archive/reports/` |
+
+**2026-06 repo cleanup:** deletions and deferred decisions are recorded in [`reports/cleanup/2026-06-repo-cleanup-manifest.md`](reports/cleanup/2026-06-repo-cleanup-manifest.md).
+
 ## Architecture
 
 System design, transport boundaries, and phased roadmaps.
@@ -80,8 +92,9 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 
 ## Audits and archives
 
-- [Active audits](audits/README.md) — enterprise readiness and gap analysis
-- [Documentation archive](archive/README.md) — historical audits, verification FINALs, git-deploy reports
+- [Active audits](audits/README.md) — enterprise readiness and gap analysis (**canonical** for current readiness)
+- [Documentation archive](archive/README.md) — historical audits, verification FINALs, git-deploy reports (**non-canonical**)
+- [2026-06 cleanup manifest](reports/cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions and deferred moves
 
 ## HTTP API (integration)
 

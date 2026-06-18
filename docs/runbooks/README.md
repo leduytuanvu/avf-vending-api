@@ -1,6 +1,8 @@
 # Runbooks index
 
-Operational procedures live under **`docs/runbooks/`**. Use this index to jump to incident-style guides referenced by architecture docs (**[`../architecture/data-flow.md`](../architecture/data-flow.md)**).
+Operational procedures live under **`docs/runbooks/`**. These runbooks are **canonical** for day-to-day incidents and production operations. Historical gate reports and audits are **non-canonical** — see [`../archive/README.md`](../archive/README.md).
+
+Use this index to jump to incident-style guides referenced by architecture docs (**[`../architecture/data-flow.md`](../architecture/data-flow.md)**).
 
 ## Connectivity / dependency outages
 
