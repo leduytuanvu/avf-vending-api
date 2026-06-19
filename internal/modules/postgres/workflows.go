@@ -130,7 +130,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			}
 			return commerce.CreateOrderVendResult{
 				Order:  mapOrder(orderRow),
-				Vend:   mapVend(firstVend),
+				Vend:   mapVendFirstRow(firstVend),
 				Replay: true,
 			}, nil
 		}
@@ -149,7 +149,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		}
 		return commerce.CreateOrderVendResult{
 			Order:  mapOrder(orderRow),
-			Vend:   mapVend(vendRow),
+			Vend:   mapVendGetRow(vendRow),
 			Replay: true,
 		}, nil
 	}
@@ -177,7 +177,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 
 	return commerce.CreateOrderVendResult{
 		Order:  mapOrder(orderRow),
-		Vend:   mapVend(vRow),
+		Vend:   mapVendInsertRow(vRow),
 		Replay: false,
 	}, nil
 }
@@ -205,7 +205,7 @@ func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid
 	}
 	return commerce.CreateOrderVendResult{
 		Order:  mapOrder(orderRow),
-		Vend:   mapVend(vendRow),
+		Vend:   mapVendFirstRow(vendRow),
 		Replay: true,
 	}, true, nil
 }

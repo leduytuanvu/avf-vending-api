@@ -73,14 +73,33 @@ type FinalizeAfterVendInput struct {
 	// for legacy parity with `/v1/device/.../vend-results` and machine gRPC.
 	ClientWriteIdempotencyKey string
 	CorrelationID             *uuid.UUID
+	Evidence                  *domaincommerce.VendHardwareEvidence
+	VerificationStatus        string
+	OutboxTopic               string
+	OutboxEventType           string
+	OutboxAggregateType       string
+	OutboxIdempotencyKey      string
+	ReconciliationEventType   string
+	RefundRequired            bool
+	LocalCashRefundRequired   bool
 }
 
 // FulfillSuccessfulVendInput binds one atomic DB transaction that completes the order after a successful vend and applies deduplicated inventory.
 type FulfillSuccessfulVendInput struct {
-	OrderID            uuid.UUID
-	SlotIndex          int32
-	InventoryDedupeKey string
-	CorrelationID      *uuid.UUID
+	OrderID                 uuid.UUID
+	SlotIndex               int32
+	InventoryDedupeKey      string
+	CorrelationID           *uuid.UUID
+	Evidence                *domaincommerce.VendHardwareEvidence
+	VerificationStatus      string
+	OutboxTopic             string
+	OutboxEventType         string
+	OutboxAggregateType     string
+	OutboxIdempotencyKey    string
+	ReconciliationEventType string
+	Simulated               bool
+	SimulationRunID         string
+	SimulationScenario      string
 }
 
 // FulfillSuccessfulVendResult is the outcome of FulfillSuccessfulVendAtomically.
@@ -93,9 +112,19 @@ type FulfillSuccessfulVendResult struct {
 
 // FulfillFailedVendInput binds one atomic DB transaction that records a failed vend alongside a failed order.
 type FulfillFailedVendInput struct {
-	OrderID       uuid.UUID
-	SlotIndex     int32
-	FailureReason *string
+	OrderID                 uuid.UUID
+	SlotIndex               int32
+	FailureReason           *string
+	OutboxTopic             string
+	OutboxEventType         string
+	OutboxAggregateType     string
+	OutboxIdempotencyKey    string
+	ReconciliationEventType string
+	RefundRequired          bool
+	LocalCashRefundRequired bool
+	Simulated               bool
+	SimulationRunID         string
+	SimulationScenario      string
 }
 
 // FulfillFailedVendResult is the outcome of FulfillFailedVendAtomically.

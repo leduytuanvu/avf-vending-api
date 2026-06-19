@@ -148,6 +148,10 @@ func mapCommerceGRPCErr(err error) error {
 		return status.Error(codes.Unavailable, err.Error())
 	case errors.Is(err, appcommerce.ErrIdempotencyPayloadConflict):
 		return status.Error(codes.Aborted, err.Error())
+	case errors.Is(err, domaincommerce.ErrVendEvidenceRequired):
+		return status.Error(codes.FailedPrecondition, vendHardwareEvidenceRequiredMsg)
+	case errors.Is(err, domaincommerce.ErrVendEvidenceInvalid):
+		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
 		if strings.Contains(err.Error(), "insufficient stock") {
 			return status.Error(codes.ResourceExhausted, err.Error())
@@ -717,7 +721,7 @@ func (s *machineCommerceServer) ReportVendSuccess(ctx context.Context, req *mach
 		corr = &u
 	}
 
-	return s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr)
+	return s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr, req.GetEvidence())
 }
 
 func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *machinev1.ConfirmVendSuccessRequest) (*machinev1.ConfirmVendSuccessResponse, error) {
@@ -746,7 +750,7 @@ func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *mac
 		corr = &u
 	}
 
-	out, err := s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr)
+	out, err := s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr, req.GetEvidence())
 	if err != nil {
 		return nil, err
 	}
@@ -759,7 +763,7 @@ func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *mac
 	}, nil
 }
 
-func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, store *postgres.Store, wctx machineMutationContext, orderID uuid.UUID, slotIndex int32, corr *uuid.UUID) (*machinev1.ReportVendSuccessResponse, error) {
+func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, store *postgres.Store, wctx machineMutationContext, orderID uuid.UUID, slotIndex int32, corr *uuid.UUID, protoEvidence *machinev1.VendHardwareEvidence) (*machinev1.ReportVendSuccessResponse, error) {
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -786,13 +790,36 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}
 
+	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	evidence, verificationStatus, err := resolveVendEvidenceFromRequest(protoEvidence, corr, cashFlow, requireEvidence, true)
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	if evidence != nil && corr == nil {
+		c := evidence.CorrelationID
+		corr = &c
+		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, evidence.CorrelationID)
+	}
+
+	outboxTopic, outboxSucceeded, _, outboxRecon, outboxAgg := machineCommerceVendOutboxConfig(s.deps)
+	idemKey := strings.TrimSpace(wctx.IdempotencyKey)
+	outboxIdem := idemKey + ":vend:success:" + orderID.String()
+
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 		OrderID:                   orderID,
 		SlotIndex:                 slotIndex,
 		TerminalVendState:         "success",
 		FailureReason:             nil,
-		ClientWriteIdempotencyKey: strings.TrimSpace(wctx.IdempotencyKey),
+		ClientWriteIdempotencyKey: idemKey,
 		CorrelationID:             corr,
+		Evidence:                  evidence,
+		VerificationStatus:        verificationStatus,
+		OutboxTopic:               outboxTopic,
+		OutboxEventType:           outboxSucceeded,
+		OutboxAggregateType:       outboxAgg,
+		OutboxIdempotencyKey:      outboxIdem,
+		ReconciliationEventType:   outboxRecon,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -871,16 +898,27 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}
 
+	outboxTopic, _, outboxFailed, outboxRecon, outboxAgg := machineCommerceVendOutboxConfig(s.deps)
+	idemKey := strings.TrimSpace(wctx.IdempotencyKey)
+	outboxIdem := idemKey + ":vend:failure:" + orderID.String()
+
 	vendReplay := st.Vend.State == "failed"
 	var reasonPtr *string
 	if reason != "" {
 		reasonPtr = &reason
 	}
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
-		OrderID:           orderID,
-		SlotIndex:         slotIndex,
-		TerminalVendState: "failed",
-		FailureReason:     reasonPtr,
+		OrderID:                   orderID,
+		SlotIndex:                 slotIndex,
+		TerminalVendState:         "failed",
+		FailureReason:             reasonPtr,
+		ClientWriteIdempotencyKey: idemKey,
+		CorrelationID:             corr,
+		OutboxTopic:               outboxTopic,
+		OutboxEventType:           outboxFailed,
+		OutboxAggregateType:       outboxAgg,
+		OutboxIdempotencyKey:      outboxIdem,
+		ReconciliationEventType:   outboxRecon,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)

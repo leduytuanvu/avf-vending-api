@@ -74,9 +74,28 @@ ORDER BY
 LIMIT 1
 `
 
-func (q *Queries) GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.UUID) (VendSession, error) {
+type GetFirstVendSessionByOrderRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+}
+
+func (q *Queries) GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.UUID) (GetFirstVendSessionByOrderRow, error) {
 	row := q.db.QueryRow(ctx, GetFirstVendSessionByOrder, orderID)
-	var i VendSession
+	var i GetFirstVendSessionByOrderRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,
@@ -603,9 +622,28 @@ type GetVendSessionByOrderAndSlotParams struct {
 	SlotIndex int32
 }
 
-func (q *Queries) GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendSessionByOrderAndSlotParams) (VendSession, error) {
+type GetVendSessionByOrderAndSlotRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+}
+
+func (q *Queries) GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendSessionByOrderAndSlotParams) (GetVendSessionByOrderAndSlotRow, error) {
 	row := q.db.QueryRow(ctx, GetVendSessionByOrderAndSlot, arg.OrderID, arg.SlotIndex)
-	var i VendSession
+	var i GetVendSessionByOrderAndSlotRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,
@@ -1084,7 +1122,26 @@ type InsertVendSessionParams struct {
 	SimulationScenario pgtype.Text
 }
 
-func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionParams) (VendSession, error) {
+type InsertVendSessionRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+}
+
+func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionParams) (InsertVendSessionRow, error) {
 	row := q.db.QueryRow(ctx, InsertVendSession,
 		arg.OrderID,
 		arg.MachineID,
@@ -1095,7 +1152,7 @@ func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionPa
 		arg.SimulationRunID,
 		arg.SimulationScenario,
 	)
-	var i VendSession
+	var i InsertVendSessionRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,
@@ -1946,9 +2003,28 @@ type LockVendSessionByOrderAndSlotForUpdateParams struct {
 	SlotIndex int32
 }
 
-func (q *Queries) LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (VendSession, error) {
+type LockVendSessionByOrderAndSlotForUpdateRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+}
+
+func (q *Queries) LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error) {
 	row := q.db.QueryRow(ctx, LockVendSessionByOrderAndSlotForUpdate, arg.OrderID, arg.SlotIndex)
-	var i VendSession
+	var i LockVendSessionByOrderAndSlotForUpdateRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,
@@ -2287,14 +2363,33 @@ type UpdateVendSessionStateByOrderSlotParams struct {
 	SlotIndex     int32
 }
 
-func (q *Queries) UpdateVendSessionStateByOrderSlot(ctx context.Context, arg UpdateVendSessionStateByOrderSlotParams) (VendSession, error) {
+type UpdateVendSessionStateByOrderSlotRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+}
+
+func (q *Queries) UpdateVendSessionStateByOrderSlot(ctx context.Context, arg UpdateVendSessionStateByOrderSlotParams) (UpdateVendSessionStateByOrderSlotRow, error) {
 	row := q.db.QueryRow(ctx, UpdateVendSessionStateByOrderSlot,
 		arg.State,
 		arg.FailureReason,
 		arg.OrderID,
 		arg.SlotIndex,
 	)
-	var i VendSession
+	var i UpdateVendSessionStateByOrderSlotRow
 	err := row.Scan(
 		&i.ID,
 		&i.OrderID,

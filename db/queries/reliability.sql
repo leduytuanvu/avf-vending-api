@@ -23,6 +23,41 @@ VALUES (
 )
 RETURNING *;
 
+-- name: InsertOutboxEventIdempotent :one
+INSERT INTO outbox_events (
+    topic,
+    event_type,
+    payload,
+    aggregate_type,
+    aggregate_id,
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
+)
+ON CONFLICT (topic, idempotency_key)
+WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> ''
+DO NOTHING
+RETURNING *;
+
+-- name: GetOutboxEventByTopicIdempotencyKey :one
+SELECT *
+FROM outbox_events
+WHERE
+    topic = $1
+    AND idempotency_key = $2;
+
 -- name: ListOutboxUnpublished :many
 SELECT
     id,

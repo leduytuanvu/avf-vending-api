@@ -77,6 +77,49 @@ func (q *Queries) GetOutboxByTopicAndIdempotency(ctx context.Context, arg GetOut
 	return i, err
 }
 
+const GetOutboxEventByTopicIdempotencyKey = `-- name: GetOutboxEventByTopicIdempotencyKey :one
+SELECT id, topic, event_type, payload, aggregate_type, aggregate_id, idempotency_key, created_at, published_at, publish_attempt_count, last_publish_error, last_publish_attempt_at, next_publish_after, dead_lettered_at, status, locked_by, locked_until, updated_at, max_publish_attempts, simulated, simulation_run_id, simulation_scenario
+FROM outbox_events
+WHERE
+    topic = $1
+    AND idempotency_key = $2
+`
+
+type GetOutboxEventByTopicIdempotencyKeyParams struct {
+	Topic          string
+	IdempotencyKey pgtype.Text
+}
+
+func (q *Queries) GetOutboxEventByTopicIdempotencyKey(ctx context.Context, arg GetOutboxEventByTopicIdempotencyKeyParams) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, GetOutboxEventByTopicIdempotencyKey, arg.Topic, arg.IdempotencyKey)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.Topic,
+		&i.EventType,
+		&i.Payload,
+		&i.AggregateType,
+		&i.AggregateID,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.PublishedAt,
+		&i.PublishAttemptCount,
+		&i.LastPublishError,
+		&i.LastPublishAttemptAt,
+		&i.NextPublishAfter,
+		&i.DeadLetteredAt,
+		&i.Status,
+		&i.LockedBy,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+		&i.MaxPublishAttempts,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+	)
+	return i, err
+}
+
 const GetOutboxPipelineStats = `-- name: GetOutboxPipelineStats :one
 SELECT
     COUNT(*) FILTER (
@@ -199,6 +242,87 @@ type InsertOutboxEventParams struct {
 
 func (q *Queries) InsertOutboxEvent(ctx context.Context, arg InsertOutboxEventParams) (OutboxEvent, error) {
 	row := q.db.QueryRow(ctx, InsertOutboxEvent,
+		arg.Topic,
+		arg.EventType,
+		arg.Payload,
+		arg.AggregateType,
+		arg.AggregateID,
+		arg.IdempotencyKey,
+		arg.Simulated,
+		arg.SimulationRunID,
+		arg.SimulationScenario,
+	)
+	var i OutboxEvent
+	err := row.Scan(
+		&i.ID,
+		&i.Topic,
+		&i.EventType,
+		&i.Payload,
+		&i.AggregateType,
+		&i.AggregateID,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.PublishedAt,
+		&i.PublishAttemptCount,
+		&i.LastPublishError,
+		&i.LastPublishAttemptAt,
+		&i.NextPublishAfter,
+		&i.DeadLetteredAt,
+		&i.Status,
+		&i.LockedBy,
+		&i.LockedUntil,
+		&i.UpdatedAt,
+		&i.MaxPublishAttempts,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+	)
+	return i, err
+}
+
+const InsertOutboxEventIdempotent = `-- name: InsertOutboxEventIdempotent :one
+INSERT INTO outbox_events (
+    topic,
+    event_type,
+    payload,
+    aggregate_type,
+    aggregate_id,
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9
+)
+ON CONFLICT (topic, idempotency_key)
+WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> ''
+DO NOTHING
+RETURNING id, topic, event_type, payload, aggregate_type, aggregate_id, idempotency_key, created_at, published_at, publish_attempt_count, last_publish_error, last_publish_attempt_at, next_publish_after, dead_lettered_at, status, locked_by, locked_until, updated_at, max_publish_attempts, simulated, simulation_run_id, simulation_scenario
+`
+
+type InsertOutboxEventIdempotentParams struct {
+	Topic              string
+	EventType          string
+	Payload            []byte
+	AggregateType      string
+	AggregateID        uuid.UUID
+	IdempotencyKey     pgtype.Text
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+}
+
+func (q *Queries) InsertOutboxEventIdempotent(ctx context.Context, arg InsertOutboxEventIdempotentParams) (OutboxEvent, error) {
+	row := q.db.QueryRow(ctx, InsertOutboxEventIdempotent,
 		arg.Topic,
 		arg.EventType,
 		arg.Payload,

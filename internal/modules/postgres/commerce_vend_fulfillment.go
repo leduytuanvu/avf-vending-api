@@ -9,6 +9,7 @@ import (
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -79,7 +80,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 	}
 
 	finalOrd := ordRow
-	finalV := vendRow
+	finalVend := mapVendLockRow(vendRow)
 	machineID := ordRow.MachineID
 	prodID := vendRow.ProductID
 
@@ -96,7 +97,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
-		finalV = nv
+		finalVend = mapVendUpdateRow(nv)
 
 		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "completed",
 
@@ -127,13 +128,36 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 
 	orderVendReplay := (vStart == "success" && orderStartStatus == "completed")
 
+	verificationStatus := strings.TrimSpace(in.VerificationStatus)
+	if verificationStatus == "" {
+		verificationStatus = domaincommerce.VerificationUnverified
+	}
 	if !(orderVendReplay && invReplay) {
+		if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
+			VerificationStatus: verificationStatus,
+			OrderID:            in.OrderID,
+			SlotIndex:          in.SlotIndex,
+		}); err != nil {
+			return appcommerce.FulfillSuccessfulVendResult{}, err
+		}
+		evidenceDedupe := key + ":hardware_evidence"
+		if _, err := persistVendHardwareEvidenceTx(ctx, q, persistEvidenceInput{
+			OrderID:       in.OrderID,
+			VendSessionID: vendRow.ID,
+			MachineID:     machineID,
+			SlotIndex:     in.SlotIndex,
+			Evidence:      in.Evidence,
+			DedupeKey:     evidenceDedupe,
+		}); err != nil {
+			return appcommerce.FulfillSuccessfulVendResult{}, err
+		}
 		payload, err := json.Marshal(map[string]any{
-			"idempotency_key":   key,
-			"inventory_replay":  invReplay,
-			"order_vend_replay": orderVendReplay,
-			"machine_id":        machineID.String(),
-			"slot_index":        in.SlotIndex,
+			"idempotency_key":     key,
+			"inventory_replay":    invReplay,
+			"order_vend_replay":   orderVendReplay,
+			"machine_id":          machineID.String(),
+			"slot_index":          in.SlotIndex,
+			"verification_status": verificationStatus,
 		})
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -148,6 +172,57 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		}); err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
+
+		outboxIdem := strings.TrimSpace(in.OutboxIdempotencyKey)
+		if outboxIdem == "" {
+			outboxIdem = key + ":vend_outbox"
+		}
+		obPayload, err := vendSuccessOutboxPayload(in.OrderID, in.SlotIndex, machineID, verificationStatus, in.Evidence, key)
+		if err != nil {
+			return appcommerce.FulfillSuccessfulVendResult{}, err
+		}
+		simRun := pgtypeTextString(ordRow.SimulationRunID)
+		simScen := pgtypeTextString(ordRow.SimulationScenario)
+		if err := insertOutboxEventIdempotent(ctx, q, insertOutboxParams{
+			Topic:          in.OutboxTopic,
+			EventType:      in.OutboxEventType,
+			Payload:        obPayload,
+			AggregateType:  in.OutboxAggregateType,
+			AggregateID:    in.OrderID,
+			IdempotencyKey: outboxIdem,
+			Simulated:      ordRow.Simulated,
+			SimulationRun:  simRun,
+			SimulationScen: simScen,
+		}); err != nil {
+			return appcommerce.FulfillSuccessfulVendResult{}, err
+		}
+		if verificationStatus == domaincommerce.VerificationHardwareUnverified {
+			reconType := strings.TrimSpace(in.ReconciliationEventType)
+			if reconType != "" {
+				reconPayload, err := json.Marshal(map[string]any{
+					"order_id":            in.OrderID.String(),
+					"slot_index":          in.SlotIndex,
+					"verification_status": verificationStatus,
+					"reason":              "hardware_evidence_missing_or_unverified",
+				})
+				if err != nil {
+					return appcommerce.FulfillSuccessfulVendResult{}, err
+				}
+				if err := insertOutboxEventIdempotent(ctx, q, insertOutboxParams{
+					Topic:          in.OutboxTopic,
+					EventType:      reconType,
+					Payload:        reconPayload,
+					AggregateType:  in.OutboxAggregateType,
+					AggregateID:    in.OrderID,
+					IdempotencyKey: outboxIdem + ":reconciliation",
+					Simulated:      ordRow.Simulated,
+					SimulationRun:  simRun,
+					SimulationScen: simScen,
+				}); err != nil {
+					return appcommerce.FulfillSuccessfulVendResult{}, err
+				}
+			}
+		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
@@ -156,7 +231,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 
 	return appcommerce.FulfillSuccessfulVendResult{
 		Order:           mapOrder(finalOrd),
-		Vend:            mapVend(finalV),
+		Vend:            finalVend,
 		InventoryReplay: invReplay,
 		OrderVendReplay: orderVendReplay,
 	}, nil
@@ -167,6 +242,13 @@ func derefStr(p *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*p)
+}
+
+func pgtypeTextString(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
+	}
+	return strings.TrimSpace(t.String)
 }
 
 // FulfillFailedVendAtomically records vend + order failure in one transaction and appends timeline when monetary compensation may be needed.
@@ -209,7 +291,7 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		}
 		return appcommerce.FulfillFailedVendResult{
 			Order:  mapOrder(ordRow),
-			Vend:   mapVend(vendRow),
+			Vend:   mapVendLockRow(vendRow),
 			Replay: true,
 		}, nil
 	}
@@ -253,11 +335,17 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 	if payErr != nil && !isNoRows(payErr) {
 		return appcommerce.FulfillFailedVendResult{}, payErr
 	}
+	refundRequired := in.RefundRequired
+	localCashRefund := in.LocalCashRefundRequired
+	if !in.RefundRequired && !in.LocalCashRefundRequired {
+		refundRequired = payCaptured && !cashLocal
+		localCashRefund = cashLocal && payCaptured
+	}
 
 	timelinePayload, err := json.Marshal(map[string]any{
 		"failure_reason":                  derefStr(in.FailureReason),
-		"refund_required":                 payCaptured && !cashLocal,
-		"local_cash_refund_required_hint": cashLocal && payCaptured,
+		"refund_required":                 refundRequired,
+		"local_cash_refund_required_hint": localCashRefund,
 		"slot_index":                      in.SlotIndex,
 	})
 	if err != nil {
@@ -274,13 +362,64 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
+	outboxIdem := strings.TrimSpace(in.OutboxIdempotencyKey)
+	if outboxIdem == "" {
+		outboxIdem = fmt.Sprintf("commerce_vend_failed:%s|%d", in.OrderID.String(), in.SlotIndex)
+	}
+	failPayload, err := vendFailedOutboxPayload(in.OrderID, in.SlotIndex, derefStr(in.FailureReason), refundRequired, localCashRefund)
+	if err != nil {
+		return appcommerce.FulfillFailedVendResult{}, err
+	}
+	simRun := pgtypeTextString(ordRow.SimulationRunID)
+	simScen := pgtypeTextString(ordRow.SimulationScenario)
+	if err := insertOutboxEventIdempotent(ctx, q, insertOutboxParams{
+		Topic:          in.OutboxTopic,
+		EventType:      in.OutboxEventType,
+		Payload:        failPayload,
+		AggregateType:  in.OutboxAggregateType,
+		AggregateID:    in.OrderID,
+		IdempotencyKey: outboxIdem,
+		Simulated:      ordRow.Simulated,
+		SimulationRun:  simRun,
+		SimulationScen: simScen,
+	}); err != nil {
+		return appcommerce.FulfillFailedVendResult{}, err
+	}
+	if refundRequired || localCashRefund {
+		reconType := strings.TrimSpace(in.ReconciliationEventType)
+		if reconType != "" {
+			reconPayload, err := json.Marshal(map[string]any{
+				"order_id":                        in.OrderID.String(),
+				"slot_index":                      in.SlotIndex,
+				"refund_required":                 refundRequired,
+				"local_cash_refund_required_hint": localCashRefund,
+			})
+			if err != nil {
+				return appcommerce.FulfillFailedVendResult{}, err
+			}
+			if err := insertOutboxEventIdempotent(ctx, q, insertOutboxParams{
+				Topic:          in.OutboxTopic,
+				EventType:      reconType,
+				Payload:        reconPayload,
+				AggregateType:  in.OutboxAggregateType,
+				AggregateID:    in.OrderID,
+				IdempotencyKey: outboxIdem + ":reconciliation",
+				Simulated:      ordRow.Simulated,
+				SimulationRun:  simRun,
+				SimulationScen: simScen,
+			}); err != nil {
+				return appcommerce.FulfillFailedVendResult{}, err
+			}
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
 	return appcommerce.FulfillFailedVendResult{
 		Order:  mapOrder(finalOrd),
-		Vend:   mapVend(finalV),
+		Vend:   mapVendUpdateRow(finalV),
 		Replay: false,
 	}, nil
 }

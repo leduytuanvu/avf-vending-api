@@ -50,7 +50,7 @@ func (s *Store) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.U
 		}
 		return domaincommerce.VendSession{}, err
 	}
-	return mapVend(row), nil
+	return mapVendGetRow(row), nil
 }
 
 func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.UpdateVendSessionParams) (domaincommerce.VendSession, error) {
@@ -70,7 +70,7 @@ func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.Update
 		}
 		return domaincommerce.VendSession{}, err
 	}
-	return mapVend(row), nil
+	return mapVendUpdateRow(row), nil
 }
 
 func (s *Store) GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (domaincommerce.Payment, error) {
