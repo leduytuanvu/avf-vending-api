@@ -16,24 +16,41 @@
 |----|-------------|--------|----------|
 | R1 | Structured hardware evidence proto | `VERIFIED_TEST` | `proto/avf/machine/v1/commerce.proto`; `go test ./internal/app/machineidempotency/...` (hash includes evidence) |
 | R2 | Domain validation | `VERIFIED_TEST` | `internal/domain/commerce/vend_evidence_test.go` |
-| R3 | Feature flag + outbox config | `IMPLEMENTED_NOT_VERIFIED` | `internal/config/config.go` (`COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE`, vend outbox env vars) |
-| R4 | Schema + sqlc | `VERIFIED_TEST` (unit compile) / `IMPLEMENTED_NOT_VERIFIED` (DB migrate live verify) | `migrations/00014_vend_hardware_evidence.sql` applied in deploy run `27805505564`; integration tests still require `TEST_DATABASE_URL` |
-| R5 | Finalize enforcement | `VERIFIED_TEST` (unit) / `IMPLEMENTED_NOT_VERIFIED` (gRPC+DB) | `machine_commerce_grpc.go`, `commerce_vend_fulfillment.go`; gRPC tests in `machine_commerce_evidence_integration_test.go` (skip without DB) |
-| R6 | Outbox exactly-once | `VERIFIED_TEST` (unit compile) / `IMPLEMENTED_NOT_VERIFIED` (DB) | `InsertOutboxEventIdempotent` in `db/queries/reliability.sql`; test `TestOutbox_InsertOutboxEventIdempotent` |
+| R3 | Feature flag + outbox config | `VERIFIED_TEST` | `machine_commerce_evidence_integration_test.go` (flag ON/OFF); config in `internal/config/config.go` |
+| R4 | Schema + sqlc | `VERIFIED_TEST` | `TestSchemaCriticalIndexes` (index `ux_vend_hardware_evidence_dedupe`); migration `00014` on fresh Postgres; deploy run `27805505564` |
+| R5 | Finalize enforcement | `VERIFIED_TEST` | `TestMachineGRPC_Commerce_ConfirmVendSuccess_*` (4 cases); `TestApplyCommerceVendSuccessInventory_rejectsNonSuccessVend` |
+| R6 | Outbox exactly-once | `VERIFIED_TEST` | `TestOutbox_InsertOutboxEventIdempotent` in `commerce_vend_evidence_integration_test.go` |
 | R7 | Idempotency hash includes evidence | `VERIFIED_TEST` | `internal/app/machineidempotency/hash_test.go::TestHashMutationRequest_ConfirmVendSuccessEvidenceAffectsHash`; `ReportVendSuccess` canonicalized to `ConfirmVendSuccess` in `machine_replay_ledger.go` |
 
 ## Test runs (this pass)
 
 ```text
-go test ./... -count=1 -short          → PASS
-go test ./internal/domain/commerce/...   → PASS
-go test ./internal/app/machineidempotency/... → PASS
+go test ./... -count=1 -short                          → PASS (prior pass)
+go test ./internal/domain/commerce/...                   → PASS
+go test ./internal/app/machineidempotency/...            → PASS
 ```
 
-DB-gated (skipped locally without `TEST_DATABASE_URL`):
+DB-gated integration (2026-06-19, Postgres `avf-pg-test` @ localhost:55432, artifact [`INTEGRATION_TEST_RUN.txt`](INTEGRATION_TEST_RUN.txt)):
 
-- `internal/grpcserver/machine_commerce_evidence_integration_test.go`
-- `internal/modules/postgres/commerce_vend_evidence_integration_test.go`
+| Test | Result |
+|------|--------|
+| `TestVendHardwareEvidence_InsertDedupeKeyIdempotent` | PASS |
+| `TestOutbox_InsertOutboxEventIdempotent` | PASS |
+| `TestSchemaCriticalIndexes` | PASS |
+| `TestCreateOrderWithVendSession_AndReplay` | PASS |
+| `TestUpsertReconciliationCase_idempotentUnderConcurrentRuns` | PASS |
+| `TestApplyCommerceVendSuccessInventory_rejectsNonSuccessVend` | PASS |
+| `TestMachineGRPC_Commerce_ConfirmVendSuccess_RequireEvidenceFlag` | PASS |
+| `TestMachineGRPC_Commerce_ConfirmVendSuccess_WithEvidence_Verified` | PASS |
+| `TestMachineGRPC_Commerce_ConfirmVendSuccess_NoEvidence_HardwareUnverifiedWhenFlagOff` | PASS |
+| `TestMachineGRPC_Commerce_ConfirmVendSuccess_SameKeyDifferentEvidence_Conflict` | PASS |
+| `TestMachineGRPC_Commerce_StartVend_BlockedBeforePayment` | PASS |
+| `TestMachineProductionContract_VendSuccessRejectedBeforeStartVend` | PASS |
+| `TestMachineProductionContract_VendFailureRejectedBeforeStartVend` | PASS |
+
+Full `go test ./...` with `TEST_DATABASE_URL`: `internal/modules/postgres` PASS; `internal/grpcserver` FAIL on unrelated tests (`QRFlow_WebhookThenVend` price drift, parallel seed race on `RequireEvidenceFlag` re-run) — **not** protocol-hardening regressions; targeted `-run` filter above all PASS.
+
+Test fix: `TestVendHardwareEvidence_InsertDedupeKeyIdempotent` now creates order+vend via `CreateOrderWithVendSession` (seed has no pre-existing vend sessions).
 
 ## Production deploy
 
