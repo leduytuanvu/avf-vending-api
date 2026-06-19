@@ -204,6 +204,165 @@ func TestMachineGRPC_Commerce_ConfirmVendSuccess_MalformedDigest_Rejected(t *tes
 	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
 
+// GAP 3: the legacy ReportVendSuccess alias must forward hardware evidence the same as ConfirmVendSuccess.
+func TestMachineGRPC_Commerce_ReportVendSuccess_LegacyAlias_WithEvidence_Persists(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "legacy-success-evidence-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+
+	succ, err := cli.ReportVendSuccess(md, &machinev1.ReportVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+		Evidence:  evidence,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+
+	var verificationStatus string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT verification_status FROM vend_sessions WHERE order_id = $1 AND slot_index = 0`,
+		co.GetOrderId(),
+	).Scan(&verificationStatus))
+	require.Equal(t, "verified", verificationStatus)
+
+	var evidenceCount int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM vend_hardware_evidence WHERE order_id = $1`,
+		co.GetOrderId(),
+	).Scan(&evidenceCount))
+	require.Equal(t, 1, evidenceCount)
+}
+
+func TestMachineGRPC_Commerce_ReportVendFailure_WithEvidence_Persists(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "fail-evidence-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+
+	resp, err := cli.ReportVendFailure(md, &machinev1.ReportVendFailureRequest{
+		Context:       testCommerceIdemCtx(idem+":vfail", "evt-vfail"),
+		OrderId:       co.GetOrderId(),
+		SlotIndex:     0,
+		FailureReason: "motor_jam",
+		Evidence:      evidence,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "failed", resp.GetVendState())
+
+	var verificationStatus string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT verification_status FROM vend_sessions WHERE order_id = $1 AND slot_index = 0`,
+		co.GetOrderId(),
+	).Scan(&verificationStatus))
+	require.Equal(t, "verified", verificationStatus)
+
+	var evidenceCount int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM vend_hardware_evidence WHERE order_id = $1`,
+		co.GetOrderId(),
+	).Scan(&evidenceCount))
+	require.Equal(t, 1, evidenceCount)
+}
+
+func TestMachineGRPC_Commerce_ReportVendFailure_MissingEvidence_HardwareUnverifiedAccepted(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	// Even with the require flag ON, a FAILURE report must still finalize/refund: missing evidence is
+	// accepted and persisted as hardware_unverified (never rejected).
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "fail-noevidence-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+
+	resp, err := cli.ReportVendFailure(md, &machinev1.ReportVendFailureRequest{
+		Context:       testCommerceIdemCtx(idem+":vfail", "evt-vfail"),
+		OrderId:       co.GetOrderId(),
+		SlotIndex:     0,
+		FailureReason: "motor_jam",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "failed", resp.GetVendState())
+
+	var verificationStatus string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT verification_status FROM vend_sessions WHERE order_id = $1 AND slot_index = 0`,
+		co.GetOrderId(),
+	).Scan(&verificationStatus))
+	require.Equal(t, "hardware_unverified", verificationStatus)
+
+	var evidenceCount int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM vend_hardware_evidence WHERE order_id = $1`,
+		co.GetOrderId(),
+	).Scan(&evidenceCount))
+	require.Equal(t, 0, evidenceCount)
+}
+
+func TestMachineGRPC_Commerce_ReportVendFailure_Replay_Idempotent(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "fail-replay-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+	failCtx := testCommerceIdemCtx(idem+":vfail", "evt-vfail")
+
+	_, err := cli.ReportVendFailure(md, &machinev1.ReportVendFailureRequest{
+		Context:       failCtx,
+		OrderId:       co.GetOrderId(),
+		SlotIndex:     0,
+		FailureReason: "motor_jam",
+		Evidence:      evidence,
+	})
+	require.NoError(t, err)
+
+	// Identical idempotency context + payload -> middleware replay; no duplicate evidence/outbox writes.
+	_, err = cli.ReportVendFailure(md, &machinev1.ReportVendFailureRequest{
+		Context:       failCtx,
+		OrderId:       co.GetOrderId(),
+		SlotIndex:     0,
+		FailureReason: "motor_jam",
+		Evidence:      evidence,
+	})
+	require.NoError(t, err)
+
+	var evidenceCount int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM vend_hardware_evidence WHERE order_id = $1`,
+		co.GetOrderId(),
+	).Scan(&evidenceCount))
+	require.Equal(t, 1, evidenceCount)
+}
+
 func TestMachineGRPC_Commerce_ConfirmVendSuccess_SameKeyDifferentEvidence_Conflict(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	cfg := testMachineGRPCConfig()

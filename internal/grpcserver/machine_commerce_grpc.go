@@ -903,6 +903,29 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}
 
+	// Persist failure-path hardware evidence the same way as success, BUT a failure report must always
+	// finalize/refund: missing or invalid evidence (even when COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE is
+	// ON) is ACCEPTED and persisted as hardware_unverified rather than rejected. requireSuccessEvidence
+	// is false here because a failed vend legitimately has no optical-drop/bill_final to attest.
+	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	authorizedAmountMinor := int64(0)
+	if cashFlow {
+		authorizedAmountMinor = st.Payment.AmountMinor
+	}
+	evidence, verificationStatus, evErr := resolveVendEvidenceFromRequest(req.GetEvidence(), corr, cashFlow, requireEvidence, false, authorizedAmountMinor)
+	if evErr != nil {
+		// Never reject a failure report for evidence reasons; degrade to hardware_unverified so the
+		// order still reconciles/refunds deterministically.
+		evidence = nil
+		verificationStatus = domaincommerce.VerificationHardwareUnverified
+	}
+	if evidence != nil && corr == nil {
+		c := evidence.CorrelationID
+		corr = &c
+		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, evidence.CorrelationID)
+	}
+
 	outboxTopic, _, outboxFailed, outboxRecon, outboxAgg := machineCommerceVendOutboxConfig(s.deps)
 	idemKey := strings.TrimSpace(wctx.IdempotencyKey)
 	outboxIdem := idemKey + ":vend:failure:" + orderID.String()
@@ -919,6 +942,8 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		FailureReason:             reasonPtr,
 		ClientWriteIdempotencyKey: idemKey,
 		CorrelationID:             corr,
+		Evidence:                  evidence,
+		VerificationStatus:        verificationStatus,
 		OutboxTopic:               outboxTopic,
 		OutboxEventType:           outboxFailed,
 		OutboxAggregateType:       outboxAgg,
