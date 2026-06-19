@@ -102,7 +102,38 @@ func (e *VendHardwareEvidence) Validate(cashFlow bool, requireSuccessEvidence bo
 	if tdDigest == "" && tdRaw == "" {
 		return fmt.Errorf("%w: tcn_dispense digest or raw_ref required", ErrVendEvidenceInvalid)
 	}
+	// Self-attested integrity: any present digest must be a well-formed SHA-256 hex string, and when
+	// both the command and TCN dispense carry a digest they must agree (the device derives both from
+	// the same dispense wire bytes). This binds the evidence to a real exchange without an
+	// independent backend copy of the serial frames; independent ledger cross-check is a tracked
+	// follow-up that requires a new app->backend frame-ingest path.
+	if digest != "" && !isSHA256Hex(digest) {
+		return fmt.Errorf("%w: command.tx_rx_digest must be sha-256 hex", ErrVendEvidenceInvalid)
+	}
+	if tdDigest != "" && !isSHA256Hex(tdDigest) {
+		return fmt.Errorf("%w: tcn_dispense.digest must be sha-256 hex", ErrVendEvidenceInvalid)
+	}
+	if digest != "" && tdDigest != "" && !strings.EqualFold(digest, tdDigest) {
+		return fmt.Errorf("%w: tcn_dispense.digest must match command.tx_rx_digest", ErrVendEvidenceInvalid)
+	}
 	return nil
+}
+
+// isSHA256Hex reports whether s is exactly 64 hexadecimal characters (a SHA-256 digest).
+func isSHA256Hex(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for _, c := range s {
+		switch {
+		case c >= '0' && c <= '9':
+		case c >= 'a' && c <= 'f':
+		case c >= 'A' && c <= 'F':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // EvidenceDigest returns a stable fingerprint for persistence (command digest preferred).

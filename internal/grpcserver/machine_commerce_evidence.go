@@ -1,6 +1,7 @@
 package grpcserver
 
 import (
+	"fmt"
 	"strings"
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
@@ -66,7 +67,12 @@ func mapProtoVendHardwareEvidence(ev *machinev1.VendHardwareEvidence, legacyCorr
 	return out, nil
 }
 
-func resolveVendEvidenceFromRequest(ev *machinev1.VendHardwareEvidence, legacyCorr *uuid.UUID, cashFlow bool, requireEvidence bool, requireSuccessEvidence bool) (*domaincommerce.VendHardwareEvidence, string, error) {
+// resolveVendEvidenceFromRequest maps + validates client evidence and reconciles the self-attested
+// cash amount against the backend's authoritative authorized payment. authorizedAmountMinor is the
+// order's authorized cash amount for cash flows (0 when unknown/non-cash); when positive it must
+// equal bill_final.amount_minor. With requireEvidence off, any failure degrades to
+// hardware_unverified for backward compatibility.
+func resolveVendEvidenceFromRequest(ev *machinev1.VendHardwareEvidence, legacyCorr *uuid.UUID, cashFlow bool, requireEvidence bool, requireSuccessEvidence bool, authorizedAmountMinor int64) (*domaincommerce.VendHardwareEvidence, string, error) {
 	if ev == nil {
 		if requireEvidence {
 			return nil, "", domaincommerce.ErrVendEvidenceRequired
@@ -83,6 +89,14 @@ func resolveVendEvidenceFromRequest(ev *machinev1.VendHardwareEvidence, legacyCo
 	if err := mapped.Validate(cashFlow, requireSuccessEvidence); err != nil {
 		if requireEvidence {
 			return nil, "", err
+		}
+		return nil, domaincommerce.VerificationHardwareUnverified, nil
+	}
+	// Amount reconcile against the backend's own authorized payment (independent of the device): the
+	// self-attested bill_final.amount_minor must equal the authorized cash amount.
+	if cashFlow && authorizedAmountMinor > 0 && mapped.BillFinal != nil && mapped.BillFinal.AmountMinor != authorizedAmountMinor {
+		if requireEvidence {
+			return nil, "", fmt.Errorf("%w: bill_final.amount_minor %d does not match authorized %d", domaincommerce.ErrVendEvidenceInvalid, mapped.BillFinal.AmountMinor, authorizedAmountMinor)
 		}
 		return nil, domaincommerce.VerificationHardwareUnverified, nil
 	}

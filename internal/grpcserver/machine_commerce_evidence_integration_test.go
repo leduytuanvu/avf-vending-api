@@ -12,20 +12,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// testEvidenceDigestHex is a well-formed 64-char SHA-256 hex digest (command + tcn dispense agree).
+const testEvidenceDigestHex = "4d7a1c1f2b3e4a5d6c7b8a9f0e1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d"
+
 func testVendHardwareEvidenceProto() *machinev1.VendHardwareEvidence {
 	vendAttempt := uuid.New()
 	corr := uuid.New()
-	digest := "tcn-digest-hex"
+	digest := testEvidenceDigestHex
 	return &machinev1.VendHardwareEvidence{
 		VendAttemptId: vendAttempt.String(),
 		CorrelationId: corr.String(),
 		Command: &machinev1.HardwareCommandRef{
 			CommandId:  uuid.NewString(),
-			TxRxDigest: "txrx-sha256-abc",
+			TxRxDigest: testEvidenceDigestHex,
 		},
 		BillFinal: &machinev1.BillFinalRecord{
 			EventId:     "bill-final-1",
-			AmountMinor: 150,
+			AmountMinor: 143, // must equal the order's deterministic authorized cash amount (reconciled)
 			Currency:    "USD",
 		},
 		TcnDispense: &machinev1.TcnDispenseRecord{
@@ -147,6 +150,58 @@ func TestMachineGRPC_Commerce_ConfirmVendSuccess_NoEvidence_HardwareUnverifiedWh
 		co.GetOrderId(),
 	).Scan(&verificationStatus))
 	require.Equal(t, "hardware_unverified", verificationStatus)
+}
+
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_AmountMismatch_Rejected(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "evidence-amount-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+	// Self-attested amount diverges from the authorized cash amount (seeded 150) -> reject.
+	evidence.BillFinal.AmountMinor = 999
+
+	_, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+		Evidence:  evidence,
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+}
+
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_MalformedDigest_Rejected(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "evidence-digest-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+	// Non-hex digest must be rejected when evidence is enforced (no fabricated digests accepted).
+	evidence.Command.TxRxDigest = "not-a-valid-sha256"
+	badTcn := "not-a-valid-sha256"
+	evidence.TcnDispense.Digest = &badTcn
+
+	_, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+		Evidence:  evidence,
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
 
 func TestMachineGRPC_Commerce_ConfirmVendSuccess_SameKeyDifferentEvidence_Conflict(t *testing.T) {
