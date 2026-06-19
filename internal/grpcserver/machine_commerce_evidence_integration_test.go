@@ -28,7 +28,7 @@ func testVendHardwareEvidenceProto() *machinev1.VendHardwareEvidence {
 		},
 		BillFinal: &machinev1.BillFinalRecord{
 			EventId:     "bill-final-1",
-			AmountMinor: 143, // must equal the order's deterministic authorized cash amount (reconciled)
+			AmountMinor: 150, // must equal the order's deterministic authorized cash amount (DevProductCola seeded 150)
 			Currency:    "USD",
 		},
 		TcnDispense: &machinev1.TcnDispenseRecord{
