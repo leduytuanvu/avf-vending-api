@@ -151,6 +151,23 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		}); err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
+		corrID := uuid.Nil
+		if in.CorrelationID != nil {
+			corrID = *in.CorrelationID
+		}
+		if err := emitVendSuccessFinancialLedgerTx(
+			ctx,
+			q,
+			machineID,
+			in.OrderID,
+			payRow.ID,
+			payRow.AmountMinor,
+			payRow.Currency,
+			corrID,
+			key+":financial_ledger",
+		); err != nil {
+			return appcommerce.FulfillSuccessfulVendResult{}, err
+		}
 		payload, err := json.Marshal(map[string]any{
 			"idempotency_key":     key,
 			"inventory_replay":    invReplay,
@@ -221,6 +238,25 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 				}); err != nil {
 					return appcommerce.FulfillSuccessfulVendResult{}, err
 				}
+			}
+			reconMeta, err := json.Marshal(map[string]any{
+				"verification_status": verificationStatus,
+				"slot_index":          in.SlotIndex,
+			})
+			if err != nil {
+				return appcommerce.FulfillSuccessfulVendResult{}, err
+			}
+			if _, err := q.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
+				CaseType:       "vend_started_no_terminal_ack",
+				Severity:       "warning",
+				Reason:         "hardware_evidence_missing_or_unverified",
+				Metadata:       reconMeta,
+				OrderID:        pgtype.UUID{Bytes: in.OrderID, Valid: true},
+				VendSessionID:  pgtype.UUID{Bytes: vendRow.ID, Valid: true},
+				MachineID:      pgtype.UUID{Bytes: machineID, Valid: true},
+				CorrelationKey: pgtype.Text{String: key + ":reconciliation_case", Valid: true},
+			}); err != nil {
+				return appcommerce.FulfillSuccessfulVendResult{}, err
 			}
 		}
 	}

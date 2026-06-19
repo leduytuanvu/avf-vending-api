@@ -335,6 +335,8 @@ type Querier interface {
 	InsertDeviceCommandReceipt(ctx context.Context, arg InsertDeviceCommandReceiptParams) (DeviceCommandReceipt, error)
 	InsertDeviceTelemetryEvent(ctx context.Context, arg InsertDeviceTelemetryEventParams) (DeviceTelemetryEvent, error)
 	InsertFinanceDailyClose(ctx context.Context, arg InsertFinanceDailyCloseParams) (FinanceDailyClose, error)
+	// Financial ledger append-only entries for zero-loss reconciliation (GAP 7).
+	InsertFinancialLedgerEntry(ctx context.Context, arg InsertFinancialLedgerEntryParams) (InsertFinancialLedgerEntryRow, error)
 	InsertIncident(ctx context.Context, arg InsertIncidentParams) (Incident, error)
 	InsertInventoryCountSession(ctx context.Context, arg InsertInventoryCountSessionParams) (InventoryCountSession, error)
 	InsertMachine(ctx context.Context, arg InsertMachineParams) (Machine, error)
