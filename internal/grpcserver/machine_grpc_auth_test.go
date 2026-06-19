@@ -48,6 +48,11 @@ func testMachineGRPCConfig() *config.Config {
 			PaymentWebhookTimestampSkew: 120 * time.Second,
 			MachineOrderCheckoutMaxAge:  30 * time.Minute,
 			DefaultPaymentProvider:      "psp_grpc_int",
+			VendOutboxTopic:             "commerce.vends",
+			VendOutboxEventTypeSucceeded: "vend.succeeded",
+			VendOutboxEventTypeFailed:    "vend.failed",
+			VendOutboxEventTypeReconciliation: "reconciliation.required",
+			VendOutboxAggregateType:     "order",
 		},
 		Capacity: config.CapacityLimitsConfig{
 			MaxTelemetryGRPCBatchEvents: 500,

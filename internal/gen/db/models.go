@@ -1691,6 +1691,22 @@ type VMachineCurrentOperator struct {
 	SessionExpiresAt      pgtype.Timestamptz
 }
 
+// Append-only hardware evidence rows correlating BILL/TCN/command trace to vend finalization.
+type VendHardwareEvidence struct {
+	ID             uuid.UUID
+	OrderID        uuid.UUID
+	VendSessionID  uuid.UUID
+	MachineID      uuid.UUID
+	SlotIndex      int32
+	VendAttemptID  uuid.UUID
+	CorrelationID  uuid.UUID
+	CommandID      string
+	EvidenceDigest string
+	Raw            []byte
+	DedupeKey      string
+	CreatedAt      time.Time
+}
+
 // Field debug: payment ok but vend unclear—join orders/payments to machine_command_attempts and device_messages_raw by correlation_id and time window.
 type VendSession struct {
 	ID            uuid.UUID
@@ -1706,9 +1722,11 @@ type VendSession struct {
 	CompletedAt   pgtype.Timestamptz
 	// Set when vend outcome is tied to a specific command attempt; NULL when inferred without command trace.
 	FinalCommandAttemptID pgtype.UUID
-	Simulated             bool
-	SimulationRunID       pgtype.Text
-	SimulationScenario    pgtype.Text
-	SimulationMetadata    []byte
-	CreatedAt             time.Time
+	// verified | hardware_unverified | unverified — set when vend reaches terminal success.
+	VerificationStatus string
+	Simulated          bool
+	SimulationRunID    pgtype.Text
+	SimulationScenario pgtype.Text
+	SimulationMetadata []byte
+	CreatedAt          time.Time
 }

@@ -55,6 +55,18 @@ type CommerceHTTPConfig struct {
 	// MachineOrderCheckoutMaxAge is the maximum age of an order (since created_at) for machine gRPC checkout
 	// mutations (payment session, cash confirm, vend start/outcome). Loaded from COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE (default 30m).
 	MachineOrderCheckoutMaxAge time.Duration
+	// RequireVendHardwareEvidence when true rejects ConfirmVendSuccess/ReportVendSuccess without valid hardware evidence.
+	RequireVendHardwareEvidence bool
+	// VendOutboxTopic is the durable outbox topic for vend terminal events (COMMERCE_VEND_OUTBOX_TOPIC).
+	VendOutboxTopic string
+	// VendOutboxEventTypeSucceeded is emitted on successful vend finalization (COMMERCE_VEND_OUTBOX_EVENT_SUCCEEDED).
+	VendOutboxEventTypeSucceeded string
+	// VendOutboxEventTypeFailed is emitted on failed vend (COMMERCE_VEND_OUTBOX_EVENT_FAILED).
+	VendOutboxEventTypeFailed string
+	// VendOutboxEventTypeReconciliation is emitted when hardware evidence is missing/unverified (COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION).
+	VendOutboxEventTypeReconciliation string
+	// VendOutboxAggregateType defaults to "order" for vend outbox rows.
+	VendOutboxAggregateType string
 }
 
 // RestrictsUnsignedCommercePaymentWebhooks reports whether APP_ENV rejects unsigned callbacks unless the unsafe escape hatch is enabled.
@@ -1867,6 +1879,12 @@ func Load() (*Config, error) {
 			PaymentWebhookProviderSecrets:               webhookProvSecrets,
 			DefaultPaymentProvider:                      strings.ToLower(strings.TrimSpace(getenv("COMMERCE_PAYMENT_PROVIDER", ""))),
 			MachineOrderCheckoutMaxAge:                  mustParseDuration("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", getenv("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", "30m")),
+			RequireVendHardwareEvidence:                 getenvBool("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE", false),
+			VendOutboxTopic:                             strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_TOPIC", "commerce.vends")),
+			VendOutboxEventTypeSucceeded:                strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_SUCCEEDED", "vend.succeeded")),
+			VendOutboxEventTypeFailed:                   strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_FAILED", "vend.failed")),
+			VendOutboxEventTypeReconciliation:          strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION", "reconciliation.required")),
+			VendOutboxAggregateType:                     strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_AGGREGATE_TYPE", "order")),
 		},
 		CashSettlement: CashSettlementConfig{
 			VarianceReviewThresholdMinor: getenvInt64("CASH_SETTLEMENT_VARIANCE_REVIEW_THRESHOLD_MINOR", 500),

@@ -775,6 +775,9 @@ CREATE TABLE vend_sessions (
     started_at timestamptz,
     completed_at timestamptz,
     final_command_attempt_id uuid,
+    verification_status text NOT NULL DEFAULT 'unverified' CHECK (
+        verification_status IN ('unverified', 'verified', 'hardware_unverified')
+    ),
     simulated boolean NOT NULL DEFAULT false,
     simulation_run_id text,
     simulation_scenario text,
@@ -787,6 +790,30 @@ CREATE INDEX ix_vend_sessions_simulated ON vend_sessions (simulated) WHERE simul
 CREATE INDEX ix_vend_sessions_machine_id ON vend_sessions (machine_id);
 CREATE INDEX ix_vend_sessions_final_command_attempt ON vend_sessions (final_command_attempt_id)
     WHERE final_command_attempt_id IS NOT NULL;
+
+CREATE TABLE vend_hardware_evidence (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    order_id uuid NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
+    vend_session_id uuid NOT NULL REFERENCES vend_sessions (id) ON DELETE CASCADE,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
+    slot_index int NOT NULL,
+    vend_attempt_id uuid NOT NULL,
+    correlation_id uuid NOT NULL,
+    command_id text NOT NULL,
+    evidence_digest text NOT NULL DEFAULT '',
+    raw jsonb NOT NULL DEFAULT '{}'::jsonb,
+    dedupe_key text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX ux_vend_hardware_evidence_dedupe ON vend_hardware_evidence (dedupe_key);
+
+CREATE INDEX ix_vend_hardware_evidence_order ON vend_hardware_evidence (order_id, created_at DESC);
+
+CREATE INDEX ix_vend_hardware_evidence_vend_session ON vend_hardware_evidence (vend_session_id);
+
+COMMENT ON TABLE vend_hardware_evidence IS 'Append-only hardware evidence rows correlating BILL/TCN/command trace to vend finalization.';
+COMMENT ON COLUMN vend_sessions.verification_status IS 'verified | hardware_unverified | unverified — set when vend reaches terminal success.';
 
 CREATE TABLE settlement_batches (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),

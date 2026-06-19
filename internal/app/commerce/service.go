@@ -304,10 +304,17 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 			}
 		}
 		res, err := s.life.FulfillSuccessfulVendAtomically(ctx, FulfillSuccessfulVendInput{
-			OrderID:            in.OrderID,
-			SlotIndex:          in.SlotIndex,
-			InventoryDedupeKey: dedupe,
-			CorrelationID:      in.CorrelationID,
+			OrderID:                 in.OrderID,
+			SlotIndex:               in.SlotIndex,
+			InventoryDedupeKey:      dedupe,
+			CorrelationID:           in.CorrelationID,
+			Evidence:                in.Evidence,
+			VerificationStatus:      in.VerificationStatus,
+			OutboxTopic:             in.OutboxTopic,
+			OutboxEventType:         in.OutboxEventType,
+			OutboxAggregateType:     in.OutboxAggregateType,
+			OutboxIdempotencyKey:    in.OutboxIdempotencyKey,
+			ReconciliationEventType: in.ReconciliationEventType,
 		})
 		if err != nil {
 			return FinalizeOutcome{}, err
@@ -335,9 +342,16 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	}
 
 	fr, err := s.life.FulfillFailedVendAtomically(ctx, FulfillFailedVendInput{
-		OrderID:       in.OrderID,
-		SlotIndex:     in.SlotIndex,
-		FailureReason: in.FailureReason,
+		OrderID:                 in.OrderID,
+		SlotIndex:               in.SlotIndex,
+		FailureReason:           in.FailureReason,
+		OutboxTopic:             in.OutboxTopic,
+		OutboxEventType:         in.OutboxEventType,
+		OutboxAggregateType:     in.OutboxAggregateType,
+		OutboxIdempotencyKey:    in.OutboxIdempotencyKey,
+		ReconciliationEventType: in.ReconciliationEventType,
+		RefundRequired:          in.RefundRequired,
+		LocalCashRefundRequired: in.LocalCashRefundRequired,
 	})
 	if err != nil {
 		return FinalizeOutcome{}, err
