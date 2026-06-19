@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -16,16 +18,23 @@ func TestVendHardwareEvidence_InsertDedupeKeyIdempotent(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
 	q := db.New(pool)
+	store := postgres.NewStore(pool)
 
-	var orderID, vendSessionID uuid.UUID
-	err := pool.QueryRow(ctx, `
-		SELECT o.id, v.id
-		FROM orders o
-		JOIN vend_sessions v ON v.order_id = o.id
-		WHERE o.machine_id = $1
-		LIMIT 1
-	`, testfixtures.DevMachineID).Scan(&orderID, &vendSessionID)
+	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
+		MachineID:      testfixtures.DevMachineID,
+		ProductID:      testfixtures.DevProductCola,
+		SlotIndex:      0,
+		Currency:       "USD",
+		SubtotalMinor:  150,
+		TaxMinor:       0,
+		TotalMinor:     150,
+		IdempotencyKey: "evidence-dedupe-order-" + uuid.NewString(),
+		OrderStatus:    "created",
+		VendState:      "pending",
+	})
 	require.NoError(t, err)
+	orderID := orderRes.Order.ID
+	vendSessionID := orderRes.Vend.ID
 
 	dedupe := "test-evidence-dedupe-" + uuid.NewString()
 	params := db.InsertVendHardwareEvidenceParams{

@@ -7,6 +7,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -41,6 +42,12 @@ func TestAckConfigVersion_persistsEffectiveDeviceConfigAndFieldAck(t *testing.T)
 	require.NoError(t, err)
 
 	_, err = cli.AckConfigVersion(md, &machinev1.AckConfigVersionRequest{
+		// AckConfigVersion is a registered idempotent mutation; the replay interceptor requires an
+		// idempotency key on the request meta (RequireGRPCIdempotency is on in the test config).
+		Meta: &machinev1.MachineRequestMeta{
+			IdempotencyKey: "ack-config-" + uuid.NewString(),
+			ClientEventId:  "ack-config-evt-" + uuid.NewString(),
+		},
 		AcknowledgedConfigVersion: 3,
 		EffectiveDeviceConfig:     effective,
 		FieldAck: map[string]string{

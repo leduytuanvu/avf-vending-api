@@ -345,6 +345,8 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 		OrderID:                 in.OrderID,
 		SlotIndex:               in.SlotIndex,
 		FailureReason:           in.FailureReason,
+		Evidence:                in.Evidence,
+		VerificationStatus:      in.VerificationStatus,
 		OutboxTopic:             in.OutboxTopic,
 		OutboxEventType:         in.OutboxEventType,
 		OutboxAggregateType:     in.OutboxAggregateType,

@@ -115,6 +115,8 @@ type FulfillFailedVendInput struct {
 	OrderID                 uuid.UUID
 	SlotIndex               int32
 	FailureReason           *string
+	Evidence                *domaincommerce.VendHardwareEvidence
+	VerificationStatus      string
 	OutboxTopic             string
 	OutboxEventType         string
 	OutboxAggregateType     string
