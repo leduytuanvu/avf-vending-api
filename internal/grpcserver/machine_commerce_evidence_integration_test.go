@@ -177,6 +177,30 @@ func TestMachineGRPC_Commerce_ConfirmVendSuccess_AmountMismatch_Rejected(t *test
 	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 }
 
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_NotDropped_RejectedWhenFlagOn(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = true
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "evidence-not-dropped-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	evidence := testVendHardwareEvidenceProto()
+	evidence.TcnDispense.Dropped = false
+
+	_, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+		Evidence:  evidence,
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+}
+
 func TestMachineGRPC_Commerce_ConfirmVendSuccess_MalformedDigest_Rejected(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	cfg := testMachineGRPCConfig()
