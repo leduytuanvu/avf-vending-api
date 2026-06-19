@@ -326,6 +326,35 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
+	// Persist failure-path hardware evidence + verification status (mirrors success). Evidence may be
+	// nil on a legitimately unverified failure (persist no-ops); verification status is still recorded.
+	verificationStatus := strings.TrimSpace(in.VerificationStatus)
+	if verificationStatus == "" {
+		verificationStatus = domaincommerce.VerificationUnverified
+	}
+	if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
+		VerificationStatus: verificationStatus,
+		OrderID:            in.OrderID,
+		SlotIndex:          in.SlotIndex,
+	}); err != nil {
+		return appcommerce.FulfillFailedVendResult{}, err
+	}
+	evidenceDedupe := strings.TrimSpace(in.OutboxIdempotencyKey)
+	if evidenceDedupe == "" {
+		evidenceDedupe = fmt.Sprintf("commerce_vend_failed:%s|%d", in.OrderID.String(), in.SlotIndex)
+	}
+	evidenceDedupe += ":hardware_evidence"
+	if _, err := persistVendHardwareEvidenceTx(ctx, q, persistEvidenceInput{
+		OrderID:       in.OrderID,
+		VendSessionID: vendRow.ID,
+		MachineID:     ordRow.MachineID,
+		SlotIndex:     in.SlotIndex,
+		Evidence:      in.Evidence,
+		DedupeKey:     evidenceDedupe,
+	}); err != nil {
+		return appcommerce.FulfillFailedVendResult{}, err
+	}
+
 	payRow, payErr := q.GetLatestPaymentForOrder(ctx, in.OrderID)
 	payCaptured := payErr == nil && (payRow.State == "captured" || payRow.State == "partially_refunded")
 	cashLocal := false
