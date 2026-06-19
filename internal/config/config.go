@@ -1883,7 +1883,7 @@ func Load() (*Config, error) {
 			VendOutboxTopic:                             strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_TOPIC", "commerce.vends")),
 			VendOutboxEventTypeSucceeded:                strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_SUCCEEDED", "vend.succeeded")),
 			VendOutboxEventTypeFailed:                   strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_FAILED", "vend.failed")),
-			VendOutboxEventTypeReconciliation:          strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION", "reconciliation.required")),
+			VendOutboxEventTypeReconciliation:           strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION", "reconciliation.required")),
 			VendOutboxAggregateType:                     strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_AGGREGATE_TYPE", "order")),
 		},
 		CashSettlement: CashSettlementConfig{
