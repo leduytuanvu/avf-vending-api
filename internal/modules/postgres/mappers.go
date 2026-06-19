@@ -1,8 +1,12 @@
 package postgres
 
 import (
+	"time"
+
 	"github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func mapOrder(row db.Order) commerce.Order {
@@ -26,18 +30,68 @@ func mapOrder(row db.Order) commerce.Order {
 }
 
 func mapVend(row db.VendSession) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendLockRow(row db.LockVendSessionByOrderAndSlotForUpdateRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendUpdateRow(row db.UpdateVendSessionStateByOrderSlotRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendGetRow(row db.GetVendSessionByOrderAndSlotRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendFirstRow(row db.GetFirstVendSessionByOrderRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendInsertRow(row db.InsertVendSessionRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendFields(
+	id, orderID, machineID, productID uuid.UUID,
+	slotIndex int32,
+	state string,
+	finalCommandAttemptID pgtype.UUID,
+	simulated bool,
+	simulationRunID, simulationScenario pgtype.Text,
+	createdAt time.Time,
+) commerce.VendSession {
 	return commerce.VendSession{
-		ID:                    row.ID,
-		OrderID:               row.OrderID,
-		MachineID:             row.MachineID,
-		SlotIndex:             row.SlotIndex,
-		ProductID:             row.ProductID,
-		State:                 row.State,
-		FinalCommandAttemptID: pgUUIDToPtr(row.FinalCommandAttemptID),
-		Simulated:             row.Simulated,
-		SimulationRunID:       pgTextToStringPtr(row.SimulationRunID),
-		SimulationScenario:    pgTextToStringPtr(row.SimulationScenario),
-		CreatedAt:             row.CreatedAt,
+		ID:                    id,
+		OrderID:               orderID,
+		MachineID:             machineID,
+		SlotIndex:             slotIndex,
+		ProductID:             productID,
+		State:                 state,
+		FinalCommandAttemptID: pgUUIDToPtr(finalCommandAttemptID),
+		Simulated:             simulated,
+		SimulationRunID:       pgTextToStringPtr(simulationRunID),
+		SimulationScenario:    pgTextToStringPtr(simulationScenario),
+		CreatedAt:             createdAt,
 	}
 }
 

@@ -55,6 +55,7 @@ func TestSchemaCriticalIndexes(t *testing.T) {
 	names := []string{
 		"uniq_orders_idempotency",
 		"ux_outbox_topic_idempotency",
+		"ux_vend_hardware_evidence_dedupe",
 		"ux_command_ledger_machine_idempotency",
 		"ix_outbox_unpublished",
 		"ix_outbox_pending_due",

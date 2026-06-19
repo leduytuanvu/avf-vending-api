@@ -176,6 +176,41 @@ message GetOrderStatusResponse {
   string payment_state = 5;
 }
 
+// HardwareCommandRef links a vend outcome to a command_ledger / machine_command_attempts row.
+message HardwareCommandRef {
+  string command_id = 1;
+  // SHA-256 hex digest of canonical TX/RX wire bytes (preferred over raw_ref for payload size).
+  string tx_rx_digest = 2;
+  // Opaque reference to stored raw frame artifact when digest alone is insufficient.
+  string raw_ref = 3;
+}
+
+// BillFinalRecord is the BILL acceptor final credit event for cash-only checkout.
+message BillFinalRecord {
+  string event_id = 1;
+  int64 amount_minor = 2;
+  string currency = 3;
+  optional string raw_ref = 4;
+}
+
+// TcnDispenseRecord is the TCN board terminal dispense/drop outcome.
+message TcnDispenseRecord {
+  string slot = 1;
+  string result = 2;
+  bool dropped = 3;
+  optional string digest = 4;
+  optional string raw_ref = 5;
+}
+
+// VendHardwareEvidence correlates order, vend attempt, BILL final, TCN dispense, and command trace.
+message VendHardwareEvidence {
+  string vend_attempt_id = 1;
+  string correlation_id = 2;
+  HardwareCommandRef command = 3;
+  BillFinalRecord bill_final = 4;
+  TcnDispenseRecord tcn_dispense = 5;
+}
+
 message StartVendRequest {
   IdempotencyContext context = 1;
   string order_id = 2;
@@ -193,6 +228,7 @@ message ConfirmVendSuccessRequest {
   string order_id = 2;
   int32 slot_index = 3;
   optional string correlation_id = 4;
+  optional VendHardwareEvidence evidence = 5;
 }
 
 message ConfirmVendSuccessResponse {
@@ -208,6 +244,7 @@ message ReportVendSuccessRequest {
   string order_id = 2;
   int32 slot_index = 3;
   optional string correlation_id = 4;
+  optional VendHardwareEvidence evidence = 5;
 }
 
 message ReportVendSuccessResponse {
@@ -224,6 +261,7 @@ message ReportVendFailureRequest {
   int32 slot_index = 3;
   string failure_reason = 4;
   optional string correlation_id = 5;
+  optional VendHardwareEvidence evidence = 6;
 }
 
 message ReportVendFailureResponse {
