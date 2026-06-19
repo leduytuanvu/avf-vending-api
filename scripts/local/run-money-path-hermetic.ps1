@@ -41,8 +41,12 @@ try {
     # Migrations are applied automatically by machineGRPCTestPool, but apply explicitly so a migration
     # failure is attributed here rather than inside a test.
     $MigDir = Join-Path $RepoRoot 'migrations'
-    & go run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir $MigDir postgres $Dsn up
-    if ($LASTEXITCODE -ne 0) { throw "goose up failed ($LASTEXITCODE)" }
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & go run github.com/pressly/goose/v3/cmd/goose@v3.27.0 -dir $MigDir postgres $Dsn up 2>&1 | ForEach-Object { Write-Host $_ }
+    $gooseExit = $LASTEXITCODE
+    $ErrorActionPreference = $prevEap
+    if ($gooseExit -ne 0) { throw "goose up failed ($gooseExit)" }
 
     # Money-path suite: commerce vend evidence (success + failure), idempotency replay, outbox,
     # refund/reconciliation. Serial (-p 1) within the fresh DB.
@@ -54,10 +58,21 @@ try {
     ) -join '|'
 
     go test ./internal/grpcserver/ -run $patterns -count=1 -p 1 -v
-    $code = $LASTEXITCODE
-    Write-Host "[hermetic] grpcserver money-path exit=$code"
+    $grpcCode = $LASTEXITCODE
+    Write-Host "[hermetic] grpcserver money-path exit=$grpcCode"
+    if ($grpcCode -ne 0) { exit $grpcCode }
 
-    exit $code
+    $pgPatterns = @(
+        'TestVendHardwareEvidence',
+        'TestOutbox_InsertOutboxEventIdempotent',
+        'TestUpsertReconciliationCase_idempotentUnderConcurrentRuns'
+    ) -join '|'
+
+    go test ./internal/modules/postgres/ -run $pgPatterns -count=1 -p 1 -v
+    $pgCode = $LASTEXITCODE
+    Write-Host "[hermetic] postgres money-path exit=$pgCode"
+
+    exit $pgCode
 }
 finally {
     if (-not $Keep) {
