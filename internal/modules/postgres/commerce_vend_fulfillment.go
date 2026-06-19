@@ -165,6 +165,10 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			payRow.Currency,
 			corrID,
 			key+":financial_ledger",
+			"",
+			"",
+			in.SlotIndex,
+			evidenceDedupe,
 		); err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}

@@ -21,13 +21,21 @@ func emitVendSuccessFinancialLedgerTx(
 	currency string,
 	correlationID uuid.UUID,
 	idempotencyKey string,
+	productID string,
+	slotCode string,
+	slotIndex int32,
+	hardwareEvidenceRefs string,
 ) error {
 	if amountMinor <= 0 {
 		return nil
 	}
 	meta, err := json.Marshal(map[string]any{
-		"idempotency_key": idempotencyKey,
-		"source":          "commerce_vend_fulfillment",
+		"idempotency_key":        idempotencyKey,
+		"source":                 "commerce_vend_fulfillment",
+		"product_id":             productID,
+		"slot_code":              slotCode,
+		"slot_index":             slotIndex,
+		"hardware_evidence_refs": hardwareEvidenceRefs,
 	})
 	if err != nil {
 		return err
