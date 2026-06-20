@@ -111,6 +111,20 @@ func machineCommerceVendOutboxConfig(deps MachineGRPCServicesDeps) (topic, succe
 	return c.VendOutboxTopic, c.VendOutboxEventTypeSucceeded, c.VendOutboxEventTypeFailed, c.VendOutboxEventTypeReconciliation, c.VendOutboxAggregateType
 }
 
-func commerceRequireVendHardwareEvidence(deps MachineGRPCServicesDeps) bool {
-	return deps.Config != nil && deps.Config.Commerce.RequireVendHardwareEvidence
+func commerceRequireVendHardwareEvidence(deps MachineGRPCServicesDeps, machineID uuid.UUID) bool {
+	if deps.Config == nil {
+		return false
+	}
+	if deps.Config.Commerce.RequireVendHardwareEvidence {
+		return true
+	}
+	if machineID == uuid.Nil {
+		return false
+	}
+	for _, id := range deps.Config.Commerce.RequireVendHardwareEvidenceMachineIDs {
+		if id == machineID {
+			return true
+		}
+	}
+	return false
 }

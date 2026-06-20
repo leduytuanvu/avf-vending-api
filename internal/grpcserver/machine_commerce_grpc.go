@@ -791,7 +791,7 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	}
 
 	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
-	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps, claims.MachineID)
 	// Authoritative authorized cash amount for reconcile against self-attested bill_final evidence.
 	authorizedAmountMinor := int64(0)
 	if cashFlow {
@@ -908,7 +908,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	// ON) is ACCEPTED and persisted as hardware_unverified rather than rejected. requireSuccessEvidence
 	// is false here because a failed vend legitimately has no optical-drop/bill_final to attest.
 	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
-	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps, claims.MachineID)
 	authorizedAmountMinor := int64(0)
 	if cashFlow {
 		authorizedAmountMinor = st.Payment.AmountMinor

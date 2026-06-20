@@ -35,12 +35,13 @@ mkdir -p "${E2E_RUN_DIR}/raw"
 ADMIN_TOK="$(e2e_admin_token)" || { echo "FATAL: admin login failed" >&2; exit 2; }
 
 act_body="${E2E_RUN_DIR}/raw/activation-code-create-device.json"
+expires_min="${EXPIRES_IN_MINUTES:-60}"
 http_code="$(curl -sS -o "$act_body" -w '%{http_code}' -X POST \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOK}" \
   -H "Idempotency-Key: device-activation-${E2E_RUN_TS}" \
-  -d "$(jq -nc --arg n "phase-d-device ${E2E_RUN_TS}" '{expiresInMinutes:60,maxUses:1,notes:$n}')" \
+  -d "$(jq -nc --arg n "phase-d-device ${E2E_RUN_TS}" --argjson e "$expires_min" '{expiresInMinutes:$e,maxUses:1,notes:$n}')" \
   "${BASE_URL%/}/v1/admin/machines/${TEST_MACHINE_ID}/activation-codes")"
 [[ "$http_code" == "201" || "$http_code" == "200" ]] || { echo "FATAL: activation code http=${http_code}" >&2; exit 2; }
 act_code="$(jq -r '.activationCode // empty' "$act_body")"
