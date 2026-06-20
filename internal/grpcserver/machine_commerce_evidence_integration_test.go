@@ -420,3 +420,35 @@ func TestMachineGRPC_Commerce_ConfirmVendSuccess_SameKeyDifferentEvidence_Confli
 	require.Equal(t, codes.FailedPrecondition, status.Code(err))
 	require.Contains(t, status.Convert(err).Message(), "idempotency_payload_mismatch")
 }
+
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_RequireEvidencePerMachineAllowlist(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	cfg.Commerce.RequireVendHardwareEvidence = false
+	cfg.Commerce.RequireVendHardwareEvidenceMachineIDs = []uuid.UUID{testfixtures.DevMachineID}
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "evidence-allowlist-" + uuid.NewString()
+	co := cashCheckoutThroughStartVend(t, cli, md, idem)
+	_, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.FailedPrecondition, status.Code(err))
+	require.Contains(t, status.Convert(err).Message(), vendHardwareEvidenceRequiredMsg)
+
+	evidence := testVendHardwareEvidenceProto()
+	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc2", "evt-vsucc2"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+		Evidence:  evidence,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+}
