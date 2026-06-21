@@ -17,10 +17,10 @@ import (
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"go.uber.org/zap"
 )
 
 type machineCommerceServer struct {
