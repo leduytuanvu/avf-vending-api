@@ -17,7 +17,7 @@ func (stubOrderVend) CreateOrderWithVendSession(ctx context.Context, in domainco
 	return domaincommerce.CreateOrderVendResult{}, errors.New("not implemented")
 }
 
-func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
+func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, machineID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
 	return domaincommerce.CreateOrderVendResult{}, false, nil
 }
 

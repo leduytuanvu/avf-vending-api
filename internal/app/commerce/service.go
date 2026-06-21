@@ -85,7 +85,7 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 	if err := validateCreateOrder(in); err != nil {
 		return CreateOrderResult{}, err
 	}
-	if replay, ok, err := s.orders.TryReplayCreateOrderWithVend(ctx, uuid.Nil, strings.TrimSpace(in.IdempotencyKey)); err != nil {
+	if replay, ok, err := s.orders.TryReplayCreateOrderWithVend(ctx, in.MachineID, strings.TrimSpace(in.IdempotencyKey)); err != nil {
 		return CreateOrderResult{}, err
 	} else if ok {
 		line := saleLineFromReplay(replay)

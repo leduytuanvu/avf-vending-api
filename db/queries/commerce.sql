@@ -144,6 +144,29 @@ FROM orders
 WHERE
     idempotency_key = $1;
 
+-- name: GetOrderByMachineAndIdempotencyKey :one
+SELECT
+    id,
+    machine_id,
+    status,
+    currency,
+    subtotal_minor,
+    tax_minor,
+    total_minor,
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
+    created_at,
+    updated_at
+FROM orders
+WHERE
+    machine_id = $1
+    AND idempotency_key = $2;
+
 -- name: GetOrderByID :one
 SELECT
     id,

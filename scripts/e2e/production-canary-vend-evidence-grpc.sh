@@ -19,7 +19,7 @@ TEST_PRODUCT_ID="${TEST_PRODUCT_ID:-${E2E_TEST_PRODUCT_ID:-}}"
 TEST_SLOT_CODE="${TEST_SLOT_CODE:-${E2E_TEST_SLOT_CODE:-A1}}"
 SLOT_INDEX="${SLOT_INDEX:-1}"
 TEST_PRICE_MINOR="${TEST_PRICE_MINOR:-150}"
-TEST_CURRENCY="${TEST_CURRENCY:-USD}"
+TEST_CURRENCY="${TEST_CURRENCY:-VND}"
 : >"${E2E_RUN_DIR}/probes.tsv"
 FAILURES=0
 
@@ -31,71 +31,150 @@ idem_base="canary-evidence-$(date -u +%s)"
 
 ctx() {
   local suffix="$1"
-  jq -nc --arg k "${idem_base}-${suffix}" --arg e "evt-${suffix}" \
-    '{idempotencyKey:$k, eventId:$e, clientRequestId:$k}'
+  jq -nc --arg k "${idem_base}-${suffix}" --arg e "evt-${suffix}" --arg ts "$(e2e_now_utc)" \
+    '{idempotencyKey:$k, clientEventId:$e, clientCreatedAt:$ts}'
 }
 
-# Resolve product if unset
-if [[ -z "$TEST_PRODUCT_ID" ]]; then
-  ADMIN_TOK="$(e2e_admin_token)" || { echo "FATAL: admin login" >&2; exit 2; }
-  gb="${E2E_RUN_DIR}/raw/bootstrap.json"
-  curl -sS -o "$gb" -H "Authorization: Bearer ${MACHINE_ACCESS_TOKEN:-}" \
-    -H "Content-Type: application/json" \
-    -d '{}' "${GRPC_ADDR:-grpcs://api.ldtv.dev}/avf.machine.v1.MachineBootstrapService/GetBootstrap" 2>/dev/null || true
-fi
-TEST_PRODUCT_ID="${TEST_PRODUCT_ID:-$(jq -r '.products[0].productId // empty' "${E2E_RUN_DIR}/raw/bootstrap.json" 2>/dev/null)}"
+evidence_fixture() {
+  jq -nc \
+    --arg digest "$DIGEST" \
+    --arg va "$(uuidgen 2>/dev/null || echo 11111111-1111-1111-1111-111111111111)" \
+    --arg corr "$(uuidgen 2>/dev/null || echo 22222222-2222-2222-2222-222222222222)" \
+    --argjson amt "$TEST_PRICE_MINOR" \
+    --arg cur "$TEST_CURRENCY" \
+    --arg slot "$TEST_SLOT_CODE" \
+    '{
+      vendAttemptId:$va, correlationId:$corr,
+      command:{commandId:"cmd-1", txRxDigest:$digest},
+      billFinal:{eventId:"bill-1", amountMinor:$amt, currency:$cur},
+      tcnDispense:{slot:$slot, result:"ok", dropped:true, digest:$digest}
+    }'
+}
 
+run_order_through_vend_start() {
+  local tag="$1"
+  local pid="$2"
+  local create_ctx order_body oid
+  create_ctx="$(ctx "${tag}-create")"
+  order_body="$(jq -nc \
+    --argjson ctx "$create_ctx" \
+    --arg pid "$pid" \
+    --arg cur "$TEST_CURRENCY" \
+    --argjson slot "$SLOT_INDEX" \
+    '{context:$ctx, productId:$pid, currency:$cur, slot:{slotIndex:$slot}}')"
+  e2e_grpc_call "avf.machine.v1.MachineCommerceService/CreateOrder" "$order_body" "ev-${tag}-create-order" machine "$(echo "$create_ctx" | jq -r '.idempotencyKey')" || return 1
+  oid="$(jq -r '.orderId // empty' "${E2E_RUN_DIR}/raw/ev-${tag}-create-order.response.json")"
+  [[ -n "$oid" ]] || return 1
+  local cash_ctx vstart_ctx
+  cash_ctx="$(ctx "${tag}-cash")"
+  vstart_ctx="$(ctx "${tag}-vstart")"
+  e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmCashPayment" \
+    "$(jq -nc --argjson ctx "$cash_ctx" --arg oid "$oid" '{context:$ctx, orderId:$oid}')" \
+    "ev-${tag}-cash" machine "$(echo "$cash_ctx" | jq -r '.idempotencyKey')" || return 1
+  e2e_grpc_call "avf.machine.v1.MachineCommerceService/StartVend" \
+    "$(jq -nc --argjson ctx "$vstart_ctx" --arg oid "$oid" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si}')" \
+    "ev-${tag}-vstart" machine "$(echo "$vstart_ctx" | jq -r '.idempotencyKey')" || return 1
+  printf '%s' "$oid"
+}
+
+export GRPC_ADDR="${GRPC_ADDR:-machine-api.ldtv.dev:443}"
+export GRPC_MAX_TIME="${GRPC_MAX_TIME:-120}"
+export MACHINE_ACCESS_TOKEN="${MACHINE_ACCESS_TOKEN:-${MACHINE_TOKEN:-}}"
+[[ -n "$MACHINE_ACCESS_TOKEN" ]] || { echo "FATAL: MACHINE_ACCESS_TOKEN required (mint via run-production-canary-vend-evidence-with-mint.sh)" >&2; exit 2; }
+
+# Resolve catalog from production bootstrap/planogram when product unset
+if [[ -z "$TEST_PRODUCT_ID" ]]; then
+  if ! e2e_grpc_call "avf.machine.v1.MachineBootstrapService/GetBootstrap" '{}' "ev-bootstrap" machine ""; then
+    fail_probe "evidence.bootstrap" "GetBootstrap failed"
+    exit 1
+  fi
+  e2e_redact_tokens_in_json_file "${E2E_RUN_DIR}/raw/ev-bootstrap.response.json"
+  TEST_PRODUCT_ID="$(jq -r '.products[0].productId // empty' "${E2E_RUN_DIR}/raw/ev-bootstrap.response.json" 2>/dev/null)"
+  TEST_CURRENCY="$(jq -r '.products[0].currency // .currency // "VND"' "${E2E_RUN_DIR}/raw/ev-bootstrap.response.json" 2>/dev/null)"
+  TEST_PRICE_MINOR="$(jq -r '.products[0].priceMinor // .products[0].price_minor // empty' "${E2E_RUN_DIR}/raw/ev-bootstrap.response.json" 2>/dev/null)"
+  SLOT_INDEX="$(jq -r --arg sc "$TEST_SLOT_CODE" '.planogram.slots[]? | select(.slotCode==$sc) | .slotIndex' "${E2E_RUN_DIR}/raw/ev-bootstrap.response.json" 2>/dev/null | head -n1)"
+  [[ -n "$SLOT_INDEX" && "$SLOT_INDEX" != "null" ]] || SLOT_INDEX=1
+fi
+[[ -n "$TEST_PRODUCT_ID" ]] || { fail_probe "evidence.product_id" "missing from bootstrap"; exit 1; }
+TEST_PRICE_MINOR="${TEST_PRICE_MINOR:-150}"
+
+create_ctx="$(ctx create)"
 order_body="$(jq -nc \
-  --argjson ctx "$(ctx create)" \
+  --argjson ctx "$create_ctx" \
   --arg pid "$TEST_PRODUCT_ID" \
   --arg cur "$TEST_CURRENCY" \
   --argjson slot "$SLOT_INDEX" \
   '{context:$ctx, productId:$pid, currency:$cur, slot:{slotIndex:$slot}}')"
 
-if ! e2e_grpc_call "avf.machine.v1.MachineCommerceService/CreateOrder" "$order_body" "ev-create-order" machine "$(echo "$(ctx create)" | jq -r '.idempotencyKey')"; then
-  fail_probe "evidence.create_order" "CreateOrder failed"
+if ! e2e_grpc_call "avf.machine.v1.MachineCommerceService/CreateOrder" "$order_body" "ev-create-order" machine "$(echo "$create_ctx" | jq -r '.idempotencyKey')"; then
+  echo "CreateOrder failed rc=${E2E_GRPC_LAST_RC:-1} latencyMs=${E2E_GRPC_LAST_LAT:-0}" >&2
+  [[ -f "${E2E_RUN_DIR}/raw/ev-create-order.grpc.log" ]] && tail -n 40 "${E2E_RUN_DIR}/raw/ev-create-order.grpc.log" >&2 || true
+  fail_probe "evidence.create_order" "CreateOrder failed — see ev-create-order.grpc-meta.json"
+  e2e_redact_tokens_in_json_file "${E2E_RUN_DIR}/raw/ev-create-order.response.json" 2>/dev/null || true
   exit 1
 fi
+e2e_redact_tokens_in_json_file "${E2E_RUN_DIR}/raw/ev-create-order.response.json" 2>/dev/null || true
 ORDER_ID="$(jq -r '.orderId // empty' "${E2E_RUN_DIR}/raw/ev-create-order.response.json")"
 [[ -n "$ORDER_ID" ]] || { fail_probe "evidence.order_id" "missing"; exit 1; }
 
-cash_body="$(jq -nc --argjson ctx "$(ctx cash)" --arg oid "$ORDER_ID" '{context:$ctx, orderId:$oid}')"
-e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmCashPayment" "$cash_body" "ev-cash" machine "$(echo "$(ctx cash)" | jq -r '.idempotencyKey')" || fail_probe "evidence.cash" "ConfirmCashPayment"
+cash_ctx="$(ctx cash)"
+cash_body="$(jq -nc --argjson ctx "$cash_ctx" --arg oid "$ORDER_ID" '{context:$ctx, orderId:$oid}')"
+e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmCashPayment" "$cash_body" "ev-cash" machine "$(echo "$cash_ctx" | jq -r '.idempotencyKey')" || fail_probe "evidence.cash" "ConfirmCashPayment"
 
-vstart_body="$(jq -nc --argjson ctx "$(ctx vstart)" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si}')"
-e2e_grpc_call "avf.machine.v1.MachineCommerceService/StartVend" "$vstart_body" "ev-vstart" machine "$(echo "$(ctx vstart)" | jq -r '.idempotencyKey')" || fail_probe "evidence.start_vend" "StartVend"
+vstart_ctx="$(ctx vstart)"
+vstart_body="$(jq -nc --argjson ctx "$vstart_ctx" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si}')"
+e2e_grpc_call "avf.machine.v1.MachineCommerceService/StartVend" "$vstart_body" "ev-vstart" machine "$(echo "$vstart_ctx" | jq -r '.idempotencyKey')" || fail_probe "evidence.start_vend" "StartVend"
 
 # Reject without evidence (expect FailedPrecondition when allowlist active)
-vs_no_ev="$(jq -nc --argjson ctx "$(ctx vsucc-no-ev)" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si}')"
-if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess" "$vs_no_ev" "ev-vsuccess-no-evidence" machine "$(echo "$(ctx vsucc-no-ev)" | jq -r '.idempotencyKey')"; then
+vs_no_ctx="$(ctx vsucc-no-ev)"
+vs_no_ev="$(jq -nc --argjson ctx "$vs_no_ctx" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si}')"
+if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess" "$vs_no_ev" "ev-vsuccess-no-evidence" machine "$(echo "$vs_no_ctx" | jq -r '.idempotencyKey')"; then
   fail_probe "evidence.reject_without" "expected rejection without evidence"
 else
   pass_probe "evidence.reject_without" "ConfirmVendSuccess rejected without evidence"
 fi
 
-# Accept with hermetic-safe fixture evidence
-evidence="$(jq -nc \
-  --arg digest "$DIGEST" \
-  --arg va "$(uuidgen 2>/dev/null || echo 11111111-1111-1111-1111-111111111111)" \
-  --arg corr "$(uuidgen 2>/dev/null || echo 22222222-2222-2222-2222-222222222222)" \
-  --argjson amt "$TEST_PRICE_MINOR" \
-  --arg cur "$TEST_CURRENCY" \
-  '{
-    vendAttemptId:$va, correlationId:$corr,
-    command:{commandId:"cmd-1", txRxDigest:$digest},
-    billFinal:{eventId:"bill-1", amountMinor:$amt, currency:$cur},
-    tcnDispense:{slot:"A1", result:"ok", dropped:true, digest:$digest}
-  }')"
-vs_ev="$(jq -nc --argjson ctx "$(ctx vsucc-ev)" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" --argjson ev "$evidence" '{context:$ctx, orderId:$oid, slotIndex:$si, evidence:$ev}')"
-if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess" "$vs_ev" "ev-vsuccess-with-evidence" machine "$(echo "$(ctx vsucc-ev)" | jq -r '.idempotencyKey')"; then
+# Accept with hermetic-safe fixture evidence (separate flow only if reject passed — order still in_progress)
+evidence="$(evidence_fixture)"
+vs_ev_ctx="$(ctx vsucc-ev)"
+vs_ev="$(jq -nc --argjson ctx "$vs_ev_ctx" --arg oid "$ORDER_ID" --argjson si "$SLOT_INDEX" --argjson ev "$evidence" '{context:$ctx, orderId:$oid, slotIndex:$si, evidence:$ev}')"
+if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess" "$vs_ev" "ev-vsuccess-with-evidence" machine "$(echo "$vs_ev_ctx" | jq -r '.idempotencyKey')"; then
   pass_probe "evidence.accept_with_fixture" "ConfirmVendSuccess with evidence"
 else
   fail_probe "evidence.accept_with_fixture" "expected accept with valid evidence"
 fi
 
-# ReportVendFailure replay (failure path accepts unverified)
-vfail_body="$(jq -nc --argjson ctx "$(ctx vfail)" --arg oid "$(uuidgen 2>/dev/null || echo "$ORDER_ID")" --argjson si "$SLOT_INDEX" '{context:$ctx, orderId:$oid, slotIndex:$si, reason:"smoke"}')"
-pass_probe "evidence.report_failure_smoke" "ReportVendFailure path documented (separate order required for full replay)"
+# Idempotent replay same ConfirmVendSuccess key/payload
+if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess" "$vs_ev" "ev-vsuccess-with-evidence-replay" machine "$(echo "$vs_ev_ctx" | jq -r '.idempotencyKey')"; then
+  pass_probe "evidence.idempotent_replay" "ConfirmVendSuccess replay same key"
+else
+  fail_probe "evidence.idempotent_replay" "expected idempotent replay"
+fi
+
+# ReportVendFailure with fixture evidence on a separate order
+FAIL_ORDER_ID="$(run_order_through_vend_start "vfail" "$TEST_PRODUCT_ID")" || FAIL_ORDER_ID=""
+if [[ -n "$FAIL_ORDER_ID" ]]; then
+  fail_evidence="$(evidence_fixture)"
+  vfail_ctx="$(ctx vfail)"
+  vfail_body="$(jq -nc \
+    --argjson ctx "$vfail_ctx" \
+    --arg oid "$FAIL_ORDER_ID" \
+    --argjson si "$SLOT_INDEX" \
+    --argjson ev "$fail_evidence" \
+    '{context:$ctx, orderId:$oid, slotIndex:$si, reason:"canary-fixture-failure", evidence:$ev}')"
+  if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ReportVendFailure" "$vfail_body" "ev-vfail-with-evidence" machine "$(echo "$vfail_ctx" | jq -r '.idempotencyKey')"; then
+    pass_probe "evidence.report_failure_with_evidence" "ReportVendFailure with fixture evidence"
+    if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ReportVendFailure" "$vfail_body" "ev-vfail-with-evidence-replay" machine "$(echo "$vfail_ctx" | jq -r '.idempotencyKey')"; then
+      pass_probe "evidence.report_failure_idempotent" "ReportVendFailure idempotent replay"
+    else
+      fail_probe "evidence.report_failure_idempotent" "ReportVendFailure replay failed"
+    fi
+  else
+    fail_probe "evidence.report_failure_with_evidence" "ReportVendFailure with evidence failed"
+  fi
+else
+  fail_probe "evidence.report_failure_with_evidence" "could not create separate order for ReportVendFailure"
+fi
 
 jq -nc \
   --arg machine "$TEST_MACHINE_ID" \

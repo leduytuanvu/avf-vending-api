@@ -308,6 +308,7 @@ type Querier interface {
 	GetOperatorSessionByIDForUpdate(ctx context.Context, id uuid.UUID) (MachineOperatorSession, error)
 	GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey pgtype.Text) (Order, error)
+	GetOrderByMachineAndIdempotencyKey(ctx context.Context, arg GetOrderByMachineAndIdempotencyKeyParams) (Order, error)
 	GetOutboxByTopicAndIdempotency(ctx context.Context, arg GetOutboxByTopicAndIdempotencyParams) (OutboxEvent, error)
 	GetOutboxEventByTopicIdempotencyKey(ctx context.Context, arg GetOutboxEventByTopicIdempotencyKeyParams) (OutboxEvent, error)
 	GetOutboxPipelineStats(ctx context.Context) (GetOutboxPipelineStatsRow, error)

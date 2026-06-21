@@ -91,7 +91,10 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 
 	var orderRow db.Order
 	var orderInserted bool
-	existingOrder, err := q.GetOrderByIdempotencyKey(ctx, optionalStringToPgText(in.IdempotencyKey))
+	existingOrder, err := q.GetOrderByMachineAndIdempotencyKey(ctx, db.GetOrderByMachineAndIdempotencyKeyParams{
+		MachineID:      in.MachineID,
+		IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
+	})
 	switch {
 	case err == nil:
 		orderRow = existingOrder
@@ -183,13 +186,16 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 }
 
 // TryReplayCreateOrderWithVend implements commerce.OrderVendWorkflow.
-func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (commerce.CreateOrderVendResult, bool, error) {
+func (s *Store) TryReplayCreateOrderWithVend(ctx context.Context, machineID uuid.UUID, idempotencyKey string) (commerce.CreateOrderVendResult, bool, error) {
 	key := strings.TrimSpace(idempotencyKey)
-	if key == "" {
+	if key == "" || machineID == uuid.Nil {
 		return commerce.CreateOrderVendResult{}, false, nil
 	}
 	q := db.New(s.pool)
-	orderRow, err := q.GetOrderByIdempotencyKey(ctx, optionalStringToPgText(key))
+	orderRow, err := q.GetOrderByMachineAndIdempotencyKey(ctx, db.GetOrderByMachineAndIdempotencyKeyParams{
+		MachineID:      machineID,
+		IdempotencyKey: optionalStringToPgText(key),
+	})
 	if err != nil {
 		if isNoRows(err) {
 			return commerce.CreateOrderVendResult{}, false, nil
