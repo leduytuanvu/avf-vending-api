@@ -56,14 +56,15 @@ fi
 [[ -n "$TEST_PRODUCT_ID" ]] || { fail_probe "evidence.product_id" "missing from bootstrap"; exit 1; }
 TEST_PRICE_MINOR="${TEST_PRICE_MINOR:-150}"
 
+create_ctx="$(ctx create)"
 order_body="$(jq -nc \
-  --argjson ctx "$(ctx create)" \
+  --argjson ctx "$create_ctx" \
   --arg pid "$TEST_PRODUCT_ID" \
   --arg cur "$TEST_CURRENCY" \
   --argjson slot "$SLOT_INDEX" \
   '{context:$ctx, productId:$pid, currency:$cur, slot:{slotIndex:$slot}}')"
 
-if ! e2e_grpc_call "avf.machine.v1.MachineCommerceService/CreateOrder" "$order_body" "ev-create-order" machine "$(echo "$(ctx create)" | jq -r '.idempotencyKey')"; then
+if ! e2e_grpc_call "avf.machine.v1.MachineCommerceService/CreateOrder" "$order_body" "ev-create-order" machine "$(echo "$create_ctx" | jq -r '.idempotencyKey')"; then
   echo "CreateOrder failed rc=${E2E_GRPC_LAST_RC:-1} latencyMs=${E2E_GRPC_LAST_LAT:-0}" >&2
   [[ -f "${E2E_RUN_DIR}/raw/ev-create-order.grpc.log" ]] && tail -n 40 "${E2E_RUN_DIR}/raw/ev-create-order.grpc.log" >&2 || true
   fail_probe "evidence.create_order" "CreateOrder failed — see ev-create-order.grpc-meta.json"
