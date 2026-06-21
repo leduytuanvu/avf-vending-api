@@ -161,7 +161,7 @@ if [[ -n "$FAIL_ORDER_ID" ]]; then
     --arg oid "$FAIL_ORDER_ID" \
     --argjson si "$SLOT_INDEX" \
     --argjson ev "$fail_evidence" \
-    '{context:$ctx, orderId:$oid, slotIndex:$si, reason:"canary-fixture-failure", evidence:$ev}')"
+    '{context:$ctx, orderId:$oid, slotIndex:$si, failureReason:"canary-fixture-failure", evidence:$ev}')"
   if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ReportVendFailure" "$vfail_body" "ev-vfail-with-evidence" machine "$(echo "$vfail_ctx" | jq -r '.idempotencyKey')"; then
     pass_probe "evidence.report_failure_with_evidence" "ReportVendFailure with fixture evidence"
     if e2e_grpc_call "avf.machine.v1.MachineCommerceService/ReportVendFailure" "$vfail_body" "ev-vfail-with-evidence-replay" machine "$(echo "$vfail_ctx" | jq -r '.idempotencyKey')"; then
