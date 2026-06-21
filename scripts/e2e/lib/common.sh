@@ -265,7 +265,8 @@ e2e_grpc_call() {
   esac
   [[ -n "$idem" ]] && args+=(-H "idempotency-key: ${idem}")
   args+=(-d @ -max-time "${GRPC_MAX_TIME:-90}")
-  local start end rc
+  local start end rc started_at ended_at grpc_code
+  started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   start="$(e2e_py -c 'import time; print(int(time.time()*1000))')"
   set +e
   if command -v timeout >/dev/null 2>&1; then
@@ -280,12 +281,20 @@ e2e_grpc_call() {
     rc=$?
   fi
   set -e
+  ended_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   end="$(e2e_py -c 'import time; print(int(time.time()*1000))')"
   local lat=$((end - start))
   E2E_GRPC_LAST_RC=$rc
   E2E_GRPC_LAST_LAT=$lat
   E2E_GRPC_LAST_METHOD="$method"
   E2E_GRPC_LAST_EVIDENCE="$evidence"
+  grpc_code=""
+  if [[ -f "$log" ]]; then
+    grpc_code="$(grep -Eo 'Code: [A-Za-z]+' "$log" 2>/dev/null | tail -n1 | awk '{print $2}')"
+    if [[ -z "$grpc_code" && "$rc" -eq 124 ]]; then
+      grpc_code="DeadlineExceeded"
+    fi
+  fi
   local meta="${E2E_RUN_DIR}/raw/${evidence}.grpc-meta.json"
   jq -nc \
     --arg method "$method" \
@@ -293,11 +302,42 @@ e2e_grpc_call() {
     --argjson rc "$rc" \
     --argjson latencyMs "$lat" \
     --arg maxTime "${GRPC_MAX_TIME:-90}" \
+    --arg grpcCode "${grpc_code}" \
+    --arg startedAt "$started_at" \
+    --arg endedAt "$ended_at" \
     --arg respSize "$(wc -c <"$resp" 2>/dev/null | tr -d ' ')" \
     --arg logTail "$(tail -n 30 "$log" 2>/dev/null | sed 's/"/\\"/g' | tr '\n' ' ')" \
-    '{method:$method, evidence:$evidence, rc:$rc, latencyMs:$latencyMs, maxTimeSec:$maxTime, responseBytes:($respSize|tonumber?), logTail:$logTail}' \
+    '{method:$method, evidence:$evidence, rc:$rc, latencyMs:$latencyMs, maxTimeSec:$maxTime, grpc_code:$grpcCode, started_at:$startedAt, ended_at:$endedAt, responseBytes:($respSize|tonumber?), logTail:$logTail}' \
     >"$meta" 2>/dev/null || true
+  if [[ "$method" == *"CreateOrder"* && "$rc" -ne 0 ]]; then
+    e2e_write_create_order_failure_diag "$evidence" "$meta" || true
+  fi
   return "$rc"
+}
+
+e2e_write_create_order_failure_diag() {
+  local evidence="$1"
+  local meta_path="$2"
+  local out="${E2E_RUN_DIR}/CREATE_ORDER_FAILURE_DIAG.md"
+  {
+    echo "# CreateOrder failure diagnostic"
+    echo ""
+    echo "UTC: **$(date -u +%Y-%m-%dT%H:%M:%SZ)**"
+    echo ""
+    echo "Evidence: \`${evidence}\`"
+    echo ""
+    echo "See \`raw/${evidence}.grpc-meta.json\` and \`raw/${evidence}.grpc.log\`."
+    echo ""
+    echo "## Next server queries (read-only)"
+    echo ""
+    echo '```sql'
+    echo "SELECT machine_id, operation, idempotency_key, status, last_seen_at"
+    echo "FROM machine_idempotency_keys"
+    echo "WHERE machine_id = '019e702c-11c6-7ab0-89c7-5eb32f0b12cb'"
+    echo "  AND operation LIKE '%CreateOrder%'"
+    echo "ORDER BY last_seen_at DESC LIMIT 20;"
+    echo '```'
+  } >"$out"
 }
 
 e2e_machine_is_canary() {

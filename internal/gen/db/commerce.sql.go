@@ -265,6 +265,59 @@ func (q *Queries) GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey p
 	return i, err
 }
 
+const GetOrderByMachineAndIdempotencyKey = `-- name: GetOrderByMachineAndIdempotencyKey :one
+SELECT
+    id,
+    machine_id,
+    status,
+    currency,
+    subtotal_minor,
+    tax_minor,
+    total_minor,
+    idempotency_key,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    fake_bill,
+    fake_board,
+    simulation_metadata,
+    created_at,
+    updated_at
+FROM orders
+WHERE
+    machine_id = $1
+    AND idempotency_key = $2
+`
+
+type GetOrderByMachineAndIdempotencyKeyParams struct {
+	MachineID      uuid.UUID
+	IdempotencyKey pgtype.Text
+}
+
+func (q *Queries) GetOrderByMachineAndIdempotencyKey(ctx context.Context, arg GetOrderByMachineAndIdempotencyKeyParams) (Order, error) {
+	row := q.db.QueryRow(ctx, GetOrderByMachineAndIdempotencyKey, arg.MachineID, arg.IdempotencyKey)
+	var i Order
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.Status,
+		&i.Currency,
+		&i.SubtotalMinor,
+		&i.TaxMinor,
+		&i.TotalMinor,
+		&i.IdempotencyKey,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetPaymentByID = `-- name: GetPaymentByID :one
 SELECT
     id,

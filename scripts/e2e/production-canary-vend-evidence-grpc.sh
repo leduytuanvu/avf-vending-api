@@ -31,8 +31,8 @@ idem_base="canary-evidence-$(date -u +%s)"
 
 ctx() {
   local suffix="$1"
-  jq -nc --arg k "${idem_base}-${suffix}" --arg e "evt-${suffix}" \
-    '{idempotencyKey:$k, clientEventId:$e}'
+  jq -nc --arg k "${idem_base}-${suffix}" --arg e "evt-${suffix}" --arg ts "$(e2e_now_utc)" \
+    '{idempotencyKey:$k, clientEventId:$e, clientCreatedAt:$ts}'
 }
 
 export GRPC_ADDR="${GRPC_ADDR:-machine-api.ldtv.dev:443}"

@@ -20,6 +20,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"go.uber.org/zap"
 )
 
 type machineCommerceServer struct {
@@ -256,6 +257,11 @@ func validateReplayCreateOrder(claims plauth.MachineAccessClaims, productID uuid
 }
 
 func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.CreateOrderRequest) (*machinev1.CreateOrderResponse, error) {
+	trace := newCreateOrderTrace(zap.L())
+	trace.checkpoint(ctx, "create_order.enter")
+	ctx, cancel := withCreateOrderDeadline(ctx)
+	defer cancel()
+
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -263,10 +269,12 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "parse_context.done", zap.String("idempotency_key_hash", idempotencyKeyHash(wctx.IdempotencyKey)))
 	claims, svc, _, err := s.requireCommerce(ctx)
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "require_commerce.done", zap.String("machine_id", claims.MachineID.String()))
 	if mid := strings.TrimSpace(req.GetMachineId()); mid != "" {
 		parsed, perr := uuid.Parse(mid)
 		if perr != nil || parsed != claims.MachineID {
@@ -277,10 +285,12 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if perr != nil || productID == uuid.Nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid product_id")
 	}
+	trace.checkpoint(ctx, "product_parse.done", zap.String("product_id", productID.String()))
 	slotID, cab, sc, slotIdx, err := parseSlotProto(req.GetSlot())
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "slot_parse.done", zap.Int32("slot_index", slotIdxValue(slotIdx)))
 	cur := strings.ToUpper(strings.TrimSpace(req.GetCurrency()))
 	if len(cur) != 3 {
 		return nil, status.Error(codes.InvalidArgument, "currency must be a 3-letter ISO code")
@@ -290,7 +300,9 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "simulation_validate.done")
 
+	trace.checkpoint(ctx, "service_create_order.start")
 	out, err := svc.CreateOrder(ctx, appcommerce.CreateOrderInput{
 		MachineID:          claims.MachineID,
 		ProductID:          productID,
@@ -309,11 +321,13 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
+	trace.checkpoint(ctx, "service_create_order.done", zap.String("order_id", out.Order.ID.String()))
 	if out.Replay {
 		if err := validateReplayCreateOrder(claims, productID, slotID, cab, sc, slotIdx, out); err != nil {
 			return nil, mapCommerceGRPCErr(err)
 		}
 	} else {
+		trace.checkpoint(ctx, "audit.start")
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceOrderCreated, map[string]any{
 			"order_id":        out.Order.ID.String(),
 			"vend_session_id": out.Vend.ID.String(),
@@ -321,6 +335,7 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 			"client_event_id": wctx.ClientEventID,
 			"product_id":      productID.String(),
 		})
+		trace.checkpoint(ctx, "audit.done")
 		productionmetrics.RecordOrderCreated("grpc_machine")
 	}
 
@@ -328,6 +343,7 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if out.SaleLine.SlotConfigID != uuid.Nil {
 		sid = out.SaleLine.SlotConfigID.String()
 	}
+	trace.checkpoint(ctx, "response.build")
 	return &machinev1.CreateOrderResponse{
 		Replay:        out.Replay,
 		OrderId:       out.Order.ID.String(),

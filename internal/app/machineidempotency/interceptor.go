@@ -91,7 +91,8 @@ func UnaryServerInterceptor(ledger *Ledger, cfg InterceptorConfig) grpc.UnarySer
 			return nil, status.Error(codes.Internal, "machine mutation response is not protobuf")
 		}
 		if err := ledger.MarkSucceeded(ctx, claims, begin.Operation, key, rpm, trace(ctx)); err != nil {
-			return nil, err
+			_ = ledger.MarkFailed(ctx, claims, ledgerOp, key, trace(ctx))
+			return nil, status.Error(codes.FailedPrecondition, "order_created_idempotency_finalize_failed")
 		}
 		return resp, nil
 	}
@@ -114,11 +115,14 @@ func shouldRecordGRPCIdempotencyConflict(err error) bool {
 }
 
 func shouldMarkLedgerRowFailed(handlerErr error) bool {
+	if handlerErr == nil {
+		return false
+	}
 	code := status.Code(handlerErr)
 	switch code {
-	case codes.Canceled,
-		codes.Unknown,
-		codes.DeadlineExceeded,
+	case codes.Canceled, codes.DeadlineExceeded:
+		return true
+	case codes.Unknown,
 		codes.Aborted,
 		codes.ResourceExhausted,
 		codes.Internal,
