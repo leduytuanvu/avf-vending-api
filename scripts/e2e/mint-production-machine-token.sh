@@ -35,8 +35,8 @@ mkdir -p "${E2E_RUN_DIR}/raw"
 
 ADMIN_TOK="$(e2e_admin_token)" || { echo "FATAL: admin login failed" >&2; exit 2; }
 
-act_body="${E2E_RUN_DIR}/raw/activation-code-create.json"
-http_code="$(curl -sS -o "$act_body" -w '%{http_code}' -X POST \
+act_body_tmp="${E2E_RUN_DIR}/raw/.activation-code-create.raw.json"
+http_code="$(curl -sS -o "$act_body_tmp" -w '%{http_code}' -X POST \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -H "Authorization: Bearer ${ADMIN_TOK}" \
@@ -44,27 +44,33 @@ http_code="$(curl -sS -o "$act_body" -w '%{http_code}' -X POST \
   -d "$(jq -nc --arg n "mint-token ${E2E_RUN_TS}" '{expiresInMinutes:60,maxUses:1,notes:$n}')" \
   "${BASE_URL%/}/v1/admin/machines/${TEST_MACHINE_ID}/activation-codes")"
 [[ "$http_code" == "201" || "$http_code" == "200" ]] || { echo "FATAL: activation code http=${http_code}" >&2; exit 2; }
-act_code="$(jq -r '.activationCode // empty' "$act_body")"
+act_code="$(jq -r '.activationCode // empty' "$act_body_tmp")"
 [[ -n "$act_code" ]] || { echo "FATAL: activationCode missing" >&2; exit 2; }
+e2e_write_redacted_activation_code_create_summary "$act_body_tmp" "$http_code"
+rm -f "$act_body_tmp"
 
-claim_req="${E2E_RUN_DIR}/raw/activation-claim.request.json"
+claim_req_tmp="${E2E_RUN_DIR}/raw/.activation-claim.request.raw.json"
 jq -nc \
   --arg code "$act_code" \
   --arg sn "mint-token-${E2E_RUN_TS}" \
   '{activationCode:$code,deviceFingerprint:{androidId:$sn,serialNumber:$sn,manufacturer:"avf",model:"e2e-mint",packageName:"dev.avf.e2e",versionName:"1.0.0",versionCode:1}}' \
-  >"$claim_req"
+  >"$claim_req_tmp"
+e2e_write_redacted_activation_claim_request_summary "$claim_req_tmp"
 
 MACHINE_ACCESS_TOKEN=""
-if e2e_grpc_call "avf.machine.v1.MachineActivationService/ClaimActivation" "$(cat "$claim_req")" "activation-claim-mint" none ""; then
+if e2e_grpc_call "avf.machine.v1.MachineActivationService/ClaimActivation" "$(cat "$claim_req_tmp")" "activation-claim-mint" none ""; then
   MACHINE_ACCESS_TOKEN="$(jq -r '.accessToken // .machineToken // empty' "${E2E_RUN_DIR}/raw/activation-claim-mint.response.json")"
+  e2e_redact_tokens_in_json_file "${E2E_RUN_DIR}/raw/activation-claim-mint.response.json"
 else
   http_code="$(curl -sS -o "${E2E_RUN_DIR}/raw/activation-claim-rest.json" -w '%{http_code}' -X POST \
     -H "Content-Type: application/json" \
-    -d @"$claim_req" \
+    -d @"$claim_req_tmp" \
     "${BASE_URL%/}/v1/setup/activation-codes/claim")"
   [[ "$http_code" == "200" ]] || { echo "FATAL: claim failed" >&2; exit 2; }
   MACHINE_ACCESS_TOKEN="$(jq -r '.machineToken // .accessToken // empty' "${E2E_RUN_DIR}/raw/activation-claim-rest.json")"
+  e2e_redact_tokens_in_json_file "${E2E_RUN_DIR}/raw/activation-claim-rest.json"
 fi
+rm -f "$claim_req_tmp"
 [[ -n "$MACHINE_ACCESS_TOKEN" ]] || { echo "FATAL: machine token missing" >&2; exit 2; }
 
 printf 'export TEST_MACHINE_ID=%q\n' "$TEST_MACHINE_ID"
