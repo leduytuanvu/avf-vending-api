@@ -11,10 +11,24 @@ e2e_init_run_dir "${E2E_CANARY_LABEL:-production-canary-vend-evidence-grpc}"
 
 _env_file="${E2E_ENV_FILE:-${ROOT}/tests/e2e/.env.production.destructive.local}"
 if [[ -f "${_env_file}" ]]; then
+  _env_tmp="$(mktemp)"
+  tr -d '\r' <"${_env_file}" >"${_env_tmp}"
   set -a
   # shellcheck disable=SC1090
-  source "${_env_file}"
+  source "${_env_tmp}" || true
   set +a
+  rm -f "${_env_tmp}"
+fi
+CANARY_ENV="${ROOT}/tests/e2e/production/.env.production.e2e.local"
+if [[ -f "$CANARY_ENV" ]]; then
+  _canary_tmp="$(mktemp)"
+  tr -d '\r' <"$CANARY_ENV" >"$_canary_tmp"
+  set -a
+  # shellcheck disable=SC1090
+  source "$_canary_tmp"
+  set +a
+  rm -f "$_canary_tmp"
+  : "${BASE_URL:=${E2E_PROD_BASE_URL:-}}"
 fi
 export BASE_URL="${BASE_URL:-https://api.ldtv.dev}"
 TEST_MACHINE_ID="${TEST_MACHINE_ID:-${E2E_TEST_MACHINE_ID:-019e702c-11c6-7ab0-89c7-5eb32f0b12cb}}"

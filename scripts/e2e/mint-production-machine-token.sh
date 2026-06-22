@@ -10,7 +10,16 @@ source "${E2E_SCRIPT_DIR}/lib/e2e_common.sh"
 source "${ROOT}/scripts/e2e/lib/common.sh"
 
 CANARY_ENV="${ROOT}/tests/e2e/production/.env.production.e2e.local"
-load_env "${E2E_ENV_FILE:-${ROOT}/tests/e2e/.env.production.destructive.local}"
+_env_file="${E2E_ENV_FILE:-${ROOT}/tests/e2e/.env.production.destructive.local}"
+if [[ -f "${_env_file}" ]]; then
+  _env_tmp="$(mktemp)"
+  tr -d '\r' <"${_env_file}" >"${_env_tmp}"
+  set -a
+  # shellcheck disable=SC1090
+  source "${_env_tmp}" || true
+  set +a
+  rm -f "${_env_tmp}"
+fi
 if [[ -f "$CANARY_ENV" ]]; then
   _env_tmp="$(mktemp)"
   tr -d '\r' <"$CANARY_ENV" >"$_env_tmp"
