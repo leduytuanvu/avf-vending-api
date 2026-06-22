@@ -2238,10 +2238,22 @@ jobs:
           apply_mqtt_enterprise_remote "${APP_NODE_A_HOST}"
           apply_cash_only_payment_remote "${APP_NODE_A_HOST}"
           apply_clear_stale_app_git_sha_remote "${APP_NODE_A_HOST}"
+          apply_vend_evidence_allowlist_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE_MACHINE_IDS=${COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE_MACHINE_IDS:-019e702c-11c6-7ab0-89c7-5eb32f0b12cb}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_vend_evidence_allowlist_app_node_env.sh" "${env_path}"
+          }
+          apply_vend_evidence_allowlist_remote "${APP_NODE_A_HOST}"
           if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
             apply_mqtt_enterprise_remote "${APP_NODE_B_HOST}"
             apply_cash_only_payment_remote "${APP_NODE_B_HOST}"
             apply_clear_stale_app_git_sha_remote "${APP_NODE_B_HOST}"
+            apply_vend_evidence_allowlist_remote "${APP_NODE_B_HOST}"
           fi
 
       - name: Apply Cloudinary env on app nodes
