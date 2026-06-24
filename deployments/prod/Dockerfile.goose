@@ -1,5 +1,6 @@
 # One-shot migrations: goose CLI on Alpine (matches prod migrate service).
 # Base image digests: multi-arch index (library/golang, library/alpine on Docker Hub). Bump digests when changing GO_VERSION / Alpine tag.
+# XNET_VERSION / XCRYPTO_VERSION pin patched golang.org/x deps so the goose binary clears Trivy HIGH/CRITICAL policy; bump when newer CVEs are flagged.
 ARG GO_VERSION=1.25.11
 ARG GOOSE_VERSION=v3.27.1
 ARG PGX_VERSION=v5.9.2
@@ -9,11 +10,15 @@ FROM golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af01
 ARG GOOSE_VERSION
 ARG PGX_VERSION
 ARG GRPC_VERSION
+ARG XNET_VERSION=v0.56.0
+ARG XCRYPTO_VERSION=v0.53.0
 WORKDIR /src
 RUN apk add --no-cache git \
     && git clone --branch "${GOOSE_VERSION}" --depth 1 https://github.com/pressly/goose.git . \
     && go mod edit -require=github.com/jackc/pgx/v5@"${PGX_VERSION}" \
     && go mod edit -require=google.golang.org/grpc@"${GRPC_VERSION}" \
+    && go mod edit -require=golang.org/x/net@"${XNET_VERSION}" \
+    && go mod edit -require=golang.org/x/crypto@"${XCRYPTO_VERSION}" \
     && go mod tidy \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/goose ./cmd/goose
 

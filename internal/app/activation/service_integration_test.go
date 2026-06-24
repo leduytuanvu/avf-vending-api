@@ -87,10 +87,12 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-1-"+uuid.NewString
 	out1, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out1.MachineID)
+	require.NotEmpty(t, out1.RefreshToken)
 
 	out2, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out2.MachineID)
+	require.NotEmpty(t, out2.RefreshToken)
 }
 
 func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {

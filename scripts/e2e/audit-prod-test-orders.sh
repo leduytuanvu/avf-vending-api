@@ -9,10 +9,19 @@ E2E_SCRIPT_DIR="${ROOT}/tests/e2e"
 source "${E2E_SCRIPT_DIR}/lib/e2e_common.sh"
 
 e2e_require_cmd curl jq
-RUN_DIR="${E2E_RUN_DIR:-${1:-}}"
+RUN_DIR=""
+ORDERS_FILE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --run-dir) RUN_DIR="$2"; shift 2 ;;
+    --orders-file) ORDERS_FILE="$2"; shift 2 ;;
+    *) RUN_DIR="${RUN_DIR:-$1}"; shift ;;
+  esac
+done
+RUN_DIR="${E2E_RUN_DIR:-${RUN_DIR:-}}"
 [[ -n "$RUN_DIR" ]] || {
   E2E_RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
-  RUN_DIR="${ROOT}/../reports/20260621T211500Z/reconciliation"
+  RUN_DIR="${ROOT}/../reports/20260622T034328Z/reconciliation"
 }
 export E2E_RUN_DIR="$RUN_DIR"
 export E2E_RUN_TS="${E2E_RUN_TS:-$(date -u +%Y%m%dT%H%M%SZ)}"
@@ -21,11 +30,20 @@ mkdir -p "${E2E_RUN_DIR}/raw"
 load_env "${E2E_ENV_FILE:-${ROOT}/tests/e2e/.env.production.destructive.local}"
 export BASE_URL="${BASE_URL:-https://api.ldtv.dev}"
 
-ORDERS=(
-  "019eebf5-08af-7874-9a70-bfc07a6a1c02:gate4-probe"
-  "019eec00-3516-76e8-9ccb-682faed7f078:canary-a"
-  "019eec05-4ae1-7a99-a75a-488cd1e02130:canary-b"
-)
+if [[ -n "$ORDERS_FILE" && -f "$ORDERS_FILE" ]]; then
+  mapfile -t ORDERS <"$ORDERS_FILE"
+else
+  ORDERS=(
+    "019eebf5-08af-7874-9a70-bfc07a6a1c02:gate4-probe"
+    "019eec2f-022d-7091-9112-f5f2950fc190:gate4-probe-postdeploy"
+    "019eec00-3516-76e8-9ccb-682faed7f078:canary-a"
+    "019eec05-4ae1-7a99-a75a-488cd1e02130:canary-b"
+    "019eec4e-b01d-72ba-b2a6-7e5d822a2142:gate4-fail-canary"
+    "019eed4a-f14e-7b49-8ebf-2cd4aa5c488d:gate4-final-reject"
+    "019eed4b-1d67-7d7b-b124-af55882df4a0:gate4-final-success"
+    "019eed4b-545b-7077-9cb9-76c7e02dfc57:gate4-final-failure"
+  )
+fi
 
 ADMIN_TOK="$(e2e_admin_token)" || {
   echo "FATAL: admin auth failed (check ADMIN_EMAIL/ADMIN_PASSWORD or ADMIN_TOKEN)" >&2
@@ -75,8 +93,16 @@ for entry in "${ORDERS[@]}"; do
 done
 
 # Machine inventory snapshot (single read for slot A1 context)
-e2e_curl_get "machine-inventory" "${BASE_URL%/}/v1/admin/machines/019e702c-11c6-7ab0-89c7-5eb32f0b12cb/inventory" "$ADMIN_TOK" >/dev/null || true
-[[ -f "${E2E_RUN_DIR}/raw/machine-inventory.body" ]] && \
-  redact_json "${E2E_RUN_DIR}/raw/machine-inventory.body" "${E2E_RUN_DIR}/raw/machine-inventory.json"
+inv_url="${BASE_URL%/}/v1/admin/machines/019e702c-11c6-7ab0-89c7-5eb32f0b12cb/inventory"
+inv_body="${E2E_RUN_DIR}/raw/machine-inventory.body"
+inv_code="$(curl -sS -o "$inv_body" -w '%{http_code}' \
+  -H "Authorization: Bearer ${ADMIN_TOK}" \
+  -H "Accept: application/json" \
+  --connect-timeout 8 --max-time 20 \
+  "$inv_url")"
+jq -nc --arg path "machine-inventory" --argjson code "${inv_code:-0}" \
+  '{endpoint:"machine-inventory", http_code:$code}' \
+  >>"${E2E_RUN_DIR}/audit-index.ndjson"
+[[ -f "$inv_body" ]] && redact_json "$inv_body" "${E2E_RUN_DIR}/raw/machine-inventory.json"
 
 echo "AUDIT_DONE run_dir=${E2E_RUN_DIR}"

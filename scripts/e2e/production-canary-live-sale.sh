@@ -245,7 +245,7 @@ if [[ -z "$inv_before_qty" || "$inv_before_qty" == "null" ]]; then
 fi
 pass_probe "guard.inventory_present" "slot=${TEST_SLOT_CODE} qty_before=${inv_before_qty}"
 
-plano_body="$(jq -nc --argjson meta "$meta" '{meta:$meta}')"
+plano_body="$(jq -nc --arg mid "${TEST_MACHINE_ID}" '{machineId:$mid}')"
 if ! e2e_grpc_call "avf.machine.v1.MachineInventoryService/GetPlanogram" "$plano_body" "preflight-planogram" machine ""; then
   abort_guard "GetPlanogram failed before sale"
 fi
@@ -419,7 +419,7 @@ tel_idem="e2e-canary-telemetry-${E2E_RUN_TS}"
 tel_ts="$(e2e_now_utc)"
 tel_ctx="$(jq -nc --arg ik "$tel_idem" --arg ce "$tel_idem-ce" --arg ts "$tel_ts" '{idempotencyKey:$ik,clientEventId:$ce,clientCreatedAt:$ts}')"
 tel_body="$(jq -nc --argjson ctx "$tel_ctx" --argjson meta "$meta" --arg eid "$tel_idem" --arg ts "$tel_ts" --arg oid "${ORDER_ID:-}" \
-  '{context:$ctx, meta:$meta, events:[{eventId:$eid,eventType:"production_e2e_canary_sale",occurredAt:$ts,payload:{order_id:$oid}}]}')"
+  '{context:$ctx, meta:$meta, events:[{eventId:$eid,eventType:"production_e2e_canary_sale",occurredAt:$ts,attributes:{order_id:$oid}}]}')"
 if e2e_grpc_call "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch" "$tel_body" "sale-telemetry" machine "$tel_idem"; then
   pass_probe "reconcile.telemetry_event" "production_e2e_canary_sale accepted"
 else
