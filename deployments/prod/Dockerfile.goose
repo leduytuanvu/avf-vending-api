@@ -6,7 +6,7 @@ ARG GOOSE_VERSION=v3.27.1
 ARG PGX_VERSION=v5.9.2
 ARG GRPC_VERSION=v1.80.0
 
-FROM golang:1.25.11-alpine@sha256:8d95af53d0d58e1759ddb4028285d9b1239067e4fbf4f544618cad0f60fbc354 AS build
+FROM golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648 AS build
 ARG GOOSE_VERSION
 ARG PGX_VERSION
 ARG GRPC_VERSION
@@ -22,7 +22,7 @@ RUN apk add --no-cache git \
     && go mod tidy \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/goose ./cmd/goose
 
-FROM alpine:3.24@sha256:a2d49ea686c2adfe3c992e47dc3b5e7fa6e6b5055609400dc2acaeb241c829f4
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates \
     && apk upgrade --no-cache libcrypto3 libssl3 openssl
 COPY --from=build /out/goose /usr/local/bin/goose
