@@ -334,18 +334,19 @@ func (s *Service) ensureActiveMachineCredential(ctx context.Context, q *db.Queri
 	})
 }
 
-// provisionMachineRefreshSession ensures there is an active refresh session; returns plaintext refresh (empty on idempotent replay when a session already exists), expiry, and session id for JWT binding.
+// provisionMachineRefreshSession ensures the machine always receives a usable refresh session on
+// activation/claim/reclaim. Any pre-existing active sessions are revoked, then a fresh refresh token is
+// minted and persisted. Returns the non-empty plaintext refresh token, its expiry, and the session id for
+// JWT binding. It never returns an access-only (blank refresh) result for an eligible machine.
 func (s *Service) provisionMachineRefreshSession(ctx context.Context, q *db.Queries, machineID, scopeID uuid.UUID, m db.Machine, cred db.MachineCredential) (plainRefresh string, refreshExp time.Time, sessionID uuid.UUID, err error) {
 	has, err := q.HasActiveMachineSession(ctx, machineID)
 	if err != nil {
 		return "", time.Time{}, uuid.Nil, err
 	}
 	if has {
-		sess, err := q.GetActiveMachineSessionForMachine(ctx, machineID)
-		if err != nil {
+		if err := q.RevokeAllMachineSessionsForMachine(ctx, machineID); err != nil {
 			return "", time.Time{}, uuid.Nil, err
 		}
-		return "", time.Time{}, sess.ID, nil
 	}
 	raw, hash, err := plauth.NewRefreshToken()
 	if err != nil {
