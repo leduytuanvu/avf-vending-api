@@ -10,6 +10,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appauth "github.com/avf/avf-vending-api/internal/app/auth"
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -61,7 +62,7 @@ func registerAdminAuthUserRoutes(r chi.Router, svc *appauth.Service, writeRL fun
 
 func getAdminAuthUsers(svc *appauth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		limit, offset, err := parseAdminLimitOffset(r)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", err.Error())
@@ -78,7 +79,7 @@ func getAdminAuthUsers(svc *appauth.Service) http.HandlerFunc {
 
 func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -110,7 +111,7 @@ func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 
 func getAdminAuthUserByID(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		id, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, idParam)))
 		if err != nil || id == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
@@ -127,7 +128,7 @@ func getAdminAuthUserByID(svc *appauth.Service, idParam string) http.HandlerFunc
 
 func patchAdminAuthUser(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -161,7 +162,7 @@ func patchAdminAuthUser(svc *appauth.Service, idParam string) http.HandlerFunc {
 
 func patchAdminAuthUserStatus(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -191,7 +192,7 @@ func patchAdminAuthUserStatus(svc *appauth.Service, idParam string) http.Handler
 
 func putAdminAuthUserRoles(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -220,7 +221,7 @@ func putAdminAuthUserRoles(svc *appauth.Service, idParam string) http.HandlerFun
 
 func deleteAdminAuthUserRole(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -248,7 +249,7 @@ func deleteAdminAuthUserRole(svc *appauth.Service, idParam string) http.HandlerF
 
 func postAdminAuthUserActivate(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -270,7 +271,7 @@ func postAdminAuthUserActivate(svc *appauth.Service, idParam string) http.Handle
 
 func postAdminAuthUserDeactivate(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -292,7 +293,7 @@ func postAdminAuthUserDeactivate(svc *appauth.Service, idParam string) http.Hand
 
 func postAdminAuthUserResetPassword(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -319,7 +320,7 @@ func postAdminAuthUserResetPassword(svc *appauth.Service, idParam string) http.H
 
 func postAdminAuthUserRevokeSessions(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		actorID, ok := principalAccountID(r)
 		if !ok {
 			writeAPIError(w, r.Context(), http.StatusUnauthorized, "unauthenticated", auth.ErrUnauthenticated.Error())
@@ -340,7 +341,7 @@ func postAdminAuthUserRevokeSessions(svc *appauth.Service, idParam string) http.
 
 func getAdminAuthUserSessions(svc *appauth.Service, idParam string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		scopeID := uuid.Nil
+		scopeID := adminAuthCompanyScope()
 		uid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, idParam)))
 		if err != nil || uid == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_account_id", "invalid user id")
@@ -353,6 +354,11 @@ func getAdminAuthUserSessions(svc *appauth.Service, idParam string) http.Handler
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"sessions": out})
 	}
+}
+
+// adminAuthCompanyScope is the singleton company anchor for platform_auth_accounts admin APIs.
+func adminAuthCompanyScope() uuid.UUID {
+	return org.DefaultCompanyID
 }
 
 func principalAccountID(r *http.Request) (uuid.UUID, bool) {
