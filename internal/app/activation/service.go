@@ -291,6 +291,26 @@ func (s *Service) refreshTTL() time.Duration {
 	return 720 * time.Hour
 }
 
+func (s *Service) refreshGracePeriod() time.Duration {
+	return 60 * time.Second
+}
+
+func sessionAllowsRefresh(sess db.MachineSession, now time.Time, grace time.Duration) (graceReplay bool, ok bool) {
+	if !sess.ExpiresAt.After(now) {
+		return false, false
+	}
+	if sess.Status == "active" && !sess.RevokedAt.Valid {
+		return false, true
+	}
+	if sess.Status == "revoked" && sess.RevokedAt.Valid {
+		revokedAt := sess.RevokedAt.Time
+		if now.Sub(revokedAt) <= grace {
+			return true, true
+		}
+	}
+	return false, false
+}
+
 func machineEligibleForRuntime(status string) bool {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "maintenance", "retired", "decommissioned", "suspended", "compromised":
@@ -640,17 +660,35 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 		}
 		return ClaimResult{}, err
 	}
-	if sess.Status != "active" || sess.RevokedAt.Valid {
-		s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_revoked")
-		return ClaimResult{}, ErrRefreshInvalid
-	}
 	now := time.Now().UTC()
-	if !sess.ExpiresAt.After(now) {
-		s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_expired")
+	grace := s.refreshGracePeriod()
+	graceReplay, sessionOK := sessionAllowsRefresh(sess, now, grace)
+	if !sessionOK {
+		if sess.Status != "active" || sess.RevokedAt.Valid {
+			s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_revoked")
+		} else {
+			s.recordRefreshFailureAudit(ctx, uuid.Nil, sess.MachineID, "session_expired")
+		}
 		return ClaimResult{}, ErrRefreshInvalid
 	}
-	if err := qtx.MarkMachineSessionUsedByID(ctx, sess.ID); err != nil {
-		return ClaimResult{}, err
+	if !graceReplay {
+		if err := qtx.MarkMachineSessionUsedByID(ctx, sess.ID); err != nil {
+			return ClaimResult{}, err
+		}
+	} else if s.audit != nil {
+		md, _ := json.Marshal(map[string]any{"session_id": sess.ID.String(), "grace_replay": true})
+		md = compliance.SanitizeJSONBytes(md)
+		mid := sess.MachineID
+		actorStr := mid.String()
+		_ = s.audit.Record(ctx, compliance.EnterpriseAuditRecord{
+			ActorType:    compliance.ActorMachine,
+			ActorID:      &actorStr,
+			Action:       compliance.ActionMachineTokenRefreshed,
+			ResourceType: "machine",
+			ResourceID:   &actorStr,
+			MachineID:    &mid,
+			Metadata:     md,
+		})
 	}
 	m, err := qtx.GetMachineByIDForUpdate(ctx, sess.MachineID)
 	if err != nil {
@@ -691,7 +729,11 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 		s.recordRefreshFailureAudit(ctx, uuid.Nil, m.ID, "credential_id_mismatch")
 		return ClaimResult{}, ErrRefreshInvalid
 	}
-	if err := qtx.RevokeMachineSessionByID(ctx, sess.ID); err != nil {
+	if graceReplay {
+		if err := qtx.RevokeAllMachineSessionsForMachine(ctx, sess.MachineID); err != nil {
+			return ClaimResult{}, err
+		}
+	} else if err := qtx.RevokeMachineSessionByID(ctx, sess.ID); err != nil {
 		return ClaimResult{}, err
 	}
 	newPlain, newHash, err := plauth.NewRefreshToken()
