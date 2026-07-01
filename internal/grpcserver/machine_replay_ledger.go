@@ -80,6 +80,10 @@ func unaryMachineReplayInterceptor(ledger *MachineReplayLedger) grpc.UnaryServer
 // clients observe consistent retry semantics (first completion stores replay=false).
 func decorateMachineLedgerReplayResponse(resp proto.Message) {
 	switch m := resp.(type) {
+	case *machinev1.CreateQuoteResponse:
+		m.Replay = true
+	case *machinev1.CreateOrderFromQuoteResponse:
+		m.Replay = true
 	case *machinev1.CreateOrderResponse:
 		m.Replay = true
 	case *machinev1.CreatePaymentSessionResponse:
@@ -136,7 +140,9 @@ func decorateMachineLedgerReplayResponse(resp proto.Message) {
 
 func isMachineIdempotentMutation(fullMethod string) bool {
 	switch fullMethod {
-	case machinev1.MachineCommerceService_CreateOrder_FullMethodName,
+	case machinev1.MachineCommerceService_CreateQuote_FullMethodName,
+		machinev1.MachineCommerceService_CreateOrderFromQuote_FullMethodName,
+		machinev1.MachineCommerceService_CreateOrder_FullMethodName,
 		machinev1.MachineCommerceService_CreatePaymentSession_FullMethodName,
 		machinev1.MachineCommerceService_AttachPaymentResult_FullMethodName,
 		machinev1.MachineCommerceService_ConfirmCashPayment_FullMethodName,
@@ -185,6 +191,10 @@ func isMachineIdempotentMutation(fullMethod string) bool {
 func newMachineMutationResponse(fullMethod string) proto.Message {
 	canon := canonicalMachineMutationOperation(fullMethod)
 	switch canon {
+	case machinev1.MachineCommerceService_CreateQuote_FullMethodName:
+		return &machinev1.CreateQuoteResponse{}
+	case machinev1.MachineCommerceService_CreateOrderFromQuote_FullMethodName:
+		return &machinev1.CreateOrderFromQuoteResponse{}
 	case machinev1.MachineCommerceService_CreateOrder_FullMethodName:
 		return &machinev1.CreateOrderResponse{}
 	case machinev1.MachineCommerceService_CreatePaymentSession_FullMethodName:

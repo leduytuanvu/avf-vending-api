@@ -52,6 +52,10 @@ func (m *mpayLife) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uui
 	return domaincommerce.VendSession{}, ErrNotFound
 }
 
+func (m *mpayLife) GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error) {
+	return domaincommerce.VendSession{}, ErrNotFound
+}
+
 func (m *mpayLife) UpdateVendSessionState(ctx context.Context, p UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, errMachinePayNotImpl
 }

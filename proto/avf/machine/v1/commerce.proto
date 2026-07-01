@@ -11,6 +11,8 @@ option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machine
 // Payment provider webhooks remain on REST; QR flows poll GetOrder / GetOrderStatus after PSP updates payment.
 service MachineCommerceService {
   rpc CreateOrder(CreateOrderRequest) returns (CreateOrderResponse);
+  rpc CreateQuote(CreateQuoteRequest) returns (CreateQuoteResponse);
+  rpc CreateOrderFromQuote(CreateOrderFromQuoteRequest) returns (CreateOrderFromQuoteResponse);
   rpc CreatePaymentSession(CreatePaymentSessionRequest) returns (CreatePaymentSessionResponse);
   // AttachPaymentResult is an alias of CreatePaymentSession (spec-native name).
   rpc AttachPaymentResult(CreatePaymentSessionRequest) returns (CreatePaymentSessionResponse);
@@ -104,6 +106,77 @@ message CreateOrderResponse {
   int64 total_minor = 12;
   int64 price_minor = 13;
   MachineResponseMeta meta = 14;
+}
+
+message QuoteLineInput {
+  string product_id = 1;
+  SlotSelection slot = 2;
+  int32 quantity = 3;
+}
+
+message CreateQuoteRequest {
+  IdempotencyContext context = 1;
+  optional string machine_id = 2;
+  string currency = 3;
+  string payment_method = 4;
+  repeated QuoteLineInput lines = 5;
+  MachineRequestMeta meta = 6;
+}
+
+message QuoteLineResponse {
+  int32 line_sequence = 1;
+  string product_id = 2;
+  string cabinet_code = 3;
+  string slot_code = 4;
+  int32 slot_index = 5;
+  int32 quantity = 6;
+  int64 unit_price_minor = 7;
+  int64 line_subtotal_minor = 8;
+  string pricing_fingerprint = 9;
+}
+
+message CreateQuoteResponse {
+  bool replay = 1;
+  string quote_id = 2;
+  string currency = 3;
+  string payment_method = 4;
+  int64 subtotal_minor = 5;
+  int64 discount_minor = 6;
+  int64 payable_minor = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  repeated QuoteLineResponse lines = 9;
+  MachineResponseMeta meta = 10;
+}
+
+message CreateOrderFromQuoteRequest {
+  IdempotencyContext context = 1;
+  optional string machine_id = 2;
+  string quote_id = 3;
+  string payment_method = 4;
+  MachineRequestMeta meta = 5;
+  optional SimulationContext simulation = 6;
+}
+
+message OrderVendLineResponse {
+  string vend_session_id = 1;
+  int32 line_sequence = 2;
+  int32 slot_index = 3;
+  string product_id = 4;
+  string cabinet_code = 5;
+  string slot_code = 6;
+  string vend_state = 7;
+}
+
+message CreateOrderFromQuoteResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string order_status = 3;
+  string currency = 4;
+  int64 subtotal_minor = 5;
+  int64 tax_minor = 6;
+  int64 total_minor = 7;
+  repeated OrderVendLineResponse lines = 8;
+  MachineResponseMeta meta = 9;
 }
 
 message CreatePaymentSessionRequest {
@@ -215,6 +288,8 @@ message StartVendRequest {
   IdempotencyContext context = 1;
   string order_id = 2;
   int32 slot_index = 3;
+  // When set, targets vend session by line_sequence (multi-cart). Falls back to slot_index when zero.
+  int32 line_sequence = 4;
 }
 
 message StartVendResponse {

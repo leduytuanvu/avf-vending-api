@@ -38,6 +38,10 @@ func (stubLifecycle) UpdateOrderStatus(ctx context.Context, orderID, companyID u
 func (stubLifecycle) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.UUID, slotIndex int32) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, ErrNotFound
 }
+
+func (stubLifecycle) GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error) {
+	return stubLifecycle{}.GetVendSessionByOrderAndSlot(ctx, orderID, lineSequence)
+}
 func (stubLifecycle) UpdateVendSessionState(ctx context.Context, p UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, errors.New("not implemented")
 }

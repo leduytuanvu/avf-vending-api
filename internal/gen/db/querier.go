@@ -278,6 +278,8 @@ type Querier interface {
 	GetActiveOperatorSessionByMachineID(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error)
 	GetActiveOperatorSessionByMachineIDForUpdate(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error)
 	GetCashCollectionByIDForOrgMachine(ctx context.Context, arg GetCashCollectionByIDForOrgMachineParams) (CashCollection, error)
+	GetCheckoutQuoteByID(ctx context.Context, id uuid.UUID) (CheckoutQuote, error)
+	GetCheckoutQuoteByMachineAndIdempotencyKey(ctx context.Context, arg GetCheckoutQuoteByMachineAndIdempotencyKeyParams) (CheckoutQuote, error)
 	GetCommandLedgerByID(ctx context.Context, id uuid.UUID) (CommandLedger, error)
 	GetCommandLedgerByMachineIdempotency(ctx context.Context, arg GetCommandLedgerByMachineIdempotencyParams) (CommandLedger, error)
 	GetCommandLedgerByMachineSequence(ctx context.Context, arg GetCommandLedgerByMachineSequenceParams) (CommandLedger, error)
@@ -326,12 +328,15 @@ type Querier interface {
 	GetSucceededMachineActivationClaimByCodeAndFingerprint(ctx context.Context, arg GetSucceededMachineActivationClaimByCodeAndFingerprintParams) (MachineActivationClaim, error)
 	GetTechnicianByID(ctx context.Context, id uuid.UUID) (Technician, error)
 	GetVendHardwareEvidenceByDedupeKey(ctx context.Context, dedupeKey string) (VendHardwareEvidence, error)
+	GetVendSessionByOrderAndLineSequence(ctx context.Context, arg GetVendSessionByOrderAndLineSequenceParams) (GetVendSessionByOrderAndLineSequenceRow, error)
 	GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendSessionByOrderAndSlotParams) (GetVendSessionByOrderAndSlotRow, error)
 	HasActiveMachineRuntimeRefreshToken(ctx context.Context, machineID uuid.UUID) (bool, error)
 	HasActiveMachineSession(ctx context.Context, machineID uuid.UUID) (bool, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
 	InsertCashCollection(ctx context.Context, arg InsertCashCollectionParams) (CashCollection, error)
 	InsertCashReconciliation(ctx context.Context, arg InsertCashReconciliationParams) (CashReconciliation, error)
+	InsertCheckoutQuote(ctx context.Context, arg InsertCheckoutQuoteParams) (CheckoutQuote, error)
+	InsertCheckoutQuoteLine(ctx context.Context, arg InsertCheckoutQuoteLineParams) (CheckoutQuoteLine, error)
 	InsertCommandLedgerEntry(ctx context.Context, arg InsertCommandLedgerEntryParams) (CommandLedger, error)
 	InsertDeviceCommandReceipt(ctx context.Context, arg InsertDeviceCommandReceiptParams) (DeviceCommandReceipt, error)
 	InsertDeviceTelemetryEvent(ctx context.Context, arg InsertDeviceTelemetryEventParams) (DeviceTelemetryEvent, error)
@@ -371,6 +376,7 @@ type Querier interface {
 	InsertTechnicianMachineAssignment(ctx context.Context, arg InsertTechnicianMachineAssignmentParams) (TechnicianMachineAssignment, error)
 	InsertVendHardwareEvidence(ctx context.Context, arg InsertVendHardwareEvidenceParams) (VendHardwareEvidence, error)
 	InsertVendSession(ctx context.Context, arg InsertVendSessionParams) (InsertVendSessionRow, error)
+	InsertVendSessionWithLineSequence(ctx context.Context, arg InsertVendSessionWithLineSequenceParams) (InsertVendSessionWithLineSequenceRow, error)
 	InventoryAdminAggregateMachineInventory(ctx context.Context, machineID uuid.UUID) ([]InventoryAdminAggregateMachineInventoryRow, error)
 	InventoryAdminCountInventoryEventsByIdempotencyKey(ctx context.Context, arg InventoryAdminCountInventoryEventsByIdempotencyKeyParams) (int64, error)
 	InventoryAdminGetInventoryIdempotencyPayloadHash(ctx context.Context, arg InventoryAdminGetInventoryIdempotencyPayloadHashParams) (string, error)
@@ -391,6 +397,7 @@ type Querier interface {
 	ListAuditLogsForActorInCompany(ctx context.Context, arg ListAuditLogsForActorInCompanyParams) ([]ListAuditLogsForActorInCompanyRow, error)
 	ListAuditLogsForCompany(ctx context.Context, limit int32) ([]ListAuditLogsForCompanyRow, error)
 	ListCashCollectionsForMachine(ctx context.Context, arg ListCashCollectionsForMachineParams) ([]CashCollection, error)
+	ListCheckoutQuoteLines(ctx context.Context, quoteID uuid.UUID) ([]CheckoutQuoteLine, error)
 	ListDeviceCommandReceiptsByMachine(ctx context.Context, arg ListDeviceCommandReceiptsByMachineParams) ([]DeviceCommandReceipt, error)
 	ListFinanceDailyCloses(ctx context.Context, arg ListFinanceDailyClosesParams) ([]FinanceDailyClose, error)
 	ListMachineActionAttributionsByMachineAndResource(ctx context.Context, arg ListMachineActionAttributionsByMachineAndResourceParams) ([]MachineActionAttribution, error)
@@ -437,6 +444,7 @@ type Querier interface {
 	ListRolloutPendingTargets(ctx context.Context, arg ListRolloutPendingTargetsParams) ([]RolloutTarget, error)
 	ListRolloutTargetsByCampaign(ctx context.Context, campaignID uuid.UUID) ([]RolloutTarget, error)
 	ListStaleCommandLedgerEntries(ctx context.Context, arg ListStaleCommandLedgerEntriesParams) ([]ListStaleCommandLedgerEntriesRow, error)
+	ListVendSessionsByOrder(ctx context.Context, orderID uuid.UUID) ([]ListVendSessionsByOrderRow, error)
 	ListVendSessionsStuckForReconciliation(ctx context.Context, arg ListVendSessionsStuckForReconciliationParams) ([]ListVendSessionsStuckForReconciliationRow, error)
 	LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID) (Order, error)
 	LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error)
@@ -450,6 +458,7 @@ type Querier interface {
 	MachineConfigVersionsGetByID(ctx context.Context, id uuid.UUID) (MachineConfigVersion, error)
 	// Machine config versions / rollouts.
 	MachineConfigVersionsInsert(ctx context.Context, arg MachineConfigVersionsInsertParams) (MachineConfigVersion, error)
+	MarkCheckoutQuoteConsumed(ctx context.Context, id uuid.UUID) (CheckoutQuote, error)
 	MarkMachineCredentialRotatedByVersion(ctx context.Context, arg MarkMachineCredentialRotatedByVersionParams) error
 	MarkMachineCredentialUsed(ctx context.Context, id uuid.UUID) error
 	MarkMachineCredentialsCompromised(ctx context.Context, machineID uuid.UUID) error
@@ -660,6 +669,7 @@ type Querier interface {
 	UpdateRolloutCampaignStatusOnly(ctx context.Context, arg UpdateRolloutCampaignStatusOnlyParams) (RolloutCampaign, error)
 	UpdateRolloutCampaignStrategy(ctx context.Context, arg UpdateRolloutCampaignStrategyParams) error
 	UpdateRolloutTargetDispatch(ctx context.Context, arg UpdateRolloutTargetDispatchParams) (RolloutTarget, error)
+	UpdateVendSessionStateByOrderLineSequence(ctx context.Context, arg UpdateVendSessionStateByOrderLineSequenceParams) (UpdateVendSessionStateByOrderLineSequenceRow, error)
 	UpdateVendSessionStateByOrderSlot(ctx context.Context, arg UpdateVendSessionStateByOrderSlotParams) (UpdateVendSessionStateByOrderSlotRow, error)
 	// Upsert commerce reconciliation cases (payment/vend/refund operator queue).
 	// Fixed positional params must precede sqlc.narg expansion ($1/$2 before nargs become $3+).

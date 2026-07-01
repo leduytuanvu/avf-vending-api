@@ -234,7 +234,7 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 	if err != nil {
 		return domaincommerce.VendSession{}, err
 	}
-	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, in.OrderID, in.SlotIndex)
+	v, err := s.lookupVendSession(ctx, in.OrderID, in.SlotIndex, in.LineSequence)
 	if err != nil {
 		return domaincommerce.VendSession{}, err
 	}
@@ -260,6 +260,7 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 	updated, err := s.life.UpdateVendSessionState(ctx, UpdateVendSessionParams{
 		OrderID:       in.OrderID,
 		SlotIndex:     in.SlotIndex,
+		LineSequence:  in.LineSequence,
 		ToState:       in.ToState,
 		FailureReason: in.FailureReason,
 	})
@@ -665,6 +666,15 @@ func isPGUniqueViolation(err error) bool {
 
 // GetCheckoutStatus returns authoritative order, vend, and latest payment state for an company-scoped read.
 func (s *Service) GetCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error) {
+	return s.getCheckoutStatus(ctx, companyID, orderID, slotIndex, 0)
+}
+
+// GetCheckoutStatusByLineSequence resolves vend state by line_sequence for multi-cart orders.
+func (s *Service) GetCheckoutStatusByLineSequence(ctx context.Context, companyID, orderID uuid.UUID, lineSequence int32) (CheckoutStatusView, error) {
+	return s.getCheckoutStatus(ctx, companyID, orderID, 0, lineSequence)
+}
+
+func (s *Service) getCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error) {
 	if s.life == nil {
 		return CheckoutStatusView{}, ErrNotConfigured
 	}
@@ -675,7 +685,12 @@ func (s *Service) GetCheckoutStatus(ctx context.Context, companyID, orderID uuid
 	if uuid.Nil != companyID {
 		return CheckoutStatusView{}, ErrOrgMismatch
 	}
-	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, orderID, slotIndex)
+	var v domaincommerce.VendSession
+	if lineSequence > 0 {
+		v, err = s.life.GetVendSessionByOrderAndLineSequence(ctx, orderID, lineSequence)
+	} else {
+		v, err = s.life.GetVendSessionByOrderAndSlot(ctx, orderID, slotIndex)
+	}
 	if err != nil {
 		return CheckoutStatusView{}, err
 	}
@@ -690,6 +705,13 @@ func (s *Service) GetCheckoutStatus(ctx context.Context, companyID, orderID uuid
 	out.Payment = pay
 	out.PaymentPresent = true
 	return out, nil
+}
+
+func (s *Service) lookupVendSession(ctx context.Context, orderID uuid.UUID, slotIndex, lineSequence int32) (domaincommerce.VendSession, error) {
+	if lineSequence > 0 {
+		return s.life.GetVendSessionByOrderAndLineSequence(ctx, orderID, lineSequence)
+	}
+	return s.life.GetVendSessionByOrderAndSlot(ctx, orderID, slotIndex)
 }
 
 // ApplyPaymentProviderWebhook persists an auditable provider notification and advances payment state when legal.

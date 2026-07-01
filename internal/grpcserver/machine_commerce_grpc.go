@@ -663,6 +663,7 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	slotIndex := req.GetSlotIndex()
+	lineSequence := req.GetLineSequence()
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -678,7 +679,12 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.FailedPrecondition, "order is terminal")
 	}
 
-	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	var st appcommerce.CheckoutStatusView
+	if lineSequence > 0 {
+		st, err = svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+	} else {
+		st, err = svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	}
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
@@ -689,16 +695,21 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.FailedPrecondition, "order not paid")
 	}
 	if st.Vend.State == "in_progress" {
-		return &machinev1.StartVendResponse{Replay: true, VendState: "in_progress", SlotIndex: slotIndex}, nil
+		respSlot := slotIndex
+		if lineSequence > 0 {
+			respSlot = st.Vend.SlotIndex
+		}
+		return &machinev1.StartVendResponse{Replay: true, VendState: "in_progress", SlotIndex: respSlot}, nil
 	}
 	if st.Vend.State != "pending" {
 		return nil, status.Error(codes.FailedPrecondition, "vend not startable")
 	}
 
 	v, err := svc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrderID:   orderID,
-		SlotIndex: slotIndex,
-		ToState:   "in_progress",
+		OrderID:      orderID,
+		SlotIndex:    st.Vend.SlotIndex,
+		LineSequence: lineSequence,
+		ToState:      "in_progress",
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)

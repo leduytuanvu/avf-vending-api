@@ -29,6 +29,10 @@ func (s *stubLifecycleForWorkflow) GetVendSessionByOrderAndSlot(context.Context,
 	return s.vend, nil
 }
 
+func (s *stubLifecycleForWorkflow) GetVendSessionByOrderAndLineSequence(context.Context, uuid.UUID, int32) (domaincommerce.VendSession, error) {
+	return s.vend, nil
+}
+
 func (s *stubLifecycleForWorkflow) UpdateVendSessionState(context.Context, UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	s.vend.State = "failed"
 	return s.vend, nil
