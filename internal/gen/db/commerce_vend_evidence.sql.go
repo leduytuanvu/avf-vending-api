@@ -116,7 +116,7 @@ SET verification_status = $1
 WHERE
     order_id = $2
     AND slot_index = $3
-RETURNING id, order_id, machine_id, slot_index, product_id, state, failure_reason, correlation_id, started_at, completed_at, final_command_attempt_id, verification_status, simulated, simulation_run_id, simulation_scenario, simulation_metadata, created_at
+RETURNING id, order_id, machine_id, slot_index, product_id, state, failure_reason, correlation_id, started_at, completed_at, final_command_attempt_id, verification_status, simulated, simulation_run_id, simulation_scenario, simulation_metadata, line_sequence, created_at
 `
 
 type SetVendSessionVerificationStatusParams struct {
@@ -145,6 +145,7 @@ func (q *Queries) SetVendSessionVerificationStatus(ctx context.Context, arg SetV
 		&i.SimulationRunID,
 		&i.SimulationScenario,
 		&i.SimulationMetadata,
+		&i.LineSequence,
 		&i.CreatedAt,
 	)
 	return i, err
