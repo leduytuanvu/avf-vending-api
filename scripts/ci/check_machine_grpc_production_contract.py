@@ -27,6 +27,8 @@ REQUIRED_FLOW_ANCHORS = [
     "AckMediaVersion",
     "GetInventorySnapshot",
     "GetPlanogram",
+    "CreateQuote",
+    "CreateOrderFromQuote",
     "CreateOrder",
     "CreatePaymentSession",
     "ConfirmCashPayment",

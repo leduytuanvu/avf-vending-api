@@ -112,6 +112,8 @@ Canonical mapping from Android kiosk flows to **primary gRPC RPC** (aliases note
 | ack media version | `AckMediaVersion` | `MachineMediaService` | Machine JWT | **Yes** | None |
 | get inventory snapshot | `GetInventorySnapshot` | `MachineInventoryService` | Machine JWT | Read | Machine runtime HTTP — legacy-only |
 | get planogram | `GetPlanogram` | `MachineInventoryService` | Machine JWT | Read | Same — legacy-only |
+| create quote | `CreateQuote` | `MachineCommerceService` | Machine JWT + inventory gate | **Yes** | None — multi-line cart pricing |
+| create order from quote | `CreateOrderFromQuote` | `MachineCommerceService` | Machine JWT + inventory gate | **Yes** | None — multi-line checkout |
 | create order | `CreateOrder` | `MachineCommerceService` | Machine JWT + inventory gate | **Yes** | `POST /v1/commerce/orders` — legacy-only |
 | create payment session | `CreatePaymentSession` | `MachineCommerceService` | Machine JWT + inventory gate | **Yes** | `POST /v1/commerce/orders/{id}/payment-session` — legacy-only |
 | confirm cash payment | `ConfirmCashPayment` | `MachineCommerceService` | Machine JWT + inventory gate | **Yes** | `POST /v1/commerce/cash-checkout` — legacy-only |
@@ -245,7 +247,33 @@ Legend — **Legacy REST fallback:** `legacy-only` = not mounted in production d
 | **Persistence** | Local slot quantities; ack cursor |
 | **Legacy REST** | Machine runtime HTTP — **legacy-only** |
 
-### 9. Create order
+### 9. Create quote (multi-line cart)
+
+| Item | Value |
+|------|-------|
+| **Primary RPC** | `MachineCommerceService.CreateQuote` |
+| **Request** | `IdempotencyContext`, `lines[]` (product, slot), `currency`, optional `payment_method`, `machine_id` |
+| **Response** | `quote_id`, line pricing, `payable_minor`, `expires_at`, `replay` |
+| **Auth** | Machine JWT + runtime inventory gate |
+| **Idempotency** | **Yes** |
+| **Persistence** | Persist quote snapshot until consumed or expired |
+| **Errors** | Empty lines → `InvalidArgument`; suspended/disabled → `PermissionDenied` |
+| **Legacy REST** | None — **gRPC-only** |
+
+### 9b. Create order from quote
+
+| Item | Value |
+|------|-------|
+| **Primary RPC** | `MachineCommerceService.CreateOrderFromQuote` |
+| **Request** | `IdempotencyContext`, `quote_id`, optional `payment_method`, `machine_id` |
+| **Response** | `order_id`, `order_status`, per-line `vend_session_id`, `line_sequence`, `replay` |
+| **Auth** | Machine JWT + runtime inventory gate |
+| **Idempotency** | **Yes** |
+| **Persistence** | Consumes quote; persist `order_id` + idempotency key until terminal order state |
+| **Errors** | Expired/consumed quote → `FailedPrecondition`; suspended/disabled → `PermissionDenied` |
+| **Legacy REST** | None — **gRPC-only** |
+
+### 10. Create order
 
 | Item | Value |
 |------|-------|
@@ -448,6 +476,8 @@ Per-RPC contract for `avf.machine.v1`. **Auth** = Machine JWT unless noted. **Id
 
 | RPC | Purpose | Request | Response | Auth | Idempotency | Retry | Persistence | Errors | REST | Fallback |
 |-----|---------|---------|----------|------|-------------|-------|-------------|--------|------|----------|
+| `CreateQuote` | Price multi-line cart | lines, currency, idempotency | quote snapshot | JWT + gate | **Yes** | Same key | quote + key | suspended/disabled | None | gRPC-only |
+| `CreateOrderFromQuote` | Checkout from quote | quote_id, idempotency | order + vend lines | JWT + gate | **Yes** | Same key | order + key | quote expired | None | gRPC-only |
 | `CreateOrder` | Start checkout | product, slot, idempotency | `order_id`, status | JWT + gate | **Yes** | Same key | order + key | suspended/disabled | orders POST | legacy-only |
 | `CreatePaymentSession` | QR/card session | order, amount | payment id, QR | JWT + gate | **Yes** | Same key | payment id | PSP not live | payment-session POST | legacy-only |
 | `ConfirmCashPayment`, `CreateCashCheckout` | Cash paid | order, idempotency | paid state | JWT + gate | **Yes** | Same key | payment state | unpaid order | cash-checkout POST | legacy-only |

@@ -121,6 +121,8 @@ func TestMachineProductionContract_RequiredMutatingRPCsAreIdempotent(t *testing.
 		machinev1.MachineCatalogService_AckCatalogVersion_FullMethodName,
 		machinev1.MachineMediaService_AckMediaVersion_FullMethodName,
 		machinev1.MachineInventoryService_AckInventorySync_FullMethodName,
+		machinev1.MachineCommerceService_CreateQuote_FullMethodName,
+		machinev1.MachineCommerceService_CreateOrderFromQuote_FullMethodName,
 		machinev1.MachineCommerceService_CreateOrder_FullMethodName,
 		machinev1.MachineCommerceService_CreatePaymentSession_FullMethodName,
 		machinev1.MachineCommerceService_ConfirmCashPayment_FullMethodName,

@@ -84,28 +84,28 @@ func (s *machineCommerceServer) CreateQuote(ctx context.Context, req *machinev1.
 	respLines := make([]*machinev1.QuoteLineResponse, 0, len(out.Lines))
 	for _, l := range out.Lines {
 		respLines = append(respLines, &machinev1.QuoteLineResponse{
-			LineSequence:      l.LineSequence,
-			ProductId:         l.ProductID.String(),
-			CabinetCode:       l.CabinetCode,
-			SlotCode:          l.SlotCode,
-			SlotIndex:         l.SlotIndex,
-			Quantity:          l.Quantity,
-			UnitPriceMinor:    l.UnitPriceMinor,
-			LineSubtotalMinor: l.LineSubtotalMinor,
+			LineSequence:       l.LineSequence,
+			ProductId:          l.ProductID.String(),
+			CabinetCode:        l.CabinetCode,
+			SlotCode:           l.SlotCode,
+			SlotIndex:          l.SlotIndex,
+			Quantity:           l.Quantity,
+			UnitPriceMinor:     l.UnitPriceMinor,
+			LineSubtotalMinor:  l.LineSubtotalMinor,
 			PricingFingerprint: l.PricingFingerprint,
 		})
 	}
 	zap.L().Info("CreateQuote ok", zap.String("quote_id", out.QuoteID.String()), zap.Bool("replay", out.Replay))
 	return &machinev1.CreateQuoteResponse{
-		Replay:         out.Replay,
-		QuoteId:        out.QuoteID.String(),
-		Currency:       out.Currency,
-		PaymentMethod:  out.PaymentMethod,
-		SubtotalMinor:  out.SubtotalMinor,
-		DiscountMinor:  out.DiscountMinor,
-		PayableMinor:   out.PayableMinor,
-		ExpiresAt:      timestamppb.New(out.ExpiresAt),
-		Lines:          respLines,
+		Replay:        out.Replay,
+		QuoteId:       out.QuoteID.String(),
+		Currency:      out.Currency,
+		PaymentMethod: out.PaymentMethod,
+		SubtotalMinor: out.SubtotalMinor,
+		DiscountMinor: out.DiscountMinor,
+		PayableMinor:  out.PayableMinor,
+		ExpiresAt:     timestamppb.New(out.ExpiresAt),
+		Lines:         respLines,
 	}, nil
 }
 

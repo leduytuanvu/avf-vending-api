@@ -63,13 +63,13 @@ type PersistQuoteResult struct {
 }
 
 type PersistOrderFromQuoteInput struct {
-	Quote            PersistQuoteResult
-	IdempotencyKey   string
-	Simulated        bool
-	SimulationRunID  string
+	Quote              PersistQuoteResult
+	IdempotencyKey     string
+	Simulated          bool
+	SimulationRunID    string
 	SimulationScenario string
-	FakeBill         bool
-	FakeBoard        bool
+	FakeBill           bool
+	FakeBoard          bool
 }
 
 type PersistOrderFromQuoteVendLine struct {
@@ -83,9 +83,9 @@ type PersistOrderFromQuoteVendLine struct {
 }
 
 type PersistOrderFromQuoteResult struct {
-	Order         domaincommerce.Order
-	Lines         []PersistOrderFromQuoteVendLine
-	Replay        bool
+	Order  domaincommerce.Order
+	Lines  []PersistOrderFromQuoteVendLine
+	Replay bool
 }
 
 // CreateQuote prices a multi-line cart and persists an auditable quote snapshot.
