@@ -42,3 +42,9 @@ type SaleLineResolver interface {
 	ResolveSaleLine(ctx context.Context, in ResolveSaleLineInput) (ResolvedSaleLine, error)
 	LookupSlotDisplay(ctx context.Context, companyID, machineID, productID uuid.UUID, slotIndex int32) (ResolvedSaleLine, error)
 }
+
+// QuantityAwareSaleLineResolver supports multi-qty cart line pricing.
+type QuantityAwareSaleLineResolver interface {
+	SaleLineResolver
+	ResolveSaleLineWithQuantity(ctx context.Context, in ResolveSaleLineInput, qty int32) (ResolvedSaleLine, error)
+}

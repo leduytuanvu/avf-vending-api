@@ -53,12 +53,42 @@ func (s *Store) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.U
 	return mapVendGetRow(row), nil
 }
 
+func (s *Store) GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error) {
+	row, err := db.New(s.pool).GetVendSessionByOrderAndLineSequence(ctx, db.GetVendSessionByOrderAndLineSequenceParams{
+		OrderID:      orderID,
+		LineSequence: lineSequence,
+	})
+	if err != nil {
+		if isNoRows(err) {
+			return domaincommerce.VendSession{}, appcommerce.ErrNotFound
+		}
+		return domaincommerce.VendSession{}, err
+	}
+	return mapVendLineSequenceRow(row), nil
+}
+
 func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	var fr pgtype.Text
 	if p.FailureReason != nil {
 		fr = pgtype.Text{String: *p.FailureReason, Valid: true}
 	}
-	row, err := db.New(s.pool).UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: p.ToState,
+	q := db.New(s.pool)
+	if p.LineSequence > 0 {
+		row, err := q.UpdateVendSessionStateByOrderLineSequence(ctx, db.UpdateVendSessionStateByOrderLineSequenceParams{
+			State:         p.ToState,
+			FailureReason: fr,
+			OrderID:       p.OrderID,
+			LineSequence:  p.LineSequence,
+		})
+		if err != nil {
+			if isNoRows(err) {
+				return domaincommerce.VendSession{}, appcommerce.ErrNotFound
+			}
+			return domaincommerce.VendSession{}, err
+		}
+		return mapVendLineSequenceUpdateRow(row), nil
+	}
+	row, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: p.ToState,
 		FailureReason: fr,
 
 		OrderID:   p.OrderID,

@@ -24,6 +24,7 @@ type CommerceLifecycleStore interface {
 	UpdateOrderStatus(ctx context.Context, orderID, companyID uuid.UUID, status string) (domaincommerce.Order, error)
 
 	GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.UUID, slotIndex int32) (domaincommerce.VendSession, error)
+	GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error)
 	UpdateVendSessionState(ctx context.Context, p UpdateVendSessionParams) (domaincommerce.VendSession, error)
 
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (domaincommerce.Payment, error)
@@ -66,6 +67,8 @@ type Deps struct {
 // Orchestrator is the application surface for HTTP/workers.
 type Orchestrator interface {
 	CreateOrder(ctx context.Context, in CreateOrderInput) (CreateOrderResult, error)
+	CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQuoteResult, error)
+	CreateOrderFromQuote(ctx context.Context, in CreateOrderFromQuoteInput) (CreateOrderFromQuoteResult, error)
 	StartPaymentWithOutbox(ctx context.Context, in StartPaymentInput) (domaincommerce.PaymentOutboxResult, error)
 	CreateMachinePaymentSession(ctx context.Context, in CreateMachinePaymentSessionInput) (CreateMachinePaymentSessionResult, error)
 	BindPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error)
@@ -76,6 +79,7 @@ type Orchestrator interface {
 	EvaluateRefundEligibility(ctx context.Context, orderID uuid.UUID, slotIndex int32) (RefundEligibilityAssessment, error)
 
 	GetCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error)
+	GetCheckoutStatusByLineSequence(ctx context.Context, companyID, orderID uuid.UUID, lineSequence int32) (CheckoutStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
 
 	EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error

@@ -193,6 +193,36 @@ type Category struct {
 	UpdatedAt time.Time
 }
 
+type CheckoutQuote struct {
+	ID             uuid.UUID
+	MachineID      uuid.UUID
+	Currency       string
+	PaymentMethod  string
+	SubtotalMinor  int64
+	DiscountMinor  int64
+	PayableMinor   int64
+	State          string
+	IdempotencyKey pgtype.Text
+	ExpiresAt      time.Time
+	CreatedAt      time.Time
+}
+
+type CheckoutQuoteLine struct {
+	ID                 uuid.UUID
+	QuoteID            uuid.UUID
+	LineSequence       int32
+	ProductID          uuid.UUID
+	SlotConfigID       pgtype.UUID
+	CabinetCode        string
+	SlotCode           string
+	SlotIndex          int32
+	Quantity           int32
+	UnitPriceMinor     int64
+	LineSubtotalMinor  int64
+	PricingFingerprint string
+	CreatedAt          time.Time
+}
+
 // Authoritative machine command rows (sequence = device monotonic id). Trace: ledger -> machine_command_attempts -> transport/raw/ack -> device_command_receipts; correlate with vend_sessions / orders via correlation_id and time.
 type CommandLedger struct {
 	ID             uuid.UUID
@@ -1728,5 +1758,6 @@ type VendSession struct {
 	SimulationRunID    pgtype.Text
 	SimulationScenario pgtype.Text
 	SimulationMetadata []byte
+	LineSequence       int32
 	CreatedAt          time.Time
 }

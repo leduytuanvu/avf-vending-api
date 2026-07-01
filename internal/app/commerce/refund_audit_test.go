@@ -51,6 +51,10 @@ func (s *refundLifecycleStub) GetVendSessionByOrderAndSlot(context.Context, uuid
 	return domaincommerce.VendSession{}, ErrNotFound
 }
 
+func (s *refundLifecycleStub) GetVendSessionByOrderAndLineSequence(context.Context, uuid.UUID, int32) (domaincommerce.VendSession, error) {
+	return domaincommerce.VendSession{}, ErrNotFound
+}
+
 func (s *refundLifecycleStub) UpdateVendSessionState(context.Context, UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, ErrNotConfigured
 }

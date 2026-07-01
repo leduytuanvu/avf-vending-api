@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	MachineCommerceService_CreateOrder_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CreateOrder"
+	MachineCommerceService_CreateQuote_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CreateQuote"
+	MachineCommerceService_CreateOrderFromQuote_FullMethodName = "/avf.machine.v1.MachineCommerceService/CreateOrderFromQuote"
 	MachineCommerceService_CreatePaymentSession_FullMethodName = "/avf.machine.v1.MachineCommerceService/CreatePaymentSession"
 	MachineCommerceService_AttachPaymentResult_FullMethodName  = "/avf.machine.v1.MachineCommerceService/AttachPaymentResult"
 	MachineCommerceService_ConfirmCashPayment_FullMethodName   = "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment"
@@ -41,6 +43,8 @@ const (
 // Payment provider webhooks remain on REST; QR flows poll GetOrder / GetOrderStatus after PSP updates payment.
 type MachineCommerceServiceClient interface {
 	CreateOrder(ctx context.Context, in *CreateOrderRequest, opts ...grpc.CallOption) (*CreateOrderResponse, error)
+	CreateQuote(ctx context.Context, in *CreateQuoteRequest, opts ...grpc.CallOption) (*CreateQuoteResponse, error)
+	CreateOrderFromQuote(ctx context.Context, in *CreateOrderFromQuoteRequest, opts ...grpc.CallOption) (*CreateOrderFromQuoteResponse, error)
 	CreatePaymentSession(ctx context.Context, in *CreatePaymentSessionRequest, opts ...grpc.CallOption) (*CreatePaymentSessionResponse, error)
 	// AttachPaymentResult is an alias of CreatePaymentSession (spec-native name).
 	AttachPaymentResult(ctx context.Context, in *CreatePaymentSessionRequest, opts ...grpc.CallOption) (*CreatePaymentSessionResponse, error)
@@ -68,6 +72,26 @@ func (c *machineCommerceServiceClient) CreateOrder(ctx context.Context, in *Crea
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateOrderResponse)
 	err := c.cc.Invoke(ctx, MachineCommerceService_CreateOrder_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCommerceServiceClient) CreateQuote(ctx context.Context, in *CreateQuoteRequest, opts ...grpc.CallOption) (*CreateQuoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateQuoteResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_CreateQuote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCommerceServiceClient) CreateOrderFromQuote(ctx context.Context, in *CreateOrderFromQuoteRequest, opts ...grpc.CallOption) (*CreateOrderFromQuoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateOrderFromQuoteResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_CreateOrderFromQuote_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -192,6 +216,8 @@ func (c *machineCommerceServiceClient) CancelOrder(ctx context.Context, in *Canc
 // Payment provider webhooks remain on REST; QR flows poll GetOrder / GetOrderStatus after PSP updates payment.
 type MachineCommerceServiceServer interface {
 	CreateOrder(context.Context, *CreateOrderRequest) (*CreateOrderResponse, error)
+	CreateQuote(context.Context, *CreateQuoteRequest) (*CreateQuoteResponse, error)
+	CreateOrderFromQuote(context.Context, *CreateOrderFromQuoteRequest) (*CreateOrderFromQuoteResponse, error)
 	CreatePaymentSession(context.Context, *CreatePaymentSessionRequest) (*CreatePaymentSessionResponse, error)
 	// AttachPaymentResult is an alias of CreatePaymentSession (spec-native name).
 	AttachPaymentResult(context.Context, *CreatePaymentSessionRequest) (*CreatePaymentSessionResponse, error)
@@ -217,6 +243,12 @@ type UnimplementedMachineCommerceServiceServer struct{}
 
 func (UnimplementedMachineCommerceServiceServer) CreateOrder(context.Context, *CreateOrderRequest) (*CreateOrderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateOrder not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) CreateQuote(context.Context, *CreateQuoteRequest) (*CreateQuoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateQuote not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) CreateOrderFromQuote(context.Context, *CreateOrderFromQuoteRequest) (*CreateOrderFromQuoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateOrderFromQuote not implemented")
 }
 func (UnimplementedMachineCommerceServiceServer) CreatePaymentSession(context.Context, *CreatePaymentSessionRequest) (*CreatePaymentSessionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreatePaymentSession not implemented")
@@ -287,6 +319,42 @@ func _MachineCommerceService_CreateOrder_Handler(srv interface{}, ctx context.Co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MachineCommerceServiceServer).CreateOrder(ctx, req.(*CreateOrderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineCommerceService_CreateQuote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateQuoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).CreateQuote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_CreateQuote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).CreateQuote(ctx, req.(*CreateQuoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineCommerceService_CreateOrderFromQuote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateOrderFromQuoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).CreateOrderFromQuote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_CreateOrderFromQuote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).CreateOrderFromQuote(ctx, req.(*CreateOrderFromQuoteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -499,6 +567,14 @@ var MachineCommerceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateOrder",
 			Handler:    _MachineCommerceService_CreateOrder_Handler,
+		},
+		{
+			MethodName: "CreateQuote",
+			Handler:    _MachineCommerceService_CreateQuote_Handler,
+		},
+		{
+			MethodName: "CreateOrderFromQuote",
+			Handler:    _MachineCommerceService_CreateOrderFromQuote_Handler,
 		},
 		{
 			MethodName: "CreatePaymentSession",
