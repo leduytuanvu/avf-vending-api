@@ -1,0 +1,174 @@
+{
+  "schema_version": "v1",
+  "verdict": "pass",
+  "security_verdict": "pass",
+  "canonical_security_artifact": "security-verdict",
+  "event_name": "workflow_run",
+  "workflow_name": "Security Release",
+  "workflow_run_id": "28498171632",
+  "security_workflow_run_id": "28498171632",
+  "generated_at_utc": "2026-07-01T06:28:46Z",
+  "source_build_run_id": "28497946852",
+  "source_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+  "source_branch": "main",
+  "source_event": "push",
+  "trigger_workflow_event": "workflow_run",
+  "source_workflow_name": "Build and Push Images",
+  "release_gate_verdict": "pass",
+  "release_gate_mode": "full-security-release-gate",
+  "repo_security_verdict": "not_applicable",
+  "repo_release_verdict": "pass",
+  "published_image_verdict": "pass",
+  "provenance_release_verdict": "pass",
+  "nightly_security_verdict": "not_applicable",
+  "warnings": [],
+  "verification_scope": {
+    "verified_by_this_artifact": [
+      "workflow-scoped security verdict for the current event",
+      "published image vulnerability scan status included in this run when applicable",
+      "published image provenance verdict imported from immutable image resolution when applicable",
+      "matched push security evidence for repo-level release checks when event_name=workflow_run",
+      "current workflow repo-level security evidence when event_name=workflow_dispatch"
+    ],
+    "not_verified_by_this_artifact": [
+      "staging deployment execution",
+      "production deployment execution",
+      "runtime environment readiness",
+      "backup execution",
+      "restore drill execution"
+    ]
+  },
+  "release_policy": {
+    "repo_level_required_for_release": [
+      "govulncheck_repo",
+      "secret_scan",
+      "trivy_config"
+    ],
+    "repo_level_advisory_for_release": [
+      "dependency_review"
+    ],
+    "not_release_gating": [
+      "govulncheck_nightly",
+      "dependency_snapshot"
+    ],
+    "image_level_required_for_release": [
+      "resolve_build_run",
+      "resolve_image_refs",
+      "trivy_images"
+    ],
+    "provenance_required_for_release": [
+      "published_image_provenance"
+    ]
+  },
+  "repo_level_checks": {
+    "current_event_verdict": "not_applicable",
+    "release_evidence": {
+      "evidence_source": "security-workflow-run-success",
+      "source_event_name": "push",
+      "matched_workflow_run_id": "28497751817",
+      "matched_workflow_conclusion": "success",
+      "required_for_release_verdict": "pass",
+      "summary": "Security (repo) push run 28497751817 completed successfully for head_sha=3feef938ea41a66a5d37efae5d353dc0359baeb5 branch=main (matches Build candidate)."
+    },
+    "checks": {
+      "dependency_review": {
+        "status": "not_applicable",
+        "release_requirement": "advisory"
+      },
+      "govulncheck_repo": {
+        "status": "not_applicable",
+        "release_requirement": "required"
+      },
+      "secret_scan": {
+        "status": "not_applicable",
+        "release_requirement": "required"
+      },
+      "trivy_config": {
+        "status": "not_applicable",
+        "release_requirement": "required"
+      }
+    }
+  },
+  "image_level_checks": {
+    "required_for_release_verdict": "pass",
+    "checks": {
+      "resolve_build_run": "pass",
+      "resolve_image_refs": "pass",
+      "trivy_images": "pass",
+      "trivy_image_app": "pass",
+      "trivy_image_goose": "pass"
+    }
+  },
+  "provenance_release_checks": {
+    "required_for_release_verdict": "pass",
+    "published_image_provenance_verdict": "verified",
+    "evidence_source": "resolve-image-refs workflow output"
+  },
+  "release_gate": {
+    "mode": "full-security-release-gate",
+    "verdict": "pass",
+    "generated_at_utc": "2026-07-01T06:28:46Z",
+    "trust_model": "fully-verified-workflow-run-evidence",
+    "required_evidence": {
+      "repo_level_checks": "pass",
+      "image_level_checks": "pass",
+      "provenance_release_checks": "pass"
+    },
+    "summary": "workflow_run release gating requires repo-level push security evidence plus published-image and provenance checks"
+  },
+  "scanner_summary": {
+    "dependency_review": "not_applicable",
+    "govulncheck_repo": "not_applicable",
+    "secret_scan": "not_applicable",
+    "trivy_config": "not_applicable",
+    "trivy_images": "pass",
+    "trivy_image_app": "pass",
+    "trivy_image_goose": "pass",
+    "govulncheck_nightly": "not_applicable"
+  },
+  "published_images": {
+    "app_image_ref": "ghcr.io/leduytuanvu/avf-vending-api@sha256:ef79fcd6a7d3483efb6eae0295bd604587054d6fe57798d2b38071091e6bf45d",
+    "app_digest": "sha256:ef79fcd6a7d3483efb6eae0295bd604587054d6fe57798d2b38071091e6bf45d",
+    "goose_image_ref": "ghcr.io/leduytuanvu/avf-vending-api-goose@sha256:b7910800a8d00707d65d9cde66ed10acf1b4746238bcf9ecee451714e9947c48",
+    "goose_digest": "sha256:b7910800a8d00707d65d9cde66ed10acf1b4746238bcf9ecee451714e9947c48",
+    "provenance_verdict": "verified",
+    "provenance_verdict_source": "resolve-image-refs workflow output"
+  },
+  "job_results": {
+    "dependency_review": "skipped",
+    "govulncheck_pr": "skipped",
+    "secret_scan": "skipped",
+    "config_scan": "skipped",
+    "resolve_build_run": "success",
+    "resolve_image_refs": "success",
+    "image_vulnerability_scan": "success",
+    "trivy_image_app": "success",
+    "trivy_image_goose": "success",
+    "govulncheck_nightly": "skipped",
+    "dependency_snapshot": "skipped"
+  },
+  "failure_reasons": [],
+  "decision_reasons": [],
+  "source_coordinates": {
+    "canonical_source_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+    "canonical_source_branch": "main",
+    "canonical_source_event": "push",
+    "artifact_source_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+    "artifact_source_branch": "main",
+    "artifact_source_event": "push",
+    "trigger_workflow_head_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+    "trigger_workflow_head_branch": "main",
+    "trigger_workflow_event": "workflow_run"
+  },
+  "metadata_validation": {
+    "triggering_build_run_id": "28497946852",
+    "triggering_build_event": "workflow_run",
+    "triggering_build_head_branch": "main",
+    "triggering_build_head_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+    "artifact_source_event": "push",
+    "resolved_source_branch": "main",
+    "resolved_source_sha": "3feef938ea41a66a5d37efae5d353dc0359baeb5",
+    "build_run_id_from_artifacts": "28497946852",
+    "decision": "pass"
+  }
+}
