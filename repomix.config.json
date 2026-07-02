@@ -42,6 +42,7 @@
       "security-reports/**",
       "deployments/prod/.deploy/**",
       "deployments/prod/backups/**",
+      "_deploy_artifacts/**",
       "postman/**/newman/**",
       "postman/reports/**",
       "postman/**/*.zip",

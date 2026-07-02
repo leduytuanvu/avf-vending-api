@@ -33,3 +33,13 @@ paths = [
   '''^tools/build_openapi\.py$''',
   '''^docs/swagger/swagger\.json$'''
 ]
+
+[[rules]]
+id = "generic-api-key"
+
+[[rules.allowlists]]
+description = "Generated Postman full production suite (openapiOperationId metadata flagged as generic-api-key)"
+paths = [
+  '''postman/suites/production-full/avf-vending-production\.full\.postman_collection\.json''',
+  '''postman/suites/production-full/avf-vending-production\.full\.postman_environment\.json''',
+]

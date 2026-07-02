@@ -84,12 +84,16 @@ postman/**/newman/
 postman/**/newman-report/
 # Optional expanded inventories under postman/generated/ are not CI drift-gated (regenerate locally)
 postman/generated/
+# Legacy generator output path (canonical tracked suite: postman/suites/production-full/)
+postman/production-full-suite/
 postman/reports/**/*
 !postman/reports/README.md
 postman/**/*-report.html
 postman/**/*-report.json
 .e2e-runs/**/newman-report.json
 .e2e-runs/**/newman-junit.xml
+**/newman-report.json
+**/newman-junit.xml
 
 # Regenerable test coverage reports (scripts/test/run-mqtt-full-coverage.sh)
 docs/reports/test/mqtt-full-coverage.json
@@ -98,6 +102,7 @@ docs/reports/test/mqtt-full-coverage.md
 # Local CI/security reports
 ci-reports/
 security-reports/
+docs/reports/cleanup/.scratch/
 migration-evidence/*.json
 *.sarif
 coverage.out
@@ -113,6 +118,7 @@ repomix-output.xml
 *.log
 tmp/
 temp/
+.tmp/
 *.tmp
 *.bak
 *.old
@@ -128,6 +134,9 @@ db-backups/
 deployments/docker/observability/private/
 deployment-evidence/local/
 prod-deploy-inputs*.json
+_deploy_artifacts/
+prod-deploy-candidate/
+production-deploy-candidate/
 
 # Local env overrides (examples *.example remain tracked)
 *.env.local

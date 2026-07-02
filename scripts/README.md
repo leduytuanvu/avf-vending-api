@@ -4,13 +4,16 @@ Repository automation grouped by purpose. Production deploy scripts under `deplo
 
 | Directory | Purpose |
 |-----------|---------|
-| [`local/`](local/) | Windows PowerShell local dev helpers |
+| [`local/`](local/) | Windows PowerShell local dev helpers; [`clean-local-artifacts.ps1`](local/clean-local-artifacts.ps1) / [`clean-local-artifacts.sh`](local/clean-local-artifacts.sh) remove gitignored temp/e2e outputs (dry-run default; `-Apply` / `--apply` to delete) |
 | [`ci/`](ci/) | CI gates, governance, migration checks, workflow contracts |
 | [`deploy/`](deploy/) | Release, security verdict, smoke, monitoring, staging deploy helpers |
 | [`db/`](db/) | Database backup evidence, migration guards, schema checks |
 | [`test/`](test/) | E2E, coverage, load/loadtest harnesses |
 | [`postman/`](postman/) | Postman collection generation and validation |
 | [`openapi/`](openapi/) | OpenAPI contract checks and API surface audit helpers |
+| [`e2e/`](e2e/) | Production/canary E2E shell helpers and fixtures |
+| [`governance/`](governance/) | GitHub production protection and E2E automation window toggles |
+| [`repair/`](repair/) | Field repair PowerShell scripts — see [`repair/README.md`](repair/README.md) |
 | [`lib/`](lib/) | Shared shell/PowerShell helpers (`_pslib.ps1`) |
 
 ## Backwards-compatible root wrappers
