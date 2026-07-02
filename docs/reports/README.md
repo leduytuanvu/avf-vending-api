@@ -4,7 +4,11 @@ Phase reports and gate evidence for **active** operations. Historical one-offs a
 
 ## Repository cleanup
 
-[`cleanup/2026-06-repo-cleanup-manifest.md`](cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions, doc index updates, and deferred Phase 5/6 decisions.
+- [`cleanup/2026-06-repo-cleanup-manifest.md`](cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions, doc index updates, and deferred Phase 5/6 decisions.
+- [`cleanup/2026-07-02-repo-cleanup-baseline.md`](cleanup/2026-07-02-repo-cleanup-baseline.md) — pre-change baseline for the 2026-07 pass.
+- [`cleanup/2026-07-02-repo-cleanup-inventory.md`](cleanup/2026-07-02-repo-cleanup-inventory.md) — file classification inventory.
+- [`cleanup/2026-07-02-repo-cleanup-plan.md`](cleanup/2026-07-02-repo-cleanup-plan.md) — implementation plan.
+- [`cleanup/2026-07-02-repo-cleanup-final-report.md`](cleanup/2026-07-02-repo-cleanup-final-report.md) — post-change summary and verification.
 
 ## Product media / offline cache
 [`product-media-offline-cache/`](product-media-offline-cache/) — phase 6 report, regression/consistency gates.
@@ -26,6 +30,8 @@ Operator runbook: [`../runbooks/product-media-offline-cache-production-migration
 [`verification/`](verification/) — ongoing REST, gRPC, MQTT, E2E, Postman verification outputs.
 
 Archived `FINAL_*` signoff reports: [`../archive/verification/`](../archive/verification/).
+
+Archived completed investigations: [`../archive/reports/cash-authority/`](../archive/reports/cash-authority/), [`../archive/reports/protocol-hardening/`](../archive/reports/protocol-hardening/).
 
 ## Postman single-scope gate
 

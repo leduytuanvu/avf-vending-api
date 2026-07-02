@@ -8,7 +8,7 @@ Historical audits, verification reports, and one-off gate evidence. **Not canoni
 |------|----------|
 | [`audits/`](audits/) | Superseded readiness audits, cleanup inventories, UUID/migration pre-flight reports |
 | [`audits/audit/`](audits/audit/) | Backend ↔ Android contract audits (point-in-time) |
-| [`reports/`](reports/) | Git/deploy phase reports, product-media migration verification |
+| [`reports/`](reports/) | Git/deploy phase reports, product-media migration verification, archived cash-authority and protocol-hardening |
 | [`verification/`](verification/) | `FINAL_*` and full-system signoff reports |
 | [`testing/`](testing/) | Historical Postman/E2E audit JSON and enterprise audit traces |
 | [`cleanup/`](cleanup/) | Deep repo cleanup audits (2026-05-20 / 2026-05-26) |

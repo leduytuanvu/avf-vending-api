@@ -6,3 +6,4 @@ deployments/**/*.sh text eol=lf
 .github/workflows/*.yml text eol=lf
 .github/workflows/*.yaml text eol=lf
 postman/production/*.json text eol=lf
+postman/suites/**/*.json text eol=lf

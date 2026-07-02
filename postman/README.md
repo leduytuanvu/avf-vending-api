@@ -30,9 +30,11 @@ Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check
 
 [`production/`](production/) — collection + environment generated from `tests/e2e/production/e2e-manifest.yaml`. Required by `scripts/ci/verify_production_postman_parity.sh`.
 
-## Production verification suite (removed from repo)
+## Production full suite (tracked)
 
-The former `postman/suites/full-production-suite/` tree was slimmed in 2026 cleanup. Regenerate expanded inventories with `scripts/postman/generate_complete_api_suite.py` (output under `postman/generated/`, gitignored) or use CI collections above plus OpenAPI import.
+[`suites/production-full/`](suites/production-full/) — consolidated OpenAPI + proto + MQTT production verification collection and environment (`avf-vending-production.full.*`). Not the same as manifest E2E parity under `production/`; use for broad production API coverage and manual/Newman runs.
+
+Regenerate expanded inventories locally with `scripts/postman/generate_complete_api_suite.py` (default output under `postman/production-full-suite/`, gitignored) or `scripts/postman/generate_production_full_suite.py`.
 
 ## Reports
 

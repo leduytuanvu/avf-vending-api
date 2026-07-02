@@ -14,6 +14,8 @@ Central map for AVF Vending API documentation. Repository root [`README.md`](../
 
 **2026-06 repo cleanup:** deletions and deferred decisions are recorded in [`reports/cleanup/2026-06-repo-cleanup-manifest.md`](reports/cleanup/2026-06-repo-cleanup-manifest.md).
 
+**2026-07 repo cleanup:** baseline, inventory, plan, and final report under [`reports/cleanup/`](reports/cleanup/) (`2026-07-02-*`).
+
 ## Architecture
 
 System design, transport boundaries, and phased roadmaps.
@@ -95,6 +97,7 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 - [Active audits](audits/README.md) — enterprise readiness and gap analysis (**canonical** for current readiness)
 - [Documentation archive](archive/README.md) — historical audits, verification FINALs, git-deploy reports (**non-canonical**)
 - [2026-06 cleanup manifest](reports/cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions and deferred moves
+- [2026-07 cleanup reports](reports/cleanup/2026-07-02-repo-cleanup-baseline.md) — baseline, inventory, plan, final report
 
 ## HTTP API (integration)
 
