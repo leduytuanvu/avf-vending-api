@@ -1,4 +1,6 @@
 -- Enterprise flow accountability fields on machine_activation_claims.
+-- +goose Up
+-- +goose StatementBegin
 ALTER TABLE machine_activation_claims
     ADD COLUMN IF NOT EXISTS activated_by_account_id uuid,
     ADD COLUMN IF NOT EXISTS operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
@@ -45,3 +47,28 @@ WHERE
 COMMENT ON TABLE machine_runtime_refresh_tokens IS 'Deprecated: canonical refresh sessions live in machine_sessions. Retained for schema compatibility only.';
 
 ALTER TABLE machine_activation_claims ALTER COLUMN activation_code_id DROP NOT NULL;
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP INDEX IF EXISTS ix_machine_activation_claims_source;
+DROP INDEX IF EXISTS ix_machine_activation_claims_correlation;
+DROP INDEX IF EXISTS ix_machine_activation_claims_account;
+DROP INDEX IF EXISTS ix_machine_activation_claims_operator;
+DROP INDEX IF EXISTS ix_machine_activation_claims_machine;
+
+ALTER TABLE machine_activation_claims DROP CONSTRAINT IF EXISTS machine_activation_claims_activation_source_check;
+
+ALTER TABLE machine_activation_claims
+    DROP COLUMN IF EXISTS activated_by_account_id,
+    DROP COLUMN IF EXISTS operator_session_id,
+    DROP COLUMN IF EXISTS request_id,
+    DROP COLUMN IF EXISTS correlation_id,
+    DROP COLUMN IF EXISTS app_version,
+    DROP COLUMN IF EXISTS boot_id,
+    DROP COLUMN IF EXISTS device_serial,
+    DROP COLUMN IF EXISTS reason,
+    DROP COLUMN IF EXISTS activation_source;
+
+ALTER TABLE machine_activation_claims ALTER COLUMN activation_code_id SET NOT NULL;
+-- +goose StatementEnd
