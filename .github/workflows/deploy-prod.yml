@@ -2267,6 +2267,11 @@ jobs:
             echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required for EMQX ACL sync" >&2
             exit 1
           }
+          if ! ssh-keygen -F "${EMQX_DATA_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            && ! ssh-keygen -F "[${EMQX_DATA_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            echo "Pinning SSH host key for EMQX data host ${EMQX_DATA_HOST}:${SSH_PORT}"
+            ssh-keyscan -H -p "${SSH_PORT}" "${EMQX_DATA_HOST}" >> "${HOME}/.ssh/known_hosts"
+          fi
           target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
@@ -2287,6 +2292,11 @@ jobs:
             echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required to source EMQX management credentials" >&2
             exit 1
           }
+          if ! ssh-keygen -F "${EMQX_DATA_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            && ! ssh-keygen -F "[${EMQX_DATA_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            echo "Pinning SSH host key for EMQX data host ${EMQX_DATA_HOST}:${SSH_PORT}"
+            ssh-keyscan -H -p "${SSH_PORT}" "${EMQX_DATA_HOST}" >> "${HOME}/.ssh/known_hosts"
+          fi
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
           EMQX_API_KEY="$(
