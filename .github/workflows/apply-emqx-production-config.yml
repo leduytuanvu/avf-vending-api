@@ -29,8 +29,6 @@ jobs:
       SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
       EMQX_MANAGEMENT_URL: ${{ vars.EMQX_MANAGEMENT_URL || 'http://187.127.99.153:18083' }}
-      EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
-      EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -58,12 +56,24 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          [[ -n "${EMQX_API_KEY:-}" && -n "${EMQX_API_SECRET:-}" ]] || { echo "missing EMQX secrets"; exit 1; }
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
+          EMQX_API_KEY="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_KEY=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          EMQX_API_SECRET="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_SECRET=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          [[ -n "${EMQX_API_KEY}" && -n "${EMQX_API_SECRET}" ]] || {
+            echo "error: EMQX_API_KEY / EMQX_API_SECRET missing in data-node env" >&2
+            exit 1
+          }
           apply_remote() {
             local host="$1"
             local target="${SSH_USER}@${host}"
             local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
-            read -r -a ssh_opts <<< "${SSH_OPTS}"
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
               "EMQX_MANAGEMENT_URL=${EMQX_MANAGEMENT_URL}" \
               "EMQX_API_KEY=${EMQX_API_KEY}" \
