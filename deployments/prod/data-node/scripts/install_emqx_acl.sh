@@ -32,18 +32,22 @@ install_via_compose() {
 	"${compose[@]}" up -d --force-recreate "${service_name}"
 }
 
+installed=0
 if docker ps --format '{{.Names}}' | grep -qx 'avf-prod-emqx'; then
 	legacy_env="${PROD_ROOT}/.env.production"
 	legacy_compose="${PROD_ROOT}/docker-compose.prod.yml"
 	if [[ -f "${legacy_env}" && -f "${legacy_compose}" ]]; then
 		install_via_compose "${legacy_env}" "${legacy_compose}" emqx
-	else
-		note "avf-prod-emqx running but legacy env/compose missing; restarting container"
-		docker restart avf-prod-emqx
+		installed=1
 	fi
-elif [[ -f "${NODE_ROOT}/.env.data-node" && -f "${NODE_ROOT}/docker-compose.data-node.yml" ]]; then
+fi
+
+if [[ -f "${NODE_ROOT}/.env.data-node" && -f "${NODE_ROOT}/docker-compose.data-node.yml" ]]; then
 	install_via_compose "${NODE_ROOT}/.env.data-node" "${NODE_ROOT}/docker-compose.data-node.yml" emqx
-else
+	installed=1
+fi
+
+if [[ "${installed}" -eq 0 ]]; then
 	fail "no supported EMQX deployment found (expected avf-prod-emqx or data-node compose)"
 fi
 
