@@ -1,0 +1,107 @@
+name: Apply EMQX Production Config
+
+on:
+  workflow_dispatch:
+    inputs:
+      install_acl:
+        description: "Install EMQX ACL on data node and restart broker"
+        required: false
+        default: true
+        type: boolean
+      apply_app_node_env:
+        description: "Apply EMQX management env on both app nodes"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  apply-emqx-config:
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      APP_NODE_A_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST }}
+      DATA_NODE_HOST: ${{ secrets.PRODUCTION_DATA_NODE_HOST }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+      EMQX_MANAGEMENT_URL: ${{ vars.EMQX_MANAGEMENT_URL || 'http://187.127.99.153:18083' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
+
+      - name: Apply EMQX management env on app nodes
+        if: inputs.apply_app_node_env
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
+          EMQX_API_KEY="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_KEY=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          EMQX_API_SECRET="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_SECRET=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          [[ -n "${EMQX_API_KEY}" && -n "${EMQX_API_SECRET}" ]] || {
+            echo "error: EMQX_API_KEY / EMQX_API_SECRET missing in data-node env" >&2
+            exit 1
+          }
+          apply_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "EMQX_MANAGEMENT_URL=${EMQX_MANAGEMENT_URL}" \
+              "EMQX_API_KEY=${EMQX_API_KEY}" \
+              "EMQX_API_SECRET=${EMQX_API_SECRET}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh" "${env_path}"
+          }
+          apply_remote "${APP_NODE_A_HOST}"
+          apply_remote "${APP_NODE_B_HOST}"
+
+      - name: Sync EMQX ACL assets to data node
+        if: inputs.install_acl && env.DATA_NODE_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared | \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh'"
+
+      - name: Install EMQX ACL on data node
+        if: inputs.install_acl && env.DATA_NODE_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh"
