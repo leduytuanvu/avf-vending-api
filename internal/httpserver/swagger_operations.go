@@ -3044,6 +3044,68 @@ func DocOpV1AdminMachineRotateTokenVersion() {}
 // @Router /v1/admin/machines/{machineId}/revoke-token [post]
 func DocOpV1AdminMachineRevokeToken() {}
 
+// DocOpV1AdminMachineReattachDevice godoc
+// @Summary Reattach device after reinstall (admin/technician)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/reattach-device [post]
+func DocOpV1AdminMachineReattachDevice() {}
+
+// DocOpV1AdminMachineRuntimeSessionCurrent godoc
+// @Summary Current machine runtime session (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/runtime-sessions/current [get]
+func DocOpV1AdminMachineRuntimeSessionCurrent() {}
+
+// DocOpV1AdminMachineRuntimeSessionHistory godoc
+// @Summary Machine runtime session history (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/runtime-sessions/history [get]
+func DocOpV1AdminMachineRuntimeSessionHistory() {}
+
+// DocOpV1AdminMachineRuntimeSessionRevoke godoc
+// @Summary Revoke machine runtime sessions (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/runtime-sessions/revoke [post]
+func DocOpV1AdminMachineRuntimeSessionRevoke() {}
+
+// DocOpV1AdminMachineOpsOverview godoc
+// @Summary Machine operational overview (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/ops-overview [get]
+func DocOpV1AdminMachineOpsOverview() {}
+
+// DocOpV1AdminMachineUnifiedTimeline godoc
+// @Summary Unified enterprise machine timeline (admin)
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Router /v1/admin/machines/{machineId}/timeline/unified [get]
+func DocOpV1AdminMachineUnifiedTimeline() {}
+
 // DocOpV1AdminMachineTransferSite godoc
 // @Summary Move machine to another site (admin)
 // @Tags Machine Admin
@@ -4987,3 +5049,115 @@ func DocOpV1CommerceRefundsList() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/commerce/orders/{orderId}/refunds/{refundId} [get]
 func DocOpV1CommerceRefundGet() {}
+
+// DocOpV1AdminPaymentProvidersList godoc
+// @Summary List configured payment providers (read-only registry)
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payment/providers [get]
+func DocOpV1AdminPaymentProvidersList() {}
+
+// DocOpV1AdminPaymentReconciliation godoc
+// @Summary Payment reconciliation drift report
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce json
+// @Param from query string true "RFC3339 start"
+// @Param to query string true "RFC3339 end"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/reconciliation [get]
+func DocOpV1AdminPaymentReconciliation() {}
+
+// DocOpV1AdminPaymentWebhookEvents godoc
+// @Summary List payment webhook events
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/webhook-events [get]
+func DocOpV1AdminPaymentWebhookEvents() {}
+
+// DocOpV1AdminPaymentSettlementsList godoc
+// @Summary List payment settlements
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/settlements [get]
+func DocOpV1AdminPaymentSettlementsList() {}
+
+// DocOpV1AdminPaymentDisputesList godoc
+// @Summary List payment disputes
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/disputes [get]
+func DocOpV1AdminPaymentDisputesList() {}
+
+// DocOpV1AdminPaymentExport godoc
+// @Summary Export payments finance CSV
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Produce text/csv
+// @Param from query string true "RFC3339 start"
+// @Param to query string true "RFC3339 end"
+// @Success 200 {string} string
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/export [get]
+func DocOpV1AdminPaymentExport() {}
+
+// DocOpV1AdminPaymentSettlementsImport godoc
+// @Summary Import payment settlements CSV
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/payments/settlements/import [post]
+func DocOpV1AdminPaymentSettlementsImport() {}
+
+// DocOpV1AdminPaymentDisputeResolve godoc
+// @Summary Resolve a payment dispute
+// @Tags Payment Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param disputeId path string true "Dispute UUID"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError
+// @Router /v1/admin/payments/disputes/{disputeId}/resolve [post]
+func DocOpV1AdminPaymentDisputeResolve() {}
+
+// DocOpV1AdminMediaProductImagesAlias godoc
+// @Summary Upload product image (alias of POST /v1/admin/product-images)
+// @Tags Media Admin
+// @Security BearerAuth
+// @Accept multipart/form-data
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Router /v1/admin/media/product-images [post]
+func DocOpV1AdminMediaProductImagesAlias() {}

@@ -118,13 +118,13 @@ type FleetWorkflows interface {
 	ReleaseTechnicianAssignment(ctx context.Context, companyID, assignmentID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error)
 	ReleaseTechnicianAssignmentForMachineUser(ctx context.Context, companyID, machineID, technicianID uuid.UUID) (domainfleet.TechnicianMachineAssignment, error)
 
-	DisableMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	EnableMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	RetireMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	MarkMachineCompromised(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	RotateMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	RevokeMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error)
-	RevokeMachineSessions(ctx context.Context, companyID, machineID uuid.UUID) error
+	DisableMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	EnableMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	RetireMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	MarkMachineCompromised(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	RotateMachineCredential(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	RevokeMachineCredential(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
+	RevokeMachineSessions(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error)
 }
 
 // InsertSiteParams is persisted site metadata for admin create.

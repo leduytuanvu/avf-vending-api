@@ -1,0 +1,4728 @@
+{
+  "openapi_path_count": 283,
+  "openapi_operation_count": 344,
+  "router_stub_count": 344,
+  "chi_mounted_count": 281,
+  "chi_only_missing_openapi": [
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/{"
+    },
+    {
+      "method": "DELETE",
+      "path": "/{artifactId}"
+    },
+    {
+      "method": "GET",
+      "path": "/"
+    },
+    {
+      "method": "GET",
+      "path": "/assignments"
+    },
+    {
+      "method": "GET",
+      "path": "/commands"
+    },
+    {
+      "method": "GET",
+      "path": "/machines"
+    },
+    {
+      "method": "GET",
+      "path": "/machines/{machineId}"
+    },
+    {
+      "method": "GET",
+      "path": "/orders"
+    },
+    {
+      "method": "GET",
+      "path": "/ota"
+    },
+    {
+      "method": "GET",
+      "path": "/payments"
+    },
+    {
+      "method": "GET",
+      "path": "/technicians"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/X-AVF-Webhook-Signature"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/X-AVF-Webhook-Timestamp"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/action-attributions"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/Content-Type"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/Idempotency-Key"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/X-Correlation-Id"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/X-Request-Id"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planogram"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planogram/versions"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/{"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/{campaignId}"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/{campaignId}/results"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/{campaignId}/targets"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/auth-events"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/current"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/history"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/timeline"
+    },
+    {
+      "method": "GET",
+      "path": "/{artifactId}"
+    },
+    {
+      "method": "GET",
+      "path": "/{artifactId}/download"
+    },
+    {
+      "method": "GET",
+      "path": "Content-Length"
+    },
+    {
+      "method": "GET",
+      "path": "Content-Type"
+    },
+    {
+      "method": "GET",
+      "path": "X-Artifact-Filename"
+    },
+    {
+      "method": "GET",
+      "path": "X-Artifact-SHA256"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/planogram/drafts/{draftId}"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/{"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/{campaignId}"
+    },
+    {
+      "method": "POST",
+      "path": "/"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/operator-sessions/start"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/planogram/drafts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/planogram/drafts/{draftId}/publish"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/planogram/drafts/{draftId}/validate"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/planogram/versions/{versionId}/rollback"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/approve"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/cancel"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/pause"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/publish"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/resume"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/rollback"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/{campaignId}/start"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commands/poll"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/login"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/logout"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/vend-results"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/{sessionId}/heartbeat"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/{"
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/{campaignId}/targets"
+    },
+    {
+      "method": "PUT",
+      "path": "/{artifactId}/content"
+    }
+  ],
+  "router_only_missing_openapi": [],
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "operationId": "DocOpHealthLive",
+      "tags": [
+        "Health"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "operationId": "DocOpHealthReady",
+      "tags": [
+        "Health"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "DocOpMetrics",
+      "tags": [
+        "System"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/swagger/doc.json",
+      "operationId": "DocOpSwaggerDocJSON",
+      "tags": [
+        "System"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/swagger/index.html",
+      "operationId": "DocOpSwaggerIndex",
+      "tags": [
+        "System"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogList",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogCreate",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/activation-codes/{codeId}/revoke",
+      "operationId": "DocOpV1AdminActivationCodeCatalogRevoke",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/anomalies",
+      "operationId": "DocOpV1AdminOperationalAnomaliesList",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/anomalies/{anomalyId}",
+      "operationId": "DocOpV1AdminOperationalAnomalyGet",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/ignore",
+      "operationId": "DocOpV1AdminOperationalAnomalyIgnore",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminOperationalAnomalyResolve",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsList",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsReserve",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsDelete",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsGet",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/artifacts/{artifactId}/content",
+      "operationId": "DocOpV1AdminArtifactsPutContent",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}/download",
+      "operationId": "DocOpV1AdminArtifactsDownloadURL",
+      "tags": [
+        "Artifacts"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentsList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentDelete",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/audit/events",
+      "operationId": "DocOpV1AdminAuditEventsList",
+      "tags": [
+        "Audit Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/audit/events/{auditEventId}",
+      "operationId": "DocOpV1AdminAuditEventGet",
+      "tags": [
+        "Audit Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersList",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersCreate",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersGet",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersPatch",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/activate",
+      "operationId": "DocOpV1AdminAuthUsersActivate",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/deactivate",
+      "operationId": "DocOpV1AdminAuthUsersDeactivate",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/reset-password",
+      "operationId": "DocOpV1AdminAuthUsersResetPassword",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/revoke-sessions",
+      "operationId": "DocOpV1AdminAuthUsersRevokeSessions",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPatchRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPostRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPutRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}/sessions",
+      "operationId": "DocOpV1AdminAuthUsersSessions",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/status",
+      "operationId": "DocOpV1AdminAuthUsersPatchStatus",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandReplace",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoriesList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoryCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryReplace",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commands",
+      "operationId": "DocOpV1AdminCommandsList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commands/{commandId}",
+      "operationId": "DocOpV1AdminCommandGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/cancel",
+      "operationId": "DocOpV1AdminCommandCancel",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/retry",
+      "operationId": "DocOpV1AdminCommandRetry",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation",
+      "operationId": "DocOpV1AdminCommerceReconciliationList",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}",
+      "operationId": "DocOpV1AdminCommerceReconciliationGet",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/ignore",
+      "operationId": "DocOpV1AdminCommerceReconciliationIgnore",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/request-refund",
+      "operationId": "DocOpV1AdminCommerceReconciliationRequestRefund",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/resolve",
+      "operationId": "DocOpV1AdminCommerceReconciliationResolve",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsList",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsPost",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagGet",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagPatch",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/disable",
+      "operationId": "DocOpV1AdminFeatureFlagDisablePost",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/enable",
+      "operationId": "DocOpV1AdminFeatureFlagEnablePost",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/feature-flags/{flagId}/targets",
+      "operationId": "DocOpV1AdminFeatureFlagTargetsPut",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyCloseList",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyClosePost",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close/{closeId}",
+      "operationId": "DocOpV1AdminFinanceDailyCloseGet",
+      "tags": [
+        "Finance"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/anomalies",
+      "operationId": "DocOpV1AdminInventoryAnomaliesList",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/inventory/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminInventoryAnomalyResolve",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/low-stock",
+      "operationId": "DocOpV1AdminInventoryLowStock",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/refill-suggestions",
+      "operationId": "DocOpV1AdminInventoryRefillSuggestions",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsList",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsPost",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminMachineConfigRolloutGet",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachinesList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachineCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachineGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachinePatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesPost",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}",
+      "operationId": "DocOpV1AdminMachineActivationCodeDelete",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/archive",
+      "operationId": "DocOpV1AdminMachineArchive",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsList",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsPost",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}",
+      "operationId": "DocOpV1AdminMachineCashCollectionGet",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close",
+      "operationId": "DocOpV1AdminMachineCashCollectionClosePost",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cashbox",
+      "operationId": "DocOpV1AdminMachineCashbox",
+      "tags": [
+        "Cash settlement"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/commands",
+      "operationId": "DocOpV1AdminMachineCommandDispatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/bundles",
+      "operationId": "DocOpV1AdminMachineDiagnosticBundlesList",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/requests",
+      "operationId": "DocOpV1AdminMachineDiagnosticRequest",
+      "tags": [
+        "Fleet"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/disable",
+      "operationId": "DocOpV1AdminMachineDisable",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/enable",
+      "operationId": "DocOpV1AdminMachineEnable",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/health",
+      "operationId": "DocOpV1AdminMachineHealth",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory",
+      "operationId": "DocOpV1AdminMachineInventory",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory-events",
+      "operationId": "DocOpV1AdminMachineInventoryEvents",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory/anomalies",
+      "operationId": "DocOpV1AdminMachineInventoryAnomaliesList",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/inventory/reconcile",
+      "operationId": "DocOpV1AdminMachineInventoryReconcile",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/mark-compromised",
+      "operationId": "DocOpV1AdminMachineMarkCompromised",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/ops-overview",
+      "operationId": "DocOpV1AdminMachineOpsOverview",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/planograms/draft",
+      "operationId": "DocOpV1AdminMachinePlanogramDraftPut",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planograms/publish",
+      "operationId": "DocOpV1AdminMachinePlanogramPublishPost",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/reattach-device",
+      "operationId": "DocOpV1AdminMachineReattachDevice",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/refill-suggestions",
+      "operationId": "DocOpV1AdminMachineRefillSuggestions",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/resume",
+      "operationId": "DocOpV1AdminMachineResume",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/retire",
+      "operationId": "DocOpV1AdminMachineRetire",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-credentials",
+      "operationId": "DocOpV1AdminMachineRevokeCredentials",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-sessions",
+      "operationId": "DocOpV1AdminMachineRevokeSessions",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-token",
+      "operationId": "DocOpV1AdminMachineRevokeToken",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credential",
+      "operationId": "DocOpV1AdminMachineRotateCredential",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credentials",
+      "operationId": "DocOpV1AdminMachineRotateCredentials",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-token-version",
+      "operationId": "DocOpV1AdminMachineRotateTokenVersion",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/current",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionCurrent",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/history",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionHistory",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/revoke",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionRevoke",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/slots",
+      "operationId": "DocOpV1AdminMachineSlots",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/stock-adjustments",
+      "operationId": "DocOpV1AdminMachineStockAdjustmentsPost",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/suspend",
+      "operationId": "DocOpV1AdminMachineSuspend",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/sync",
+      "operationId": "DocOpV1AdminMachineSetupSyncPost",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechniciansOnMachineList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechnicianAssign",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/technicians/{userId}",
+      "operationId": "DocOpV1AdminMachineTechnicianRemove",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/timeline",
+      "operationId": "DocOpV1AdminMachineTimeline",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/timeline/unified",
+      "operationId": "DocOpV1AdminMachineUnifiedTimeline",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/topology",
+      "operationId": "DocOpV1AdminMachineTopologyPut",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/transfer-site",
+      "operationId": "DocOpV1AdminMachineTransferSite",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media",
+      "operationId": "DocOpV1AdminMediaList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/external-images",
+      "operationId": "DocOpV1AdminExternalProductImageRegister",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/product-images",
+      "operationId": "DocOpV1AdminMediaProductImagesAlias",
+      "tags": [
+        "Media Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads",
+      "operationId": "DocOpV1AdminMediaUploadInit",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/init",
+      "operationId": "DocOpV1AdminMediaUploadInitV2",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadCompleteUploadsPrefix",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadComplete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/operations/machines/health",
+      "operationId": "DocOpV1AdminOperationsMachinesHealth",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ops/outbox",
+      "operationId": "DocOpV1AdminOutboxOpsGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ops/outbox/{outboxId}/retry",
+      "operationId": "DocOpV1AdminOutboxRetry",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ops/retention",
+      "operationId": "DocOpV1AdminRetentionOpsGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/orders/{orderId}/refunds",
+      "operationId": "DocOpV1AdminCommerceOrderRefundPost",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/orders/{orderId}/timeline",
+      "operationId": "DocOpV1AdminCommerceOrderTimelineGet",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota",
+      "operationId": "DocOpV1AdminOTAList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignsList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignPatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/approve",
+      "operationId": "DocOpV1AdminOTACampaignApprove",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/cancel",
+      "operationId": "DocOpV1AdminOTACampaignCancel",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/pause",
+      "operationId": "DocOpV1AdminOTACampaignPause",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/publish",
+      "operationId": "DocOpV1AdminOTACampaignPublish",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/results",
+      "operationId": "DocOpV1AdminOTACampaignResultsGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/resume",
+      "operationId": "DocOpV1AdminOTACampaignResume",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/rollback",
+      "operationId": "DocOpV1AdminOTACampaignRollback",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/start",
+      "operationId": "DocOpV1AdminOTACampaignStart",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsPut",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payment/providers",
+      "operationId": "DocOpV1AdminPaymentProvidersList",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/disputes",
+      "operationId": "DocOpV1AdminPaymentDisputesList",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/payments/disputes/{disputeId}/resolve",
+      "operationId": "DocOpV1AdminPaymentDisputeResolve",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/export",
+      "operationId": "DocOpV1AdminPaymentExport",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/reconciliation",
+      "operationId": "DocOpV1AdminPaymentReconciliation",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/settlements",
+      "operationId": "DocOpV1AdminPaymentSettlementsList",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/payments/settlements/import",
+      "operationId": "DocOpV1AdminPaymentSettlementsImport",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/webhook-events",
+      "operationId": "DocOpV1AdminPaymentWebhookEvents",
+      "tags": [
+        "Payment Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planograms",
+      "operationId": "DocOpV1AdminPlanogramsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planograms/{planogramId}",
+      "operationId": "DocOpV1AdminPlanogramGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBooksList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBookCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/activate",
+      "operationId": "DocOpV1AdminPriceBookActivate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/archive",
+      "operationId": "DocOpV1AdminPriceBookArchive",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/assign-target",
+      "operationId": "DocOpV1AdminPriceBookAssignTarget",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/deactivate",
+      "operationId": "DocOpV1AdminPriceBookDeactivate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsPut",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPriceBookTargetDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/pricing/preview",
+      "operationId": "DocOpV1AdminPricingPreview",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/product-images",
+      "operationId": "DocOpV1AdminProductImageUpload",
+      "tags": [
+        "Media Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductReplace",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImageDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePost",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePut",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPost",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPut",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/media/{mediaId}",
+      "operationId": "DocOpV1AdminProductMediaUnbind",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/preview",
+      "operationId": "DocOpV1AdminPromotionsPreview",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionGet",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/activate",
+      "operationId": "DocOpV1AdminPromotionActivate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/archive",
+      "operationId": "DocOpV1AdminPromotionArchive",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/assign-target",
+      "operationId": "DocOpV1AdminPromotionAssignTarget",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/deactivate",
+      "operationId": "DocOpV1AdminPromotionDeactivate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/pause",
+      "operationId": "DocOpV1AdminPromotionPause",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/promotions/{promotionId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPromotionTargetDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/provisioning/batches/{batchId}",
+      "operationId": "DocOpV1AdminProvisioningBatchGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/provisioning/machines/bulk",
+      "operationId": "DocOpV1AdminProvisioningBulk",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/refunds",
+      "operationId": "DocOpV1AdminCommerceRefundRequestsList",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/refunds/{refundId}",
+      "operationId": "DocOpV1AdminCommerceRefundRequestGet",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/cash",
+      "operationId": "DocOpV1AdminReportsCash",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/cash-collections/export.csv",
+      "operationId": "DocOpV1AdminReportsCashCollectionsExportCSV",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/commands",
+      "operationId": "DocOpV1AdminReportsCommands",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/export",
+      "operationId": "DocOpV1AdminReportsExport",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/failed-vends",
+      "operationId": "DocOpV1AdminReportsFailedVends",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/fills",
+      "operationId": "DocOpV1AdminReportsTechnicianFills",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory",
+      "operationId": "DocOpV1AdminReportsInventoryUnified",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory-low-stock",
+      "operationId": "DocOpV1AdminReportsInventoryLowStock",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/machine-health",
+      "operationId": "DocOpV1AdminReportsMachineHealth",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/machines",
+      "operationId": "DocOpV1AdminReportsMachines",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/payments",
+      "operationId": "DocOpV1AdminReportsPayments",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/payments-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsPaymentsSummaryExportCSV",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/products",
+      "operationId": "DocOpV1AdminReportsProducts",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation",
+      "operationId": "DocOpV1AdminReportsReconciliationBI",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation-queue",
+      "operationId": "DocOpV1AdminReportsReconciliationQueue",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/refunds",
+      "operationId": "DocOpV1AdminReportsRefunds",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/sales",
+      "operationId": "DocOpV1AdminReportsSales",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/sales-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsSalesSummaryExportCSV",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/vends",
+      "operationId": "DocOpV1AdminReportsVends",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/restock/suggestions",
+      "operationId": "DocOpV1AdminRestockSuggestions",
+      "tags": [
+        "Inventory"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutsList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminRolloutGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/cancel",
+      "operationId": "DocOpV1AdminRolloutCancel",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/pause",
+      "operationId": "DocOpV1AdminRolloutPause",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/resume",
+      "operationId": "DocOpV1AdminRolloutResume",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/rollback",
+      "operationId": "DocOpV1AdminRolloutRollback",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/start",
+      "operationId": "DocOpV1AdminRolloutStart",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSitesList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSiteCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteDelete",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSitePatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/archive",
+      "operationId": "DocOpV1AdminSiteArchive",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/disable",
+      "operationId": "DocOpV1AdminSiteDisable",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox",
+      "operationId": "DocOpV1AdminSystemOutboxListGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/stats",
+      "operationId": "DocOpV1AdminSystemOutboxStatsGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/{eventId}",
+      "operationId": "DocOpV1AdminSystemOutboxGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/mark-dlq",
+      "operationId": "DocOpV1AdminSystemOutboxMarkDLQPost",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/replay",
+      "operationId": "DocOpV1AdminSystemOutboxReplayPost",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/retention/dry-run",
+      "operationId": "DocOpV1AdminSystemRetentionDryRunPost",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/retention/run",
+      "operationId": "DocOpV1AdminSystemRetentionRunPost",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/retention/stats",
+      "operationId": "DocOpV1AdminSystemRetentionStatsGet",
+      "tags": [
+        "Platform Ops"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagsList",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagCreate",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagDelete",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagPatch",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagReplace",
+      "tags": [
+        "Catalog Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentsList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentDelete",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentPatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments/{assignmentId}/cancel",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCancel",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechniciansList",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechnicianCreate",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianGet",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianPatch",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/disable",
+      "operationId": "DocOpV1AdminTechnicianDisable",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/enable",
+      "operationId": "DocOpV1AdminTechnicianEnable",
+      "tags": [
+        "Machine Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersList",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersCreate",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersGet",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersPatch",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/disable",
+      "operationId": "DocOpV1AdminUsersDisable",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/enable",
+      "operationId": "DocOpV1AdminUsersEnable",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/reset-password",
+      "operationId": "DocOpV1AdminUsersResetPassword",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/revoke-sessions",
+      "operationId": "DocOpV1AdminUsersRevokeSessions",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPatchRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPostRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPutRoles",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/users/{userId}/roles/{role}",
+      "operationId": "DocOpV1AdminUsersDeleteRole",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}/sessions",
+      "operationId": "DocOpV1AdminUsersSessions",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/status",
+      "operationId": "DocOpV1AdminUsersPatchStatus",
+      "tags": [
+        "Auth Admin"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "AUTH_REQUIRED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/change-password",
+      "operationId": "DocOpV1AuthChangePassword",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "operationId": "DocOpV1AuthLogin",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "operationId": "DocOpV1AuthLogout",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "operationId": "DocOpV1AuthMe",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/disable",
+      "operationId": "DocOpV1AuthMFADisable",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/enroll",
+      "operationId": "DocOpV1AuthMFAEnroll",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/verify",
+      "operationId": "DocOpV1AuthMFAVerify",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/change",
+      "operationId": "DocOpV1AuthPasswordChange",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/reset/confirm",
+      "operationId": "DocOpV1AuthPasswordResetConfirm",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/reset/request",
+      "operationId": "DocOpV1AuthPasswordResetRequest",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/refresh",
+      "operationId": "DocOpV1AuthRefresh",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsRevokeOthers",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsList",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/auth/sessions/{sessionId}",
+      "operationId": "DocOpV1AuthSessionDelete",
+      "tags": [
+        "Auth"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/cash-checkout",
+      "operationId": "DocOpV1CommerceCashCheckout",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders",
+      "operationId": "DocOpV1CommerceCreateOrder",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}",
+      "operationId": "DocOpV1CommerceGetOrder",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/cancel",
+      "operationId": "DocOpV1CommerceOrderCancel",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payment-session",
+      "operationId": "DocOpV1CommercePaymentSession",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks",
+      "operationId": "DocOpV1CommercePaymentWebhook",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "public",
+      "execution_class": "WEBHOOK",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/reconciliation",
+      "operationId": "DocOpV1CommerceReconciliationSnapshot",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundsList",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundCreate",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "SAFETY_GATED",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds/{refundId}",
+      "operationId": "DocOpV1CommerceRefundGet",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/failure",
+      "operationId": "DocOpV1CommerceVendFailure",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/start",
+      "operationId": "DocOpV1CommerceVendStart",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/success",
+      "operationId": "DocOpV1CommerceVendSuccess",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/commands/poll",
+      "operationId": "DocOpV1DeviceMachineCommandsPoll",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/events/reconcile",
+      "operationId": "DocOpV1DeviceTelemetryReconcileBatch",
+      "tags": [
+        "Telemetry Reconcile"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/device/machines/{machineId}/events/{idempotencyKey}/status",
+      "operationId": "DocOpV1DeviceTelemetryReconcileStatusGet",
+      "tags": [
+        "Telemetry Reconcile"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/vend-results",
+      "operationId": "DocOpV1DeviceMachineVendResults",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/check-ins",
+      "operationId": "DocOpV1MachineCheckIn",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/commands/dispatch",
+      "operationId": "DocOpV1MachineCommandDispatch",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/receipts",
+      "operationId": "DocOpV1MachineCommandReceipts",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/{sequence}/status",
+      "operationId": "DocOpV1MachineCommandStatus",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/config-applies",
+      "operationId": "DocOpV1MachineConfigApply",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/action-attributions",
+      "operationId": "DocOpV1OperatorSessionActionAttributions",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/auth-events",
+      "operationId": "DocOpV1OperatorSessionAuthEvents",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/current",
+      "operationId": "DocOpV1OperatorSessionCurrent",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/history",
+      "operationId": "DocOpV1OperatorSessionHistory",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/login",
+      "operationId": "DocOpV1OperatorSessionLogin",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/logout",
+      "operationId": "DocOpV1OperatorSessionLogout",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/timeline",
+      "operationId": "DocOpV1OperatorSessionTimeline",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat",
+      "operationId": "DocOpV1OperatorSessionHeartbeat",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/sale-catalog",
+      "operationId": "DocOpV1MachineSaleCatalogGet",
+      "tags": [
+        "Runtime Catalog"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/shadow",
+      "operationId": "DocOpV1MachineShadowGet",
+      "tags": [
+        "Device Runtime"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/incidents",
+      "operationId": "DocOpV1MachineTelemetryIncidents",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/rollups",
+      "operationId": "DocOpV1MachineTelemetryRollups",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/snapshot",
+      "operationId": "DocOpV1MachineTelemetrySnapshot",
+      "tags": [
+        "Telemetry"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/operator-insights/technicians/{technicianId}/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsTechnicianAttributions",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/operator-insights/users/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsUserAttributions",
+      "tags": [
+        "Operator Sessions"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/orders",
+      "operationId": "DocOpV1OrdersList",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/payments",
+      "operationId": "DocOpV1PaymentsList",
+      "tags": [
+        "Commerce"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/fleet-health",
+      "operationId": "DocOpV1ReportsFleetHealth",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/inventory-exceptions",
+      "operationId": "DocOpV1ReportsInventoryExceptions",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/payments-summary",
+      "operationId": "DocOpV1ReportsPaymentsSummary",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/sales-summary",
+      "operationId": "DocOpV1ReportsSalesSummary",
+      "tags": [
+        "Reporting"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": true
+    },
+    {
+      "method": "POST",
+      "path": "/v1/setup/activation-codes/claim",
+      "operationId": "DocOpV1SetupActivationClaimPost",
+      "tags": [
+        "Activation"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/v1/setup/machines/{machineId}/bootstrap",
+      "operationId": "DocOpV1SetupMachineBootstrap",
+      "tags": [
+        "Machine Setup"
+      ],
+      "auth": "bearer_user_or_machine",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    },
+    {
+      "method": "GET",
+      "path": "/version",
+      "operationId": "DocOpVersion",
+      "tags": [
+        "System"
+      ],
+      "auth": "public",
+      "execution_class": "EXECUTABLE",
+      "in_openapi": true,
+      "in_router_stub": true,
+      "in_chi_mount": false
+    }
+  ],
+  "unknown_auth_count": 0
+}

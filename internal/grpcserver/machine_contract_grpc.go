@@ -456,8 +456,32 @@ func offlineLedgerTerminalStatus(st string) bool {
 	}
 }
 
+func mapOfflineEventAlias(eventType string) string {
+	switch eventType {
+	case "order_created_offline":
+		return "commerce.create_order"
+	case "cash_accepted":
+		return "commerce.confirm_cash_payment"
+	case "vend_success":
+		return "commerce.confirm_vend_success"
+	case "vend_failure":
+		return "commerce.confirm_vend_failure"
+	case "inventory_decrement_pending":
+		return "inventory.report_delta"
+	case "hardware_error":
+		return "telemetry.critical"
+	case "refund_required":
+		return "commerce.cancel_order"
+	case "command_ack_pending":
+		return "telemetry.batch"
+	default:
+		return eventType
+	}
+}
+
 func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eventType string, payload []byte) error {
-	switch strings.ToLower(strings.TrimSpace(eventType)) {
+	eventType = mapOfflineEventAlias(strings.ToLower(strings.TrimSpace(eventType)))
+	switch eventType {
 	case "commerce.create_order", "sale.create_order":
 		var req machinev1.CreateOrderRequest
 		if err := protojson.Unmarshal(payload, &req); err != nil {

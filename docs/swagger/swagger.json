@@ -18799,6 +18799,55 @@
         ]
       }
     },
+    "/v1/admin/machines/{machineId}/ops-overview": {
+      "get": {
+        "operationId": "DocOpV1AdminMachineOpsOverview",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Machine operational overview (admin)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Machine operational overview (admin)",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
     "/v1/admin/machines/{machineId}/planograms/draft": {
       "put": {
         "description": "Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. Requires **operator_session_id** for an **ACTIVE** session on this machine.",
@@ -19261,6 +19310,55 @@
         "summary": "Publish draft planogram as current and dispatch device command",
         "tags": [
           "Machine Setup"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/reattach-device": {
+      "post": {
+        "operationId": "DocOpV1AdminMachineReattachDevice",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Reattach device after reinstall (admin/technician)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Reattach device after reinstall (admin/technician)",
+        "tags": [
+          "Machine Admin"
         ]
       }
     },
@@ -20132,6 +20230,153 @@
           }
         ],
         "summary": "Bump credential version / rotate token (admin)",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/runtime-sessions/current": {
+      "get": {
+        "operationId": "DocOpV1AdminMachineRuntimeSessionCurrent",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Current machine runtime session (admin)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Current machine runtime session (admin)",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/runtime-sessions/history": {
+      "get": {
+        "operationId": "DocOpV1AdminMachineRuntimeSessionHistory",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Machine runtime session history (admin)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Machine runtime session history (admin)",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/runtime-sessions/revoke": {
+      "post": {
+        "operationId": "DocOpV1AdminMachineRuntimeSessionRevoke",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Revoke machine runtime sessions (admin)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revoke machine runtime sessions (admin)",
         "tags": [
           "Machine Admin"
         ]
@@ -21031,6 +21276,55 @@
         ]
       }
     },
+    "/v1/admin/machines/{machineId}/timeline/unified": {
+      "get": {
+        "operationId": "DocOpV1AdminMachineUnifiedTimeline",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Unified enterprise machine timeline (admin)"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Unified enterprise machine timeline (admin)",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
     "/v1/admin/machines/{machineId}/topology": {
       "put": {
         "description": "Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **single_company_admin_context** query for company pick.",
@@ -21910,6 +22204,91 @@
         "summary": "Register external product image URL",
         "tags": [
           "Catalog Admin"
+        ]
+      }
+    },
+    "/v1/admin/media/product-images": {
+      "post": {
+        "operationId": "DocOpV1AdminMediaProductImagesAlias",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "complete_path": "/v1/admin/media/11111111-2222-3333-4444-555555555555/complete",
+                  "expires_at": "2026-04-19T13:00:00Z",
+                  "media_id": "11111111-2222-3333-4444-555555555555",
+                  "upload_headers": {
+                    "Content-Type": [
+                      "image/jpeg"
+                    ]
+                  },
+                  "upload_method": "PUT",
+                  "upload_url": "https://s3.example.com/presigned-put"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Upload product image (alias of POST /v1/admin/product-images)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Upload product image (alias of POST /v1/admin/product-images)",
+        "tags": [
+          "Media Admin"
         ]
       }
     },
@@ -26082,6 +26461,747 @@
         "summary": "Replace campaign machine targets (draft/approved only)",
         "tags": [
           "Machine Admin"
+        ]
+      }
+    },
+    "/v1/admin/payment/providers": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentProvidersList",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List configured payment providers (read-only registry)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List configured payment providers (read-only registry)",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/disputes": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentDisputesList",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List payment disputes"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List payment disputes",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/disputes/{disputeId}/resolve": {
+      "post": {
+        "operationId": "DocOpV1AdminPaymentDisputeResolve",
+        "parameters": [
+          {
+            "description": "Dispute UUID",
+            "in": "path",
+            "name": "disputeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Resolve a payment dispute"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Resolve a payment dispute",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/export": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentExport",
+        "parameters": [
+          {
+            "description": "RFC3339 start",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "RFC3339 end",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "example": "ok",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Export payments finance CSV"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Export payments finance CSV",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/reconciliation": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentReconciliation",
+        "parameters": [
+          {
+            "description": "RFC3339 start",
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "RFC3339 end",
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Payment reconciliation drift report"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Payment reconciliation drift report",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/settlements": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentSettlementsList",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List payment settlements"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List payment settlements",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/settlements/import": {
+      "post": {
+        "operationId": "DocOpV1AdminPaymentSettlementsImport",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Import payment settlements CSV"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Import payment settlements CSV",
+        "tags": [
+          "Payment Admin"
+        ]
+      }
+    },
+    "/v1/admin/payments/webhook-events": {
+      "get": {
+        "operationId": "DocOpV1AdminPaymentWebhookEvents",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List payment webhook events"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List payment webhook events",
+        "tags": [
+          "Payment Admin"
         ]
       }
     },

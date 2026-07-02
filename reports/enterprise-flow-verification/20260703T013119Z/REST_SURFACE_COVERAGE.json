@@ -1,0 +1,75 @@
+{
+  "openapi_path_count": 283,
+  "openapi_operation_count": 344,
+  "router_stub_count": 344,
+  "chi_mounted_count": 254,
+  "missing_in_openapi": [
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/planogram"
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/planogram/versions"
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/operator-sessions/start"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planogram/drafts"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/publish"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/validate"
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planogram/versions/{versionId}/rollback"
+    }
+  ],
+  "missing_in_router": [],
+  "accepted_missing_in_openapi": [
+    [
+      "POST",
+      "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/validate"
+    ],
+    [
+      "PATCH",
+      "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}"
+    ],
+    [
+      "GET",
+      "/v1/admin/machines/{machineId}/planogram"
+    ],
+    [
+      "POST",
+      "/v1/admin/machines/{machineId}/planogram/drafts"
+    ],
+    [
+      "GET",
+      "/v1/admin/machines/{machineId}/planogram/versions"
+    ],
+    [
+      "POST",
+      "/v1/admin/machines/{machineId}/planogram/versions/{versionId}/rollback"
+    ],
+    [
+      "POST",
+      "/v1/admin/machines/{machineId}/operator-sessions/start"
+    ],
+    [
+      "POST",
+      "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/publish"
+    ]
+  ]
+}

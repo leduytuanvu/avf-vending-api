@@ -298,7 +298,7 @@ func operatorLogoutHandler(svc *operator.Service) http.HandlerFunc {
 			MachineID:           machineID,
 			SessionID:           sid,
 			FinalStatus:         finalStatus,
-			EndedReason:         strings.TrimSpace(body.EndedReason),
+			EndedReason:         domainoperator.NormalizeEndedReason(body.EndedReason),
 			LogoutAuthMethod:    authMethod,
 			LogoutCorrelationID: corr,
 			LogoutMetadata:      mergeCorrelationMetadata([]byte("{}"), appmw.CorrelationIDFromContext(ctx)),

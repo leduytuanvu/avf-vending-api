@@ -251,6 +251,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					mountAdminFinanceDailyCloseRoutes(r, app)
 				})
 				mountAdminFleetWriteRoutes(r, app, writeRL)
+				mountAdminMachineEnterpriseRoutes(r, app, cfg, writeRL)
 				mountAdminOperationsRoutes(r, app, writeRL)
 				mountAdminAnomalyRoutes(r, app, writeRL)
 				mountAdminProvisioningRoutes(r, app, writeRL)

@@ -34,7 +34,8 @@ Build topics only from bootstrap/activation metadata: `mqtt.broker_url`, `mqtt.t
 
 | Relative tail | Purpose |
 |---------------|---------|
-| `commands/ack` | Command ACK (also legacy `commands/receipt`) |
+| `commands/ack` | Command ACK |
+| `commands/receipt` | Command receipt (legacy alias; same handler as ack) |
 | `presence` | Presence |
 | `state/heartbeat` | Heartbeat |
 | `telemetry` | Generic telemetry (`event_type` required in JSON) |
@@ -47,6 +48,26 @@ Build topics only from bootstrap/activation metadata: `mqtt.broker_url`, `mqtt.t
 | `shadow/reported` | Shadow reported |
 
 Device **subscribes** to `{prefix}/machines/{machineId}/commands` (API outbound).
+
+### Enterprise ingest subscribe patterns (mqtt-ingest)
+
+When `MQTT_TOPIC_LAYOUT=enterprise`, `cmd/mqtt-ingest` subscribes to:
+
+- `{prefix}/machines/+/commands/ack`
+- `{prefix}/machines/+/commands/receipt`
+- `{prefix}/machines/+/presence`
+- `{prefix}/machines/+/state/heartbeat`
+- `{prefix}/machines/+/telemetry`
+- `{prefix}/machines/+/telemetry/snapshot`
+- `{prefix}/machines/+/telemetry/incident`
+- `{prefix}/machines/+/events`
+- `{prefix}/machines/+/events/vend`
+- `{prefix}/machines/+/events/cash`
+- `{prefix}/machines/+/events/inventory`
+- `{prefix}/machines/+/shadow/reported`
+- `{prefix}/machines/+/shadow/desired` (ingested; typically cloud-originated)
+
+**Note:** `machine_runtime_refresh_tokens` is deprecated; canonical refresh sessions live in `machine_sessions` (see `docs/api/machine-runtime.md`).
 
 ### Enterprise command topics (contract)
 

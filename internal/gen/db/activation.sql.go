@@ -37,11 +37,51 @@ WHERE
     AND result = 'succeeded'
 `
 
-func (q *Queries) CountSucceededMachineActivationClaims(ctx context.Context, activationCodeID uuid.UUID) (int64, error) {
+func (q *Queries) CountSucceededMachineActivationClaims(ctx context.Context, activationCodeID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, CountSucceededMachineActivationClaims, activationCodeID)
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
+}
+
+const GetLastSucceededActivationClaimForMachine = `-- name: GetLastSucceededActivationClaimForMachine :one
+SELECT
+    id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason, activated_by_account_id, operator_session_id, request_id, correlation_id, app_version, boot_id, device_serial, reason, activation_source
+FROM
+    machine_activation_claims
+WHERE
+    machine_id = $1
+    AND result = 'succeeded'
+ORDER BY
+    claimed_at DESC
+LIMIT
+    1
+`
+
+func (q *Queries) GetLastSucceededActivationClaimForMachine(ctx context.Context, machineID uuid.UUID) (MachineActivationClaim, error) {
+	row := q.db.QueryRow(ctx, GetLastSucceededActivationClaimForMachine, machineID)
+	var i MachineActivationClaim
+	err := row.Scan(
+		&i.ID,
+		&i.ActivationCodeID,
+		&i.MachineID,
+		&i.FingerprintHash,
+		&i.ClaimedAt,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.Result,
+		&i.FailureReason,
+		&i.ActivatedByAccountID,
+		&i.OperatorSessionID,
+		&i.RequestID,
+		&i.CorrelationID,
+		&i.AppVersion,
+		&i.BootID,
+		&i.DeviceSerial,
+		&i.Reason,
+		&i.ActivationSource,
+	)
+	return i, err
 }
 
 const GetMachineActivationCodeByHashForUpdate = `-- name: GetMachineActivationCodeByHashForUpdate :one
@@ -104,7 +144,7 @@ func (q *Queries) GetMachineActivationCodeByIDForOrg(ctx context.Context, id uui
 
 const GetSucceededMachineActivationClaimByCodeAndFingerprint = `-- name: GetSucceededMachineActivationClaimByCodeAndFingerprint :one
 SELECT
-    id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason
+    id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason, activated_by_account_id, operator_session_id, request_id, correlation_id, app_version, boot_id, device_serial, reason, activation_source
 FROM
     machine_activation_claims
 WHERE
@@ -114,7 +154,7 @@ WHERE
 `
 
 type GetSucceededMachineActivationClaimByCodeAndFingerprintParams struct {
-	ActivationCodeID uuid.UUID
+	ActivationCodeID pgtype.UUID
 	FingerprintHash  []byte
 }
 
@@ -131,6 +171,15 @@ func (q *Queries) GetSucceededMachineActivationClaimByCodeAndFingerprint(ctx con
 		&i.UserAgent,
 		&i.Result,
 		&i.FailureReason,
+		&i.ActivatedByAccountID,
+		&i.OperatorSessionID,
+		&i.RequestID,
+		&i.CorrelationID,
+		&i.AppVersion,
+		&i.BootID,
+		&i.DeviceSerial,
+		&i.Reason,
+		&i.ActivationSource,
 	)
 	return i, err
 }
@@ -154,11 +203,11 @@ VALUES (
     $6,
     $7
 )
-RETURNING id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason
+RETURNING id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason, activated_by_account_id, operator_session_id, request_id, correlation_id, app_version, boot_id, device_serial, reason, activation_source
 `
 
 type InsertMachineActivationClaimParams struct {
-	ActivationCodeID uuid.UUID
+	ActivationCodeID pgtype.UUID
 	MachineID        uuid.UUID
 	FingerprintHash  []byte
 	IpAddress        string
@@ -188,6 +237,117 @@ func (q *Queries) InsertMachineActivationClaim(ctx context.Context, arg InsertMa
 		&i.UserAgent,
 		&i.Result,
 		&i.FailureReason,
+		&i.ActivatedByAccountID,
+		&i.OperatorSessionID,
+		&i.RequestID,
+		&i.CorrelationID,
+		&i.AppVersion,
+		&i.BootID,
+		&i.DeviceSerial,
+		&i.Reason,
+		&i.ActivationSource,
+	)
+	return i, err
+}
+
+const InsertMachineActivationClaimExtended = `-- name: InsertMachineActivationClaimExtended :one
+INSERT INTO machine_activation_claims (
+    activation_code_id,
+    machine_id,
+    fingerprint_hash,
+    ip_address,
+    user_agent,
+    result,
+    failure_reason,
+    activated_by_account_id,
+    operator_session_id,
+    request_id,
+    correlation_id,
+    app_version,
+    boot_id,
+    device_serial,
+    reason,
+    activation_source
+)
+VALUES (
+    $16,
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15
+)
+RETURNING id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason, activated_by_account_id, operator_session_id, request_id, correlation_id, app_version, boot_id, device_serial, reason, activation_source
+`
+
+type InsertMachineActivationClaimExtendedParams struct {
+	MachineID            uuid.UUID
+	FingerprintHash      []byte
+	IpAddress            string
+	UserAgent            string
+	Result               string
+	FailureReason        string
+	ActivatedByAccountID pgtype.UUID
+	OperatorSessionID    pgtype.UUID
+	RequestID            pgtype.Text
+	CorrelationID        pgtype.UUID
+	AppVersion           pgtype.Text
+	BootID               pgtype.Text
+	DeviceSerial         pgtype.Text
+	Reason               pgtype.Text
+	ActivationSource     pgtype.Text
+	ActivationCodeID     pgtype.UUID
+}
+
+func (q *Queries) InsertMachineActivationClaimExtended(ctx context.Context, arg InsertMachineActivationClaimExtendedParams) (MachineActivationClaim, error) {
+	row := q.db.QueryRow(ctx, InsertMachineActivationClaimExtended,
+		arg.MachineID,
+		arg.FingerprintHash,
+		arg.IpAddress,
+		arg.UserAgent,
+		arg.Result,
+		arg.FailureReason,
+		arg.ActivatedByAccountID,
+		arg.OperatorSessionID,
+		arg.RequestID,
+		arg.CorrelationID,
+		arg.AppVersion,
+		arg.BootID,
+		arg.DeviceSerial,
+		arg.Reason,
+		arg.ActivationSource,
+		arg.ActivationCodeID,
+	)
+	var i MachineActivationClaim
+	err := row.Scan(
+		&i.ID,
+		&i.ActivationCodeID,
+		&i.MachineID,
+		&i.FingerprintHash,
+		&i.ClaimedAt,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.Result,
+		&i.FailureReason,
+		&i.ActivatedByAccountID,
+		&i.OperatorSessionID,
+		&i.RequestID,
+		&i.CorrelationID,
+		&i.AppVersion,
+		&i.BootID,
+		&i.DeviceSerial,
+		&i.Reason,
+		&i.ActivationSource,
 	)
 	return i, err
 }
@@ -249,6 +409,62 @@ func (q *Queries) InsertMachineActivationCode(ctx context.Context, arg InsertMac
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const ListMachineActivationClaimsForMachine = `-- name: ListMachineActivationClaimsForMachine :many
+SELECT
+    id, activation_code_id, machine_id, fingerprint_hash, claimed_at, ip_address, user_agent, result, failure_reason, activated_by_account_id, operator_session_id, request_id, correlation_id, app_version, boot_id, device_serial, reason, activation_source
+FROM
+    machine_activation_claims
+WHERE
+    machine_id = $1
+ORDER BY
+    claimed_at DESC
+LIMIT $2
+`
+
+type ListMachineActivationClaimsForMachineParams struct {
+	MachineID uuid.UUID
+	Limit     int32
+}
+
+func (q *Queries) ListMachineActivationClaimsForMachine(ctx context.Context, arg ListMachineActivationClaimsForMachineParams) ([]MachineActivationClaim, error) {
+	rows, err := q.db.Query(ctx, ListMachineActivationClaimsForMachine, arg.MachineID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MachineActivationClaim{}
+	for rows.Next() {
+		var i MachineActivationClaim
+		if err := rows.Scan(
+			&i.ID,
+			&i.ActivationCodeID,
+			&i.MachineID,
+			&i.FingerprintHash,
+			&i.ClaimedAt,
+			&i.IpAddress,
+			&i.UserAgent,
+			&i.Result,
+			&i.FailureReason,
+			&i.ActivatedByAccountID,
+			&i.OperatorSessionID,
+			&i.RequestID,
+			&i.CorrelationID,
+			&i.AppVersion,
+			&i.BootID,
+			&i.DeviceSerial,
+			&i.Reason,
+			&i.ActivationSource,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListMachineActivationCodesForMachine = `-- name: ListMachineActivationCodesForMachine :many

@@ -1,0 +1,29 @@
+{
+  "rest_missing_in_openapi": [
+    {"method": "GET", "path": "/v1/admin/machines/{machineId}/planogram", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "GET", "path": "/v1/admin/machines/{machineId}/planogram/versions", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "POST", "path": "/v1/admin/machines/{machineId}/planogram/drafts", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "PATCH", "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "POST", "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/validate", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "POST", "path": "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/publish", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "POST", "path": "/v1/admin/machines/{machineId}/planogram/versions/{versionId}/rollback", "reason": "planogram_chi_v2_openapi_uses_planograms_plural"},
+    {"method": "POST", "path": "/v1/admin/machines/{machineId}/operator-sessions/start", "reason": "admin_operator_session_start_pending_openapi_stub"}
+  ],
+  "rest_missing_in_router": [],
+  "grpc_unimplemented_rpc": [
+    "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+    "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+    "avf.machine.v1.MachineOperatorService/LoginOperator",
+    "avf.machine.v1.MachineOperatorService/LogoutOperator",
+    "avf.machine.v1.MachineCommandService/GetPendingCommands",
+    "avf.machine.v1.MachineCommandService/AckCommand",
+    "avf.machine.v1.MachineCommandService/RejectCommand"
+  ],
+  "grpc_unregistered_services": [
+    "avf.v1.InternalMachineQueryService",
+    "avf.v1.InternalTelemetryQueryService",
+    "avf.v1.InternalCommerceQueryService"
+  ],
+  "mqtt_docs_only": [],
+  "mqtt_code_only": ["shadow/desired"]
+}
