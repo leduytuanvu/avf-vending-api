@@ -92,6 +92,8 @@ postman/**/*-report.html
 postman/**/*-report.json
 .e2e-runs/**/newman-report.json
 .e2e-runs/**/newman-junit.xml
+**/newman-report.json
+**/newman-junit.xml
 
 # Regenerable test coverage reports (scripts/test/run-mqtt-full-coverage.sh)
 docs/reports/test/mqtt-full-coverage.json
@@ -100,6 +102,7 @@ docs/reports/test/mqtt-full-coverage.md
 # Local CI/security reports
 ci-reports/
 security-reports/
+docs/reports/cleanup/.scratch/
 migration-evidence/*.json
 *.sarif
 coverage.out
@@ -115,6 +118,7 @@ repomix-output.xml
 *.log
 tmp/
 temp/
+.tmp/
 *.tmp
 *.bak
 *.old

@@ -4,7 +4,7 @@ Repository automation grouped by purpose. Production deploy scripts under `deplo
 
 | Directory | Purpose |
 |-----------|---------|
-| [`local/`](local/) | Windows PowerShell local dev helpers |
+| [`local/`](local/) | Windows PowerShell local dev helpers; [`clean-local-artifacts.ps1`](local/clean-local-artifacts.ps1) / [`clean-local-artifacts.sh`](local/clean-local-artifacts.sh) remove gitignored temp/e2e outputs (dry-run default; `-Apply` / `--apply` to delete) |
 | [`ci/`](ci/) | CI gates, governance, migration checks, workflow contracts |
 | [`deploy/`](deploy/) | Release, security verdict, smoke, monitoring, staging deploy helpers |
 | [`db/`](db/) | Database backup evidence, migration guards, schema checks |
