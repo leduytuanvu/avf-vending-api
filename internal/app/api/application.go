@@ -33,6 +33,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
+	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/google/uuid"
 )
@@ -112,11 +113,14 @@ type HTTPApplicationDeps struct {
 	Commerce           *appcommerce.Service
 	MQTTCommandPublish appdevice.MQTTDispatchPublisher
 	// MQTTTopicPrefix and MQTTTopicLayout match the API MQTT publisher (ledger.route_key / diagnostics). Empty prefix leaves topic empty in status metadata.
-	MQTTTopicPrefix string
-	MQTTTopicLayout string
-	Artifacts       *appartifacts.Service
-	HTTPAuth        config.HTTPAuthConfig
-	MachineJWT      config.MachineJWTConfig
+	MQTTTopicPrefix   string
+	MQTTTopicLayout   string
+	EMQXManagementURL string
+	EMQXAPIKey        string
+	EMQXAPISecret     string
+	Artifacts         *appartifacts.Service
+	HTTPAuth          config.HTTPAuthConfig
+	MachineJWT        config.MachineJWTConfig
 	// CatalogMediaCacheBumper optional; Redis-backed media epoch bump when configured.
 	CatalogMediaCacheBumper appmediaadmin.CatalogMediaCacheBumper
 	// AccessRevocation optional; Redis-backed access JTI / subject revocation (logout, admin deactivate).
@@ -192,6 +196,9 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		actPepper = plauth.TrimSecret(deps.HTTPAuth.LoginJWTSecret)
 	}
 	activationSvc := appactivation.NewService(deps.Store.Pool(), issuer, actPepper, auditSvc)
+	if emqxClient, err := emqxadmin.NewClient(deps.EMQXManagementURL, deps.EMQXAPIKey, deps.EMQXAPISecret); err == nil {
+		activationSvc.SetEMQXClient(emqxClient)
+	}
 	var pm appcatalogadmin.ProductMediaDeps
 	if deps.Artifacts != nil {
 		pm.Store = deps.Artifacts.Store()

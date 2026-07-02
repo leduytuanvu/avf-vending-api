@@ -1,0 +1,23 @@
+{
+  "utc": "20260702T210742Z",
+  "status": "PENDING_OPERATOR_DEPLOY",
+  "code_sha": "3f021486155c827d48b7dfb181216ae9dec62a5f",
+  "workflow": ".github/workflows/deploy-prod.yml",
+  "required_app_node_env": [
+    "EMQX_MANAGEMENT_URL=http://187.127.99.153:18083",
+    "EMQX_API_KEY",
+    "EMQX_API_SECRET"
+  ],
+  "required_data_node_acl": [
+    "deployments/prod/emqx/acl.conf.example -> /opt/emqx/etc/acl.conf",
+    "authorization.enable=true via authorization.snippet.hocon",
+    "EMQX restart"
+  ],
+  "pre_deploy_smoke": "curl -u $EMQX_API_KEY:$EMQX_API_SECRET $EMQX_MANAGEMENT_URL/api/v5/status",
+  "post_deploy_smoke": [
+    "curl https://api.ldtv.dev/health/live",
+    "curl https://api.ldtv.dev/version"
+  ],
+  "claim_smoke": "POST /v1/setup/activation-codes/claim must return mqttUsername + mqttPassword when EMQX configured",
+  "notes": "Deploy not executed from automation session — operator must merge to main, set app-node env on both VPSes, verify ACL, then trigger workflow_dispatch."
+}

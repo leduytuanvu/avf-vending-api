@@ -1,0 +1,19 @@
+{
+  "utc": "20260702T212040Z",
+  "pass": true,
+  "git_branch": "develop",
+  "git_head": "3f021486155c827d48b7dfb181216ae9dec62a5f",
+  "secrets_in_diff": false,
+  "tests": {
+    "emqxadmin": "ok",
+    "activation": "ok",
+    "fleet": "ok",
+    "httpserver_security": "ok",
+    "go_build": "ok"
+  },
+  "validators": {
+    "rest": "ok",
+    "grpc": "ok",
+    "mqtt": "ok"
+  }
+}

@@ -24,6 +24,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
 	platformcloudinary "github.com/avf/avf-vending-api/internal/platform/cloudinary"
+	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
@@ -122,6 +123,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	store := postgres.NewStore(rt.Pool(), postgres.WithEnterpriseAudit(auditSvc))
 	fleetRepo := postgres.NewFleetRepository(rt.Pool())
 	fleetSvc := appfleet.NewService(fleetRepo)
+	if emqxClient, err := emqxadmin.NewClient(cfg.MQTT.EMQXManagementURL, cfg.MQTT.EMQXAPIKey, cfg.MQTT.EMQXAPISecret); err == nil {
+		fleetSvc.SetEMQXProvisioner(emqxClient, rt.Pool())
+	}
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
 		OrderVend:                   store,
 		PaymentOutbox:               store,
@@ -202,6 +206,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		Commerce:                commerceSvc,
 		MQTTTopicPrefix:         cfg.MQTT.TopicPrefix,
 		MQTTTopicLayout:         cfg.MQTT.TopicLayout,
+		EMQXManagementURL:       cfg.MQTT.EMQXManagementURL,
+		EMQXAPIKey:              cfg.MQTT.EMQXAPIKey,
+		EMQXAPISecret:           cfg.MQTT.EMQXAPISecret,
 		MQTTCommandPublish:      rt.Deps.MQTTPublisher,
 		Artifacts:               artifactSvc,
 		HTTPAuth:                cfg.HTTPAuth,

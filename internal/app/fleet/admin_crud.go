@@ -472,6 +472,9 @@ func (s *Service) MarkMachineCompromised(ctx context.Context, companyID, machine
 	if err != nil {
 		return LifecycleMutationOutcome{}, err
 	}
+	if err := s.revokeMachineMQTT(ctx, machineID); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
 	out := lifecycleResult(prev, st, m, in)
 	out.SessionsRevokedCount = 1
 	out.CredentialsRevokedCount = 1
@@ -498,6 +501,9 @@ func (s *Service) RotateMachineCredential(ctx context.Context, companyID, machin
 	if err != nil {
 		return LifecycleMutationOutcome{}, err
 	}
+	if err := s.rotateMachineMQTT(ctx, machineID); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
 	out := lifecycleResult(prev, m.Status, m, in)
 	out.SessionsRevokedCount = 1
 	return LifecycleMutationOutcome{Machine: m, Result: out}, nil
@@ -521,6 +527,9 @@ func (s *Service) RevokeMachineCredential(ctx context.Context, companyID, machin
 	}
 	m, err := s.repo.RevokeMachineCredentialLifecycle(ctx, companyID, machineID, false)
 	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	if err := s.revokeMachineMQTT(ctx, machineID); err != nil {
 		return LifecycleMutationOutcome{}, err
 	}
 	out := lifecycleResult(prev, m.Status, m, in)

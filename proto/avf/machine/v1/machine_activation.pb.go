@@ -181,8 +181,11 @@ type ClaimActivationResponse struct {
 	MqttTopicLayout   string `protobuf:"bytes,13,opt,name=mqtt_topic_layout,json=mqttTopicLayout,proto3" json:"mqtt_topic_layout,omitempty"`
 	BootstrapHttpPath string `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
 	BootstrapRequired bool   `protobuf:"varint,12,opt,name=bootstrap_required,json=bootstrapRequired,proto3" json:"bootstrap_required,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Per-machine broker credentials (returned once on claim when EMQX provisioning is enabled).
+	MqttUsername  string `protobuf:"bytes,14,opt,name=mqtt_username,json=mqttUsername,proto3" json:"mqtt_username,omitempty"`
+	MqttPassword  string `protobuf:"bytes,15,opt,name=mqtt_password,json=mqttPassword,proto3" json:"mqtt_password,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ClaimActivationResponse) Reset() {
@@ -299,6 +302,20 @@ func (x *ClaimActivationResponse) GetBootstrapRequired() bool {
 	return false
 }
 
+func (x *ClaimActivationResponse) GetMqttUsername() string {
+	if x != nil {
+		return x.MqttUsername
+	}
+	return ""
+}
+
+func (x *ClaimActivationResponse) GetMqttPassword() string {
+	if x != nil {
+		return x.MqttPassword
+	}
+	return ""
+}
+
 var File_avf_machine_v1_machine_activation_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
@@ -315,7 +332,7 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\fversion_code\x18\a \x01(\x05R\vversionCode\"\x93\x01\n" +
 	"\x16ClaimActivationRequest\x12'\n" +
 	"\x0factivation_code\x18\x01 \x01(\tR\x0eactivationCode\x12P\n" +
-	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xc3\x04\n" +
+	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\x8d\x05\n" +
 	"\x17ClaimActivationResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -330,7 +347,9 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	" \x01(\tR\x0fmqttTopicPrefix\x12*\n" +
 	"\x11mqtt_topic_layout\x18\r \x01(\tR\x0fmqttTopicLayout\x12.\n" +
 	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath\x12-\n" +
-	"\x12bootstrap_required\x18\f \x01(\bR\x11bootstrapRequired2~\n" +
+	"\x12bootstrap_required\x18\f \x01(\bR\x11bootstrapRequired\x12#\n" +
+	"\rmqtt_username\x18\x0e \x01(\tR\fmqttUsername\x12#\n" +
+	"\rmqtt_password\x18\x0f \x01(\tR\fmqttPassword2~\n" +
 	"\x18MachineActivationService\x12b\n" +
 	"\x0fClaimActivation\x12&.avf.machine.v1.ClaimActivationRequest\x1a'.avf.machine.v1.ClaimActivationResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 

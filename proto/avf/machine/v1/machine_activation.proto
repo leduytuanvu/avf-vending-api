@@ -40,4 +40,7 @@ message ClaimActivationResponse {
   string mqtt_topic_layout = 13;
   string bootstrap_http_path = 11;
   bool bootstrap_required = 12;
+  // Per-machine broker credentials (returned once on claim when EMQX provisioning is enabled).
+  string mqtt_username = 14;
+  string mqtt_password = 15;
 }

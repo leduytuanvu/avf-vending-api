@@ -139,6 +139,8 @@ MQTT:
 - terminate raw MQTT/TLS directly in EMQX on `8883`
 - do not assume the HTTP reverse proxy handles MQTT/TCP
 - keep plaintext `1883` loopback-only or private-only
+- app nodes reach EMQX management at `http://<data-node-private-ip>:18083` via `EMQX_MANAGEMENT_URL` (never expose `:18083` on the public internet)
+- set `EMQX_API_KEY` and `EMQX_API_SECRET` on both app nodes so activation claim / reattach provision per-machine MQTT users automatically
 
 ## Port matrix
 
