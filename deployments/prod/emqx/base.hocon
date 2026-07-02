@@ -21,5 +21,21 @@ listeners.ssl.default {
   }
 }
 
-# Per-machine topic ACL: see acl.conf.example and authorization.snippet.hocon in this directory.
-# Install /opt/emqx/etc/acl.conf on the broker, merge authorization.snippet.hocon, then set authorization.enable = true.
+# Per-machine topic ACL: acl.conf is mounted read-only; enable only after the file exists on disk.
+authorization {
+  enable = true
+  no_match = deny
+  deny_action = disconnect
+  cache {
+    enable = true
+    max_size = 32
+    ttl = "1m"
+  }
+  sources = [
+    {
+      type = file
+      enable = true
+      path = "/opt/emqx/etc/acl.conf"
+    }
+  ]
+}

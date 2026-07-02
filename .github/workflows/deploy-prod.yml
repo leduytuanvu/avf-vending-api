@@ -1677,6 +1677,7 @@ jobs:
       CLOUDINARY_FOLDER: avf-vending/products
       MEDIA_MAX_IMAGE_SIZE_MB: "5"
       MEDIA_ALLOWED_IMAGE_TYPES: image/jpeg,image/png,image/webp,image/gif
+      EMQX_MANAGEMENT_URL: ${{ vars.EMQX_MANAGEMENT_URL || 'http://187.127.99.153:18083' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -2255,6 +2256,70 @@ jobs:
             apply_clear_stale_app_git_sha_remote "${APP_NODE_B_HOST}"
             apply_vend_evidence_allowlist_remote "${APP_NODE_B_HOST}"
           fi
+
+      - name: Sync EMQX ACL assets to data node
+        if: env.ACTION_MODE == 'deploy' && env.DATA_NODE_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared | \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh'"
+
+      - name: Apply EMQX management env on app nodes
+        if: env.ACTION_MODE == 'deploy'
+        shell: bash
+        env:
+          DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
+        run: |
+          set -Eeuo pipefail
+          if [[ -z "${DATA_NODE_HOST:-}" ]]; then
+            echo "error: DATA_NODE_HOST is required to source EMQX management credentials" >&2
+            exit 1
+          fi
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
+          EMQX_API_KEY="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_KEY=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          EMQX_API_SECRET="$(
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+              "grep -E '^EMQX_API_SECRET=' '${data_env}' | tail -n 1 | cut -d= -f2-"
+          )"
+          [[ -n "${EMQX_API_KEY}" && -n "${EMQX_API_SECRET}" ]] || {
+            echo "error: EMQX_API_KEY / EMQX_API_SECRET missing in data-node env" >&2
+            exit 1
+          }
+          apply_emqx_management_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "EMQX_MANAGEMENT_URL=${EMQX_MANAGEMENT_URL:-http://187.127.99.153:18083}" \
+              "EMQX_API_KEY=${EMQX_API_KEY}" \
+              "EMQX_API_SECRET=${EMQX_API_SECRET}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh" "${env_path}"
+          }
+          apply_emqx_management_remote "${APP_NODE_A_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
+            apply_emqx_management_remote "${APP_NODE_B_HOST}"
+          fi
+
+      - name: Install EMQX ACL on data node
+        if: env.ACTION_MODE == 'deploy' && env.DATA_NODE_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh"
 
       - name: Apply Cloudinary env on app nodes
         if: env.ACTION_MODE == 'deploy'
