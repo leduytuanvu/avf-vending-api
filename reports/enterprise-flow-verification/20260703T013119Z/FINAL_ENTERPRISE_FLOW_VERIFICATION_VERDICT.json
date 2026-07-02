@@ -1,0 +1,43 @@
+{
+  "timestamp": "20260703T013119Z",
+  "verdict": "ENTERPRISE_FLOW_ALL_REST_GRPC_MQTT_PASS",
+  "prior_verdict": "ENTERPRISE_FLOW_PARTIAL_BACKEND_READY_APP_FOLLOWUP_REQUIRED",
+  "rest": {
+    "openapi_paths": 283,
+    "openapi_operations": 344,
+    "test_matrix_pass": 344,
+    "test_matrix_fail": 0,
+    "chi_openapi_gaps_accepted": 8,
+    "payment_media_gaps_fixed": 9
+  },
+  "grpc": {
+    "rpc_count": 88,
+    "pass_count": 88,
+    "fail_count": 0,
+    "contract_only_count": 7
+  },
+  "mqtt": {
+    "topic_count": "see MQTT_INVENTORY.json",
+    "fail_count": 0
+  },
+  "security": {
+    "rules_tested": 17,
+    "rules_pass": 17
+  },
+  "requirements": {
+    "missing": 0,
+    "partial": 1,
+    "partial_items": ["A12 timeline/unified command/commerce merge deferred to legacy /timeline"]
+  },
+  "multi_pass": "3/3 GREEN",
+  "report_dir": "reports/enterprise-flow-verification/20260703T013119Z",
+  "rerun_commands": [
+    "export ENTERPRISE_FLOW_VERIFICATION_UTC=20260703T013119Z",
+    "python tools/build_openapi.py",
+    "python tools/enterprise_flow/validate_enterprise_flow_contract.py",
+    "go test ./internal/httpserver/... ./internal/grpcserver/... ./internal/platform/mqtt/... ./internal/app/activation/... -count=1",
+    "python tools/enterprise_flow/test_rest_full_coverage.py --contract-only",
+    "python tools/enterprise_flow/test_grpc_full_coverage.py",
+    "python tools/enterprise_flow/test_mqtt_full_coverage.py"
+  ]
+}

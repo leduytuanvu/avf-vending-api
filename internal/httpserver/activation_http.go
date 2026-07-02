@@ -167,6 +167,48 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 type publicClaimBody struct {
 	ActivationCode    string                       `json:"activationCode"`
 	DeviceFingerprint activation.DeviceFingerprint `json:"deviceFingerprint"`
+	RequestID         string                       `json:"requestId"`
+	CorrelationID     string                       `json:"correlationId"`
+	AppVersion        string                       `json:"appVersion"`
+	BootID            string                       `json:"bootId"`
+	DeviceSerial      string                       `json:"deviceSerial"`
+	Reason            string                       `json:"reason"`
+	ActivationSource  string                       `json:"activationSource"`
+	OperatorSessionID string                       `json:"operatorSessionId"`
+}
+
+func claimContextFromRequest(r *http.Request, body publicClaimBody) activation.ClaimContext {
+	cc := activation.ClaimContext{
+		RequestID:        strings.TrimSpace(r.Header.Get("X-Request-Id")),
+		AppVersion:       strings.TrimSpace(body.AppVersion),
+		BootID:           strings.TrimSpace(body.BootID),
+		DeviceSerial:     strings.TrimSpace(body.DeviceSerial),
+		Reason:           strings.TrimSpace(body.Reason),
+		ActivationSource: strings.TrimSpace(body.ActivationSource),
+	}
+	if cc.RequestID == "" {
+		cc.RequestID = strings.TrimSpace(body.RequestID)
+	}
+	corrRaw := strings.TrimSpace(r.Header.Get("X-Correlation-Id"))
+	if corrRaw == "" {
+		corrRaw = strings.TrimSpace(body.CorrelationID)
+	}
+	if corrRaw != "" {
+		if id, err := uuid.Parse(corrRaw); err == nil {
+			cc.CorrelationID = &id
+		}
+	}
+	if sid := strings.TrimSpace(body.OperatorSessionID); sid != "" {
+		if id, err := uuid.Parse(sid); err == nil {
+			cc.OperatorSessionID = &id
+		}
+	}
+	if p, ok := auth.PrincipalFromContext(r.Context()); ok && strings.TrimSpace(p.Subject) != "" {
+		if id, err := uuid.Parse(strings.TrimSpace(p.Subject)); err == nil {
+			cc.ActivatedByAccountID = &id
+		}
+	}
+	return cc
 }
 
 func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.HandlerFunc {
@@ -187,6 +229,7 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 			DeviceFingerprint: body.DeviceFingerprint,
 			ClientIP:          clientIP(r),
 			UserAgent:         strings.TrimSpace(r.UserAgent()),
+			ClaimContext:      claimContextFromRequest(r, body),
 		}, broker, prefix, layout)
 		if err != nil {
 			if errors.Is(err, activation.ErrInvalid) {

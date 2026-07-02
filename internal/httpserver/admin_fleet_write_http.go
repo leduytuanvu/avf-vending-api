@@ -737,14 +737,22 @@ func serveAdminMachineDisable(app *api.HTTPApplication, f *appfleet.Service) htt
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.DisableMachine(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineDisabled, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		if err := appfleet.ValidateLifecycleMutation("suspend", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.DisableMachine(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineDisabled, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -761,14 +769,19 @@ func serveAdminMachineEnable(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.EnableMachine(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineEnabled, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		_ = techOrigin
+		out, err := f.EnableMachine(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineEnabled, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -785,14 +798,22 @@ func serveAdminMachineRetire(app *api.HTTPApplication, f *appfleet.Service) http
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RetireMachine(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineRetired, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		if err := appfleet.ValidateLifecycleMutation("archive", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.RetireMachine(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineRetired, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -809,14 +830,22 @@ func serveAdminMachineCompromised(app *api.HTTPApplication, f *appfleet.Service)
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.MarkMachineCompromised(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCompromised, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		if err := appfleet.ValidateLifecycleMutation("mark-compromised", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.MarkMachineCompromised(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineCompromised, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -833,14 +862,22 @@ func serveAdminMachineRotateCredential(app *api.HTTPApplication, f *appfleet.Ser
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RotateMachineCredential(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCredRotated, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		if err := appfleet.ValidateLifecycleMutation("rotate-credentials", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.RotateMachineCredential(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineCredRotated, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -921,13 +958,22 @@ func serveAdminMachineRevokeSessions(app *api.HTTPApplication, f *appfleet.Servi
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		if err := f.RevokeMachineSessions(r.Context(), scopeID, mid); err != nil {
-			writeFleetAppError(w, r.Context(), err)
+		in, techOrigin, err := parseLifecycleMutation(r)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := mid.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineSessionsRevoked, "fleet.machine", &midStr, nil)
-		w.WriteHeader(http.StatusNoContent)
+		if err := appfleet.ValidateLifecycleMutation("revoke-sessions", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.RevokeMachineSessions(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineSessionsRevoked, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 
@@ -944,14 +990,22 @@ func serveAdminMachineRevokeCredential(app *api.HTTPApplication, f *appfleet.Ser
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
 			return
 		}
-		m, err := f.RevokeMachineCredential(r.Context(), scopeID, mid)
+		in, techOrigin, err := parseLifecycleMutation(r)
 		if err != nil {
-			writeFleetAppError(w, r.Context(), err)
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_body", err.Error())
 			return
 		}
-		midStr := m.ID.String()
-		fleetAudit(r.Context(), app, scopeID, compliance.ActionMachineCredentialRevoked, "fleet.machine", &midStr, nil)
-		writeJSON(w, http.StatusOK, machineJSON(m))
+		if err := appfleet.ValidateLifecycleMutation("revoke-credentials", in, techOrigin); err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		out, err := f.RevokeMachineCredential(r.Context(), scopeID, mid, in)
+		if err != nil {
+			writeLifecycleMutationError(w, r.Context(), err)
+			return
+		}
+		recordLifecycleAuditAndAttribution(r.Context(), app, scopeID, compliance.ActionMachineCredentialRevoked, mid, in, out)
+		writeJSON(w, http.StatusOK, lifecycleMutationJSON(mid, out))
 	}
 }
 

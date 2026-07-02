@@ -29,24 +29,29 @@ VALUES ($1, $2, $3, $4, 'P05 Machine', 'active', 7)
 	require.NoError(t, err)
 
 	svc := appfleet.NewService(postgres.NewFleetRepository(pool))
-	rotated, err := svc.RotateMachineCredential(ctx, companyID, machineID)
+	mut := appfleet.LifecycleMutationInput{Reason: "integration_test"}
+	rotatedOut, err := svc.RotateMachineCredential(ctx, companyID, machineID, mut)
 	require.NoError(t, err)
+	rotated := rotatedOut.Machine
 	require.Equal(t, int64(8), rotated.CredentialVersion)
 	require.NotNil(t, rotated.RotatedAt)
 	require.Nil(t, rotated.RevokedAt)
 
-	revoked, err := svc.RevokeMachineCredential(ctx, companyID, machineID)
+	revokedOut, err := svc.RevokeMachineCredential(ctx, companyID, machineID, mut)
 	require.NoError(t, err)
+	revoked := revokedOut.Machine
 	require.Equal(t, int64(9), revoked.CredentialVersion)
 	require.NotNil(t, revoked.RevokedAt)
 
-	compromised, err := svc.MarkMachineCompromised(ctx, companyID, machineID)
+	compromisedOut, err := svc.MarkMachineCompromised(ctx, companyID, machineID, mut)
 	require.NoError(t, err)
+	compromised := compromisedOut.Machine
 	require.Equal(t, "compromised", compromised.Status)
 	require.NotNil(t, compromised.RevokedAt)
 
-	retired, err := svc.RetireMachine(ctx, companyID, machineID)
+	retiredOut, err := svc.RetireMachine(ctx, companyID, machineID, mut)
 	require.NoError(t, err)
+	retired := retiredOut.Machine
 	require.Equal(t, "decommissioned", retired.Status)
 
 	var exists bool

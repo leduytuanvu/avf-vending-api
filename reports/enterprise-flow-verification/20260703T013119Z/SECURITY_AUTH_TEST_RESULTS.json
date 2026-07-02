@@ -1,0 +1,26 @@
+{
+  "timestamp": "20260703T013119Z",
+  "rule_count": 17,
+  "pass_count": 17,
+  "fail_count": 0,
+  "evidence_file": "internal/httpserver/security_enterprise_flow_test.go",
+  "rules": [
+    {"id": "01", "name": "admin_no_bearer_401", "status": "PASS"},
+    {"id": "02", "name": "machine_jwt_admin_403", "status": "PASS"},
+    {"id": "03", "name": "user_jwt_admin_allowed_middleware", "status": "PASS"},
+    {"id": "04", "name": "viewer_catalog_write_403", "status": "PASS"},
+    {"id": "05", "name": "viewer_audit_read_403", "status": "PASS"},
+    {"id": "06", "name": "finance_refunds_write_ok", "status": "PASS"},
+    {"id": "07", "name": "finance_catalog_write_403", "status": "PASS"},
+    {"id": "08", "name": "catalog_manager_refunds_403", "status": "PASS"},
+    {"id": "09", "name": "payment_providers_no_bearer_401", "status": "PASS"},
+    {"id": "10", "name": "lifecycle_machine_jwt_blocked", "status": "PASS"},
+    {"id": "11", "name": "require_deny_machine_non_machine_ok", "status": "PASS"},
+    {"id": "12", "name": "operator_ended_reason_normalized", "status": "PASS"},
+    {"id": "13", "name": "admin_interactive_inactive_blocked", "status": "PASS"},
+    {"id": "14", "name": "technician_read_fleet_ok", "status": "PASS"},
+    {"id": "15", "name": "platform_admin_lifecycle_ok", "status": "PASS"},
+    {"id": "16", "name": "enterprise_routes_no_bearer_401", "status": "PASS"},
+    {"id": "17", "name": "public_activation_claim_no_admin_auth", "status": "PASS"}
+  ]
+}

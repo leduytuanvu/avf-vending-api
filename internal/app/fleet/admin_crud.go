@@ -382,99 +382,175 @@ func (s *Service) ReleaseTechnicianAssignmentForMachineUser(ctx context.Context,
 	return s.repo.ReleaseTechnicianAssignmentForMachineUser(ctx, companyID, machineID, technicianID)
 }
 
-// DisableMachine sets machine status to maintenance.
-func (s *Service) DisableMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
-	st := "suspended"
-	return s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
-		MachineID: machineID,
-		Status:    &st,
-	})
-}
-
-// EnableMachine returns a suspended machine to active runtime state. Retired and compromised machines are terminal.
-func (s *Service) EnableMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
-	if err := validateNonZero("machine_id", machineID); err != nil {
-		return domainfleet.Machine{}, err
+// DisableMachine sets machine status to suspended.
+func (s *Service) DisableMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("suspend", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
 	}
 	cur, err := s.repo.GetMachine(ctx, machineID)
 	if err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
-	if uuid.Nil != companyID {
-		return domainfleet.Machine{}, ErrOrgMismatch
-	}
-	if strings.EqualFold(strings.TrimSpace(cur.Status), "retired") || strings.EqualFold(strings.TrimSpace(cur.Status), "decommissioned") || strings.EqualFold(strings.TrimSpace(cur.Status), "compromised") {
-		return domainfleet.Machine{}, errors.Join(ErrConflict, errors.New("terminal machines cannot be enabled"))
-	}
-	st := "active"
-	return s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
+	prev := cur.Status
+	st := "suspended"
+	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
 		MachineID: machineID,
 		Status:    &st,
 	})
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	return LifecycleMutationOutcome{Machine: m, Result: lifecycleResult(prev, st, m, in)}, nil
+}
+
+// EnableMachine returns a suspended machine to active runtime state. Retired and compromised machines are terminal.
+func (s *Service) EnableMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := validateNonZero("machine_id", machineID); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	cur, err := s.repo.GetMachine(ctx, machineID)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	if uuid.Nil != companyID {
+		return LifecycleMutationOutcome{}, ErrOrgMismatch
+	}
+	if strings.EqualFold(strings.TrimSpace(cur.Status), "retired") || strings.EqualFold(strings.TrimSpace(cur.Status), "decommissioned") || strings.EqualFold(strings.TrimSpace(cur.Status), "compromised") {
+		return LifecycleMutationOutcome{}, errors.Join(ErrConflict, errors.New("terminal machines cannot be enabled"))
+	}
+	prev := cur.Status
+	st := "active"
+	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
+		MachineID: machineID,
+		Status:    &st,
+	})
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	return LifecycleMutationOutcome{Machine: m, Result: lifecycleResult(prev, st, m, in)}, nil
 }
 
 // RetireMachine sets machine status to decommissioned (terminal operational retirement).
-func (s *Service) RetireMachine(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
+func (s *Service) RetireMachine(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("archive", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	cur, err := s.repo.GetMachine(ctx, machineID)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	prev := cur.Status
 	st := "decommissioned"
-	return s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
+	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
 		MachineID: machineID,
 		Status:    &st,
 	})
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	return LifecycleMutationOutcome{Machine: m, Result: lifecycleResult(prev, st, m, in)}, nil
 }
 
 // MarkMachineCompromised blocks machine runtime authentication and revokes credentials.
-func (s *Service) MarkMachineCompromised(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
+func (s *Service) MarkMachineCompromised(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("mark-compromised", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	cur, err := s.repo.GetMachine(ctx, machineID)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	prev := cur.Status
 	st := "compromised"
 	if _, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
 		MachineID: machineID,
 		Status:    &st,
 	}); err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
-	return s.repo.RevokeMachineCredentialLifecycle(ctx, companyID, machineID, true)
+	m, err := s.repo.RevokeMachineCredentialLifecycle(ctx, companyID, machineID, true)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	out := lifecycleResult(prev, st, m, in)
+	out.SessionsRevokedCount = 1
+	out.CredentialsRevokedCount = 1
+	return LifecycleMutationOutcome{Machine: m, Result: out}, nil
 }
 
 // RotateMachineCredential bumps credential_version and revokes active activation codes.
-func (s *Service) RotateMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
+func (s *Service) RotateMachineCredential(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("rotate-credentials", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
-	_, err := s.repo.GetMachine(ctx, machineID)
+	cur, err := s.repo.GetMachine(ctx, machineID)
 	if err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
+	prev := cur.Status
 	if uuid.Nil != companyID {
-		return domainfleet.Machine{}, ErrOrgMismatch
+		return LifecycleMutationOutcome{}, ErrOrgMismatch
 	}
-	return s.repo.RotateMachineCredentialLifecycle(ctx, companyID, machineID)
+	m, err := s.repo.RotateMachineCredentialLifecycle(ctx, companyID, machineID)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	out := lifecycleResult(prev, m.Status, m, in)
+	out.SessionsRevokedCount = 1
+	return LifecycleMutationOutcome{Machine: m, Result: out}, nil
 }
 
 // RevokeMachineCredential invalidates current machine JWTs until credentials are rotated again.
-func (s *Service) RevokeMachineCredential(ctx context.Context, companyID, machineID uuid.UUID) (domainfleet.Machine, error) {
+func (s *Service) RevokeMachineCredential(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("revoke-credentials", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
 	if err := validateNonZero("machine_id", machineID); err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
-	_, err := s.repo.GetMachine(ctx, machineID)
+	cur, err := s.repo.GetMachine(ctx, machineID)
 	if err != nil {
-		return domainfleet.Machine{}, err
+		return LifecycleMutationOutcome{}, err
 	}
+	prev := cur.Status
 	if uuid.Nil != companyID {
-		return domainfleet.Machine{}, ErrOrgMismatch
+		return LifecycleMutationOutcome{}, ErrOrgMismatch
 	}
-	return s.repo.RevokeMachineCredentialLifecycle(ctx, companyID, machineID, false)
+	m, err := s.repo.RevokeMachineCredentialLifecycle(ctx, companyID, machineID, false)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	out := lifecycleResult(prev, m.Status, m, in)
+	out.CredentialsRevokedCount = 1
+	return LifecycleMutationOutcome{Machine: m, Result: out}, nil
 }
 
 // RevokeMachineSessions invalidates all active machine refresh sessions without rotating credentials.
-func (s *Service) RevokeMachineSessions(ctx context.Context, companyID, machineID uuid.UUID) error {
-	if err := validateNonZero("machine_id", machineID); err != nil {
-		return err
+func (s *Service) RevokeMachineSessions(ctx context.Context, companyID, machineID uuid.UUID, in LifecycleMutationInput) (LifecycleMutationOutcome, error) {
+	if err := ValidateLifecycleMutation("revoke-sessions", in, false); err != nil {
+		return LifecycleMutationOutcome{}, err
 	}
-	_, err := s.repo.GetMachine(ctx, machineID)
+	if err := validateNonZero("machine_id", machineID); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	cur, err := s.repo.GetMachine(ctx, machineID)
 	if err != nil {
-		return err
+		return LifecycleMutationOutcome{}, err
 	}
 	if uuid.Nil != companyID {
-		return ErrOrgMismatch
+		return LifecycleMutationOutcome{}, ErrOrgMismatch
 	}
-	return s.repo.RevokeAllMachineSessionsOnly(ctx, companyID, machineID)
+	if err := s.repo.RevokeAllMachineSessionsOnly(ctx, companyID, machineID); err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	m, err := s.repo.GetMachine(ctx, machineID)
+	if err != nil {
+		return LifecycleMutationOutcome{}, err
+	}
+	out := lifecycleResult(cur.Status, m.Status, m, in)
+	out.SessionsRevokedCount = 1
+	return LifecycleMutationOutcome{Machine: m, Result: out}, nil
 }

@@ -18,6 +18,31 @@ FROM machine_operator_sessions
 WHERE
     id = $1;
 
+-- name: GetActiveOperatorSessionForMachine :one
+SELECT
+    id,
+    machine_id,
+    actor_type,
+    technician_id,
+    user_principal,
+    status,
+    started_at,
+    ended_at,
+    expires_at,
+    client_metadata,
+    last_activity_at,
+    ended_reason,
+    created_at,
+    updated_at
+FROM machine_operator_sessions
+WHERE
+    machine_id = $1
+    AND status = 'ACTIVE'
+ORDER BY
+    started_at DESC
+LIMIT
+    1;
+
 -- name: GetOperatorSessionByIDForUpdate :one
 SELECT
     id,

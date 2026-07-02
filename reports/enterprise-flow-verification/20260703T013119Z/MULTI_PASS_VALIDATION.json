@@ -1,0 +1,19 @@
+{
+  "timestamp": "20260703T013119Z",
+  "required_passes": 3,
+  "passes": [
+    {"pass": 1, "status": "GREEN", "commands": ["go test ./internal/httpserver/... ./internal/grpcserver/... ./internal/platform/mqtt/... ./internal/app/activation/... -count=1"]},
+    {"pass": 2, "status": "GREEN", "commands": ["go test ./internal/httpserver/... ./internal/grpcserver/... ./internal/platform/mqtt/... ./internal/app/activation/... -count=1"]},
+    {"pass": 3, "status": "GREEN", "commands": ["go test ./internal/httpserver/... ./internal/grpcserver/... ./internal/platform/mqtt/... ./internal/app/activation/... -count=1"]}
+  ],
+  "validators": {
+    "validate_enterprise_flow_contract": "PASS",
+    "inventory_enterprise_flow_requirements_verify": "PASS"
+  },
+  "matrices": {
+    "rest_fail_count": 0,
+    "grpc_fail_count": 0,
+    "mqtt_fail_count": 0,
+    "security_fail_count": 0
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "proto_service_count": 23,
+  "proto_rpc_count": 88,
+  "registered_service_count": 20,
+  "missing_implementation": [],
+  "intentionally_unimplemented": [
+    "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+    "avf.machine.v1.MachineCommandService/GetPendingCommands",
+    "avf.machine.v1.MachineOperatorService/LogoutOperator",
+    "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+    "avf.machine.v1.MachineOperatorService/LoginOperator",
+    "avf.machine.v1.MachineCommandService/RejectCommand",
+    "avf.machine.v1.MachineCommandService/AckCommand"
+  ],
+  "unregistered_legacy_services": [
+    "avf.v1.InternalMachineQueryService",
+    "avf.v1.InternalTelemetryQueryService",
+    "avf.v1.InternalCommerceQueryService"
+  ]
+}

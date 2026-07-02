@@ -1,0 +1,101 @@
+{
+  "timestamp": "20260702T185004Z",
+  "validators": {
+    "validate_rest_surface.py": "pass",
+    "validate_grpc_surface.py": "pass",
+    "validate_mqtt_surface.py": "pass",
+    "validate_postman_surface.py": "pass"
+  },
+  "overall": "pass",
+  "rest_surface_coverage": {
+    "openapi_path_count": 274,
+    "openapi_operation_count": 335,
+    "mounted_route_count": 335,
+    "missing_in_openapi": [],
+    "missing_in_router": [],
+    "accepted_missing_in_openapi": [
+      [
+        "GET",
+        "/v1/admin/payments/disputes"
+      ],
+      [
+        "POST",
+        "/v1/admin/media/product-images"
+      ],
+      [
+        "GET",
+        "/v1/admin/payments/webhook-events"
+      ],
+      [
+        "GET",
+        "/v1/admin/payment/providers"
+      ],
+      [
+        "GET",
+        "/v1/admin/payments/export"
+      ],
+      [
+        "POST",
+        "/v1/admin/payments/disputes/{disputeId}/resolve"
+      ],
+      [
+        "POST",
+        "/v1/admin/payments/settlements/import"
+      ],
+      [
+        "GET",
+        "/v1/admin/payments/settlements"
+      ],
+      [
+        "GET",
+        "/v1/admin/payments/reconciliation"
+      ]
+    ]
+  },
+  "grpc_surface_coverage": {
+    "proto_service_count": 23,
+    "proto_rpc_count": 88,
+    "registered_service_count": 20,
+    "missing_implementation": [],
+    "intentionally_unimplemented": [
+      "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+      "avf.machine.v1.MachineCommandService/GetPendingCommands",
+      "avf.machine.v1.MachineOperatorService/LogoutOperator",
+      "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+      "avf.machine.v1.MachineOperatorService/LoginOperator",
+      "avf.machine.v1.MachineCommandService/RejectCommand",
+      "avf.machine.v1.MachineCommandService/AckCommand"
+    ],
+    "unregistered_legacy_services": [
+      "avf.v1.InternalMachineQueryService",
+      "avf.v1.InternalTelemetryQueryService",
+      "avf.v1.InternalCommerceQueryService"
+    ]
+  },
+  "mqtt_surface_coverage": {
+    "enterprise_publish_count": 1,
+    "docs_topic_count": 14,
+    "missing_in_code": [
+      "cmd/mqtt-ingest",
+      "commands/ack",
+      "commands/down",
+      "commands/receipt",
+      "events/cash",
+      "events/inventory",
+      "events/vend",
+      "internal/platform/mqtt/",
+      "shadow/desired",
+      "shadow/reported",
+      "state/heartbeat",
+      "telemetry/incident",
+      "telemetry/snapshot",
+      "tests/e2e/"
+    ],
+    "missing_in_docs": [
+      "commands"
+    ],
+    "code_only_accepted": [
+      "shadow/desired"
+    ]
+  }
+}

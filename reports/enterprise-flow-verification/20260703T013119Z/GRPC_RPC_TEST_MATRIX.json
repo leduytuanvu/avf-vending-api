@@ -1,0 +1,537 @@
+{
+  "rpc_count": 88,
+  "pass_count": 88,
+  "fail_count": 0,
+  "contract_only_count": 7,
+  "go_test_exit": 0,
+  "rpcs": [
+    {
+      "rpc": "avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalMachineQueryService/GetMachineSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalMachineQueryService/GetMachineState",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalPaymentQueryService/GetPaymentById",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalReportingQueryService/GetSalesSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineActivationService/ClaimActivation",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineAuthService/ActivateMachine",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineAuthService/ClaimActivation",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineAuthService/RefreshMachineToken",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineBootstrapService/GetBootstrap",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineBootstrapService/CheckIn",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineBootstrapService/AckConfigVersion",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineBootstrapService/CheckForUpdates",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/GetSaleCatalog",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/GetCatalogDelta",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/AckCatalogVersion",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCatalogService/GetMediaManifest",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/GetPendingCommands",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/AckCommand",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/RejectCommand",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/GetAssignedUpdate",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/ReportUpdateStatus",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CreateOrder",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CreateQuote",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CreateOrderFromQuote",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CreatePaymentSession",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/AttachPaymentResult",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CreateCashCheckout",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/GetOrder",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/GetOrderStatus",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/StartVend",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/ReportVendSuccess",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/ReportVendFailure",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineCommerceService/CancelOrder",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/PushInventoryDelta",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/AckInventorySync",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/GetPlanogram",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitFillResult",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitFillReport",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitRestock",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineMediaService/GetMediaManifest",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineMediaService/GetMediaDelta",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineMediaService/AckMediaVersion",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/SubmitFillReport",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/LoginOperator",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/LogoutOperator",
+      "execution_classification": "CONTRACT_ONLY",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/CreateSale",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/AttachPayment",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/ConfirmCashReceived",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/StartVend",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/CompleteVend",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/FailVend",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineSaleService/CancelSale",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/CheckIn",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/ReconcileEvents",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTelemetryService/GetEventStatus",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.machine.v1.MachineTokenService/RefreshMachineToken",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalMachineQueryService/GetMachineSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalMachineQueryService/GetMachineState",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    },
+    {
+      "rpc": "avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "execution_classification": "GO_TEST",
+      "status": "PASS",
+      "evidence_path": "go test ./internal/grpcserver/..."
+    }
+  ]
+}

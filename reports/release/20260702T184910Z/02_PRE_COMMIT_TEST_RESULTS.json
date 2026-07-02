@@ -1,0 +1,18 @@
+{
+  "timestamp": "20260702T184910Z",
+  "api": {
+    "go_fmt_vet": "PASS",
+    "go_test_all": "PASS",
+    "openapi_verify_release": "PASS",
+    "enterprise_flow_validators": "PASS",
+    "sqlc_generate_drift": "PASS_AFTER_REGEN",
+    "api_contract_check_bash": "SKIP_WSL_BASH_UNAVAILABLE",
+    "postman_validate_script": "SKIP_MODULE_IMPORT_ERROR",
+    "postman_check_artifacts": "PASS"
+  },
+  "app": {
+    "gradle_test": "FAIL_PREEXISTING",
+    "gradle_assemble_release": "PASS",
+    "note": "Commit is docs/reports deletions only; 3 unit test modules failed unrelated to diff"
+  }
+}

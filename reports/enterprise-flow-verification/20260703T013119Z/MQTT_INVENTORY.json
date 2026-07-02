@@ -1,0 +1,1475 @@
+{
+  "topic_count": 211,
+  "docs_only": [
+    "/opt/emqx/etc/certs",
+    "0",
+    "0-300",
+    "1-5",
+    "20-50",
+    "27",
+    "30_mqtt_connect.sh",
+    "32_mqtt_command_ack.sh",
+    "5",
+    "ack",
+    "acked",
+    "active",
+    "artifact_id",
+    "avf-machine-{machine_id}",
+    "avf/production/machines/{uuid}/commands/ack",
+    "boot_id",
+    "broker_url",
+    "campaign_id",
+    "campaign_type",
+    "catalog_refresh_ack_invalid",
+    "client_id_policy",
+    "cmd/mqtt-ingest",
+    "command_id",
+    "command_ledger.id",
+    "command_ledger.route_key",
+    "command_type",
+    "compactable_latest",
+    "correlation_id",
+    "credential_version",
+    "critical_no_drop",
+    "dedupe_key",
+    "desired",
+    "detail",
+    "development",
+    "device_command_receipts",
+    "device_telemetry_events",
+    "dispatch",
+    "docs/api/machine-runtime.md",
+    "docs/swagger/swagger.json",
+    "droppable_metrics",
+    "e2e_mqtt_publish",
+    "e2e_mqtt_subscribe_accept_connect",
+    "emitted_at",
+    "enterprise",
+    "error_code",
+    "error_message",
+    "error_reason",
+    "event_id",
+    "event_type",
+    "events",
+    "failed",
+    "failed_retryable",
+    "failed_terminal",
+    "failure_reason",
+    "idempotency_key",
+    "internal/app/telemetryapp/offline_replay_contract_test.go",
+    "internal/httpserver/server.go",
+    "internal/platform/mqtt/",
+    "internal/platform/mqtt/offline_replay_contract_test.go",
+    "internal/platform/mqtt/publisher.go",
+    "internal/platform/mqtt/router.go",
+    "internal/platform/mqtt/subscriber.go",
+    "internal/platform/telemetry/offline_replay_classify_test.go",
+    "inventory_events",
+    "legacy",
+    "machine_id",
+    "machine_runtime_refresh_tokens",
+    "machine_sessions",
+    "machines.credential_version",
+    "mosquitto_pub",
+    "mosquitto_sub",
+    "mqtt",
+    "mqtt.broker_url",
+    "mqtt.topic_layout",
+    "mqtt.topic_prefix",
+    "mqtt_topic",
+    "nacked",
+    "normalized_event_type",
+    "not_found",
+    "occurred_at",
+    "operator_session_id",
+    "order_id",
+    "outcome",
+    "payload",
+    "payload_sha256_hex",
+    "presence",
+    "processed",
+    "product_media_updated",
+    "published",
+    "reason",
+    "rel",
+    "reported",
+    "request_id",
+    "revoked_at",
+    "rotated_at",
+    "schema_version",
+    "semver",
+    "sent",
+    "seq_no",
+    "sequence",
+    "server.crt",
+    "server.key",
+    "slot_index",
+    "status",
+    "storage_key",
+    "success",
+    "telemetry",
+    "test",
+    "testdata/telemetry/valid_vend_success.json",
+    "tests/e2e/",
+    "tests/e2e/lib/e2e_mqtt.sh",
+    "timeout",
+    "tls_required",
+    "topic_layout",
+    "topic_prefix",
+    "transport",
+    "true",
+    "type",
+    "verify_peer",
+    "wait",
+    "{prefix}",
+    "{prefix}/55555555-5555-5555-5555-555555555555/events/vend",
+    "{topic_prefix}/machines/{machine_id}/commands",
+    "{topic_prefix}/machines/{machine_id}/{rel}",
+    "{}"
+  ],
+  "code_only": [
+    ".",
+    "..",
+    "/",
+    "/commands",
+    "/commands/ack",
+    "/commands/receipt",
+    "/events",
+    "/events/cash",
+    "/events/inventory",
+    "/events/vend",
+    "/machines",
+    "/machines/",
+    "/machines/not-a-uuid/telemetry",
+    "/presence",
+    "/shadow/reported",
+    "/state/heartbeat",
+    "/telemetry",
+    "/telemetry/incident",
+    "/telemetry/snapshot",
+    "avf/devices",
+    "avf/devices/",
+    "avf/devices/11111111-1111-1111-1111-111111111111/commands/dispatch",
+    "avf/devices/11111111-1111-1111-1111-111111111111/commands/down",
+    "avf/devices/22222222-2222-2222-2222-222222222222/commands/ack",
+    "avf/devices/22222222-2222-2222-2222-222222222222/commands/receipt",
+    "avf/devices/22222222-2222-2222-2222-222222222222/events/cash",
+    "avf/devices/22222222-2222-2222-2222-222222222222/events/inventory",
+    "avf/devices/22222222-2222-2222-2222-222222222222/events/vend",
+    "avf/devices/22222222-2222-2222-2222-222222222222/presence",
+    "avf/devices/22222222-2222-2222-2222-222222222222/shadow/desired",
+    "avf/devices/22222222-2222-2222-2222-222222222222/shadow/reported",
+    "avf/devices/22222222-2222-2222-2222-222222222222/state/heartbeat",
+    "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/incident",
+    "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/snapshot",
+    "avf/staging",
+    "avf/staging/machines/11111111-1111-1111-1111-111111111111/commands",
+    "avf/x/devices/",
+    "commands/dispatch",
+    "crypto/tls",
+    "crypto/x509",
+    "custom.event",
+    "custom/prefix/11111111-1111-1111-1111-111111111111/commands/dispatch",
+    "duplicate_replay_vend.json",
+    "encoding/json",
+    "events.cash",
+    "events.vend",
+    "github.com/avf/avf-vending-api/internal/observability/mqttprom",
+    "github.com/avf/avf-vending-api/internal/platform/id",
+    "github.com/avf/avf-vending-api/internal/platform/telemetry",
+    "github.com/eclipse/paho.mqtt.golang",
+    "github.com/google/uuid",
+    "github.com/prometheus/client_golang/prometheus",
+    "github.com/prometheus/client_golang/prometheus/promauto",
+    "github.com/stretchr/testify/require",
+    "go.uber.org/zap",
+    "invalid_critical_missing_identity.json",
+    "invalid_critical_wrong_machine_id.json",
+    "invalid_occurred_at_malformed.json",
+    "mqtt.example.com",
+    "net/url",
+    "path/filepath",
+    "state.heartbeat",
+    "telemetry.incident",
+    "telemetry.metrics",
+    "telemetry.snapshot",
+    "valid_cash_inserted.json",
+    "valid_command_ack.json",
+    "valid_heartbeat_metrics.json",
+    "valid_inventory_delta.json",
+    "valid_payment_success.json",
+    "valid_vend_failed.json",
+    "valid_vend_success.json"
+  ],
+  "accepted_code_only": [
+    "shadow/desired"
+  ],
+  "topics": [
+    {
+      "topic": ".",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "..",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/commands",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/commands/ack",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/commands/receipt",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/events",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/events/cash",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/events/inventory",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/events/vend",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/machines",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/machines/",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/machines/not-a-uuid/telemetry",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/opt/emqx/etc/certs",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/presence",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/shadow/reported",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/state/heartbeat",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/telemetry",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/telemetry/incident",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "/telemetry/snapshot",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "0",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "0-300",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "1-5",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "20-50",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "27",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "30_mqtt_connect.sh",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "32_mqtt_command_ack.sh",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "5",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "ack",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "acked",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "active",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "artifact_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf-machine-{machine_id}",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/devices",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/devices/",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/11111111-1111-1111-1111-111111111111/commands/dispatch",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/11111111-1111-1111-1111-111111111111/commands/down",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/commands/ack",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/commands/receipt",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/cash",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/inventory",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/vend",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/presence",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/shadow/desired",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/shadow/reported",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/state/heartbeat",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/incident",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/snapshot",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "avf/production",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/production/machines/{uuid}/commands/ack",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/staging",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/staging/machines/11111111-1111-1111-1111-111111111111/commands",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "avf/x/devices/",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "enterprise"
+    },
+    {
+      "topic": "boot_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "broker_url",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "campaign_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "campaign_type",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "catalog.refresh",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "catalog_refresh_ack_invalid",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "client_id_policy",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "cmd/mqtt-ingest",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "command_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "command_ledger.id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "command_ledger.route_key",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "command_type",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "commands/ack",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "commands/dispatch",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "commands/down",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "commands/receipt",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "compactable_latest",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "correlation_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "credential_version",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "critical_no_drop",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "crypto/tls",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "crypto/x509",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "custom.event",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "custom/prefix/11111111-1111-1111-1111-111111111111/commands/dispatch",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "dedupe_key",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "desired",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "detail",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "development",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "device_command_receipts",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "device_telemetry_events",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "dispatch",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "docs/api/machine-runtime.md",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "docs/swagger/swagger.json",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "droppable_metrics",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "duplicate_replay_vend.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "e2e_mqtt_publish",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "e2e_mqtt_subscribe_accept_connect",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "emitted_at",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "encoding/json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "enterprise",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "error_code",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "error_message",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "error_reason",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "event_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "event_type",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events.cash",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events.inventory",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events.vend",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events/cash",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events/inventory",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "events/vend",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "failed",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "failed_retryable",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "failed_terminal",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "failure_reason",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/observability/mqttprom",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/platform/id",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/platform/telemetry",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/eclipse/paho.mqtt.golang",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/google/uuid",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/prometheus/client_golang/prometheus",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/prometheus/client_golang/prometheus/promauto",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "github.com/stretchr/testify/require",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "go.uber.org/zap",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "idempotency_key",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/app/telemetryapp/offline_replay_contract_test.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/httpserver/server.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/mqtt/",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/mqtt/offline_replay_contract_test.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/mqtt/publisher.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/mqtt/router.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/mqtt/subscriber.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "internal/platform/telemetry/offline_replay_classify_test.go",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "invalid_critical_missing_identity.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "invalid_critical_wrong_machine_id.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "invalid_occurred_at_malformed.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "inventory_events",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "legacy",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "machine_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "machine_runtime_refresh_tokens",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "machine_sessions",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "machines.credential_version",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mosquitto_pub",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mosquitto_sub",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt.broker_url",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt.example.com",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt.topic_layout",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt.topic_prefix",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "mqtt_topic",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "nacked",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "net/url",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "normalized_event_type",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "not_found",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "occurred_at",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "operator_session_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "order_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "outcome",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "path/filepath",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "payload",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "payload_sha256_hex",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "presence",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "processed",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "product_media_updated",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "published",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "reason",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "rel",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "reported",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "request_id",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "revoked_at",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "rotated_at",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "schema_version",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "semver",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "sent",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "seq_no",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "sequence",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "server.crt",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "server.key",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "shadow/desired",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "shadow/reported",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "slot_index",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "state.heartbeat",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "state/heartbeat",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "status",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "storage_key",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "success",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry.incident",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry.metrics",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry.snapshot",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry/incident",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "telemetry/snapshot",
+      "in_docs": true,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "test",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "testdata/telemetry/valid_vend_success.json",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "tests/e2e/",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "tests/e2e/lib/e2e_mqtt.sh",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "timeout",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "tls_required",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "topic_layout",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "topic_prefix",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "transport",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "true",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "type",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_cash_inserted.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_command_ack.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_heartbeat_metrics.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_inventory_delta.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_payment_success.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_vend_failed.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "valid_vend_success.json",
+      "in_docs": false,
+      "in_code": true,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "verify_peer",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "wait",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "{prefix}",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "{prefix}/55555555-5555-5555-5555-555555555555/events/vend",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "{topic_prefix}/machines/{machine_id}/commands",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "{topic_prefix}/machines/{machine_id}/{rel}",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    },
+    {
+      "topic": "{}",
+      "in_docs": true,
+      "in_code": false,
+      "layout": "legacy_or_shared"
+    }
+  ]
+}

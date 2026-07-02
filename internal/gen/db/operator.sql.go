@@ -167,6 +167,54 @@ func (q *Queries) GetActiveOperatorSessionByMachineIDForUpdate(ctx context.Conte
 	return i, err
 }
 
+const GetActiveOperatorSessionForMachine = `-- name: GetActiveOperatorSessionForMachine :one
+SELECT
+    id,
+    machine_id,
+    actor_type,
+    technician_id,
+    user_principal,
+    status,
+    started_at,
+    ended_at,
+    expires_at,
+    client_metadata,
+    last_activity_at,
+    ended_reason,
+    created_at,
+    updated_at
+FROM machine_operator_sessions
+WHERE
+    machine_id = $1
+    AND status = 'ACTIVE'
+ORDER BY
+    started_at DESC
+LIMIT
+    1
+`
+
+func (q *Queries) GetActiveOperatorSessionForMachine(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error) {
+	row := q.db.QueryRow(ctx, GetActiveOperatorSessionForMachine, machineID)
+	var i MachineOperatorSession
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.ActorType,
+		&i.TechnicianID,
+		&i.UserPrincipal,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.ExpiresAt,
+		&i.ClientMetadata,
+		&i.LastActivityAt,
+		&i.EndedReason,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const GetOperatorSessionByID = `-- name: GetOperatorSessionByID :one
 SELECT
     id,
