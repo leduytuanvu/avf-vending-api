@@ -118,6 +118,12 @@ services:
       EMQX_AUTHENTICATION__1__MECHANISM: password_based
       EMQX_AUTHENTICATION__1__BACKEND: built_in_database
       EMQX_AUTHENTICATION__1__ENABLE: "true"
+      EMQX_AUTHORIZATION__ENABLE: "true"
+      EMQX_AUTHORIZATION__NO_MATCH: deny
+      EMQX_AUTHORIZATION__DENY_ACTION: disconnect
+      EMQX_AUTHORIZATION__SOURCES__1__TYPE: file
+      EMQX_AUTHORIZATION__SOURCES__1__ENABLE: "true"
+      EMQX_AUTHORIZATION__SOURCES__1__PATH: "/opt/emqx/etc/acl.conf"
       EMQX_NODE__COOKIE: ${EMQX_NODE_COOKIE:?set EMQX_NODE_COOKIE in .env.production}
     volumes:
       - ./emqx/base.hocon:/opt/emqx/etc/base.hocon:ro
