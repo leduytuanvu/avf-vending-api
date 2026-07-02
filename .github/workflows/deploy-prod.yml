@@ -2258,11 +2258,16 @@ jobs:
           fi
 
       - name: Sync EMQX ACL assets to data node
-        if: env.ACTION_MODE == 'deploy' && env.DATA_NODE_HOST != ''
+        if: env.ACTION_MODE == 'deploy' && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
         shell: bash
         run: |
           set -Eeuo pipefail
-          target="${SSH_USER}@${DATA_NODE_HOST}"
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          [[ -n "${EMQX_DATA_HOST}" ]] || {
+            echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required for EMQX ACL sync" >&2
+            exit 1
+          }
+          target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared | \
@@ -2277,18 +2282,19 @@ jobs:
           DEPLOY_APP_NODE_B: ${{ steps.validate_deploy_inputs.outputs.deploy_app_node_b || 'true' }}
         run: |
           set -Eeuo pipefail
-          if [[ -z "${DATA_NODE_HOST:-}" ]]; then
-            echo "error: DATA_NODE_HOST is required to source EMQX management credentials" >&2
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          [[ -n "${EMQX_DATA_HOST}" ]] || {
+            echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required to source EMQX management credentials" >&2
             exit 1
-          fi
+          }
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
           EMQX_API_KEY="$(
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${EMQX_DATA_HOST}" \
               "grep -E '^EMQX_API_KEY=' '${data_env}' | tail -n 1 | cut -d= -f2-"
           )"
           EMQX_API_SECRET="$(
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${EMQX_DATA_HOST}" \
               "grep -E '^EMQX_API_SECRET=' '${data_env}' | tail -n 1 | cut -d= -f2-"
           )"
           [[ -n "${EMQX_API_KEY}" && -n "${EMQX_API_SECRET}" ]] || {
@@ -2312,11 +2318,16 @@ jobs:
           fi
 
       - name: Install EMQX ACL on data node
-        if: env.ACTION_MODE == 'deploy' && env.DATA_NODE_HOST != ''
+        if: env.ACTION_MODE == 'deploy' && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
         shell: bash
         run: |
           set -Eeuo pipefail
-          target="${SSH_USER}@${DATA_NODE_HOST}"
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          [[ -n "${EMQX_DATA_HOST}" ]] || {
+            echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required for EMQX ACL install" >&2
+            exit 1
+          }
+          target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh"
