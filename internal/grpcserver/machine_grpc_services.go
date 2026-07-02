@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -178,6 +179,8 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 		MqttBrokerUrl:        out.MQTTBrokerURL,
 		MqttTopicPrefix:      out.MQTTTopicPrefix,
 		MqttTopicLayout:      out.MQTTTopicLayout,
+		MqttUsername:         out.MQTTUsername,
+		MqttPassword:         out.MQTTPassword,
 		BootstrapHttpPath:    out.BootstrapPath,
 		BootstrapRequired:    out.BootstrapRequired,
 	}
@@ -196,6 +199,8 @@ func mapActivationError(err error) error {
 		return status.Error(codes.InvalidArgument, "activation_invalid")
 	case err == activation.ErrMachineNotEligible:
 		return status.Error(codes.PermissionDenied, "machine_not_eligible")
+	case errors.Is(err, activation.ErrMQTTProvisioning):
+		return status.Error(codes.Unavailable, "mqtt_provisioning_failed")
 	default:
 		return status.Error(codes.Internal, "internal")
 	}

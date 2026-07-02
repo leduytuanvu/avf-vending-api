@@ -328,6 +328,7 @@ def main() -> int:
     parser.add_argument("--base-url", default=os.environ.get("BASE_URL", "http://127.0.0.1:18080"))
     parser.add_argument("--swagger", type=Path, default=DEFAULT_SWAGGER)
     parser.add_argument("--timeout", type=float, default=8.0)
+    parser.add_argument("--output", type=Path, default=None, help="Optional JSONL evidence output path")
     args = parser.parse_args()
 
     REPORTS.mkdir(parents=True, exist_ok=True)
@@ -363,6 +364,25 @@ def main() -> int:
         "blocked": sum(1 for r in rows if r.status.startswith("blocked")),
     }
     write_outputs(rows, summary, evidence_dir)
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        with args.output.open("w", encoding="utf-8") as handle:
+            for row in rows:
+                handle.write(
+                    json.dumps(
+                        {
+                            "operation_id": row.operation_id,
+                            "method": row.method,
+                            "path": row.path,
+                            "status": row.status,
+                            "http_status": row.http_status,
+                            "evidence_path": row.evidence_path,
+                            "reason": row.reason,
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
     print(f"Wrote {REPORTS / 'rest-full-live-coverage.json'} and {REPORTS / 'rest-full-live-coverage.md'}")
     return 1 if summary["failed"] else 0
 

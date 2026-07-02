@@ -4,6 +4,8 @@
 
 > **Canonical refresh sessions:** Opaque refresh tokens and runtime sessions are stored in **`machine_sessions`** (hashed at rest). The legacy `machine_runtime_refresh_tokens` table is deprecated and unused by the activation/token services.
 
+**Activation claim / reattach MQTT credentials:** When `EMQX_*` env is configured, successful claim or admin reattach returns `mqttUsername` (machine UUID) and a one-time `mqttPassword`. Metadata is persisted in `machine_mqtt_credentials` (`secret_ref` only). Fail-closed: claim returns `503 mqtt_provisioning_failed` if EMQX is configured but provisioning fails.
+
 > **Deprecation posture:** Native kiosk/runtime integration uses **`avf.machine.v1`** gRPC (**Machine JWT**) — see **[`machine-grpc.md`](machine-grpc.md)**. OpenAPI routes that overlap legacy HTTP machine commerce/control flows are marked **`deprecated: true`** in **`docs/swagger/swagger.json`**; keep **`MACHINE_REST_LEGACY_ENABLED=false`** in production unless you are explicitly migrating clients. **Do not** document these HTTP paths as the primary machine runtime.
 
 These paths are part of the **control/setup plane** under `/v1`. They are **not** the primary high-volume device runtime plane; continuous telemetry and backend→machine commands remain **MQTT + ledger**, while structured commerce/catalog/inventory mutations belong on **gRPC** when enabled.

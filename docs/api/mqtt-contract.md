@@ -25,6 +25,11 @@ This describes what **this repository** actually publishes and what **cmd/mqtt-i
 | `topic_layout` | `enterprise` or `legacy` — **must** drive topic builders on device |
 | `tls_required` | When `true`, kiosk must use TLS (URL scheme or explicit TLS config) |
 | `client_id_policy` | Template `avf-machine-{machine_id}` — substitute machine UUID |
+| `mqtt_username` / `mqtt_password` | **Claim / reattach only** (when EMQX management is configured on the API). Password is returned once; never stored in Postgres plaintext. |
+
+**Per-machine broker auth (production):** EMQX built-in database users use **username = machine UUID**. The API provisions users via the private EMQX management API (`EMQX_MANAGEMENT_URL`, `EMQX_API_KEY`, `EMQX_API_SECRET` on app nodes). ACL rules live in `deployments/prod/emqx/acl.conf.example` (`%u` = username). The shared `MQTT_USERNAME` service account is for API/mqtt-ingest only — **not** for kiosk devices.
+
+**Credential lifecycle:** `mark-compromised`, `revoke-credentials`, and `rotate-credentials` admin actions delete or rotate the EMQX user and update `machine_mqtt_credentials` metadata (`secret_ref` only — no password in DB).
 
 **Android derivation:** for enterprise layout, publish topics = `{topic_prefix}/machines/{machine_id}/{rel}` where `rel` is from the table below; subscribe to `{topic_prefix}/machines/{machine_id}/commands`. Use `MachineClientIDPolicyTemplate` from bootstrap (`client_id_policy`).
 

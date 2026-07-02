@@ -48,6 +48,8 @@ Use metadata: `authorization: Bearer <token>`.
 - `MachineAuthService.ClaimActivation`
 - `MachineAuthService.RefreshMachineToken` (opaque refresh in body — still **no** Machine JWT)
 - **`MachineActivationService.ClaimActivation`** (legacy registration — same body as auth service)
+
+`ClaimActivationResponse` includes `mqtt_username` and `mqtt_password` when EMQX provisioning is enabled on the API (same fields as REST `mqttUsername` / `mqttPassword`). Bootstrap RPCs never return broker passwords.
 - **`MachineTokenService.RefreshMachineToken`** (legacy registration — same body as auth service)
 
 **Requires Machine JWT** — all other `avf.machine.v1` RPCs.

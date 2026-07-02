@@ -148,7 +148,33 @@ func (s *Service) ReattachDevice(ctx context.Context, in ReattachInput, mqttBrok
 			Metadata:     meta,
 		})
 	}
+	mqttUser, mqttPass, err := s.provisionMachineMQTT(ctx, qtx, in.MachineID)
+	if err != nil {
+		return ReattachResult{}, err
+	}
+	if s.emqx != nil && (mqttUser == "" || mqttPass == "") {
+		return ReattachResult{}, ErrMQTTProvisioning
+	}
+	if s.audit != nil && mqttUser != "" {
+		mid := in.MachineID.String()
+		meta, _ := json.Marshal(map[string]any{
+			"mqtt_username": mqttUser,
+			"action":        "mqtt_credential_rotated",
+		})
+		_ = s.audit.RecordCriticalTx(ctx, tx, compliance.EnterpriseAuditRecord{
+			ActorType:    compliance.ActorUser,
+			ActorID:      stringPtr(in.ActivatedByAccountID),
+			Action:       compliance.ActionMachineActivationClaimed,
+			ResourceType: "machine_mqtt_credentials",
+			ResourceID:   &mid,
+			MachineID:    &in.MachineID,
+			Metadata:     meta,
+		})
+	}
 	if err := tx.Commit(ctx); err != nil {
+		if s.emqx != nil && mqttUser != "" {
+			_ = s.emqx.DeleteUser(context.WithoutCancel(ctx), mqttUser)
+		}
 		return ReattachResult{}, err
 	}
 	cr := ClaimResult{
@@ -162,6 +188,8 @@ func (s *Service) ReattachDevice(ctx context.Context, in ReattachInput, mqttBrok
 		MQTTBrokerURL:     mqttBrokerURL,
 		MQTTTopicPrefix:   mqttTopicPrefix,
 		MQTTTopicLayout:   mqttTopicLayout,
+		MQTTUsername:      mqttUser,
+		MQTTPassword:      mqttPass,
 		BootstrapPath:     fmt.Sprintf("/v1/setup/machines/%s/bootstrap", in.MachineID),
 		BootstrapRequired: true,
 	}

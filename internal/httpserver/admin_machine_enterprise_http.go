@@ -244,6 +244,11 @@ func serveAdminMachineReattachDevice(app *api.HTTPApplication, cfg *config.Confi
 			"credential_version":       0,
 			"operator_session_id":      optionalUUIDString(out.OperatorSessionID),
 			"correlation_id":           optionalUUIDString(out.CorrelationID),
+			"mqtt_broker_url":          out.MQTTBrokerURL,
+			"mqtt_topic_prefix":        out.MQTTTopicPrefix,
+			"mqtt_topic_layout":        out.MQTTTopicLayout,
+			"mqtt_username":            out.MQTTUsername,
+			"mqtt_password":            out.MQTTPassword,
 		})
 	}
 }
