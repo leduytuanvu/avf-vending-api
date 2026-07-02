@@ -1,0 +1,2772 @@
+{
+  "postman_request_count": 461,
+  "mapped_to_openapi": 134,
+  "requests": [
+    {
+      "name": "00 Overview & Runbook/README \u2014 Import and Safety",
+      "method": "GET",
+      "path": "/health/live",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /health/live \u2014 Liveness probe",
+      "method": "GET",
+      "path": "/health/live",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /health/ready \u2014 Readiness probe",
+      "method": "GET",
+      "path": "/health/ready",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /metrics \u2014 Prometheus metrics scrape (public listener; optional)",
+      "method": "GET",
+      "path": "/metrics",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /swagger/doc.json \u2014 OpenAPI 3.0 document (embedded)",
+      "method": "GET",
+      "path": "/swagger/doc.json",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /swagger/index.html \u2014 Swagger UI (HTML)",
+      "method": "GET",
+      "path": "/swagger/index.html",
+      "in_openapi": true
+    },
+    {
+      "name": "01 System - Health, Version, Metrics, Swagger/GET /version \u2014 Build and runtime version",
+      "method": "GET",
+      "path": "/version",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/DELETE /v1/auth/sessions \u2014 Revoke other sessions",
+      "method": "DELETE",
+      "path": "/v1/auth/sessions",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/DELETE /v1/auth/sessions/{sessionId} \u2014 Revoke one session",
+      "method": "DELETE",
+      "path": "/v1/auth/sessions/{{sessionId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/GET /v1/auth/me \u2014 Current authenticated principal",
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/GET /v1/auth/sessions \u2014 List current admin sessions",
+      "method": "GET",
+      "path": "/v1/auth/sessions",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/change-password \u2014 Change password (self-service)",
+      "method": "POST",
+      "path": "/v1/auth/change-password",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/login \u2014 Exchange email/password for JWT session tokens",
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/logout \u2014 Revoke refresh token(s)",
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/mfa/totp/disable \u2014 Disable TOTP for the current user",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/disable",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/mfa/totp/enroll \u2014 Start TOTP MFA enrollment",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/enroll",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/mfa/totp/verify \u2014 Verify TOTP (enrollment or login)",
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/verify",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/password/change \u2014 Change password (self-service)",
+      "method": "POST",
+      "path": "/v1/auth/password/change",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/password/reset/confirm \u2014 Confirm password reset",
+      "method": "POST",
+      "path": "/v1/auth/password/reset/confirm",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/password/reset/request \u2014 Request password reset",
+      "method": "POST",
+      "path": "/v1/auth/password/reset/request",
+      "in_openapi": true
+    },
+    {
+      "name": "02 Auth - Admin / Technician / Session/POST /v1/auth/refresh \u2014 Rotate access token using a refresh token",
+      "method": "POST",
+      "path": "/v1/auth/refresh",
+      "in_openapi": true
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/DELETE /v1/admin/users/{userId}/roles/{role} \u2014 Remove one role from user",
+      "method": "DELETE",
+      "path": "/v1/admin/users/{{userId}}/roles/{{role}}",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/auth/users \u2014 List API accounts for an company (admin)",
+      "method": "GET",
+      "path": "/v1/admin/auth/users",
+      "in_openapi": true
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/auth/users/{accountId} \u2014 Get API account by id (admin)",
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{{accountId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/auth/users/{accountId}/sessions \u2014 List sessions for an API account (admin)",
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{{accountId}}/sessions",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/users \u2014 List API accounts (admin) \u2014 alternate path",
+      "method": "GET",
+      "path": "/v1/admin/users",
+      "in_openapi": true
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/users/{userId} \u2014 Get API account \u2014 alternate path",
+      "method": "GET",
+      "path": "/v1/admin/users/{{userId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/GET /v1/admin/users/{userId}/sessions \u2014 List user sessions \u2014 alternate path",
+      "method": "GET",
+      "path": "/v1/admin/users/{{userId}}/sessions",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/auth/users/{accountId} \u2014 Patch API account (admin)",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{{accountId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/auth/users/{accountId}/roles \u2014 Replace API account roles \u2014 PATCH alias",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{{accountId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/auth/users/{accountId}/status \u2014 Patch API account status only",
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{{accountId}}/status",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/users/{userId} \u2014 Patch API account \u2014 alternate path",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{{userId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/users/{userId}/roles \u2014 Replace roles \u2014 PATCH alias",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{{userId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PATCH /v1/admin/users/{userId}/status \u2014 Patch account status only \u2014 alternate path",
+      "method": "PATCH",
+      "path": "/v1/admin/users/{{userId}}/status",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/auth/users \u2014 Create API account (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users",
+      "in_openapi": true
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/auth/users/{accountId}/activate \u2014 Activate API account (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{{accountId}}/activate",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/auth/users/{accountId}/deactivate \u2014 Deactivate API account (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{{accountId}}/deactivate",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/auth/users/{accountId}/reset-password \u2014 Reset password (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{{accountId}}/reset-password",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/auth/users/{accountId}/roles \u2014 Replace API account roles (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{{accountId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/users \u2014 Create API account \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users",
+      "in_openapi": true
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/users/{userId}/disable \u2014 Disable API account \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users/{{userId}}/disable",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/users/{userId}/enable \u2014 Enable API account \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users/{{userId}}/enable",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/users/{userId}/reset-password \u2014 Reset password \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users/{{userId}}/reset-password",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/POST /v1/admin/users/{userId}/roles \u2014 Replace roles \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users/{{userId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PUT /v1/admin/auth/users/{accountId}/roles \u2014 Replace API account roles (admin)",
+      "method": "PUT",
+      "path": "/v1/admin/auth/users/{{accountId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/PUT /v1/admin/users/{userId}/roles \u2014 Replace roles \u2014 alternate path",
+      "method": "PUT",
+      "path": "/v1/admin/users/{{userId}}/roles",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/[PRODUCTION-WRITE] POST /v1/admin/auth/users/{accountId}/revoke-sessions \u2014 Revoke API account sessions (admin)",
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{{accountId}}/revoke-sessions",
+      "in_openapi": false
+    },
+    {
+      "name": "03 Admin - Users, Roles, Sessions/[PRODUCTION-WRITE] POST /v1/admin/users/{userId}/revoke-sessions \u2014 Revoke user sessions \u2014 alternate path",
+      "method": "POST",
+      "path": "/v1/admin/users/{{userId}}/revoke-sessions",
+      "in_openapi": false
+    },
+    {
+      "name": "04 Fleet - Sites/DELETE /v1/admin/sites/{siteId} \u2014 Deactivate site (admin)",
+      "method": "DELETE",
+      "path": "/v1/admin/sites/{{siteId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "04 Fleet - Sites/GET /v1/admin/sites \u2014 List sites (admin)",
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "04 Fleet - Sites/GET /v1/admin/sites/{siteId} \u2014 Get site by ID (admin)",
+      "method": "GET",
+      "path": "/v1/admin/sites/{{siteId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "04 Fleet - Sites/PATCH /v1/admin/sites/{siteId} \u2014 Patch site (admin)",
+      "method": "PATCH",
+      "path": "/v1/admin/sites/{{siteId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "04 Fleet - Sites/POST /v1/admin/sites \u2014 Create site (admin)",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "04 Fleet - Sites/POST /v1/admin/sites \u2014 Create site (admin) (Full)",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "04 Fleet - Sites/POST /v1/admin/sites \u2014 Create site (admin) (Invalid Name, negative)",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "04 Fleet - Sites/POST /v1/admin/sites \u2014 Create site (admin) (Minimal)",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "04 Fleet - Sites/POST /v1/admin/sites/{siteId}/disable \u2014 Disable site (admin)",
+      "method": "POST",
+      "path": "/v1/admin/sites/{{siteId}}/disable",
+      "in_openapi": false
+    },
+    {
+      "name": "04 Fleet - Sites/[PRODUCTION-WRITE] POST /v1/admin/sites/{siteId}/archive \u2014 Archive site (admin alias)",
+      "method": "POST",
+      "path": "/v1/admin/sites/{{siteId}}/archive",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/DELETE /v1/admin/machines/{machineId}/technicians/{userId} \u2014 Remove technician assignment from machine by user id",
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{{machineId}}/technicians/{{userId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/admin/machines \u2014 List machines (admin)",
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/admin/machines/{machineId} \u2014 Get machine (admin)",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/admin/machines/{machineId}/health \u2014 Machine health detail",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/health",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/admin/machines/{machineId}/technicians \u2014 List technicians assigned to a machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/technicians",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/admin/machines/{machineId}/timeline \u2014 Machine operational timeline",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/timeline",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/operator-sessions/action-attributions \u2014 List action attributions for machine",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/action-attributions",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/operator-sessions/auth-events \u2014 List auth events",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/auth-events",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/operator-sessions/current \u2014 Get current operator session",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/current",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/operator-sessions/history \u2014 List session history",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/history",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/operator-sessions/timeline \u2014 Combined operator timeline",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/timeline",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/GET /v1/machines/{machineId}/sale-catalog \u2014 Runtime sale catalog (planogram, price, stock, images)",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/sale-catalog",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/PATCH /v1/admin/machines/{machineId} \u2014 Patch machine metadata (admin)",
+      "method": "PATCH",
+      "path": "/v1/admin/machines/{{machineId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines \u2014 Create machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines \u2014 Create machine (admin) (Full)",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines \u2014 Create machine (admin) (Invalid Site ID, negative)",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines \u2014 Create machine (admin) (Minimal)",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/disable \u2014 Disable machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/disable",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/enable \u2014 Enable machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/enable",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/mark-compromised \u2014 Mark machine compromised (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/mark-compromised",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/resume \u2014 Resume suspended machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/resume",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/sync \u2014 Queue a machine setup / inventory sync command",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/sync",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/technicians \u2014 Assign technician user to machine",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/technicians",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/admin/machines/{machineId}/transfer-site \u2014 Move machine to another site (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/transfer-site",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/machines/{machineId}/config-applies \u2014 Acknowledge config applied on device",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/config-applies",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/machines/{machineId}/operator-sessions/login \u2014 Start or resume operator session",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/login",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/machines/{machineId}/operator-sessions/logout \u2014 End operator session",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/logout",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/POST /v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat \u2014 Session activity heartbeat",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/operator-sessions/{{sessionId}}/heartbeat",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/archive \u2014 Retire machine (archive alias)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/archive",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/retire \u2014 Retire machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/retire",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/revoke-credentials \u2014 Revoke machine credential material (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/revoke-credentials",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/revoke-sessions \u2014 Revoke interactive sessions for machine technicians/operators (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/revoke-sessions",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/revoke-token \u2014 Revoke machine tokens (alias path)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/revoke-token",
+      "in_openapi": false
+    },
+    {
+      "name": "05 Fleet - Machines/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/suspend \u2014 Suspend machine (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/suspend",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/DELETE /v1/admin/assignments/{assignmentId} \u2014 Release assignment (delete)",
+      "method": "DELETE",
+      "path": "/v1/admin/assignments/{{assignmentId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/DELETE /v1/admin/technician-assignments/{assignmentId} \u2014 Release technician assignment (admin)",
+      "method": "DELETE",
+      "path": "/v1/admin/technician-assignments/{{assignmentId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/assignments \u2014 List technician assignments (admin)",
+      "method": "GET",
+      "path": "/v1/admin/assignments",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/assignments/{assignmentId} \u2014 Get technician\u2013machine assignment by id",
+      "method": "GET",
+      "path": "/v1/admin/assignments/{{assignmentId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/technician-assignments \u2014 List technician assignments (alternate path)",
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/technician-assignments/{assignmentId} \u2014 Get technician assignment by ID (admin)",
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments/{{assignmentId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/technicians \u2014 List technicians (admin)",
+      "method": "GET",
+      "path": "/v1/admin/technicians",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/GET /v1/admin/technicians/{technicianId} \u2014 Get technician by ID (admin)",
+      "method": "GET",
+      "path": "/v1/admin/technicians/{{technicianId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/PATCH /v1/admin/technician-assignments/{assignmentId} \u2014 Patch technician assignment (admin)",
+      "method": "PATCH",
+      "path": "/v1/admin/technician-assignments/{{assignmentId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/PATCH /v1/admin/technicians/{technicianId} \u2014 Patch technician (admin)",
+      "method": "PATCH",
+      "path": "/v1/admin/technicians/{{technicianId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/assignments \u2014 Create technician assignment",
+      "method": "POST",
+      "path": "/v1/admin/assignments",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/technician-assignments \u2014 Create technician\u2013machine assignment (admin)",
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/technician-assignments/{assignmentId}/cancel \u2014 Cancel technician assignment (admin)",
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments/{{assignmentId}}/cancel",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/technicians \u2014 Create technician (admin)",
+      "method": "POST",
+      "path": "/v1/admin/technicians",
+      "in_openapi": true
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/technicians/{technicianId}/disable \u2014 Disable technician (admin)",
+      "method": "POST",
+      "path": "/v1/admin/technicians/{{technicianId}}/disable",
+      "in_openapi": false
+    },
+    {
+      "name": "06 Fleet - Technicians & Assignments/POST /v1/admin/technicians/{technicianId}/enable \u2014 Enable technician (admin)",
+      "method": "POST",
+      "path": "/v1/admin/technicians/{{technicianId}}/enable",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/GET /v1/admin/activation-codes \u2014 List activation codes across machines (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/activation-codes",
+      "in_openapi": true
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/GET /v1/admin/machines/{machineId}/activation-codes \u2014 List activation codes for a machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/activation-codes",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/GET /v1/admin/provisioning/batches/{batchId} \u2014 Get provisioning batch status",
+      "method": "GET",
+      "path": "/v1/admin/provisioning/batches/{{batchId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/GET /v1/setup/machines/{machineId}/bootstrap \u2014 Machine setup bootstrap (topology + catalog)",
+      "method": "GET",
+      "path": "/v1/setup/machines/{{machineId}}/bootstrap",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] DELETE /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} \u2014 Revoke an activation code",
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{{machineId}}/activation-codes/{{activationCodeId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] POST /v1/admin/activation-codes \u2014 Create activation code (catalog path; targets machine in body)",
+      "method": "POST",
+      "path": "/v1/admin/activation-codes",
+      "in_openapi": true
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] POST /v1/admin/activation-codes/{codeId}/revoke \u2014 Revoke activation code by id (catalog path)",
+      "method": "POST",
+      "path": "/v1/admin/activation-codes/{{codeId}}/revoke",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/activation-codes \u2014 Create machine activation code",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/activation-codes",
+      "in_openapi": false
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] POST /v1/admin/provisioning/machines/bulk \u2014 Bulk provision machines at a site",
+      "method": "POST",
+      "path": "/v1/admin/provisioning/machines/bulk",
+      "in_openapi": true
+    },
+    {
+      "name": "07 Machine Setup - Activation, Bootstrap, Config/[PRODUCTION-WRITE] POST /v1/setup/activation-codes/claim \u2014 Claim an activation code (public pre-auth)",
+      "method": "POST",
+      "path": "/v1/setup/activation-codes/claim",
+      "in_openapi": true
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/GET /v1/admin/machines/{machineId}/slots \u2014 List live slot inventory for a machine (restock / cycle-count UI)",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/slots",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/GET /v1/admin/planograms \u2014 List planograms (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/planograms",
+      "in_openapi": true
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/GET /v1/admin/planograms/{planogramId} \u2014 Get planogram detail with slots",
+      "method": "GET",
+      "path": "/v1/admin/planograms/{{planogramId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/POST /v1/admin/machines/{machineId}/planograms/publish \u2014 Publish draft planogram as current and dispatch device command",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/planograms/publish",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/POST /v1/admin/machines/{machineId}/planograms/publish \u2014 Publish draft planogram as current and dispatch device command (Invalid Planogram, negative)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/planograms/publish",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/POST /v1/admin/machines/{machineId}/planograms/publish \u2014 Publish draft planogram as current and dispatch device command (Publish)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/planograms/publish",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/PUT /v1/admin/machines/{machineId}/planograms/draft \u2014 Save draft cabinet slot planogram assignments",
+      "method": "PUT",
+      "path": "/v1/admin/machines/{{machineId}}/planograms/draft",
+      "in_openapi": false
+    },
+    {
+      "name": "08 Machine Setup - Topology, Slots, Port Binding/PUT /v1/admin/machines/{machineId}/topology \u2014 Upsert machine cabinet topology and slot layouts",
+      "method": "PUT",
+      "path": "/v1/admin/machines/{{machineId}}/topology",
+      "in_openapi": false
+    },
+    {
+      "name": "09 Catalog - Brands/DELETE /v1/admin/brands/{brandId} \u2014 Deactivate brand",
+      "method": "DELETE",
+      "path": "/v1/admin/brands/{{brandId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "09 Catalog - Brands/GET /v1/admin/brands \u2014 List brands",
+      "method": "GET",
+      "path": "/v1/admin/brands",
+      "in_openapi": true
+    },
+    {
+      "name": "09 Catalog - Brands/PATCH /v1/admin/brands/{brandId} \u2014 Update brand (PATCH)",
+      "method": "PATCH",
+      "path": "/v1/admin/brands/{{brandId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "09 Catalog - Brands/POST /v1/admin/brands \u2014 Create brand",
+      "method": "POST",
+      "path": "/v1/admin/brands",
+      "in_openapi": true
+    },
+    {
+      "name": "09 Catalog - Brands/PUT /v1/admin/brands/{brandId} \u2014 Update brand",
+      "method": "PUT",
+      "path": "/v1/admin/brands/{{brandId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "10 Catalog - Categories/DELETE /v1/admin/categories/{categoryId} \u2014 Deactivate category",
+      "method": "DELETE",
+      "path": "/v1/admin/categories/{{categoryId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "10 Catalog - Categories/GET /v1/admin/categories \u2014 List categories",
+      "method": "GET",
+      "path": "/v1/admin/categories",
+      "in_openapi": true
+    },
+    {
+      "name": "10 Catalog - Categories/PATCH /v1/admin/categories/{categoryId} \u2014 Update category (PATCH)",
+      "method": "PATCH",
+      "path": "/v1/admin/categories/{{categoryId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "10 Catalog - Categories/POST /v1/admin/categories \u2014 Create category",
+      "method": "POST",
+      "path": "/v1/admin/categories",
+      "in_openapi": true
+    },
+    {
+      "name": "10 Catalog - Categories/PUT /v1/admin/categories/{categoryId} \u2014 Update category",
+      "method": "PUT",
+      "path": "/v1/admin/categories/{{categoryId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "11 Catalog - Tags/DELETE /v1/admin/tags/{tagId} \u2014 Deactivate tag",
+      "method": "DELETE",
+      "path": "/v1/admin/tags/{{tagId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "11 Catalog - Tags/GET /v1/admin/tags \u2014 List tags",
+      "method": "GET",
+      "path": "/v1/admin/tags",
+      "in_openapi": true
+    },
+    {
+      "name": "11 Catalog - Tags/PATCH /v1/admin/tags/{tagId} \u2014 Update tag (PATCH)",
+      "method": "PATCH",
+      "path": "/v1/admin/tags/{{tagId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "11 Catalog - Tags/POST /v1/admin/tags \u2014 Create tag",
+      "method": "POST",
+      "path": "/v1/admin/tags",
+      "in_openapi": true
+    },
+    {
+      "name": "11 Catalog - Tags/PUT /v1/admin/tags/{tagId} \u2014 Update tag",
+      "method": "PUT",
+      "path": "/v1/admin/tags/{{tagId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/price-books/{priceBookId}/items/{productId} \u2014 Delete price book item",
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{{priceBookId}}/items/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/price-books/{priceBookId}/targets/{targetId} \u2014 Remove price book target assignment",
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{{priceBookId}}/targets/{{targetId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/products/{productId} \u2014 Deactivate product",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/products/{productId}/image \u2014 Remove primary product image",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{{productId}}/image",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/products/{productId}/media/{mediaId} \u2014 Remove bound media from product",
+      "method": "DELETE",
+      "path": "/v1/admin/products/{{productId}}/media/{{mediaId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/DELETE /v1/admin/promotions/{promotionId}/targets/{targetId} \u2014 Remove a promotion target assignment",
+      "method": "DELETE",
+      "path": "/v1/admin/promotions/{{promotionId}}/targets/{{targetId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/price-books \u2014 List price books (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/price-books",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/price-books/{priceBookId} \u2014 Get price book by ID",
+      "method": "GET",
+      "path": "/v1/admin/price-books/{{priceBookId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/price-books/{priceBookId}/items \u2014 List price book items",
+      "method": "GET",
+      "path": "/v1/admin/price-books/{{priceBookId}}/items",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/products \u2014 List products (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/products",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/products/{productId} \u2014 Get product by id (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/products/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/promotions \u2014 List promotions (admin catalog)",
+      "method": "GET",
+      "path": "/v1/admin/promotions",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/GET /v1/admin/promotions/{promotionId} \u2014 Get promotion detail with rules and targets",
+      "method": "GET",
+      "path": "/v1/admin/promotions/{{promotionId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PATCH /v1/admin/price-books/{priceBookId} \u2014 Patch price book",
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{{priceBookId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PATCH /v1/admin/price-books/{priceBookId}/items/{productId} \u2014 Upsert one price book item",
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{{priceBookId}}/items/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PATCH /v1/admin/products/{productId} \u2014 Update product (PATCH)",
+      "method": "PATCH",
+      "path": "/v1/admin/products/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PATCH /v1/admin/promotions/{promotionId} \u2014 Patch promotion fields or replace rules",
+      "method": "PATCH",
+      "path": "/v1/admin/promotions/{{promotionId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/price-books \u2014 Create price book",
+      "method": "POST",
+      "path": "/v1/admin/price-books",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/price-books/{priceBookId}/activate \u2014 Activate price book",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{{priceBookId}}/activate",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/price-books/{priceBookId}/assign-target \u2014 Assign company price book to machine or site",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{{priceBookId}}/assign-target",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/price-books/{priceBookId}/deactivate \u2014 Deactivate price book",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{{priceBookId}}/deactivate",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/pricing/preview \u2014 Preview effective prices for products",
+      "method": "POST",
+      "path": "/v1/admin/pricing/preview",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products \u2014 Create product (admin catalog)",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products \u2014 Create product (admin catalog) (Full With Brand Category Tags)",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products \u2014 Create product (admin catalog) (Invalid Price, negative)",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products \u2014 Create product (admin catalog) (Minimal)",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products/{productId}/image \u2014 Bind primary product image (alias)",
+      "method": "POST",
+      "path": "/v1/admin/products/{{productId}}/image",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/products/{productId}/media \u2014 Bind media to product (POST)",
+      "method": "POST",
+      "path": "/v1/admin/products/{{productId}}/media",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions \u2014 Create promotion (draft lifecycle)",
+      "method": "POST",
+      "path": "/v1/admin/promotions",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions/preview \u2014 Preview promotion discounts on top of catalog pricing",
+      "method": "POST",
+      "path": "/v1/admin/promotions/preview",
+      "in_openapi": true
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions/{promotionId}/activate \u2014 Activate promotion (lifecycle active)",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{{promotionId}}/activate",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions/{promotionId}/assign-target \u2014 Assign a promotion target (company, site, machine, product, category, tag)",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{{promotionId}}/assign-target",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions/{promotionId}/deactivate \u2014 Deactivate promotion",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{{promotionId}}/deactivate",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/POST /v1/admin/promotions/{promotionId}/pause \u2014 Pause promotion",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{{promotionId}}/pause",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PUT /v1/admin/price-books/{priceBookId}/items \u2014 Replace price book items",
+      "method": "PUT",
+      "path": "/v1/admin/price-books/{{priceBookId}}/items",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PUT /v1/admin/products/{productId} \u2014 Update product (PUT/PATCH)",
+      "method": "PUT",
+      "path": "/v1/admin/products/{{productId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PUT /v1/admin/products/{productId}/image \u2014 Bind primary product image",
+      "method": "PUT",
+      "path": "/v1/admin/products/{{productId}}/image",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/PUT /v1/admin/products/{productId}/media \u2014 Bind or replace product media (PUT)",
+      "method": "PUT",
+      "path": "/v1/admin/products/{{productId}}/media",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/[PRODUCTION-WRITE] POST /v1/admin/price-books/{priceBookId}/archive \u2014 Archive price book (deactivate)",
+      "method": "POST",
+      "path": "/v1/admin/price-books/{{priceBookId}}/archive",
+      "in_openapi": false
+    },
+    {
+      "name": "12 Catalog - Products/[PRODUCTION-WRITE] POST /v1/admin/promotions/{promotionId}/archive \u2014 Archive promotion (deactivate with audit trail)",
+      "method": "POST",
+      "path": "/v1/admin/promotions/{{promotionId}}/archive",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/DELETE /v1/admin/media/assets/{mediaId} \u2014 Delete media asset (admin)",
+      "method": "DELETE",
+      "path": "/v1/admin/media/assets/{{mediaId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/DELETE /v1/admin/media/{mediaId} \u2014 Delete media asset (alias path)",
+      "method": "DELETE",
+      "path": "/v1/admin/media/{{mediaId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/GET /v1/admin/media \u2014 List media assets (alias path)",
+      "method": "GET",
+      "path": "/v1/admin/media",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/GET /v1/admin/media/assets \u2014 List media assets (admin)",
+      "method": "GET",
+      "path": "/v1/admin/media/assets",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/GET /v1/admin/media/assets/{mediaId} \u2014 Get one media asset by id (admin)",
+      "method": "GET",
+      "path": "/v1/admin/media/assets/{{mediaId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/GET /v1/admin/media/{mediaId} \u2014 Get media asset (alias path)",
+      "method": "GET",
+      "path": "/v1/admin/media/{{mediaId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/assets \u2014 Start enterprise media asset upload",
+      "method": "POST",
+      "path": "/v1/admin/media/assets",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/external-images \u2014 Register external product image URL",
+      "method": "POST",
+      "path": "/v1/admin/media/external-images",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/product-images \u2014 Upload product image (Cloudinary multipart, media path alias)",
+      "method": "POST",
+      "path": "/v1/admin/media/product-images",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/uploads \u2014 Start enterprise media upload (presigned PUT)",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/uploads/init \u2014 Start enterprise media upload (camelCase contract)",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/init",
+      "in_openapi": true
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/uploads/{mediaId}/complete \u2014 Finalize media upload (uploads/{mediaId}/complete alias)",
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/{{mediaId}}/complete",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/media/{mediaId}/complete \u2014 Finalize media upload (variants + ready)",
+      "method": "POST",
+      "path": "/v1/admin/media/{{mediaId}}/complete",
+      "in_openapi": false
+    },
+    {
+      "name": "13 Catalog - Media/POST /v1/admin/product-images \u2014 Upload product image file (Cloudinary)",
+      "method": "POST",
+      "path": "/v1/admin/product-images",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/inventory/anomalies \u2014 List inventory anomalies (ledger-backed)",
+      "method": "GET",
+      "path": "/v1/admin/inventory/anomalies",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/inventory/low-stock \u2014 List slots estimated to need refill soon (low stock)",
+      "method": "GET",
+      "path": "/v1/admin/inventory/low-stock",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/inventory/refill-suggestions \u2014 List refill suggestions across machines (all slots)",
+      "method": "GET",
+      "path": "/v1/admin/inventory/refill-suggestions",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/cash-collections \u2014 List cash collections for machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/cash-collections",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/cash-collections/{collectionId} \u2014 Get one cash collection",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/cash-collections/{{collectionId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/inventory \u2014 Aggregate inventory by product for a machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/inventory",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/inventory-events \u2014 List append-only inventory ledger events for a machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/inventory-events",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/inventory/anomalies \u2014 List inventory anomalies for one machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/inventory/anomalies",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/machines/{machineId}/refill-suggestions \u2014 Refill suggestions for one machine",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/refill-suggestions",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/reports/cash-collections/export.csv \u2014 Export cash collection sessions as CSV (UTF-8)",
+      "method": "GET",
+      "path": "/v1/admin/reports/cash-collections/export.csv",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/reports/fills \u2014 Technician and fill / restock inventory operations",
+      "method": "GET",
+      "path": "/v1/admin/reports/fills",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/reports/inventory \u2014 Inventory BI (low stock or movement ledger)",
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/reports/inventory-low-stock \u2014 Inventory low-stock report",
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory-low-stock",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/admin/restock/suggestions \u2014 Restock suggestions (admin)",
+      "method": "GET",
+      "path": "/v1/admin/restock/suggestions",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/GET /v1/reports/inventory-exceptions \u2014 Slots needing refill or restock attention",
+      "method": "GET",
+      "path": "/v1/reports/inventory-exceptions",
+      "in_openapi": true
+    },
+    {
+      "name": "15 Inventory & Stock/POST /v1/admin/inventory/anomalies/{anomalyId}/resolve \u2014 Resolve inventory anomaly",
+      "method": "POST",
+      "path": "/v1/admin/inventory/anomalies/{{anomalyId}}/resolve",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/cash-collections \u2014 Start cash collection session",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/cash-collections",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/cash-collections/{collectionId}/close \u2014 Close cash collection with counted cash",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/cash-collections/{{collectionId}}/close",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/inventory/reconcile \u2014 Post machine inventory reconcile adjustment",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/inventory/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "15 Inventory & Stock/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/stock-adjustments \u2014 Apply stock adjustments (restock, cycle count, manual, reconcile)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/stock-adjustments",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/admin/orders/{orderId}/timeline \u2014 List commerce order timeline events",
+      "method": "GET",
+      "path": "/v1/admin/orders/{{orderId}}/timeline",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/commerce/orders/{orderId} \u2014 Checkout status for order",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{{orderId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/commerce/orders/{orderId}/reconciliation \u2014 Reconciliation snapshot wrapper",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{{orderId}}/reconciliation",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/commerce/orders/{orderId}/refunds \u2014 List refunds for an order",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{{orderId}}/refunds",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/commerce/orders/{orderId}/refunds/{refundId} \u2014 Get one refund on an order",
+      "method": "GET",
+      "path": "/v1/commerce/orders/{{orderId}}/refunds/{{refundId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/GET /v1/orders \u2014 List orders for company",
+      "method": "GET",
+      "path": "/v1/orders",
+      "in_openapi": true
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/admin/orders/{orderId}/refunds \u2014 Create refund request + ledger refund (admin scoped)",
+      "method": "POST",
+      "path": "/v1/admin/orders/{{orderId}}/refunds",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/cash-checkout \u2014 Create order, record captured cash payment, mark paid",
+      "method": "POST",
+      "path": "/v1/commerce/cash-checkout",
+      "in_openapi": true
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders \u2014 Create order and initial vend session",
+      "method": "POST",
+      "path": "/v1/commerce/orders",
+      "in_openapi": true
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/cancel \u2014 Cancel order before payment capture",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/cancel",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/payment-session \u2014 Start payment with outbox row",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/payment-session",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/refunds \u2014 Create or replay a refund (idempotent)",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/refunds",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/vend/failure \u2014 Finalize vend failure",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/vend/failure",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/vend/start \u2014 Advance vend to in_progress",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/vend/start",
+      "in_openapi": false
+    },
+    {
+      "name": "16 Commerce - Orders/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/vend/success \u2014 Finalize vend success",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/vend/success",
+      "in_openapi": false
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/admin/refunds \u2014 List refund requests for company",
+      "method": "GET",
+      "path": "/v1/admin/refunds",
+      "in_openapi": true
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/admin/refunds/{refundId} \u2014 Get refund request by id",
+      "method": "GET",
+      "path": "/v1/admin/refunds/{{refundId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/admin/reports/payments \u2014 Payment settlement report",
+      "method": "GET",
+      "path": "/v1/admin/reports/payments",
+      "in_openapi": true
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/admin/reports/payments-summary/export.csv \u2014 Export payments summary as CSV (UTF-8)",
+      "method": "GET",
+      "path": "/v1/admin/reports/payments-summary/export.csv",
+      "in_openapi": true
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/admin/reports/refunds \u2014 Refund report",
+      "method": "GET",
+      "path": "/v1/admin/reports/refunds",
+      "in_openapi": true
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/payments \u2014 List payments for company",
+      "method": "GET",
+      "path": "/v1/payments",
+      "in_openapi": true
+    },
+    {
+      "name": "17 Commerce - Payments/GET /v1/reports/payments-summary \u2014 Payment outcomes and method/status breakdown",
+      "method": "GET",
+      "path": "/v1/reports/payments-summary",
+      "in_openapi": true
+    },
+    {
+      "name": "18 Commerce - Cash & Vend/GET /v1/admin/machines/{machineId}/cashbox \u2014 Cashbox summary (expected vault from commerce)",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/cashbox",
+      "in_openapi": false
+    },
+    {
+      "name": "18 Commerce - Cash & Vend/GET /v1/admin/reports/cash \u2014 Cash collection report",
+      "method": "GET",
+      "path": "/v1/admin/reports/cash",
+      "in_openapi": true
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/GET /v1/device/machines/{machineId}/events/{idempotencyKey}/status \u2014 Single critical telemetry idempotency status",
+      "method": "GET",
+      "path": "/v1/device/machines/{{machineId}}/events/{{idempotencyKey}}/status",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/GET /v1/machines/{machineId}/shadow \u2014 Get machine shadow JSON",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/shadow",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/GET /v1/machines/{machineId}/telemetry/incidents \u2014 Recent persisted machine incidents",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/telemetry/incidents",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/GET /v1/machines/{machineId}/telemetry/rollups \u2014 Telemetry rollup buckets (1m / 1h)",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/telemetry/rollups",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/GET /v1/machines/{machineId}/telemetry/snapshot \u2014 Current machine telemetry snapshot (projected)",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/telemetry/snapshot",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/POST /v1/device/machines/{machineId}/vend-results \u2014 Report vend outcome for an order (HTTP bridge)",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/vend-results",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/POST /v1/machines/{machineId}/check-ins \u2014 Record Android check-in",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/check-ins",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/[PRODUCTION-WRITE] POST /v1/device/machines/{machineId}/commands/poll \u2014 Poll pending remote commands over HTTP (MQTT fallback)",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/commands/poll",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/[PRODUCTION-WRITE] POST /v1/device/machines/{machineId}/events/reconcile \u2014 Batch reconcile critical telemetry idempotency keys",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/events/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/[PRODUCTION-WRITE] POST /v1/device/machines/{machineId}/events/reconcile \u2014 Batch reconcile critical telemetry idempotency keys (Full)",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/events/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/[PRODUCTION-WRITE] POST /v1/device/machines/{machineId}/events/reconcile \u2014 Batch reconcile critical telemetry idempotency keys (Invalid machine_id, negative)",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/events/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "19 Telemetry - Machine Runtime/[PRODUCTION-WRITE] POST /v1/device/machines/{machineId}/events/reconcile \u2014 Batch reconcile critical telemetry idempotency keys (Minimal)",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/events/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/GET /v1/admin/commands \u2014 List machine commands (admin)",
+      "method": "GET",
+      "path": "/v1/admin/commands",
+      "in_openapi": true
+    },
+    {
+      "name": "20 Device Commands/GET /v1/admin/commands/{commandId} \u2014 Get command ledger row by id",
+      "method": "GET",
+      "path": "/v1/admin/commands/{{commandId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/GET /v1/admin/reports/commands \u2014 Machine command failure report (terminal attempts only)",
+      "method": "GET",
+      "path": "/v1/admin/reports/commands",
+      "in_openapi": true
+    },
+    {
+      "name": "20 Device Commands/GET /v1/machines/{machineId}/commands/receipts \u2014 List recent command receipts",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/commands/receipts",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/GET /v1/machines/{machineId}/commands/{sequence}/status \u2014 Get command dispatch status by sequence",
+      "method": "GET",
+      "path": "/v1/machines/{{machineId}}/commands/{{sequence}}/status",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/[PRODUCTION-WRITE] POST /v1/admin/commands/{commandId}/cancel \u2014 Cancel pending command",
+      "method": "POST",
+      "path": "/v1/admin/commands/{{commandId}}/cancel",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/[PRODUCTION-WRITE] POST /v1/admin/commands/{commandId}/retry \u2014 Retry failed command dispatch",
+      "method": "POST",
+      "path": "/v1/admin/commands/{{commandId}}/retry",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/commands \u2014 Dispatch new command to machine (MQTT/device pipeline)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/commands",
+      "in_openapi": false
+    },
+    {
+      "name": "20 Device Commands/[PRODUCTION-WRITE] POST /v1/machines/{machineId}/commands/dispatch \u2014 Dispatch remote MQTT command",
+      "method": "POST",
+      "path": "/v1/machines/{{machineId}}/commands/dispatch",
+      "in_openapi": false
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/export \u2014 Unified CSV export dispatcher",
+      "method": "GET",
+      "path": "/v1/admin/reports/export",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/failed-vends \u2014 Failed vend report",
+      "method": "GET",
+      "path": "/v1/admin/reports/failed-vends",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/machine-health \u2014 Machine health and offline report",
+      "method": "GET",
+      "path": "/v1/admin/reports/machine-health",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/machines \u2014 Machine uptime / last-seen report (alias naming)",
+      "method": "GET",
+      "path": "/v1/admin/reports/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/products \u2014 Product performance report",
+      "method": "GET",
+      "path": "/v1/admin/reports/products",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/reconciliation \u2014 Reconciliation BI (open/closed summaries + scoped cases)",
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/reconciliation-queue \u2014 Reconciliation queue report",
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation-queue",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/sales \u2014 Company sales report",
+      "method": "GET",
+      "path": "/v1/admin/reports/sales",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/sales-summary/export.csv \u2014 Export sales summary as CSV (UTF-8)",
+      "method": "GET",
+      "path": "/v1/admin/reports/sales-summary/export.csv",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/admin/reports/vends \u2014 Company vend lifecycle summary",
+      "method": "GET",
+      "path": "/v1/admin/reports/vends",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/reports/fleet-health \u2014 Machine posture and incident rollups",
+      "method": "GET",
+      "path": "/v1/reports/fleet-health",
+      "in_openapi": true
+    },
+    {
+      "name": "21 Reports & Exports/GET /v1/reports/sales-summary \u2014 Sales rollup and trend breakdown",
+      "method": "GET",
+      "path": "/v1/reports/sales-summary",
+      "in_openapi": true
+    },
+    {
+      "name": "22 Finance & Settlement/GET /v1/admin/commerce/reconciliation \u2014 List commerce reconciliation cases",
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation",
+      "in_openapi": true
+    },
+    {
+      "name": "22 Finance & Settlement/GET /v1/admin/commerce/reconciliation/{caseId} \u2014 Get commerce reconciliation case",
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation/{{caseId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "22 Finance & Settlement/GET /v1/admin/finance/daily-close \u2014 List finance daily closes",
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close",
+      "in_openapi": true
+    },
+    {
+      "name": "22 Finance & Settlement/GET /v1/admin/finance/daily-close/{closeId} \u2014 Get one finance daily close by id",
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close/{{closeId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "22 Finance & Settlement/[PRODUCTION-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/ignore \u2014 Ignore commerce reconciliation case",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{{caseId}}/ignore",
+      "in_openapi": false
+    },
+    {
+      "name": "22 Finance & Settlement/[PRODUCTION-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/request-refund \u2014 Request refund from reconciliation case",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{{caseId}}/request-refund",
+      "in_openapi": false
+    },
+    {
+      "name": "22 Finance & Settlement/[PRODUCTION-WRITE] POST /v1/admin/commerce/reconciliation/{caseId}/resolve \u2014 Resolve commerce reconciliation case",
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{{caseId}}/resolve",
+      "in_openapi": false
+    },
+    {
+      "name": "22 Finance & Settlement/[PRODUCTION-WRITE] POST /v1/admin/finance/daily-close \u2014 Create immutable finance daily close (requires Idempotency-Key)",
+      "method": "POST",
+      "path": "/v1/admin/finance/daily-close",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/anomalies \u2014 List operational anomalies",
+      "method": "GET",
+      "path": "/v1/admin/anomalies",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/anomalies/{anomalyId} \u2014 Get operational anomaly",
+      "method": "GET",
+      "path": "/v1/admin/anomalies/{{anomalyId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/audit/events \u2014 List enterprise audit events",
+      "method": "GET",
+      "path": "/v1/admin/audit/events",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/audit/events/{auditEventId} \u2014 Get one enterprise audit event by id",
+      "method": "GET",
+      "path": "/v1/admin/audit/events/{{auditEventId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/feature-flags \u2014 List company feature flags",
+      "method": "GET",
+      "path": "/v1/admin/feature-flags",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/feature-flags/{flagId} \u2014 Get feature flag and scoped targets",
+      "method": "GET",
+      "path": "/v1/admin/feature-flags/{{flagId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/machines/{machineId}/diagnostics/bundles \u2014 List machine diagnostic bundles",
+      "method": "GET",
+      "path": "/v1/admin/machines/{{machineId}}/diagnostics/bundles",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/GET /v1/admin/operations/machines/health \u2014 Fleet machine health snapshot list",
+      "method": "GET",
+      "path": "/v1/admin/operations/machines/health",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/PATCH /v1/admin/feature-flags/{flagId} \u2014 Patch feature flag metadata / master enabled bit",
+      "method": "PATCH",
+      "path": "/v1/admin/feature-flags/{{flagId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/anomalies/{anomalyId}/ignore \u2014 Ignore operational anomaly",
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{{anomalyId}}/ignore",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/anomalies/{anomalyId}/resolve \u2014 Resolve operational anomaly",
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{{anomalyId}}/resolve",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/feature-flags \u2014 Create a feature flag",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags",
+      "in_openapi": true
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/feature-flags/{flagId}/disable \u2014 Disable feature flag (master switch)",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{{flagId}}/disable",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/feature-flags/{flagId}/enable \u2014 Enable feature flag (master switch)",
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{{flagId}}/enable",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/POST /v1/admin/machines/{machineId}/diagnostics/requests \u2014 Request machine diagnostic bundle",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/diagnostics/requests",
+      "in_openapi": false
+    },
+    {
+      "name": "23 Audit, Operations & Incidents/PUT /v1/admin/feature-flags/{flagId}/targets \u2014 Replace scoped targets for a feature flag",
+      "method": "PUT",
+      "path": "/v1/admin/feature-flags/{{flagId}}/targets",
+      "in_openapi": false
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/ops/outbox \u2014 List transactional outbox rows and pipeline stats",
+      "method": "GET",
+      "path": "/v1/admin/ops/outbox",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/ops/retention \u2014 Show retention table visibility",
+      "method": "GET",
+      "path": "/v1/admin/ops/retention",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/system/outbox \u2014 List transactional outbox rows (system alias)",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/system/outbox/stats \u2014 Outbox pipeline statistics (system alias)",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/stats",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/system/outbox/{eventId} \u2014 Get one outbox row by id",
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/{{eventId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/GET /v1/admin/system/retention/stats \u2014 Data retention policy + table footprints (system)",
+      "method": "GET",
+      "path": "/v1/admin/system/retention/stats",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/POST /v1/admin/ops/outbox/{outboxId}/retry \u2014 Reset a dead-lettered outbox row for retry",
+      "method": "POST",
+      "path": "/v1/admin/ops/outbox/{{outboxId}}/retry",
+      "in_openapi": false
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/POST /v1/admin/system/outbox/{eventId}/mark-dlq \u2014 Manually move an outbox row to Postgres DLQ",
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{{eventId}}/mark-dlq",
+      "in_openapi": false
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/POST /v1/admin/system/outbox/{eventId}/replay \u2014 Replay a dead-lettered outbox row",
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{{eventId}}/replay",
+      "in_openapi": false
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/POST /v1/admin/system/retention/dry-run \u2014 Preview retention candidates (dry-run)",
+      "method": "POST",
+      "path": "/v1/admin/system/retention/dry-run",
+      "in_openapi": true
+    },
+    {
+      "name": "24 Outbox, Retention & Reconciliation/[PRODUCTION-WRITE] POST /v1/admin/system/retention/run \u2014 Run bounded Postgres retention",
+      "method": "POST",
+      "path": "/v1/admin/system/retention/run",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/machine-config/rollouts \u2014 List machine config rollouts",
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/machine-config/rollouts/{rolloutId} \u2014 Get one machine config rollout",
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts/{{rolloutId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/ota \u2014 List OTA campaigns (admin)",
+      "method": "GET",
+      "path": "/v1/admin/ota",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/ota/campaigns \u2014 List OTA campaigns (lifecycle admin)",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/ota/campaigns/{campaignId} \u2014 Get OTA campaign detail",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/ota/campaigns/{campaignId}/results \u2014 List campaign machine rollout results",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/results",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/ota/campaigns/{campaignId}/targets \u2014 List campaign machine targets",
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/targets",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/rollouts \u2014 List rollout campaigns",
+      "method": "GET",
+      "path": "/v1/admin/rollouts",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/GET /v1/admin/rollouts/{rolloutId} \u2014 Get rollout campaign",
+      "method": "GET",
+      "path": "/v1/admin/rollouts/{{rolloutId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/POST /v1/admin/machines/{machineId}/rotate-credential \u2014 Rotate machine credential (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/rotate-credential",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/POST /v1/admin/machines/{machineId}/rotate-credentials \u2014 Rotate machine credential (plural alias)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/rotate-credentials",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/POST /v1/admin/machines/{machineId}/rotate-token-version \u2014 Bump credential version / rotate token (admin)",
+      "method": "POST",
+      "path": "/v1/admin/machines/{{machineId}}/rotate-token-version",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] PATCH /v1/admin/ota/campaigns/{campaignId} \u2014 Patch draft/approved OTA campaign",
+      "method": "PATCH",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/machine-config/rollouts \u2014 Create machine config rollout (or rollback)",
+      "method": "POST",
+      "path": "/v1/admin/machine-config/rollouts",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns \u2014 Create OTA campaign (draft)",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/approve \u2014 Approve OTA campaign",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/approve",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/cancel \u2014 Cancel OTA campaign",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/cancel",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/pause \u2014 Pause active rollout",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/pause",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/publish \u2014 Publish OTA campaign (approve + start when needed)",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/publish",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/resume \u2014 Resume paused rollout (remaining machines)",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/resume",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/rollback \u2014 Rollback OTA campaign (dispatch rollback commands)",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/rollback",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/ota/campaigns/{campaignId}/start \u2014 Start OTA rollout (canary first wave)",
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/start",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts \u2014 Create rollout campaign",
+      "method": "POST",
+      "path": "/v1/admin/rollouts",
+      "in_openapi": true
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts/{rolloutId}/cancel \u2014 Cancel rollout",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{{rolloutId}}/cancel",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts/{rolloutId}/pause \u2014 Pause rollout",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{{rolloutId}}/pause",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts/{rolloutId}/resume \u2014 Resume rollout",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{{rolloutId}}/resume",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts/{rolloutId}/rollback \u2014 Roll back rollout",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{{rolloutId}}/rollback",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] POST /v1/admin/rollouts/{rolloutId}/start \u2014 Start rollout",
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{{rolloutId}}/start",
+      "in_openapi": false
+    },
+    {
+      "name": "25 OTA, Rollouts & Feature Flags/[PRODUCTION-WRITE] PUT /v1/admin/ota/campaigns/{campaignId}/targets \u2014 Replace campaign machine targets (draft/approved only)",
+      "method": "PUT",
+      "path": "/v1/admin/ota/campaigns/{{campaignId}}/targets",
+      "in_openapi": false
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/DELETE /v1/admin/artifacts/{artifactId} \u2014 Delete artifact",
+      "method": "DELETE",
+      "path": "/v1/admin/artifacts/{{artifactId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/GET /v1/admin/artifacts \u2014 List artifacts",
+      "method": "GET",
+      "path": "/v1/admin/artifacts",
+      "in_openapi": true
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/GET /v1/admin/artifacts/{artifactId} \u2014 Get artifact metadata",
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{{artifactId}}",
+      "in_openapi": false
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/GET /v1/admin/artifacts/{artifactId}/download \u2014 Presigned download URL",
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{{artifactId}}/download",
+      "in_openapi": false
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/POST /v1/admin/artifacts \u2014 Reserve artifact id",
+      "method": "POST",
+      "path": "/v1/admin/artifacts",
+      "in_openapi": true
+    },
+    {
+      "name": "26 Artifacts & Diagnostics/PUT /v1/admin/artifacts/{artifactId}/content \u2014 Upload artifact bytes",
+      "method": "PUT",
+      "path": "/v1/admin/artifacts/{{artifactId}}/content",
+      "in_openapi": false
+    },
+    {
+      "name": "27 Webhooks & Public APIs/[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks \u2014 Apply provider webhook",
+      "method": "POST",
+      "path": "/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks",
+      "in_openapi": false
+    },
+    {
+      "name": "29 Admin Utilities / Negative Tests/GET /v1/operator-insights/technicians/{technicianId}/action-attributions \u2014 List action attributions for a technician",
+      "method": "GET",
+      "path": "/v1/operator-insights/technicians/{{technicianId}}/action-attributions",
+      "in_openapi": false
+    },
+    {
+      "name": "29 Admin Utilities / Negative Tests/GET /v1/operator-insights/users/action-attributions \u2014 List action attributions for a user principal",
+      "method": "GET",
+      "path": "/v1/operator-insights/users/action-attributions",
+      "in_openapi": true
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC Health/Check \u2014 Check",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineActivationService/ClaimActivation \u2014 Claim Activation",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineAuthService/ActivateMachine \u2014 Activate Machine",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineAuthService/ClaimActivation \u2014 Claim Activation",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineAuthService/RefreshMachineToken \u2014 Refresh Machine Token",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineBootstrapService/AckConfigVersion \u2014 Ack Config Version",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineBootstrapService/CheckForUpdates \u2014 Check For Updates",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineBootstrapService/CheckIn \u2014 Check In",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineBootstrapService/GetBootstrap \u2014 Get Bootstrap",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/AckCatalogVersion \u2014 Ack Catalog Version",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/GetCatalogDelta \u2014 Get Catalog Delta",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/GetCatalogSnapshot \u2014 Get Catalog Snapshot",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/GetMediaManifest \u2014 Get Media Manifest",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/GetSaleCatalog \u2014 Get Sale Catalog",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/SyncCatalogBundle \u2014 Sync Catalog Bundle",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCatalogService/SyncSaleCatalog \u2014 Sync Sale Catalog",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/AckCommand \u2014 Ack Command",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/GetAssignedUpdate \u2014 Get Assigned Update",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/GetPendingCommands \u2014 Get Pending Commands",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/RejectCommand \u2014 Reject Command",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/ReportDiagnosticBundleResult \u2014 Report Diagnostic Bundle Result",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommandService/ReportUpdateStatus \u2014 Report Update Status",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/AttachPaymentResult \u2014 Attach Payment Result",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CancelOrder \u2014 Cancel Order",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/ConfirmCashPayment \u2014 Confirm Cash Payment",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/ConfirmVendSuccess \u2014 Confirm Vend Success",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CreateCashCheckout \u2014 Create Cash Checkout",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CreateOrder \u2014 Create Order",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CreateOrderFromQuote \u2014 Create Order From Quote",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CreatePaymentSession \u2014 Create Payment Session",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/CreateQuote \u2014 Create Quote",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/GetOrder \u2014 Get Order",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/GetOrderStatus \u2014 Get Order Status",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/ReportVendFailure \u2014 Report Vend Failure",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/ReportVendSuccess \u2014 Report Vend Success",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineCommerceService/StartVend \u2014 Start Vend",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/AckInventorySync \u2014 Ack Inventory Sync",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/GetInventorySnapshot \u2014 Get Inventory Snapshot",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/GetPlanogram \u2014 Get Planogram",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/PushInventoryDelta \u2014 Push Inventory Delta",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitFillReport \u2014 Submit Fill Report",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitFillResult \u2014 Submit Fill Result",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitInventoryAdjustment \u2014 Submit Inventory Adjustment",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitRestock \u2014 Submit Restock",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitStockAdjustment \u2014 Submit Stock Adjustment",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineInventoryService/SubmitStockSnapshot \u2014 Submit Stock Snapshot",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineMediaService/AckMediaVersion \u2014 Ack Media Version",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineMediaService/GetMediaDelta \u2014 Get Media Delta",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineMediaService/GetMediaManifest \u2014 Get Media Manifest",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOfflineSyncService/GetSyncCursor \u2014 Get Sync Cursor",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOfflineSyncService/PushOfflineEvents \u2014 Push Offline Events",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/CloseOperatorSession \u2014 Close Operator Session",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/HeartbeatOperatorSession \u2014 Heartbeat Operator Session",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/LoginOperator \u2014 Login Operator",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/LogoutOperator \u2014 Logout Operator",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/OpenOperatorSession \u2014 Open Operator Session",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/SubmitFillReport \u2014 Submit Fill Report",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineOperatorService/SubmitStockAdjustment \u2014 Submit Stock Adjustment",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/AttachPayment \u2014 Attach Payment",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/CancelSale \u2014 Cancel Sale",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/CompleteVend \u2014 Complete Vend",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/ConfirmCashReceived \u2014 Confirm Cash Received",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/CreateSale \u2014 Create Sale",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/FailVend \u2014 Fail Vend",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineSaleService/StartVend \u2014 Start Vend",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/CheckIn \u2014 Check In",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/GetEventStatus \u2014 Get Event Status",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/PushCriticalEvent \u2014 Push Critical Event",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/PushTelemetryBatch \u2014 Push Telemetry Batch",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/ReconcileEvents \u2014 Reconcile Events",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTelemetryService/SubmitTelemetryBatch \u2014 Submit Telemetry Batch",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "30 gRPC - Machine Services/gRPC MachineTokenService/RefreshMachineToken \u2014 Refresh Machine Token",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalCatalogQueryService/GetSaleCatalogSnapshot \u2014 Get Sale Catalog Snapshot",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalCommerceQueryService/GetOrderPaymentVendState \u2014 Get Order Payment Vend State",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalCommerceQueryService/GetOrderPaymentVendState \u2014 Get Order Payment Vend State",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalInventoryQueryService/GetMachineSlotInventory \u2014 Get Machine Slot Inventory",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineCabinetSlotSummary \u2014 Get Machine Cabinet Slot Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineCabinetSlotSummary \u2014 Get Machine Cabinet Slot Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineState \u2014 Get Machine State",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineState \u2014 Get Machine State",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineSummary \u2014 Get Machine Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalMachineQueryService/GetMachineSummary \u2014 Get Machine Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalPaymentQueryService/GetLatestPaymentForOrder \u2014 Get Latest Payment For Order",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalPaymentQueryService/GetPaymentById \u2014 Get Payment By Id",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalReportingQueryService/GetSalesSummary \u2014 Get Sales Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalTelemetryQueryService/GetLatestMachineTelemetry \u2014 Get Latest Machine Telemetry",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalTelemetryQueryService/GetLatestMachineTelemetry \u2014 Get Latest Machine Telemetry",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalTelemetryQueryService/GetMachineIncidentSummary \u2014 Get Machine Incident Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "31 gRPC - Internal Services/gRPC InternalTelemetryQueryService/GetMachineIncidentSummary \u2014 Get Machine Incident Summary",
+      "method": "GRPC",
+      "path": "",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/commands/ack \u2014 Command acknowledgment",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/commands/receipt \u2014 receipt",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/events \u2014 Generic device event",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/events/cash \u2014 cash",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/events/inventory \u2014 inventory",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/events/vend \u2014 vend",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/presence \u2014 Device presence",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/shadow/reported \u2014 reported",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/state/heartbeat \u2014 State heartbeat",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/telemetry \u2014 Telemetry publish",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/telemetry/incident \u2014 incident",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "32 MQTT - Device Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/telemetry/snapshot \u2014 snapshot",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "33 MQTT - Device Subscribe/MQTT SUB {{mqttTopicPrefix}}/machines/{{machineId}}/commands \u2014 Device subscribe to commands",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "34 MQTT - Backend Command Publish/MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/commands \u2014 Backend command dispatch",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 duplicate command ack",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 invalid command id",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 machine id mismatch",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 missing occurred at",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 wildcard forbidden",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "35 MQTT - Negative / Contract Tests/MQTT NEGATIVE \u2014 wrong layout legacy on enterprise",
+      "method": "MQTT",
+      "path": "{{mqttBrokerUrl}}",
+      "in_openapi": false
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 1 \u2014 Login Admin",
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "in_openapi": true
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 2 \u2014 Get Me",
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "in_openapi": true
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 3 \u2014 Create Site",
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "in_openapi": true
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 4 \u2014 Create Machine",
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "in_openapi": true
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 5 \u2014 Create Activation Code",
+      "method": "POST",
+      "path": "/v1/admin/activation-codes",
+      "in_openapi": true
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 8 \u2014 Push Telemetry",
+      "method": "POST",
+      "path": "/v1/device/machines/{{machineId}}/events/reconcile",
+      "in_openapi": false
+    },
+    {
+      "name": "99 Utilities - Auth Helpers, Examples, Smoke Tests/FLOW 9 \u2014 Create Order",
+      "method": "POST",
+      "path": "/v1/commerce/orders",
+      "in_openapi": true
+    }
+  ]
+}

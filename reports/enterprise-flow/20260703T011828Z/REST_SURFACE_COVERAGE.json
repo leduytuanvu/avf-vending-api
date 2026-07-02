@@ -1,0 +1,45 @@
+{
+  "openapi_path_count": 274,
+  "openapi_operation_count": 335,
+  "mounted_route_count": 335,
+  "missing_in_openapi": [],
+  "missing_in_router": [],
+  "accepted_missing_in_openapi": [
+    [
+      "GET",
+      "/v1/admin/payments/disputes"
+    ],
+    [
+      "POST",
+      "/v1/admin/media/product-images"
+    ],
+    [
+      "GET",
+      "/v1/admin/payments/webhook-events"
+    ],
+    [
+      "GET",
+      "/v1/admin/payment/providers"
+    ],
+    [
+      "GET",
+      "/v1/admin/payments/export"
+    ],
+    [
+      "POST",
+      "/v1/admin/payments/disputes/{disputeId}/resolve"
+    ],
+    [
+      "POST",
+      "/v1/admin/payments/settlements/import"
+    ],
+    [
+      "GET",
+      "/v1/admin/payments/settlements"
+    ],
+    [
+      "GET",
+      "/v1/admin/payments/reconciliation"
+    ]
+  ]
+}

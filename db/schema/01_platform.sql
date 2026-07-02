@@ -1750,7 +1750,7 @@ CREATE INDEX ix_machine_activation_codes_machine ON machine_activation_codes (ma
 
 CREATE TABLE machine_activation_claims (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
-    activation_code_id uuid NOT NULL REFERENCES machine_activation_codes (id) ON DELETE CASCADE,
+    activation_code_id uuid REFERENCES machine_activation_codes (id) ON DELETE CASCADE,
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
     fingerprint_hash bytea NOT NULL,
     claimed_at timestamptz NOT NULL DEFAULT now (),
@@ -1759,13 +1759,49 @@ CREATE TABLE machine_activation_claims (
     result text NOT NULL CHECK (
         result IN ('succeeded', 'failed', 'rejected')
     ),
-    failure_reason text NOT NULL DEFAULT ''
+    failure_reason text NOT NULL DEFAULT '',
+    activated_by_account_id uuid,
+    operator_session_id uuid REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    request_id text,
+    correlation_id uuid,
+    app_version text,
+    boot_id text,
+    device_serial text,
+    reason text,
+    activation_source text CHECK (
+        activation_source IS NULL
+        OR activation_source IN (
+            'activation_code',
+            'reactivation_code',
+            'technician_reattach',
+            'admin_reattach',
+            'system_recovery'
+        )
+    )
 );
 
 CREATE INDEX ix_machine_activation_claims_code ON machine_activation_claims (
     activation_code_id,
     claimed_at DESC
 );
+
+CREATE INDEX ix_machine_activation_claims_machine ON machine_activation_claims (machine_id, claimed_at DESC);
+
+CREATE INDEX ix_machine_activation_claims_operator ON machine_activation_claims (operator_session_id)
+WHERE
+    operator_session_id IS NOT NULL;
+
+CREATE INDEX ix_machine_activation_claims_account ON machine_activation_claims (activated_by_account_id)
+WHERE
+    activated_by_account_id IS NOT NULL;
+
+CREATE INDEX ix_machine_activation_claims_correlation ON machine_activation_claims (correlation_id)
+WHERE
+    correlation_id IS NOT NULL;
+
+CREATE INDEX ix_machine_activation_claims_source ON machine_activation_claims (activation_source)
+WHERE
+    activation_source IS NOT NULL;
 
 CREATE UNIQUE INDEX ux_machine_activation_claim_code_fp_succeeded ON machine_activation_claims (
     activation_code_id,

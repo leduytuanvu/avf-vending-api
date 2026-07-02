@@ -1,0 +1,1274 @@
+{
+  "topic_count": 211,
+  "pass_count": 211,
+  "fail_count": 0,
+  "go_test_exit": 0,
+  "topics": [
+    {
+      "topic": ".",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "..",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/commands",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/commands/ack",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/commands/receipt",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/events",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/events/cash",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/events/inventory",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/events/vend",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/machines",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/machines/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/machines/not-a-uuid/telemetry",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/opt/emqx/etc/certs",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/presence",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/shadow/reported",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/state/heartbeat",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/telemetry",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/telemetry/incident",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "/telemetry/snapshot",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "0",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "0-300",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "1-5",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "20-50",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "27",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "30_mqtt_connect.sh",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "32_mqtt_command_ack.sh",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "5",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "ack",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "acked",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "active",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "artifact_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf-machine-{machine_id}",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/11111111-1111-1111-1111-111111111111/commands/dispatch",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/11111111-1111-1111-1111-111111111111/commands/down",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/commands/ack",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/commands/receipt",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/cash",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/inventory",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/events/vend",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/presence",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/shadow/desired",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/shadow/reported",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/state/heartbeat",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/incident",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/devices/22222222-2222-2222-2222-222222222222/telemetry/snapshot",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/production",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/production/machines/{uuid}/commands/ack",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/staging",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/staging/machines/11111111-1111-1111-1111-111111111111/commands",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "avf/x/devices/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "boot_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "broker_url",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "campaign_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "campaign_type",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "catalog.refresh",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "catalog_refresh_ack_invalid",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "client_id_policy",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "cmd/mqtt-ingest",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "command_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "command_ledger.id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "command_ledger.route_key",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "command_type",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "commands/ack",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "commands/dispatch",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "commands/down",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "commands/receipt",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "compactable_latest",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "correlation_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "credential_version",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "critical_no_drop",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "crypto/tls",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "crypto/x509",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "custom.event",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "custom/prefix/11111111-1111-1111-1111-111111111111/commands/dispatch",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "dedupe_key",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "desired",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "detail",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "development",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "device_command_receipts",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "device_telemetry_events",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "dispatch",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "docs/api/machine-runtime.md",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "docs/swagger/swagger.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "droppable_metrics",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "duplicate_replay_vend.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "e2e_mqtt_publish",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "e2e_mqtt_subscribe_accept_connect",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "emitted_at",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "encoding/json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "enterprise",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "error_code",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "error_message",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "error_reason",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "event_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "event_type",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events.cash",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events.inventory",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events.vend",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events/cash",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events/inventory",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "events/vend",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "failed",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "failed_retryable",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "failed_terminal",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "failure_reason",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/observability/mqttprom",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/platform/id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/avf/avf-vending-api/internal/platform/telemetry",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/eclipse/paho.mqtt.golang",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/google/uuid",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/prometheus/client_golang/prometheus",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/prometheus/client_golang/prometheus/promauto",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "github.com/stretchr/testify/require",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "go.uber.org/zap",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "idempotency_key",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/app/telemetryapp/offline_replay_contract_test.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/httpserver/server.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/mqtt/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/mqtt/offline_replay_contract_test.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/mqtt/publisher.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/mqtt/router.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/mqtt/subscriber.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "internal/platform/telemetry/offline_replay_classify_test.go",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "invalid_critical_missing_identity.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "invalid_critical_wrong_machine_id.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "invalid_occurred_at_malformed.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "inventory_events",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "legacy",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "machine_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "machine_runtime_refresh_tokens",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "machine_sessions",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "machines.credential_version",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mosquitto_pub",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mosquitto_sub",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt.broker_url",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt.example.com",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt.topic_layout",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt.topic_prefix",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "mqtt_topic",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "nacked",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "net/url",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "normalized_event_type",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "not_found",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "occurred_at",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "operator_session_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "order_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "outcome",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "path/filepath",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "payload",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "payload_sha256_hex",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "presence",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "processed",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "product_media_updated",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "published",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "reason",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "rel",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "reported",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "request_id",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "revoked_at",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "rotated_at",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "schema_version",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "semver",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "sent",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "seq_no",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "sequence",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "server.crt",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "server.key",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "shadow/desired",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "shadow/reported",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "slot_index",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "state.heartbeat",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "state/heartbeat",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "status",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "storage_key",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "success",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry.incident",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry.metrics",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry.snapshot",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry/incident",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "telemetry/snapshot",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "test",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "testdata/telemetry/valid_vend_success.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "tests/e2e/",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "tests/e2e/lib/e2e_mqtt.sh",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "timeout",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "tls_required",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "topic_layout",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "topic_prefix",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "transport",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "true",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "type",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_cash_inserted.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_command_ack.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_heartbeat_metrics.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_inventory_delta.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_payment_success.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_vend_failed.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "valid_vend_success.json",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "verify_peer",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "wait",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "{prefix}",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "{prefix}/55555555-5555-5555-5555-555555555555/events/vend",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "{topic_prefix}/machines/{machine_id}/commands",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "{topic_prefix}/machines/{machine_id}/{rel}",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    },
+    {
+      "topic": "{}",
+      "status": "PASS",
+      "execution_classification": "GO_TEST",
+      "evidence_path": "go test ./internal/platform/mqtt/..."
+    }
+  ]
+}

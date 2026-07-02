@@ -1,0 +1,26 @@
+{
+  "enterprise_publish_count": 1,
+  "docs_topic_count": 14,
+  "missing_in_code": [
+    "cmd/mqtt-ingest",
+    "commands/ack",
+    "commands/down",
+    "commands/receipt",
+    "events/cash",
+    "events/inventory",
+    "events/vend",
+    "internal/platform/mqtt/",
+    "shadow/desired",
+    "shadow/reported",
+    "state/heartbeat",
+    "telemetry/incident",
+    "telemetry/snapshot",
+    "tests/e2e/"
+  ],
+  "missing_in_docs": [
+    "commands"
+  ],
+  "code_only_accepted": [
+    "shadow/desired"
+  ]
+}

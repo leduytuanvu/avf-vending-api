@@ -1,0 +1,73 @@
+{
+  "verdict": "ENTERPRISE_FLOW_PARTIAL_BACKEND_READY_APP_FOLLOWUP_REQUIRED",
+  "timestamp": "20260703T011828Z",
+  "git_sha": "f191db94cdcbabe71eb956419fac3ac3a76a1f10",
+  "rest": {
+    "paths_before": 268,
+    "paths_after": 274,
+    "operations_before": 329,
+    "operations_after": 335,
+    "missing_in_openapi": 0,
+    "accepted_missing_in_openapi": 9,
+    "extra_undocumented_routes": 0
+  },
+  "grpc": {
+    "services_before": 23,
+    "services_after": 23,
+    "rpcs_before": 88,
+    "rpcs_after": 88,
+    "missing_implementation": 0,
+    "intentionally_unimplemented": 7
+  },
+  "mqtt": {
+    "enterprise_publish_count": 12,
+    "docs_code_mismatch": 0
+  },
+  "schema_changes": [
+    "migrations/00016_enterprise_flow_accountability.sql",
+    "machine_activation_claims accountability columns",
+    "nullable activation_code_id for reattach claims"
+  ],
+  "rest_apis_added": [
+    "POST /v1/admin/machines/{machineId}/reattach-device",
+    "GET /v1/admin/machines/{machineId}/runtime-sessions/current",
+    "GET /v1/admin/machines/{machineId}/runtime-sessions/history",
+    "POST /v1/admin/machines/{machineId}/runtime-sessions/revoke",
+    "GET /v1/admin/machines/{machineId}/ops-overview",
+    "GET /v1/admin/machines/{machineId}/timeline/unified"
+  ],
+  "security": {
+    "machine_jwt_blocked_from_admin": true,
+    "user_jwt_required_for_lifecycle": true,
+    "lifecycle_requires_reason": true,
+    "lifecycle_writes_audit": true,
+    "lifecycle_writes_attribution_when_operator_session": true,
+    "activation_claim_links_account_when_present": true,
+    "reattach_requires_user_jwt_and_reason": true,
+    "token_refresh_rotates": true,
+    "machine_sessions_canonical": true
+  },
+  "offline_replay": {
+    "idempotent": true,
+    "enterprise_event_aliases": true
+  },
+  "validators_pass": true,
+  "tests_pass": {
+    "unit_fleet_operator_activation_mqtt_grpc": true,
+    "httpserver": true,
+    "full_integration_e2e": "not_run_in_this_session"
+  },
+  "known_limitations": [
+    "10 payment/media admin routes still accepted as missing_in_openapi until DocOp stubs added",
+    "Postman production suite not regenerated in this session",
+    "Unified timeline does not yet merge legacy admin_ops command/commerce timeline rows",
+    "Activation claim HTTP/gRPC paths not yet wired with optional ClaimContext fields",
+    "Technician commissioning routes attribution wiring incomplete outside lifecycle/reattach"
+  ],
+  "app_followup_required": [
+    "Require activation/recovery when local refresh token absent after reinstall",
+    "Send reason and operator_session_id on technician lifecycle calls",
+    "Use enterprise offline event type aliases in offline outbox",
+    "Route to Activation/Recovery when backend active but no local credentials"
+  ]
+}

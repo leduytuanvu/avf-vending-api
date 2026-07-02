@@ -125,6 +125,69 @@ VALUES (
 )
 RETURNING *;
 
+-- name: InsertMachineActivationClaimExtended :one
+INSERT INTO machine_activation_claims (
+    activation_code_id,
+    machine_id,
+    fingerprint_hash,
+    ip_address,
+    user_agent,
+    result,
+    failure_reason,
+    activated_by_account_id,
+    operator_session_id,
+    request_id,
+    correlation_id,
+    app_version,
+    boot_id,
+    device_serial,
+    reason,
+    activation_source
+)
+VALUES (
+    sqlc.narg('activation_code_id'),
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    $13,
+    $14,
+    $15
+)
+RETURNING *;
+
+-- name: GetLastSucceededActivationClaimForMachine :one
+SELECT
+    *
+FROM
+    machine_activation_claims
+WHERE
+    machine_id = $1
+    AND result = 'succeeded'
+ORDER BY
+    claimed_at DESC
+LIMIT
+    1;
+
+-- name: ListMachineActivationClaimsForMachine :many
+SELECT
+    *
+FROM
+    machine_activation_claims
+WHERE
+    machine_id = $1
+ORDER BY
+    claimed_at DESC
+LIMIT $2;
+
 -- name: RefreshMachineActivationCodeAggregate :one
 WITH cnt AS (
     SELECT

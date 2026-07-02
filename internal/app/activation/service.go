@@ -263,6 +263,8 @@ type ClaimInput struct {
 	// ClientIP and UserAgent are optional hints for machine_activation_claims (HTTP may populate both).
 	ClientIP  string
 	UserAgent string
+	// Optional accountability context (headers/body); persisted via extended insert when any field set.
+	ClaimContext
 }
 
 // ClaimResult is returned on successful claim (and idempotent replay).
@@ -318,6 +320,74 @@ func machineEligibleForRuntime(status string) bool {
 	default:
 		return true
 	}
+}
+
+func activationCodeIDPG(id uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{Bytes: id, Valid: id != uuid.Nil}
+}
+
+func claimContextProvided(cc ClaimContext) bool {
+	return cc.ActivatedByAccountID != nil ||
+		cc.OperatorSessionID != nil ||
+		strings.TrimSpace(cc.RequestID) != "" ||
+		cc.CorrelationID != nil ||
+		strings.TrimSpace(cc.AppVersion) != "" ||
+		strings.TrimSpace(cc.BootID) != "" ||
+		strings.TrimSpace(cc.DeviceSerial) != "" ||
+		strings.TrimSpace(cc.Reason) != "" ||
+		strings.TrimSpace(cc.ActivationSource) != ""
+}
+
+func insertActivationClaimRecord(
+	ctx context.Context,
+	qtx *db.Queries,
+	codeID uuid.UUID,
+	machineID uuid.UUID,
+	fpHash []byte,
+	ip, ua, result, failure string,
+	cc ClaimContext,
+) error {
+	if claimContextProvided(cc) {
+		params := db.InsertMachineActivationClaimExtendedParams{
+			ActivationCodeID: activationCodeIDPG(codeID),
+			MachineID:        machineID,
+			FingerprintHash:  fpHash,
+			IpAddress:        ip,
+			UserAgent:        ua,
+			Result:           result,
+			FailureReason:    failure,
+			AppVersion:       pgtype.Text{String: strings.TrimSpace(cc.AppVersion), Valid: strings.TrimSpace(cc.AppVersion) != ""},
+			BootID:           pgtype.Text{String: strings.TrimSpace(cc.BootID), Valid: strings.TrimSpace(cc.BootID) != ""},
+			DeviceSerial:     pgtype.Text{String: strings.TrimSpace(cc.DeviceSerial), Valid: strings.TrimSpace(cc.DeviceSerial) != ""},
+			Reason:           pgtype.Text{String: strings.TrimSpace(cc.Reason), Valid: strings.TrimSpace(cc.Reason) != ""},
+			ActivationSource: pgtype.Text{String: strings.TrimSpace(cc.ActivationSource), Valid: strings.TrimSpace(cc.ActivationSource) != ""},
+			RequestID:        pgtype.Text{String: strings.TrimSpace(cc.RequestID), Valid: strings.TrimSpace(cc.RequestID) != ""},
+		}
+		if cc.ActivatedByAccountID != nil {
+			params.ActivatedByAccountID = pgtype.UUID{Bytes: *cc.ActivatedByAccountID, Valid: true}
+		}
+		if cc.OperatorSessionID != nil {
+			params.OperatorSessionID = pgtype.UUID{Bytes: *cc.OperatorSessionID, Valid: true}
+		}
+		if cc.CorrelationID != nil {
+			params.CorrelationID = pgtype.UUID{Bytes: *cc.CorrelationID, Valid: true}
+		}
+		if strings.TrimSpace(cc.ActivationSource) == "" && result == "succeeded" {
+			params.ActivationSource = pgtype.Text{String: "activation_code", Valid: true}
+		}
+		_, err := qtx.InsertMachineActivationClaimExtended(ctx, params)
+		return err
+	}
+	_, err := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
+		ActivationCodeID: activationCodeIDPG(codeID),
+		MachineID:        machineID,
+		FingerprintHash:  fpHash,
+		IpAddress:        ip,
+		UserAgent:        ua,
+		Result:           result,
+		FailureReason:    failure,
+	})
+	return err
 }
 
 func machineEligibleForClaim(m db.Machine) bool {
@@ -538,7 +608,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 	}
 
 	prevSucc, err := qtx.GetSucceededMachineActivationClaimByCodeAndFingerprint(ctx, db.GetSucceededMachineActivationClaimByCodeAndFingerprintParams{
-		ActivationCodeID: row.ID,
+		ActivationCodeID: activationCodeIDPG(row.ID),
 		FingerprintHash:  fpHash[:],
 	})
 	if err == nil {
@@ -555,20 +625,12 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		return ClaimResult{}, ErrInvalid
 	}
 
-	nSucc, err := qtx.CountSucceededMachineActivationClaims(ctx, row.ID)
+	nSucc, err := qtx.CountSucceededMachineActivationClaims(ctx, activationCodeIDPG(row.ID))
 	if err != nil {
 		return ClaimResult{}, err
 	}
 	if nSucc >= int64(row.MaxUses) {
-		if _, ierr := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
-			ActivationCodeID: row.ID,
-			MachineID:        row.MachineID,
-			FingerprintHash:  fpHash[:],
-			IpAddress:        ip,
-			UserAgent:        ua,
-			Result:           "rejected",
-			FailureReason:    "max_uses_exhausted",
-		}); ierr != nil {
+		if ierr := insertActivationClaimRecord(ctx, qtx, row.ID, row.MachineID, fpHash[:], ip, ua, "rejected", "max_uses_exhausted", in.ClaimContext); ierr != nil {
 			return ClaimResult{}, ierr
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -588,15 +650,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		return ClaimResult{}, err
 	}
 	if !machineEligibleForClaim(m) {
-		if _, ierr := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
-			ActivationCodeID: row.ID,
-			MachineID:        row.MachineID,
-			FingerprintHash:  fpHash[:],
-			IpAddress:        ip,
-			UserAgent:        ua,
-			Result:           "failed",
-			FailureReason:    "machine_not_eligible",
-		}); ierr != nil {
+		if ierr := insertActivationClaimRecord(ctx, qtx, row.ID, row.MachineID, fpHash[:], ip, ua, "failed", "machine_not_eligible", in.ClaimContext); ierr != nil {
 			return ClaimResult{}, ierr
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -609,15 +663,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		return ClaimResult{}, ErrMachineNotEligible
 	}
 
-	if _, err := qtx.InsertMachineActivationClaim(ctx, db.InsertMachineActivationClaimParams{
-		ActivationCodeID: row.ID,
-		MachineID:        row.MachineID,
-		FingerprintHash:  fpHash[:],
-		IpAddress:        ip,
-		UserAgent:        ua,
-		Result:           "succeeded",
-		FailureReason:    "",
-	}); err != nil {
+	if err := insertActivationClaimRecord(ctx, qtx, row.ID, row.MachineID, fpHash[:], ip, ua, "succeeded", "", in.ClaimContext); err != nil {
 		return ClaimResult{}, err
 	}
 

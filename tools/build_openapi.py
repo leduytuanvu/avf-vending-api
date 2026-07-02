@@ -6578,6 +6578,12 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/machines/{machineId}/resume"),
     ("post", "/v1/admin/machines/{machineId}/revoke-credentials"),
     ("post", "/v1/admin/machines/{machineId}/revoke-sessions"),
+    ("post", "/v1/admin/machines/{machineId}/reattach-device"),
+    ("post", "/v1/admin/machines/{machineId}/runtime-sessions/revoke"),
+    ("get", "/v1/admin/machines/{machineId}/runtime-sessions/current"),
+    ("get", "/v1/admin/machines/{machineId}/runtime-sessions/history"),
+    ("get", "/v1/admin/machines/{machineId}/ops-overview"),
+    ("get", "/v1/admin/machines/{machineId}/timeline/unified"),
     ("post", "/v1/admin/machines/{machineId}/revoke-token"),
     ("post", "/v1/admin/machines/{machineId}/rotate-credentials"),
     ("post", "/v1/admin/machines/{machineId}/rotate-token-version"),
@@ -6593,6 +6599,15 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("post", "/v1/admin/rollouts/{rolloutId}/rollback"),
     ("post", "/v1/admin/rollouts/{rolloutId}/start"),
     ("post", "/v1/admin/sites/{siteId}/archive"),
+    ("get", "/v1/admin/payment/providers"),
+    ("get", "/v1/admin/payments/reconciliation"),
+    ("get", "/v1/admin/payments/webhook-events"),
+    ("get", "/v1/admin/payments/settlements"),
+    ("get", "/v1/admin/payments/disputes"),
+    ("get", "/v1/admin/payments/export"),
+    ("post", "/v1/admin/payments/settlements/import"),
+    ("post", "/v1/admin/payments/disputes/{disputeId}/resolve"),
+    ("post", "/v1/admin/media/product-images"),
 ]
 
 

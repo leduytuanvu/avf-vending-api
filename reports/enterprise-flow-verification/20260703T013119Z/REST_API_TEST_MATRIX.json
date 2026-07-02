@@ -1,0 +1,2761 @@
+{
+  "mode": "contract_only",
+  "operation_count": 344,
+  "pass_count": 344,
+  "fail_count": 0,
+  "skip_count": 0,
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "operationId": "DocOpHealthLive",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "operationId": "DocOpHealthReady",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/metrics",
+      "operationId": "DocOpMetrics",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/swagger/doc.json",
+      "operationId": "DocOpSwaggerDocJSON",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/swagger/index.html",
+      "operationId": "DocOpSwaggerIndex",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/activation-codes",
+      "operationId": "DocOpV1AdminActivationCodesCatalogCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/activation-codes/{codeId}/revoke",
+      "operationId": "DocOpV1AdminActivationCodeCatalogRevoke",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/anomalies",
+      "operationId": "DocOpV1AdminOperationalAnomaliesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/anomalies/{anomalyId}",
+      "operationId": "DocOpV1AdminOperationalAnomalyGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/ignore",
+      "operationId": "DocOpV1AdminOperationalAnomalyIgnore",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminOperationalAnomalyResolve",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/artifacts",
+      "operationId": "DocOpV1AdminArtifactsReserve",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}",
+      "operationId": "DocOpV1AdminArtifactsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/artifacts/{artifactId}/content",
+      "operationId": "DocOpV1AdminArtifactsPutContent",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/artifacts/{artifactId}/download",
+      "operationId": "DocOpV1AdminArtifactsDownloadURL",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/assignments",
+      "operationId": "DocOpV1AdminAssignmentCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminAssignmentGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/audit/events",
+      "operationId": "DocOpV1AdminAuditEventsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/audit/events/{auditEventId}",
+      "operationId": "DocOpV1AdminAuditEventGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users",
+      "operationId": "DocOpV1AdminAuthUsersCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}",
+      "operationId": "DocOpV1AdminAuthUsersPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/activate",
+      "operationId": "DocOpV1AdminAuthUsersActivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/deactivate",
+      "operationId": "DocOpV1AdminAuthUsersDeactivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/reset-password",
+      "operationId": "DocOpV1AdminAuthUsersResetPassword",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/revoke-sessions",
+      "operationId": "DocOpV1AdminAuthUsersRevokeSessions",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPatchRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPostRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/auth/users/{accountId}/roles",
+      "operationId": "DocOpV1AdminAuthUsersPutRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/auth/users/{accountId}/sessions",
+      "operationId": "DocOpV1AdminAuthUsersSessions",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/auth/users/{accountId}/status",
+      "operationId": "DocOpV1AdminAuthUsersPatchStatus",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/brands",
+      "operationId": "DocOpV1AdminBrandCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/brands/{brandId}",
+      "operationId": "DocOpV1AdminBrandReplace",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoriesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/categories",
+      "operationId": "DocOpV1AdminCategoryCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/categories/{categoryId}",
+      "operationId": "DocOpV1AdminCategoryReplace",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commands",
+      "operationId": "DocOpV1AdminCommandsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commands/{commandId}",
+      "operationId": "DocOpV1AdminCommandGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/cancel",
+      "operationId": "DocOpV1AdminCommandCancel",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commands/{commandId}/retry",
+      "operationId": "DocOpV1AdminCommandRetry",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation",
+      "operationId": "DocOpV1AdminCommerceReconciliationList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}",
+      "operationId": "DocOpV1AdminCommerceReconciliationGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/ignore",
+      "operationId": "DocOpV1AdminCommerceReconciliationIgnore",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/request-refund",
+      "operationId": "DocOpV1AdminCommerceReconciliationRequestRefund",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/commerce/reconciliation/{caseId}/resolve",
+      "operationId": "DocOpV1AdminCommerceReconciliationResolve",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags",
+      "operationId": "DocOpV1AdminFeatureFlagsPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/feature-flags/{flagId}",
+      "operationId": "DocOpV1AdminFeatureFlagPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/disable",
+      "operationId": "DocOpV1AdminFeatureFlagDisablePost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/feature-flags/{flagId}/enable",
+      "operationId": "DocOpV1AdminFeatureFlagEnablePost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/feature-flags/{flagId}/targets",
+      "operationId": "DocOpV1AdminFeatureFlagTargetsPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyCloseList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/finance/daily-close",
+      "operationId": "DocOpV1AdminFinanceDailyClosePost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/finance/daily-close/{closeId}",
+      "operationId": "DocOpV1AdminFinanceDailyCloseGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/anomalies",
+      "operationId": "DocOpV1AdminInventoryAnomaliesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/inventory/anomalies/{anomalyId}/resolve",
+      "operationId": "DocOpV1AdminInventoryAnomalyResolve",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/low-stock",
+      "operationId": "DocOpV1AdminInventoryLowStock",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/inventory/refill-suggestions",
+      "operationId": "DocOpV1AdminInventoryRefillSuggestions",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machine-config/rollouts",
+      "operationId": "DocOpV1AdminMachineConfigRolloutsPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machine-config/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminMachineConfigRolloutGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachinesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines",
+      "operationId": "DocOpV1AdminMachineCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachineGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/machines/{machineId}",
+      "operationId": "DocOpV1AdminMachinePatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/activation-codes",
+      "operationId": "DocOpV1AdminMachineActivationCodesPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}",
+      "operationId": "DocOpV1AdminMachineActivationCodeDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/archive",
+      "operationId": "DocOpV1AdminMachineArchive",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections",
+      "operationId": "DocOpV1AdminMachineCashCollectionsPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}",
+      "operationId": "DocOpV1AdminMachineCashCollectionGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/cash-collections/{collectionId}/close",
+      "operationId": "DocOpV1AdminMachineCashCollectionClosePost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/cashbox",
+      "operationId": "DocOpV1AdminMachineCashbox",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/commands",
+      "operationId": "DocOpV1AdminMachineCommandDispatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/bundles",
+      "operationId": "DocOpV1AdminMachineDiagnosticBundlesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/diagnostics/requests",
+      "operationId": "DocOpV1AdminMachineDiagnosticRequest",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/disable",
+      "operationId": "DocOpV1AdminMachineDisable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/enable",
+      "operationId": "DocOpV1AdminMachineEnable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/health",
+      "operationId": "DocOpV1AdminMachineHealth",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory",
+      "operationId": "DocOpV1AdminMachineInventory",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory-events",
+      "operationId": "DocOpV1AdminMachineInventoryEvents",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/inventory/anomalies",
+      "operationId": "DocOpV1AdminMachineInventoryAnomaliesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/inventory/reconcile",
+      "operationId": "DocOpV1AdminMachineInventoryReconcile",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/mark-compromised",
+      "operationId": "DocOpV1AdminMachineMarkCompromised",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/ops-overview",
+      "operationId": "DocOpV1AdminMachineOpsOverview",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/planograms/draft",
+      "operationId": "DocOpV1AdminMachinePlanogramDraftPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/planograms/publish",
+      "operationId": "DocOpV1AdminMachinePlanogramPublishPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/reattach-device",
+      "operationId": "DocOpV1AdminMachineReattachDevice",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/refill-suggestions",
+      "operationId": "DocOpV1AdminMachineRefillSuggestions",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/resume",
+      "operationId": "DocOpV1AdminMachineResume",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/retire",
+      "operationId": "DocOpV1AdminMachineRetire",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-credentials",
+      "operationId": "DocOpV1AdminMachineRevokeCredentials",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-sessions",
+      "operationId": "DocOpV1AdminMachineRevokeSessions",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/revoke-token",
+      "operationId": "DocOpV1AdminMachineRevokeToken",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credential",
+      "operationId": "DocOpV1AdminMachineRotateCredential",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-credentials",
+      "operationId": "DocOpV1AdminMachineRotateCredentials",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/rotate-token-version",
+      "operationId": "DocOpV1AdminMachineRotateTokenVersion",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/current",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionCurrent",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/history",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionHistory",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/runtime-sessions/revoke",
+      "operationId": "DocOpV1AdminMachineRuntimeSessionRevoke",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/slots",
+      "operationId": "DocOpV1AdminMachineSlots",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/stock-adjustments",
+      "operationId": "DocOpV1AdminMachineStockAdjustmentsPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/suspend",
+      "operationId": "DocOpV1AdminMachineSuspend",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/sync",
+      "operationId": "DocOpV1AdminMachineSetupSyncPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechniciansOnMachineList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/technicians",
+      "operationId": "DocOpV1AdminMachineTechnicianAssign",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/machines/{machineId}/technicians/{userId}",
+      "operationId": "DocOpV1AdminMachineTechnicianRemove",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/timeline",
+      "operationId": "DocOpV1AdminMachineTimeline",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/machines/{machineId}/timeline/unified",
+      "operationId": "DocOpV1AdminMachineUnifiedTimeline",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/machines/{machineId}/topology",
+      "operationId": "DocOpV1AdminMachineTopologyPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/machines/{machineId}/transfer-site",
+      "operationId": "DocOpV1AdminMachineTransferSite",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media",
+      "operationId": "DocOpV1AdminMediaList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/assets",
+      "operationId": "DocOpV1AdminMediaAssetsCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/assets/{mediaId}",
+      "operationId": "DocOpV1AdminMediaAssetGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/external-images",
+      "operationId": "DocOpV1AdminExternalProductImageRegister",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/product-images",
+      "operationId": "DocOpV1AdminMediaProductImagesAlias",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads",
+      "operationId": "DocOpV1AdminMediaUploadInit",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/init",
+      "operationId": "DocOpV1AdminMediaUploadInitV2",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/uploads/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadCompleteUploadsPrefix",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/media/{mediaId}",
+      "operationId": "DocOpV1AdminMediaGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/media/{mediaId}/complete",
+      "operationId": "DocOpV1AdminMediaUploadComplete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/operations/machines/health",
+      "operationId": "DocOpV1AdminOperationsMachinesHealth",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ops/outbox",
+      "operationId": "DocOpV1AdminOutboxOpsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ops/outbox/{outboxId}/retry",
+      "operationId": "DocOpV1AdminOutboxRetry",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ops/retention",
+      "operationId": "DocOpV1AdminRetentionOpsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/orders/{orderId}/refunds",
+      "operationId": "DocOpV1AdminCommerceOrderRefundPost",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/orders/{orderId}/timeline",
+      "operationId": "DocOpV1AdminCommerceOrderTimelineGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota",
+      "operationId": "DocOpV1AdminOTAList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns",
+      "operationId": "DocOpV1AdminOTACampaignCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/ota/campaigns/{campaignId}",
+      "operationId": "DocOpV1AdminOTACampaignPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/approve",
+      "operationId": "DocOpV1AdminOTACampaignApprove",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/cancel",
+      "operationId": "DocOpV1AdminOTACampaignCancel",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/pause",
+      "operationId": "DocOpV1AdminOTACampaignPause",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/publish",
+      "operationId": "DocOpV1AdminOTACampaignPublish",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/results",
+      "operationId": "DocOpV1AdminOTACampaignResultsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/resume",
+      "operationId": "DocOpV1AdminOTACampaignResume",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/rollback",
+      "operationId": "DocOpV1AdminOTACampaignRollback",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/start",
+      "operationId": "DocOpV1AdminOTACampaignStart",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/ota/campaigns/{campaignId}/targets",
+      "operationId": "DocOpV1AdminOTACampaignTargetsPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payment/providers",
+      "operationId": "DocOpV1AdminPaymentProvidersList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/disputes",
+      "operationId": "DocOpV1AdminPaymentDisputesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/payments/disputes/{disputeId}/resolve",
+      "operationId": "DocOpV1AdminPaymentDisputeResolve",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/export",
+      "operationId": "DocOpV1AdminPaymentExport",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/reconciliation",
+      "operationId": "DocOpV1AdminPaymentReconciliation",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/settlements",
+      "operationId": "DocOpV1AdminPaymentSettlementsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/payments/settlements/import",
+      "operationId": "DocOpV1AdminPaymentSettlementsImport",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/payments/webhook-events",
+      "operationId": "DocOpV1AdminPaymentWebhookEvents",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planograms",
+      "operationId": "DocOpV1AdminPlanogramsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/planograms/{planogramId}",
+      "operationId": "DocOpV1AdminPlanogramGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBooksList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books",
+      "operationId": "DocOpV1AdminPriceBookCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}",
+      "operationId": "DocOpV1AdminPriceBookPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/activate",
+      "operationId": "DocOpV1AdminPriceBookActivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/archive",
+      "operationId": "DocOpV1AdminPriceBookArchive",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/assign-target",
+      "operationId": "DocOpV1AdminPriceBookAssignTarget",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/price-books/{priceBookId}/deactivate",
+      "operationId": "DocOpV1AdminPriceBookDeactivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/price-books/{priceBookId}/items",
+      "operationId": "DocOpV1AdminPriceBookItemsPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/price-books/{priceBookId}/items/{productId}",
+      "operationId": "DocOpV1AdminPriceBookItemPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/price-books/{priceBookId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPriceBookTargetDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/pricing/preview",
+      "operationId": "DocOpV1AdminPricingPreview",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/product-images",
+      "operationId": "DocOpV1AdminProductImageUpload",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "operationId": "DocOpV1AdminProductCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}",
+      "operationId": "DocOpV1AdminProductReplace",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImageDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/image",
+      "operationId": "DocOpV1AdminProductImagePut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/products/{productId}/media",
+      "operationId": "DocOpV1AdminProductMediaBindPut",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/products/{productId}/media/{mediaId}",
+      "operationId": "DocOpV1AdminProductMediaUnbind",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions",
+      "operationId": "DocOpV1AdminPromotionCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/preview",
+      "operationId": "DocOpV1AdminPromotionsPreview",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/promotions/{promotionId}",
+      "operationId": "DocOpV1AdminPromotionPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/activate",
+      "operationId": "DocOpV1AdminPromotionActivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/archive",
+      "operationId": "DocOpV1AdminPromotionArchive",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/assign-target",
+      "operationId": "DocOpV1AdminPromotionAssignTarget",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/deactivate",
+      "operationId": "DocOpV1AdminPromotionDeactivate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/promotions/{promotionId}/pause",
+      "operationId": "DocOpV1AdminPromotionPause",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/promotions/{promotionId}/targets/{targetId}",
+      "operationId": "DocOpV1AdminPromotionTargetDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/provisioning/batches/{batchId}",
+      "operationId": "DocOpV1AdminProvisioningBatchGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/provisioning/machines/bulk",
+      "operationId": "DocOpV1AdminProvisioningBulk",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/refunds",
+      "operationId": "DocOpV1AdminCommerceRefundRequestsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/refunds/{refundId}",
+      "operationId": "DocOpV1AdminCommerceRefundRequestGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/cash",
+      "operationId": "DocOpV1AdminReportsCash",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/cash-collections/export.csv",
+      "operationId": "DocOpV1AdminReportsCashCollectionsExportCSV",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/commands",
+      "operationId": "DocOpV1AdminReportsCommands",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/export",
+      "operationId": "DocOpV1AdminReportsExport",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/failed-vends",
+      "operationId": "DocOpV1AdminReportsFailedVends",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/fills",
+      "operationId": "DocOpV1AdminReportsTechnicianFills",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory",
+      "operationId": "DocOpV1AdminReportsInventoryUnified",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/inventory-low-stock",
+      "operationId": "DocOpV1AdminReportsInventoryLowStock",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/machine-health",
+      "operationId": "DocOpV1AdminReportsMachineHealth",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/machines",
+      "operationId": "DocOpV1AdminReportsMachines",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/payments",
+      "operationId": "DocOpV1AdminReportsPayments",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/payments-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsPaymentsSummaryExportCSV",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/products",
+      "operationId": "DocOpV1AdminReportsProducts",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation",
+      "operationId": "DocOpV1AdminReportsReconciliationBI",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/reconciliation-queue",
+      "operationId": "DocOpV1AdminReportsReconciliationQueue",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/refunds",
+      "operationId": "DocOpV1AdminReportsRefunds",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/sales",
+      "operationId": "DocOpV1AdminReportsSales",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/sales-summary/export.csv",
+      "operationId": "DocOpV1AdminReportsSalesSummaryExportCSV",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/reports/vends",
+      "operationId": "DocOpV1AdminReportsVends",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/restock/suggestions",
+      "operationId": "DocOpV1AdminRestockSuggestions",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts",
+      "operationId": "DocOpV1AdminRolloutCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/rollouts/{rolloutId}",
+      "operationId": "DocOpV1AdminRolloutGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/cancel",
+      "operationId": "DocOpV1AdminRolloutCancel",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/pause",
+      "operationId": "DocOpV1AdminRolloutPause",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/resume",
+      "operationId": "DocOpV1AdminRolloutResume",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/rollback",
+      "operationId": "DocOpV1AdminRolloutRollback",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/rollouts/{rolloutId}/start",
+      "operationId": "DocOpV1AdminRolloutStart",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSitesList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites",
+      "operationId": "DocOpV1AdminSiteCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSiteGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/sites/{siteId}",
+      "operationId": "DocOpV1AdminSitePatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/archive",
+      "operationId": "DocOpV1AdminSiteArchive",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/sites/{siteId}/disable",
+      "operationId": "DocOpV1AdminSiteDisable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox",
+      "operationId": "DocOpV1AdminSystemOutboxListGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/stats",
+      "operationId": "DocOpV1AdminSystemOutboxStatsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/outbox/{eventId}",
+      "operationId": "DocOpV1AdminSystemOutboxGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/mark-dlq",
+      "operationId": "DocOpV1AdminSystemOutboxMarkDLQPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/outbox/{eventId}/replay",
+      "operationId": "DocOpV1AdminSystemOutboxReplayPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/retention/dry-run",
+      "operationId": "DocOpV1AdminSystemRetentionDryRunPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/system/retention/run",
+      "operationId": "DocOpV1AdminSystemRetentionRunPost",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/system/retention/stats",
+      "operationId": "DocOpV1AdminSystemRetentionStatsGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/tags",
+      "operationId": "DocOpV1AdminTagCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/tags/{tagId}",
+      "operationId": "DocOpV1AdminTagReplace",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentsList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentDelete",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/technician-assignments/{assignmentId}",
+      "operationId": "DocOpV1AdminTechnicianAssignmentPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technician-assignments/{assignmentId}/cancel",
+      "operationId": "DocOpV1AdminTechnicianAssignmentCancel",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechniciansList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians",
+      "operationId": "DocOpV1AdminTechnicianCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/technicians/{technicianId}",
+      "operationId": "DocOpV1AdminTechnicianPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/disable",
+      "operationId": "DocOpV1AdminTechnicianDisable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/technicians/{technicianId}/enable",
+      "operationId": "DocOpV1AdminTechnicianEnable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersList",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users",
+      "operationId": "DocOpV1AdminUsersCreate",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersGet",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}",
+      "operationId": "DocOpV1AdminUsersPatch",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/disable",
+      "operationId": "DocOpV1AdminUsersDisable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/enable",
+      "operationId": "DocOpV1AdminUsersEnable",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/reset-password",
+      "operationId": "DocOpV1AdminUsersResetPassword",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/revoke-sessions",
+      "operationId": "DocOpV1AdminUsersRevokeSessions",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPatchRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPostRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PUT",
+      "path": "/v1/admin/users/{userId}/roles",
+      "operationId": "DocOpV1AdminUsersPutRoles",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/admin/users/{userId}/roles/{role}",
+      "operationId": "DocOpV1AdminUsersDeleteRole",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/admin/users/{userId}/sessions",
+      "operationId": "DocOpV1AdminUsersSessions",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "PATCH",
+      "path": "/v1/admin/users/{userId}/status",
+      "operationId": "DocOpV1AdminUsersPatchStatus",
+      "execution_classification": "AUTH_REQUIRED",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/change-password",
+      "operationId": "DocOpV1AuthChangePassword",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/login",
+      "operationId": "DocOpV1AuthLogin",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/logout",
+      "operationId": "DocOpV1AuthLogout",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/auth/me",
+      "operationId": "DocOpV1AuthMe",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/disable",
+      "operationId": "DocOpV1AuthMFADisable",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/enroll",
+      "operationId": "DocOpV1AuthMFAEnroll",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/mfa/totp/verify",
+      "operationId": "DocOpV1AuthMFAVerify",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/change",
+      "operationId": "DocOpV1AuthPasswordChange",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/reset/confirm",
+      "operationId": "DocOpV1AuthPasswordResetConfirm",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/password/reset/request",
+      "operationId": "DocOpV1AuthPasswordResetRequest",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/auth/refresh",
+      "operationId": "DocOpV1AuthRefresh",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsRevokeOthers",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/auth/sessions",
+      "operationId": "DocOpV1AuthSessionsList",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "DELETE",
+      "path": "/v1/auth/sessions/{sessionId}",
+      "operationId": "DocOpV1AuthSessionDelete",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/cash-checkout",
+      "operationId": "DocOpV1CommerceCashCheckout",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders",
+      "operationId": "DocOpV1CommerceCreateOrder",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}",
+      "operationId": "DocOpV1CommerceGetOrder",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/cancel",
+      "operationId": "DocOpV1CommerceOrderCancel",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payment-session",
+      "operationId": "DocOpV1CommercePaymentSession",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks",
+      "operationId": "DocOpV1CommercePaymentWebhook",
+      "execution_classification": "WEBHOOK",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/reconciliation",
+      "operationId": "DocOpV1CommerceReconciliationSnapshot",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundsList",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/refunds",
+      "operationId": "DocOpV1CommerceRefundCreate",
+      "execution_classification": "SAFETY_GATED",
+      "status": "PASS_CONTRACT_ONLY_SAFETY_GATED",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/commerce/orders/{orderId}/refunds/{refundId}",
+      "operationId": "DocOpV1CommerceRefundGet",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/failure",
+      "operationId": "DocOpV1CommerceVendFailure",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/start",
+      "operationId": "DocOpV1CommerceVendStart",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/commerce/orders/{orderId}/vend/success",
+      "operationId": "DocOpV1CommerceVendSuccess",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/commands/poll",
+      "operationId": "DocOpV1DeviceMachineCommandsPoll",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/events/reconcile",
+      "operationId": "DocOpV1DeviceTelemetryReconcileBatch",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/device/machines/{machineId}/events/{idempotencyKey}/status",
+      "operationId": "DocOpV1DeviceTelemetryReconcileStatusGet",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/device/machines/{machineId}/vend-results",
+      "operationId": "DocOpV1DeviceMachineVendResults",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/check-ins",
+      "operationId": "DocOpV1MachineCheckIn",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/commands/dispatch",
+      "operationId": "DocOpV1MachineCommandDispatch",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/receipts",
+      "operationId": "DocOpV1MachineCommandReceipts",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/commands/{sequence}/status",
+      "operationId": "DocOpV1MachineCommandStatus",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/config-applies",
+      "operationId": "DocOpV1MachineConfigApply",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/action-attributions",
+      "operationId": "DocOpV1OperatorSessionActionAttributions",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/auth-events",
+      "operationId": "DocOpV1OperatorSessionAuthEvents",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/current",
+      "operationId": "DocOpV1OperatorSessionCurrent",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/history",
+      "operationId": "DocOpV1OperatorSessionHistory",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/login",
+      "operationId": "DocOpV1OperatorSessionLogin",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/logout",
+      "operationId": "DocOpV1OperatorSessionLogout",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/operator-sessions/timeline",
+      "operationId": "DocOpV1OperatorSessionTimeline",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/machines/{machineId}/operator-sessions/{sessionId}/heartbeat",
+      "operationId": "DocOpV1OperatorSessionHeartbeat",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/sale-catalog",
+      "operationId": "DocOpV1MachineSaleCatalogGet",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/shadow",
+      "operationId": "DocOpV1MachineShadowGet",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/incidents",
+      "operationId": "DocOpV1MachineTelemetryIncidents",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/rollups",
+      "operationId": "DocOpV1MachineTelemetryRollups",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/machines/{machineId}/telemetry/snapshot",
+      "operationId": "DocOpV1MachineTelemetrySnapshot",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/operator-insights/technicians/{technicianId}/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsTechnicianAttributions",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/operator-insights/users/action-attributions",
+      "operationId": "DocOpV1OperatorInsightsUserAttributions",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/orders",
+      "operationId": "DocOpV1OrdersList",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/payments",
+      "operationId": "DocOpV1PaymentsList",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/fleet-health",
+      "operationId": "DocOpV1ReportsFleetHealth",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/inventory-exceptions",
+      "operationId": "DocOpV1ReportsInventoryExceptions",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/payments-summary",
+      "operationId": "DocOpV1ReportsPaymentsSummary",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/reports/sales-summary",
+      "operationId": "DocOpV1ReportsSalesSummary",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "POST",
+      "path": "/v1/setup/activation-codes/claim",
+      "operationId": "DocOpV1SetupActivationClaimPost",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/v1/setup/machines/{machineId}/bootstrap",
+      "operationId": "DocOpV1SetupMachineBootstrap",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    },
+    {
+      "method": "GET",
+      "path": "/version",
+      "operationId": "DocOpVersion",
+      "execution_classification": "EXECUTABLE",
+      "status": "PASS_CONTRACT_ONLY",
+      "evidence_path": "go test ./internal/httpserver/..."
+    }
+  ]
+}

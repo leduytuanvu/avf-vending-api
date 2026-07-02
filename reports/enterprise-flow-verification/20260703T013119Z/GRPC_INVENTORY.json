@@ -1,0 +1,910 @@
+{
+  "service_count": 23,
+  "rpc_count": 88,
+  "contract_only_count": 7,
+  "rpcs": [
+    {
+      "service": "avf.internal.v1.InternalCatalogQueryService",
+      "rpc": "GetSaleCatalogSnapshot",
+      "full_name": "avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalCommerceQueryService",
+      "rpc": "GetOrderPaymentVendState",
+      "full_name": "avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalInventoryQueryService",
+      "rpc": "GetMachineSlotInventory",
+      "full_name": "avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalMachineQueryService",
+      "rpc": "GetMachineSummary",
+      "full_name": "avf.internal.v1.InternalMachineQueryService/GetMachineSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_auth_test.go",
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalMachineQueryService",
+      "rpc": "GetMachineState",
+      "full_name": "avf.internal.v1.InternalMachineQueryService/GetMachineState",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    },
+    {
+      "service": "avf.internal.v1.InternalMachineQueryService",
+      "rpc": "GetMachineCabinetSlotSummary",
+      "full_name": "avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    },
+    {
+      "service": "avf.internal.v1.InternalPaymentQueryService",
+      "rpc": "GetPaymentById",
+      "full_name": "avf.internal.v1.InternalPaymentQueryService/GetPaymentById",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalPaymentQueryService",
+      "rpc": "GetLatestPaymentForOrder",
+      "full_name": "avf.internal.v1.InternalPaymentQueryService/GetLatestPaymentForOrder",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/app/commerce/machine_payment_session_test.go",
+        "internal/app/commerce/refund_audit_test.go",
+        "internal/app/commerce/service_webhook_validation_test.go",
+        "internal/app/commerce/service_workflow_test.go",
+        "internal/app/workfloworch/activities_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalReportingQueryService",
+      "rpc": "GetSalesSummary",
+      "full_name": "avf.internal.v1.InternalReportingQueryService/GetSalesSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalTelemetryQueryService",
+      "rpc": "GetLatestMachineTelemetry",
+      "full_name": "avf.internal.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.internal.v1.InternalTelemetryQueryService",
+      "rpc": "GetMachineIncidentSummary",
+      "full_name": "avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineActivationService",
+      "rpc": "ClaimActivation",
+      "full_name": "avf.machine.v1.MachineActivationService/ClaimActivation",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "ActivateMachine",
+      "full_name": "avf.machine.v1.MachineAuthService/ActivateMachine",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "ClaimActivation",
+      "full_name": "avf.machine.v1.MachineAuthService/ClaimActivation",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "RefreshMachineToken",
+      "full_name": "avf.machine.v1.MachineAuthService/RefreshMachineToken",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "GetBootstrap",
+      "full_name": "avf.machine.v1.MachineBootstrapService/GetBootstrap",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/device_config_bootstrap_test.go",
+        "internal/grpcserver/machine_commerce_cash_only_test.go",
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "CheckIn",
+      "full_name": "avf.machine.v1.MachineBootstrapService/CheckIn",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/device/metrics_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/modules/postgres/telemetry_retention_integration_test.go",
+        "internal/platform/observability/productionmetrics/metrics_gather_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "AckConfigVersion",
+      "full_name": "avf.machine.v1.MachineBootstrapService/AckConfigVersion",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/device_config_ack_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "CheckForUpdates",
+      "full_name": "avf.machine.v1.MachineBootstrapService/CheckForUpdates",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetSaleCatalog",
+      "full_name": "avf.machine.v1.MachineCatalogService/GetSaleCatalog",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "SyncSaleCatalog",
+      "full_name": "avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetCatalogSnapshot",
+      "full_name": "avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "SyncCatalogBundle",
+      "full_name": "avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetCatalogDelta",
+      "full_name": "avf.machine.v1.MachineCatalogService/GetCatalogDelta",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "AckCatalogVersion",
+      "full_name": "avf.machine.v1.MachineCatalogService/AckCatalogVersion",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetMediaManifest",
+      "full_name": "avf.machine.v1.MachineCatalogService/GetMediaManifest",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "GetPendingCommands",
+      "full_name": "avf.machine.v1.MachineCommandService/GetPendingCommands",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "AckCommand",
+      "full_name": "avf.machine.v1.MachineCommandService/AckCommand",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "RejectCommand",
+      "full_name": "avf.machine.v1.MachineCommandService/RejectCommand",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "GetAssignedUpdate",
+      "full_name": "avf.machine.v1.MachineCommandService/GetAssignedUpdate",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "ReportUpdateStatus",
+      "full_name": "avf.machine.v1.MachineCommandService/ReportUpdateStatus",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "ReportDiagnosticBundleResult",
+      "full_name": "avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateOrder",
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateOrder",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/commerce/quote_service_test.go",
+        "internal/app/commerce/service_webhook_validation_test.go",
+        "internal/app/commerce/service_workflow_test.go",
+        "internal/app/machineidempotency/hash_test.go",
+        "internal/e2e/correctness/machine_idempotency_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateQuote",
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateQuote",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/commerce/quote_service_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateOrderFromQuote",
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateOrderFromQuote",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/commerce/quote_service_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreatePaymentSession",
+      "full_name": "avf.machine.v1.MachineCommerceService/CreatePaymentSession",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/commerce/machine_payment_session_test.go",
+        "internal/grpcserver/machine_commerce_cash_only_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "AttachPaymentResult",
+      "full_name": "avf.machine.v1.MachineCommerceService/AttachPaymentResult",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ConfirmCashPayment",
+      "full_name": "avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_cash_only_test.go",
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateCashCheckout",
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateCashCheckout",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "GetOrder",
+      "full_name": "avf.machine.v1.MachineCommerceService/GetOrder",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/background/reconciler_ticks_test.go",
+        "internal/app/commerce/machine_payment_session_test.go",
+        "internal/app/commerce/refund_audit_test.go",
+        "internal/app/commerce/service_webhook_validation_test.go",
+        "internal/app/commerce/service_workflow_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "GetOrderStatus",
+      "full_name": "avf.machine.v1.MachineCommerceService/GetOrderStatus",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_cash_only_test.go",
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "StartVend",
+      "full_name": "avf.machine.v1.MachineCommerceService/StartVend",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ConfirmVendSuccess",
+      "full_name": "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/machineidempotency/hash_test.go",
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ReportVendSuccess",
+      "full_name": "avf.machine.v1.MachineCommerceService/ReportVendSuccess",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ReportVendFailure",
+      "full_name": "avf.machine.v1.MachineCommerceService/ReportVendFailure",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CancelOrder",
+      "full_name": "avf.machine.v1.MachineCommerceService/CancelOrder",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "PushInventoryDelta",
+      "full_name": "avf.machine.v1.MachineInventoryService/PushInventoryDelta",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "GetInventorySnapshot",
+      "full_name": "avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "AckInventorySync",
+      "full_name": "avf.machine.v1.MachineInventoryService/AckInventorySync",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "GetPlanogram",
+      "full_name": "avf.machine.v1.MachineInventoryService/GetPlanogram",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_p06_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitStockSnapshot",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_p06_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitFillResult",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitFillResult",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitFillReport",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitFillReport",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitRestock",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitRestock",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitInventoryAdjustment",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitStockAdjustment",
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "GetMediaManifest",
+      "full_name": "avf.machine.v1.MachineMediaService/GetMediaManifest",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "GetMediaDelta",
+      "full_name": "avf.machine.v1.MachineMediaService/GetMediaDelta",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_catalog_grpc_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "AckMediaVersion",
+      "full_name": "avf.machine.v1.MachineMediaService/AckMediaVersion",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineOfflineSyncService",
+      "rpc": "PushOfflineEvents",
+      "full_name": "avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go",
+        "internal/grpcserver/machine_replay_ledger_integration_test.go",
+        "internal/grpcserver/p23_capacity_guardrails_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineOfflineSyncService",
+      "rpc": "GetSyncCursor",
+      "full_name": "avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "OpenOperatorSession",
+      "full_name": "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "CloseOperatorSession",
+      "full_name": "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "SubmitFillReport",
+      "full_name": "avf.machine.v1.MachineOperatorService/SubmitFillReport",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "SubmitStockAdjustment",
+      "full_name": "avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_inventory_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "LoginOperator",
+      "full_name": "avf.machine.v1.MachineOperatorService/LoginOperator",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "LogoutOperator",
+      "full_name": "avf.machine.v1.MachineOperatorService/LogoutOperator",
+      "status": "CONTRACT_ONLY",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "HeartbeatOperatorSession",
+      "full_name": "avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_replay_canonical_test.go",
+        "internal/modules/postgres/operator_rules_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CreateSale",
+      "full_name": "avf.machine.v1.MachineSaleService/CreateSale",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "AttachPayment",
+      "full_name": "avf.machine.v1.MachineSaleService/AttachPayment",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "ConfirmCashReceived",
+      "full_name": "avf.machine.v1.MachineSaleService/ConfirmCashReceived",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "StartVend",
+      "full_name": "avf.machine.v1.MachineSaleService/StartVend",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_commerce_evidence_integration_test.go",
+        "internal/grpcserver/machine_commerce_grpc_integration_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go",
+        "internal/grpcserver/machine_offline_p06_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CompleteVend",
+      "full_name": "avf.machine.v1.MachineSaleService/CompleteVend",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/e2e/correctness/payment_webhook_http_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "FailVend",
+      "full_name": "avf.machine.v1.MachineSaleService/FailVend",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CancelSale",
+      "full_name": "avf.machine.v1.MachineSaleService/CancelSale",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "PushTelemetryBatch",
+      "full_name": "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "PushCriticalEvent",
+      "full_name": "avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": []
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "CheckIn",
+      "full_name": "avf.machine.v1.MachineTelemetryService/CheckIn",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/device/metrics_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/modules/postgres/telemetry_retention_integration_test.go",
+        "internal/platform/observability/productionmetrics/metrics_gather_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "SubmitTelemetryBatch",
+      "full_name": "avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_offline_p06_integration_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/p23_capacity_guardrails_integration_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "ReconcileEvents",
+      "full_name": "avf.machine.v1.MachineTelemetryService/ReconcileEvents",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/app/machineidempotency/hash_test.go",
+        "internal/grpcserver/machine_p06_contract_test.go",
+        "internal/grpcserver/machine_replay_canonical_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "GetEventStatus",
+      "full_name": "avf.machine.v1.MachineTelemetryService/GetEventStatus",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_p06_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.machine.v1.MachineTokenService",
+      "rpc": "RefreshMachineToken",
+      "full_name": "avf.machine.v1.MachineTokenService/RefreshMachineToken",
+      "status": "REGISTERED",
+      "auth": "machine_jwt",
+      "test_refs": [
+        "internal/grpcserver/machine_grpc_auth_test.go",
+        "internal/grpcserver/machine_grpc_production_contract_test.go"
+      ]
+    },
+    {
+      "service": "avf.v1.InternalCommerceQueryService",
+      "rpc": "GetOrderPaymentVendState",
+      "full_name": "avf.v1.InternalCommerceQueryService/GetOrderPaymentVendState",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.v1.InternalMachineQueryService",
+      "rpc": "GetMachineSummary",
+      "full_name": "avf.v1.InternalMachineQueryService/GetMachineSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_auth_test.go",
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.v1.InternalMachineQueryService",
+      "rpc": "GetMachineState",
+      "full_name": "avf.v1.InternalMachineQueryService/GetMachineState",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    },
+    {
+      "service": "avf.v1.InternalMachineQueryService",
+      "rpc": "GetMachineCabinetSlotSummary",
+      "full_name": "avf.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    },
+    {
+      "service": "avf.v1.InternalTelemetryQueryService",
+      "rpc": "GetLatestMachineTelemetry",
+      "full_name": "avf.v1.InternalTelemetryQueryService/GetLatestMachineTelemetry",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": [
+        "internal/grpcserver/server_test.go"
+      ]
+    },
+    {
+      "service": "avf.v1.InternalTelemetryQueryService",
+      "rpc": "GetMachineIncidentSummary",
+      "full_name": "avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary",
+      "status": "REGISTERED",
+      "auth": "mixed",
+      "test_refs": []
+    }
+  ]
+}

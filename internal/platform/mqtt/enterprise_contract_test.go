@@ -24,6 +24,7 @@ func TestEnterpriseRequiredTopicPaths_matchAndroidContract(t *testing.T) {
 
 	wantPublish := map[string]string{
 		"commands/ack":       prefix + "/machines/" + mid.String() + "/commands/ack",
+		"commands/receipt":   prefix + "/machines/" + mid.String() + "/commands/receipt",
 		"presence":           prefix + "/machines/" + mid.String() + "/presence",
 		"state/heartbeat":    prefix + "/machines/" + mid.String() + "/state/heartbeat",
 		"telemetry":          prefix + "/machines/" + mid.String() + "/telemetry",

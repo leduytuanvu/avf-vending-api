@@ -533,15 +533,24 @@ type MachineActionAttribution struct {
 }
 
 type MachineActivationClaim struct {
-	ID               uuid.UUID
-	ActivationCodeID uuid.UUID
-	MachineID        uuid.UUID
-	FingerprintHash  []byte
-	ClaimedAt        time.Time
-	IpAddress        string
-	UserAgent        string
-	Result           string
-	FailureReason    string
+	ID                   uuid.UUID
+	ActivationCodeID     pgtype.UUID
+	MachineID            uuid.UUID
+	FingerprintHash      []byte
+	ClaimedAt            time.Time
+	IpAddress            string
+	UserAgent            string
+	Result               string
+	FailureReason        string
+	ActivatedByAccountID pgtype.UUID
+	OperatorSessionID    pgtype.UUID
+	RequestID            pgtype.Text
+	CorrelationID        pgtype.UUID
+	AppVersion           pgtype.Text
+	BootID               pgtype.Text
+	DeviceSerial         pgtype.Text
+	Reason               pgtype.Text
+	ActivationSource     pgtype.Text
 }
 
 type MachineActivationCode struct {
