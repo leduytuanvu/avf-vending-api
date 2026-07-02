@@ -1,0 +1,7 @@
+{
+  "utc": "20260702T210742Z",
+  "verdict": "BLOCKED_BY_DEPLOY",
+  "root_cause": "EMQX provisioning code not deployed; app-node EMQX management env not configured",
+  "fix": "Deploy main + set EMQX_* on app nodes + enable broker ACL",
+  "retest": "run_production_full_suite.py --passes 3 with PRODUCTION_FULL_TEST_STRICT=1"
+}

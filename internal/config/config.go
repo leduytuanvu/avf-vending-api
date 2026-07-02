@@ -605,6 +605,11 @@ type MQTTConfig struct {
 	CertFile           string
 	KeyFile            string
 	InsecureSkipVerify bool
+
+	// EMQX management API (loopback on broker host) for per-machine MQTT user provisioning at activation.
+	EMQXManagementURL string
+	EMQXAPIKey        string
+	EMQXAPISecret     string
 }
 
 // RuntimeConfig holds deploy-time identity and public base URL metadata.
@@ -2450,6 +2455,9 @@ func loadMQTTConfig() MQTTConfig {
 		CertFile:           strings.TrimSpace(getenv("MQTT_CERT_FILE", "")),
 		KeyFile:            strings.TrimSpace(getenv("MQTT_KEY_FILE", "")),
 		InsecureSkipVerify: getenvBool("MQTT_INSECURE_SKIP_VERIFY", false),
+		EMQXManagementURL:  strings.TrimSpace(getenv("EMQX_MANAGEMENT_URL", "http://127.0.0.1:18083")),
+		EMQXAPIKey:         strings.TrimSpace(getenv("EMQX_API_KEY", "")),
+		EMQXAPISecret:      os.Getenv("EMQX_API_SECRET"),
 	}
 }
 

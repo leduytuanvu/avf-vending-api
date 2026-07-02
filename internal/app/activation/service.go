@@ -15,6 +15,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -30,6 +31,8 @@ var (
 	ErrRefreshInvalid = errors.New("activation: invalid refresh token")
 	// ErrMachineNotEligible is returned when the machine cannot authenticate (retired / bad state).
 	ErrMachineNotEligible = errors.New("activation: machine not eligible")
+	// ErrMQTTProvisioning is returned when EMQX is configured but per-machine MQTT provisioning fails.
+	ErrMQTTProvisioning = errors.New("activation: mqtt provisioning failed")
 )
 
 // Service manages kiosk activation codes.
@@ -38,6 +41,7 @@ type Service struct {
 	issuer *plauth.SessionIssuer
 	pepper []byte
 	audit  compliance.EnterpriseRecorder
+	emqx   *emqxadmin.Client
 }
 
 // NewService constructs an activation service.
@@ -46,6 +50,14 @@ func NewService(pool *pgxpool.Pool, issuer *plauth.SessionIssuer, pepper []byte,
 		panic("activation.NewService: pool, issuer, and pepper are required")
 	}
 	return &Service{pool: pool, issuer: issuer, pepper: pepper, audit: audit}
+}
+
+// SetEMQXClient enables per-machine MQTT user provisioning during activation claim.
+func (s *Service) SetEMQXClient(c *emqxadmin.Client) {
+	if s == nil {
+		return
+	}
+	s.emqx = c
 }
 
 // CreateInput is an admin create request.
@@ -279,6 +291,8 @@ type ClaimResult struct {
 	MQTTBrokerURL     string
 	MQTTTopicPrefix   string
 	MQTTTopicLayout   string
+	MQTTUsername      string
+	MQTTPassword      string
 	BootstrapPath     string
 	BootstrapRequired bool
 }
@@ -555,7 +569,17 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 			return ClaimResult{}, err
 		}
 	}
+	mqttUser, mqttPass, err := s.provisionMachineMQTT(ctx, qtx, row.MachineID)
+	if err != nil {
+		return ClaimResult{}, err
+	}
+	if s.emqx != nil && (mqttUser == "" || mqttPass == "") {
+		return ClaimResult{}, ErrMQTTProvisioning
+	}
 	if err := tx.Commit(ctx); err != nil {
+		if s.emqx != nil && mqttUser != "" {
+			_ = s.emqx.DeleteUser(context.WithoutCancel(ctx), mqttUser)
+		}
 		return ClaimResult{}, err
 	}
 	return ClaimResult{
@@ -569,6 +593,8 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 		MQTTBrokerURL:     mqttBrokerURL,
 		MQTTTopicPrefix:   mqttTopicPrefix,
 		MQTTTopicLayout:   mqttTopicLayout,
+		MQTTUsername:      mqttUser,
+		MQTTPassword:      mqttPass,
 		BootstrapPath:     fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
 		BootstrapRequired: true,
 	}, nil
@@ -853,6 +879,66 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 
 func normalizeActivationCode(s string) string {
 	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+func randomMQTTPassword() (string, error) {
+	buf := make([]byte, 24)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", buf), nil
+}
+
+func (s *Service) emqxConfigured() bool {
+	return s != nil && s.emqx != nil
+}
+
+func mqttSecretRef(version int64) string {
+	return fmt.Sprintf("emqx:v1:%d", version)
+}
+
+func (s *Service) provisionMachineMQTT(ctx context.Context, q *db.Queries, machineID uuid.UUID) (string, string, error) {
+	if s == nil || machineID == uuid.Nil {
+		return "", "", nil
+	}
+	if !s.emqxConfigured() {
+		return "", "", nil
+	}
+	password, err := randomMQTTPassword()
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %v", ErrMQTTProvisioning, err)
+	}
+	username := machineID.String()
+	if err := s.emqx.UpsertUser(ctx, username, password); err != nil {
+		return "", "", fmt.Errorf("%w: %v", ErrMQTTProvisioning, err)
+	}
+	if q != nil {
+		if err := q.UpsertMachineMQTTCredentials(ctx, db.UpsertMachineMQTTCredentialsParams{
+			MachineID:       machineID,
+			MqttBrokerShard: "default",
+			Username:        pgtype.Text{String: username, Valid: true},
+			SecretRef:       pgtype.Text{String: mqttSecretRef(time.Now().UTC().UnixNano()), Valid: true},
+		}); err != nil {
+			return "", "", fmt.Errorf("%w: persist metadata: %v", ErrMQTTProvisioning, err)
+		}
+	}
+	return username, password, nil
+}
+
+// RevokeMachineMQTT deletes the broker user and marks credential metadata revoked.
+func (s *Service) RevokeMachineMQTT(ctx context.Context, machineID uuid.UUID) error {
+	if s == nil || machineID == uuid.Nil || !s.emqxConfigured() {
+		return nil
+	}
+	if err := s.emqx.DeleteUser(ctx, machineID.String()); err != nil {
+		return err
+	}
+	return db.New(s.pool).RevokeMachineMQTTCredentials(ctx, machineID)
+}
+
+// RotateMachineMQTT issues a new broker password and updates metadata.
+func (s *Service) RotateMachineMQTT(ctx context.Context, machineID uuid.UUID) (string, string, error) {
+	return s.provisionMachineMQTT(ctx, db.New(s.pool), machineID)
 }
 
 func hashActivationCode(pepper []byte, code string) []byte {

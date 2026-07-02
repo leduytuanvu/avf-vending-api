@@ -240,6 +240,10 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 				writeAPIError(w, r.Context(), http.StatusForbidden, "machine_not_eligible", "machine cannot activate")
 				return
 			}
+			if errors.Is(err, activation.ErrMQTTProvisioning) {
+				writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "mqtt_provisioning_failed", "mqtt credential provisioning failed")
+				return
+			}
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
@@ -260,6 +264,12 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 		if out.RefreshToken != "" {
 			resp["refreshToken"] = out.RefreshToken
 			resp["refreshTokenExpiresAt"] = out.RefreshExpiresAt.Format("2006-01-02T15:04:05Z07:00")
+		}
+		if out.MQTTUsername != "" {
+			resp["mqttUsername"] = out.MQTTUsername
+		}
+		if out.MQTTPassword != "" {
+			resp["mqttPassword"] = out.MQTTPassword
 		}
 		writeJSON(w, http.StatusOK, resp)
 	}

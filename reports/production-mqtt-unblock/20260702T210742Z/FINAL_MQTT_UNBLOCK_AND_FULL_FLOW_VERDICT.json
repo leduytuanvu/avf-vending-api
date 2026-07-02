@@ -1,0 +1,8 @@
+{
+  "verdict": "BLOCKED_BY_DEPLOY",
+  "all_green": false,
+  "production_bundle_utc": null,
+  "mqtt_fail_count": null,
+  "e2e_ok": false,
+  "blocked_reason": "DEPLOY_EMQX_PROVISIONING"
+}

@@ -6,7 +6,9 @@ import (
 	"strings"
 
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
+	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var allowedMachineStatuses = map[string]struct{}{
@@ -25,7 +27,9 @@ var allowedMachineStatuses = map[string]struct{}{
 
 // Service orchestrates fleet workflows on top of FleetRepository.
 type Service struct {
-	repo FleetRepository
+	repo   FleetRepository
+	emqx   *emqxadmin.Client
+	dbPool *pgxpool.Pool
 }
 
 // NewService returns a fleet application service backed by repo. Repo must not be nil.
