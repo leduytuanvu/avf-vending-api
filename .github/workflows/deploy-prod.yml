@@ -2275,7 +2275,7 @@ jobs:
           target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
-          tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared | \
+          tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared deployments/prod/docker-compose.prod.yml | \
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
               '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh'"
