@@ -1,0 +1,14 @@
+{
+  "schema_version": "post-deploy-verification-v1",
+  "utc": "20260702T193800Z",
+  "deploy_run_id": "28616475685",
+  "checks": {
+    "health_live": {"url": "https://api.ldtv.dev/health/live", "status": 200, "pass": true},
+    "health_ready": {"url": "https://api.ldtv.dev/health/ready", "status": 200, "pass": true},
+    "version": {"url": "https://api.ldtv.dev/version", "status": 200, "git_sha": "156fc468fa3c5fec7042e1f656f78b6ea94c2639", "pass": true},
+    "openapi": {"url": "https://api.ldtv.dev/swagger/doc.json", "status": 200, "pass": true},
+    "mqtt_tls_reachability": {"host": "mqtt.ldtv.dev", "port": 8883, "pass": true},
+    "grpc_tls_reachability": {"host": "machine-api.ldtv.dev", "port": 443, "pass": true}
+  },
+  "verdict": "POST_DEPLOY_VERIFICATION_PASS"
+}
