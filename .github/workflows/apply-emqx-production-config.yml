@@ -57,13 +57,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           read -r -a ssh_opts <<< "${SSH_OPTS}"
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          [[ -n "${EMQX_DATA_HOST}" ]] || {
+            echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required" >&2
+            exit 1
+          }
           data_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/.env.data-node"
           EMQX_API_KEY="$(
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${EMQX_DATA_HOST}" \
               "grep -E '^EMQX_API_KEY=' '${data_env}' | tail -n 1 | cut -d= -f2-"
           )"
           EMQX_API_SECRET="$(
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${DATA_NODE_HOST}" \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${EMQX_DATA_HOST}" \
               "grep -E '^EMQX_API_SECRET=' '${data_env}' | tail -n 1 | cut -d= -f2-"
           )"
           [[ -n "${EMQX_API_KEY}" && -n "${EMQX_API_SECRET}" ]] || {
@@ -85,11 +90,12 @@ jobs:
           apply_remote "${APP_NODE_B_HOST}"
 
       - name: Sync EMQX ACL assets to data node
-        if: inputs.install_acl && env.DATA_NODE_HOST != ''
+        if: inputs.install_acl && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
         shell: bash
         run: |
           set -Eeuo pipefail
-          target="${SSH_USER}@${DATA_NODE_HOST}"
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared | \
@@ -97,11 +103,12 @@ jobs:
               '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh'"
 
       - name: Install EMQX ACL on data node
-        if: inputs.install_acl && env.DATA_NODE_HOST != ''
+        if: inputs.install_acl && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
         shell: bash
         run: |
           set -Eeuo pipefail
-          target="${SSH_USER}@${DATA_NODE_HOST}"
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          target="${SSH_USER}@${EMQX_DATA_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh"
