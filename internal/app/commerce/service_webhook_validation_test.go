@@ -17,7 +17,7 @@ func (stubOrderVend) CreateOrderWithVendSession(ctx context.Context, in domainco
 	return domaincommerce.CreateOrderVendResult{}, errors.New("not implemented")
 }
 
-func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, companyID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
+func (stubOrderVend) TryReplayCreateOrderWithVend(ctx context.Context, machineID uuid.UUID, idempotencyKey string) (domaincommerce.CreateOrderVendResult, bool, error) {
 	return domaincommerce.CreateOrderVendResult{}, false, nil
 }
 
@@ -37,6 +37,10 @@ func (stubLifecycle) UpdateOrderStatus(ctx context.Context, orderID, companyID u
 }
 func (stubLifecycle) GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.UUID, slotIndex int32) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, ErrNotFound
+}
+
+func (stubLifecycle) GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error) {
+	return stubLifecycle{}.GetVendSessionByOrderAndSlot(ctx, orderID, lineSequence)
 }
 func (stubLifecycle) UpdateVendSessionState(ctx context.Context, p UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	return domaincommerce.VendSession{}, errors.New("not implemented")

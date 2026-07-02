@@ -1065,6 +1065,28 @@ func TestLoad_Production_requiresHS256Secret(t *testing.T) {
 	}
 }
 
+func TestLoad_CommerceRequireVendHardwareEvidenceMachineIDs(t *testing.T) {
+	setMinimalValidLoadEnv(t)
+	testID := "019e702c-11c6-7ab0-89c7-5eb32f0b12cb"
+	otherID := "55555555-5555-5555-5555-555555555555"
+	t.Setenv("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE", "false")
+	t.Setenv("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE_MACHINE_IDS", testID+","+otherID)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Commerce.RequireVendHardwareEvidence {
+		t.Fatal("expected global evidence flag false")
+	}
+	if len(cfg.Commerce.RequireVendHardwareEvidenceMachineIDs) != 2 {
+		t.Fatalf("expected 2 machine IDs, got %d", len(cfg.Commerce.RequireVendHardwareEvidenceMachineIDs))
+	}
+	if cfg.Commerce.RequireVendHardwareEvidenceMachineIDs[0].String() != testID {
+		t.Fatalf("unexpected first id: %s", cfg.Commerce.RequireVendHardwareEvidenceMachineIDs[0])
+	}
+}
+
 func TestLoad_PaymentWebhookSecretAlias(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("PAYMENT_WEBHOOK_SECRET", "fixture")

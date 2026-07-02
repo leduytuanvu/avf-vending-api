@@ -7,7 +7,7 @@ ARG GO_VERSION=1.25.11
 ARG GIT_SHA=
 ARG BUILD_TIME=
 
-FROM golang:1.25.11-bookworm@sha256:bbb255b0e131db500cf0520adc97441d2260cf629c7fa7e39e025ddf53995a24 AS build
+FROM golang:1.26.4-bookworm@sha256:5f68ec6805843bd3981a951ffada82a26a0bd2631045c8f7dba483fa868f5ec5 AS build
 WORKDIR /src
 
 ARG GIT_SHA=
@@ -31,7 +31,7 @@ RUN mkdir -p /out && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/temporal-worker ./cmd/temporal-worker && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/migrate ./cmd/migrate
 
-FROM alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates tzdata curl \
     && addgroup -S avf && adduser -S avf -G avf
 

@@ -17,6 +17,7 @@ import (
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -256,6 +257,11 @@ func validateReplayCreateOrder(claims plauth.MachineAccessClaims, productID uuid
 }
 
 func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.CreateOrderRequest) (*machinev1.CreateOrderResponse, error) {
+	trace := newCreateOrderTrace(zap.L())
+	trace.checkpoint(ctx, "create_order.enter")
+	ctx, cancel := withCreateOrderDeadline(ctx)
+	defer cancel()
+
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -263,10 +269,12 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "parse_context.done", zap.String("idempotency_key_hash", idempotencyKeyHash(wctx.IdempotencyKey)))
 	claims, svc, _, err := s.requireCommerce(ctx)
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "require_commerce.done", zap.String("machine_id", claims.MachineID.String()))
 	if mid := strings.TrimSpace(req.GetMachineId()); mid != "" {
 		parsed, perr := uuid.Parse(mid)
 		if perr != nil || parsed != claims.MachineID {
@@ -277,10 +285,12 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if perr != nil || productID == uuid.Nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid product_id")
 	}
+	trace.checkpoint(ctx, "product_parse.done", zap.String("product_id", productID.String()))
 	slotID, cab, sc, slotIdx, err := parseSlotProto(req.GetSlot())
 	if err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "slot_parse.done", zap.Int32("slot_index", slotIdxValue(slotIdx)))
 	cur := strings.ToUpper(strings.TrimSpace(req.GetCurrency()))
 	if len(cur) != 3 {
 		return nil, status.Error(codes.InvalidArgument, "currency must be a 3-letter ISO code")
@@ -290,7 +300,9 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
 		return nil, err
 	}
+	trace.checkpoint(ctx, "simulation_validate.done")
 
+	trace.checkpoint(ctx, "service_create_order.start")
 	out, err := svc.CreateOrder(ctx, appcommerce.CreateOrderInput{
 		MachineID:          claims.MachineID,
 		ProductID:          productID,
@@ -309,11 +321,13 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
+	trace.checkpoint(ctx, "service_create_order.done", zap.String("order_id", out.Order.ID.String()))
 	if out.Replay {
 		if err := validateReplayCreateOrder(claims, productID, slotID, cab, sc, slotIdx, out); err != nil {
 			return nil, mapCommerceGRPCErr(err)
 		}
 	} else {
+		trace.checkpoint(ctx, "audit.start")
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceOrderCreated, map[string]any{
 			"order_id":        out.Order.ID.String(),
 			"vend_session_id": out.Vend.ID.String(),
@@ -321,6 +335,7 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 			"client_event_id": wctx.ClientEventID,
 			"product_id":      productID.String(),
 		})
+		trace.checkpoint(ctx, "audit.done")
 		productionmetrics.RecordOrderCreated("grpc_machine")
 	}
 
@@ -328,6 +343,7 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	if out.SaleLine.SlotConfigID != uuid.Nil {
 		sid = out.SaleLine.SlotConfigID.String()
 	}
+	trace.checkpoint(ctx, "response.build")
 	return &machinev1.CreateOrderResponse{
 		Replay:        out.Replay,
 		OrderId:       out.Order.ID.String(),
@@ -647,6 +663,7 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	slotIndex := req.GetSlotIndex()
+	lineSequence := req.GetLineSequence()
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -662,7 +679,12 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.FailedPrecondition, "order is terminal")
 	}
 
-	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	var st appcommerce.CheckoutStatusView
+	if lineSequence > 0 {
+		st, err = svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+	} else {
+		st, err = svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	}
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
@@ -673,16 +695,21 @@ func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.St
 		return nil, status.Error(codes.FailedPrecondition, "order not paid")
 	}
 	if st.Vend.State == "in_progress" {
-		return &machinev1.StartVendResponse{Replay: true, VendState: "in_progress", SlotIndex: slotIndex}, nil
+		respSlot := slotIndex
+		if lineSequence > 0 {
+			respSlot = st.Vend.SlotIndex
+		}
+		return &machinev1.StartVendResponse{Replay: true, VendState: "in_progress", SlotIndex: respSlot}, nil
 	}
 	if st.Vend.State != "pending" {
 		return nil, status.Error(codes.FailedPrecondition, "vend not startable")
 	}
 
 	v, err := svc.AdvanceVend(ctx, appcommerce.AdvanceVendInput{
-		OrderID:   orderID,
-		SlotIndex: slotIndex,
-		ToState:   "in_progress",
+		OrderID:      orderID,
+		SlotIndex:    st.Vend.SlotIndex,
+		LineSequence: lineSequence,
+		ToState:      "in_progress",
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -791,7 +818,7 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	}
 
 	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
-	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps, claims.MachineID)
 	// Authoritative authorized cash amount for reconcile against self-attested bill_final evidence.
 	authorizedAmountMinor := int64(0)
 	if cashFlow {
@@ -908,7 +935,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	// ON) is ACCEPTED and persisted as hardware_unverified rather than rejected. requireSuccessEvidence
 	// is false here because a failed vend legitimately has no optical-drop/bill_final to attest.
 	cashFlow := st.PaymentPresent && strings.EqualFold(strings.TrimSpace(st.Payment.Provider), "cash")
-	requireEvidence := commerceRequireVendHardwareEvidence(s.deps)
+	requireEvidence := commerceRequireVendHardwareEvidence(s.deps, claims.MachineID)
 	authorizedAmountMinor := int64(0)
 	if cashFlow {
 		authorizedAmountMinor = st.Payment.AmountMinor

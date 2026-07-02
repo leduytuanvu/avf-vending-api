@@ -87,10 +87,12 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-act-1-"+uuid.NewString
 	out1, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out1.MachineID)
+	require.NotEmpty(t, out1.RefreshToken)
 
 	out2, err := svc.Claim(ctx, in, "mqtt://x", "pfx", "legacy")
 	require.NoError(t, err)
 	require.Equal(t, machineID, out2.MachineID)
+	require.NotEmpty(t, out2.RefreshToken)
 }
 
 func TestClaim_DifferentFingerprintRejectedWhenSingleUse(t *testing.T) {
@@ -303,4 +305,100 @@ SELECT COUNT(*) FROM machine_activation_claims WHERE activation_code_id = $1 AND
 SELECT COUNT(*) FROM audit_events
 WHERE machine_id = $1 AND action = 'machine.activation.claimed'`, machineID).Scan(&auditCount))
 	require.GreaterOrEqual(t, auditCount, 1)
+}
+
+func TestRefreshMachineSession_GraceReplayAfterRevoke(t *testing.T) {
+	t.Parallel()
+
+	pool := activationTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+
+	cfg := config.HTTPAuthConfig{
+		Mode:            plauth.HTTPAuthModeHS256,
+		JWTSecret:       bytes.Repeat([]byte("z"), 32),
+		JWTLeeway:       30 * time.Second,
+		AccessTokenTTL:  15 * time.Minute,
+		RefreshTokenTTL: 720 * time.Hour,
+	}
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
+	require.NoError(t, err)
+	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-ref-grace-"+uuid.NewString()[:8])
+	require.NoError(t, err)
+
+	create, err := svc.CreateCode(ctx, CreateInput{
+		MachineID:        machineID,
+		ExpiresInMinutes: 60,
+		MaxUses:          1,
+	})
+	require.NoError(t, err)
+
+	claimOut, err := svc.Claim(ctx, ClaimInput{
+		ActivationCode:    create.PlaintextCode,
+		DeviceFingerprint: DeviceFingerprint{SerialNumber: "grace-1"},
+	}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+	require.NotEmpty(t, claimOut.RefreshToken)
+	firstRefresh := claimOut.RefreshToken
+
+	rotated, err := svc.RefreshMachineSession(ctx, RefreshInput{RefreshToken: firstRefresh}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+	require.NotEmpty(t, rotated.RefreshToken)
+	require.NotEqual(t, firstRefresh, rotated.RefreshToken)
+
+	graceReplay, err := svc.RefreshMachineSession(ctx, RefreshInput{RefreshToken: firstRefresh}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+	require.NotEmpty(t, graceReplay.RefreshToken)
+	require.NotEqual(t, firstRefresh, graceReplay.RefreshToken)
+}
+
+func TestClaim_ReclaimWithExistingSessionIssuesRefresh(t *testing.T) {
+	t.Parallel()
+
+	pool := activationTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+
+	cfg := config.HTTPAuthConfig{
+		Mode:            plauth.HTTPAuthModeHS256,
+		JWTSecret:       bytes.Repeat([]byte("z"), 32),
+		JWTLeeway:       30 * time.Second,
+		AccessTokenTTL:  15 * time.Minute,
+		RefreshTokenTTL: 720 * time.Hour,
+	}
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
+	require.NoError(t, err)
+	svc := NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
+	_, err = pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-reclaim-"+uuid.NewString()[:8])
+	require.NoError(t, err)
+
+	create, err := svc.CreateCode(ctx, CreateInput{
+		MachineID:        machineID,
+		ExpiresInMinutes: 60,
+		MaxUses:          2,
+	})
+	require.NoError(t, err)
+
+	fp := DeviceFingerprint{SerialNumber: "reclaim-fp"}
+	out1, err := svc.Claim(ctx, ClaimInput{ActivationCode: create.PlaintextCode, DeviceFingerprint: fp}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+	require.NotEmpty(t, out1.RefreshToken)
+
+	_, err = svc.RefreshMachineSession(ctx, RefreshInput{RefreshToken: out1.RefreshToken}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+
+	out2, err := svc.Claim(ctx, ClaimInput{ActivationCode: create.PlaintextCode, DeviceFingerprint: fp}, "mqtt://x", "pfx", "legacy")
+	require.NoError(t, err)
+	require.NotEmpty(t, out2.RefreshToken)
 }

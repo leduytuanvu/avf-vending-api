@@ -56,6 +56,7 @@ type StartPaymentInput struct {
 type AdvanceVendInput struct {
 	OrderID       uuid.UUID
 	SlotIndex     int32
+	LineSequence  int32
 	ToState       string
 	FailureReason *string
 }
@@ -140,6 +141,7 @@ type FulfillFailedVendResult struct {
 type UpdateVendSessionParams struct {
 	OrderID       uuid.UUID
 	SlotIndex     int32
+	LineSequence  int32
 	ToState       string
 	FailureReason *string
 }

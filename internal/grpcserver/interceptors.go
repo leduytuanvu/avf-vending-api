@@ -544,6 +544,8 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineOperatorService_LoginOperator_FullMethodName,
 		machinev1.MachineOperatorService_LogoutOperator_FullMethodName,
 		machinev1.MachineOperatorService_HeartbeatOperatorSession_FullMethodName,
+		machinev1.MachineCommerceService_CreateQuote_FullMethodName,
+		machinev1.MachineCommerceService_CreateOrderFromQuote_FullMethodName,
 		machinev1.MachineCommerceService_CreateOrder_FullMethodName,
 		machinev1.MachineCommerceService_CreatePaymentSession_FullMethodName,
 		machinev1.MachineCommerceService_AttachPaymentResult_FullMethodName,

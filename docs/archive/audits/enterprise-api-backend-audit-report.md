@@ -1,6 +1,6 @@
 # Enterprise API / backend / CI-CD audit report
 
-> **Historical snapshot only (pre-P0 HTTP completion).** For current readiness gates use [final-enterprise-audit.md](./final-enterprise-audit.md), [production-release-readiness.md](../runbooks/production-release-readiness.md), and `make verify-enterprise-release`. P0 routes listed below as “missing” in sections A–D are **superseded** by the current `internal/httpserver/server.go` tree and `docs/swagger/swagger.json`.
+> **Historical snapshot only (pre-P0 HTTP completion).** For current readiness gates use [final-enterprise-audit.md](../../audits/final-enterprise-audit.md), [production-release-readiness.md](../../runbooks/production-release-readiness.md), and `make verify-enterprise-release`. P0 routes listed below as “missing” in sections A–D are **superseded** by the current `internal/httpserver/server.go` tree and `docs/swagger/swagger.json`.
 
 **Scope:** Repository state as audited (AVF `avf-vending-api`). **Method:** code and workflow inspection; docs treated as non-authoritative when they disagree with route registration or tests.
 

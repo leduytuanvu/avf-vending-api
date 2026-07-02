@@ -57,6 +57,8 @@ type CommerceHTTPConfig struct {
 	MachineOrderCheckoutMaxAge time.Duration
 	// RequireVendHardwareEvidence when true rejects ConfirmVendSuccess/ReportVendSuccess without valid hardware evidence.
 	RequireVendHardwareEvidence bool
+	// RequireVendHardwareEvidenceMachineIDs enables per-machine evidence enforcement when global flag is off.
+	RequireVendHardwareEvidenceMachineIDs []uuid.UUID
 	// VendOutboxTopic is the durable outbox topic for vend terminal events (COMMERCE_VEND_OUTBOX_TOPIC).
 	VendOutboxTopic string
 	// VendOutboxEventTypeSucceeded is emitted on successful vend finalization (COMMERCE_VEND_OUTBOX_EVENT_SUCCEEDED).
@@ -1880,6 +1882,7 @@ func Load() (*Config, error) {
 			DefaultPaymentProvider:                      strings.ToLower(strings.TrimSpace(getenv("COMMERCE_PAYMENT_PROVIDER", ""))),
 			MachineOrderCheckoutMaxAge:                  mustParseDuration("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", getenv("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", "30m")),
 			RequireVendHardwareEvidence:                 getenvBool("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE", false),
+			RequireVendHardwareEvidenceMachineIDs:       parseUUIDCSV("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE_MACHINE_IDS"),
 			VendOutboxTopic:                             strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_TOPIC", "commerce.vends")),
 			VendOutboxEventTypeSucceeded:                strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_SUCCEEDED", "vend.succeeded")),
 			VendOutboxEventTypeFailed:                   strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_FAILED", "vend.failed")),
@@ -2214,6 +2217,23 @@ func splitCSV(raw string) []string {
 		if s := strings.TrimSpace(p); s != "" {
 			out = append(out, s)
 		}
+	}
+	return out
+}
+
+func parseUUIDCSV(key string) []uuid.UUID {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return nil
+	}
+	parts := splitCSV(raw)
+	out := make([]uuid.UUID, 0, len(parts))
+	for _, p := range parts {
+		u, err := uuid.Parse(p)
+		if err != nil || u == uuid.Nil {
+			continue
+		}
+		out = append(out, u)
 	}
 	return out
 }

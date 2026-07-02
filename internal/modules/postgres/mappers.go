@@ -57,6 +57,20 @@ func mapVendGetRow(row db.GetVendSessionByOrderAndSlotRow) commerce.VendSession 
 	)
 }
 
+func mapVendLineSequenceRow(row db.GetVendSessionByOrderAndLineSequenceRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
+func mapVendLineSequenceUpdateRow(row db.UpdateVendSessionStateByOrderLineSequenceRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
 func mapVendFirstRow(row db.GetFirstVendSessionByOrderRow) commerce.VendSession {
 	return mapVendFields(
 		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
