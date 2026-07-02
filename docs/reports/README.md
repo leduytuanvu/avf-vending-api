@@ -5,12 +5,16 @@ Phase reports and gate evidence for **active** operations. Historical one-offs a
 ## Repository cleanup
 
 - [`cleanup/2026-06-repo-cleanup-manifest.md`](cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions, doc index updates, and deferred Phase 5/6 decisions.
-- [`cleanup/2026-07-02-repo-cleanup-baseline.md`](cleanup/2026-07-02-repo-cleanup-baseline.md) — pre-change baseline for the 2026-07 pass.
-- [`cleanup/2026-07-02-repo-cleanup-inventory.md`](cleanup/2026-07-02-repo-cleanup-inventory.md) — file classification inventory.
-- [`cleanup/2026-07-02-repo-cleanup-plan.md`](cleanup/2026-07-02-repo-cleanup-plan.md) — implementation plan.
-- [`cleanup/2026-07-02-repo-cleanup-final-report.md`](cleanup/2026-07-02-repo-cleanup-final-report.md) — post-change summary and verification.
+- [`cleanup/2026-07-02-repo-cleanup-final-report.md`](cleanup/2026-07-02-repo-cleanup-final-report.md) — 2026-07 structural cleanup summary.
+- [`cleanup/2026-07-02-deep-clean-baseline.md`](cleanup/2026-07-02-deep-clean-baseline.md) — deep clean baseline (docs/reports/scripts/postman drift).
+- [`cleanup/2026-07-02-deep-clean-inventory.md`](cleanup/2026-07-02-deep-clean-inventory.md) — deep clean inventory.
+- [`cleanup/2026-07-02-deep-clean-plan.md`](cleanup/2026-07-02-deep-clean-plan.md) — deep clean execution plan.
+- [`cleanup/2026-07-02-deep-clean-final-report.md`](cleanup/2026-07-02-deep-clean-final-report.md) — deep clean final report (when complete).
+
+Archived cleanup working docs: [`../archive/cleanup/2026-07-02/`](../archive/cleanup/2026-07-02/).
 
 ## Product media / offline cache
+
 [`product-media-offline-cache/`](product-media-offline-cache/) — phase 6 report, regression/consistency gates.
 
 Archived migration verification: [`../archive/reports/product-media-offline-cache/`](../archive/reports/product-media-offline-cache/).
@@ -27,9 +31,11 @@ Operator runbook: [`../runbooks/product-media-offline-cache-production-migration
 
 ## Full-system / protocol verification
 
-[`verification/`](verification/) — ongoing REST, gRPC, MQTT, E2E, Postman verification outputs.
+[`verification/README.md`](verification/README.md) — index; archived report bodies under [`../archive/reports/verification/`](../archive/reports/verification/).
 
 Archived `FINAL_*` signoff reports: [`../archive/verification/`](../archive/verification/).
+
+Archived Postman reports: [`../archive/reports/postman/`](../archive/reports/postman/).
 
 Archived completed investigations: [`../archive/reports/cash-authority/`](../archive/reports/cash-authority/), [`../archive/reports/protocol-hardening/`](../archive/reports/protocol-hardening/).
 

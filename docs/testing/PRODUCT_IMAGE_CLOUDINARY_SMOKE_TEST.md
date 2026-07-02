@@ -12,8 +12,8 @@ CLOUDINARY_API_SECRET=...
 
 ## Postman
 
-1. Import `postman/production-full-suite/avf-production-full.postman_collection.json`
-2. Import `postman/production-full-suite/avf-production.postman_environment.json`
+1. Import [`postman/suites/production-full/avf-vending-production.full.postman_collection.json`](../../postman/suites/production-full/avf-vending-production.full.postman_collection.json)
+2. Import [`postman/suites/production-full/avf-vending-production.full.postman_environment.json`](../../postman/suites/production-full/avf-vending-production.full.postman_environment.json)
 3. Set `adminPassword` locally
 4. Run **Auth → POST /v1/auth/login**
 5. Run **Product Media → POST /v1/admin/product-images**

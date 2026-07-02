@@ -34,7 +34,7 @@ Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check
 
 [`suites/production-full/`](suites/production-full/) — consolidated OpenAPI + proto + MQTT production verification collection and environment (`avf-vending-production.full.*`). Not the same as manifest E2E parity under `production/`; use for broad production API coverage and manual/Newman runs.
 
-Regenerate expanded inventories locally with `scripts/postman/generate_complete_api_suite.py` (default output under `postman/production-full-suite/`, gitignored) or `scripts/postman/generate_production_full_suite.py`.
+Regenerate with `python scripts/postman/generate_production_full_suite.py` (writes `postman/suites/production-full/avf-vending-production.full.*`). Legacy output path `postman/production-full-suite/` is gitignored.
 
 ## Reports
 

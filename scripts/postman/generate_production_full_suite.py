@@ -1,5 +1,5 @@
 ﻿#!/usr/bin/env python3
-"""Regenerate postman/production-full-suite from OpenAPI + proto + MQTT contracts."""
+"""Regenerate postman/suites/production-full from OpenAPI + proto + MQTT contracts."""
 from __future__ import annotations
 
 import hashlib
@@ -22,10 +22,10 @@ from gfs_import import REPO_ROOT as GFS_ROOT, gfs  # noqa: E402
 
 assert REPO_ROOT == GFS_ROOT
 
-OUT_DIR = REPO_ROOT / "postman" / "production-full-suite"
+OUT_DIR = REPO_ROOT / "postman" / "suites" / "production-full"
 SWAGGER = REPO_ROOT / "docs" / "swagger" / "swagger.json"
-COLLECTION_NAME = "avf-production-full.postman_collection.json"
-ENV_NAME = "avf-production.postman_environment.json"
+COLLECTION_NAME = "avf-vending-production.full.postman_collection.json"
+ENV_NAME = "avf-vending-production.full.postman_environment.json"
 GUIDE_NAME = "TESTING_GUIDE.md"
 
 DOMAIN_ORDER = [
@@ -863,7 +863,7 @@ def main() -> int:
     }
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    backup = REPO_ROOT / ".tmp-postman-backup" / "production-full-suite-before-regen"
+    backup = REPO_ROOT / ".tmp-postman-backup" / "suites-production-full-before-regen"
     if OUT_DIR.is_dir():
         if backup.exists():
             shutil.rmtree(backup)

@@ -13,7 +13,7 @@ Repository automation grouped by purpose. Production deploy scripts under `deplo
 | [`openapi/`](openapi/) | OpenAPI contract checks and API surface audit helpers |
 | [`e2e/`](e2e/) | Production/canary E2E shell helpers and fixtures |
 | [`governance/`](governance/) | GitHub production protection and E2E automation window toggles |
-| [`repair/`](repair/) | Field repair PowerShell scripts (machine bootstrap metadata, sell readiness) |
+| [`repair/`](repair/) | Field repair PowerShell scripts — see [`repair/README.md`](repair/README.md) |
 | [`lib/`](lib/) | Shared shell/PowerShell helpers (`_pslib.ps1`) |
 
 ## Backwards-compatible root wrappers

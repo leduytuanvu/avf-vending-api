@@ -1,14 +1,9 @@
-# Verification reports (active)
+# Verification reports (active index)
 
-Ongoing protocol and gate verification outputs. **`FINAL_*` and full-system signoff reports** are archived under [`../../archive/verification/`](../../archive/verification/).
+Ongoing protocol verification outputs have moved to the archive. **`FINAL_*` and full-system signoff reports** remain under [`../../archive/verification/`](../../archive/verification/).
+
+**Archived verification reports (2026-07 deep clean):** [`../../archive/reports/verification/`](../../archive/reports/verification/) — REST, gRPC, MQTT, Postman, Cloudinary, E2E, and migration verification snapshots.
 
 Use [`../../testing/`](../../testing/) for active test guides.
-
-| Report | Scope |
-|--------|--------|
-| `REST_*`, `GRPC_*`, `MQTT_*`, `E2E_*` | Protocol verification |
-| `DATABASE_MIGRATION_VERIFICATION.md` | Migration verification |
-| `POSTMAN_*` | Postman collection/environment audits |
-| `LOCAL_INFRA_BLOCKER.md` | Local infra blockers |
 
 **Archive index:** [`../../archive/README.md`](../../archive/README.md)

@@ -12,4 +12,6 @@ Historical repository cleanup audits from earlier passes (2026-05-20 / 2026-05-2
 
 **2026-06 safe cleanup (Phase 1–4):** see [`../../reports/cleanup/2026-06-repo-cleanup-manifest.md`](../../reports/cleanup/2026-06-repo-cleanup-manifest.md).
 
+**2026-07 repo cleanup working docs:** [`2026-07-02/`](2026-07-02/) (baseline, inventory, plan from structural pass).
+
 Canonical operator and architecture docs remain under [`../../README.md`](../../README.md).

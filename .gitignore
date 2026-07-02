@@ -84,6 +84,8 @@ postman/**/newman/
 postman/**/newman-report/
 # Optional expanded inventories under postman/generated/ are not CI drift-gated (regenerate locally)
 postman/generated/
+# Legacy generator output path (canonical tracked suite: postman/suites/production-full/)
+postman/production-full-suite/
 postman/reports/**/*
 !postman/reports/README.md
 postman/**/*-report.html

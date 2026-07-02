@@ -14,7 +14,7 @@ Central map for AVF Vending API documentation. Repository root [`README.md`](../
 
 **2026-06 repo cleanup:** deletions and deferred decisions are recorded in [`reports/cleanup/2026-06-repo-cleanup-manifest.md`](reports/cleanup/2026-06-repo-cleanup-manifest.md).
 
-**2026-07 repo cleanup:** baseline, inventory, plan, and final report under [`reports/cleanup/`](reports/cleanup/) (`2026-07-02-*`).
+**2026-07 repo cleanup:** structural pass summary [`reports/cleanup/2026-07-02-repo-cleanup-final-report.md`](reports/cleanup/2026-07-02-repo-cleanup-final-report.md); deep clean under [`reports/cleanup/`](reports/cleanup/) (`2026-07-02-deep-clean-*`); archived working docs in [`archive/cleanup/2026-07-02/`](archive/cleanup/2026-07-02/).
 
 ## Architecture
 
@@ -97,7 +97,8 @@ Local, E2E, load, and production verification guides — see [testing/README.md]
 - [Active audits](audits/README.md) — enterprise readiness and gap analysis (**canonical** for current readiness)
 - [Documentation archive](archive/README.md) — historical audits, verification FINALs, git-deploy reports (**non-canonical**)
 - [2026-06 cleanup manifest](reports/cleanup/2026-06-repo-cleanup-manifest.md) — Phase 1 deletions and deferred moves
-- [2026-07 cleanup reports](reports/cleanup/2026-07-02-repo-cleanup-baseline.md) — baseline, inventory, plan, final report
+- [2026-07 structural cleanup final report](reports/cleanup/2026-07-02-repo-cleanup-final-report.md)
+- [2026-07 deep clean reports](reports/cleanup/2026-07-02-deep-clean-baseline.md)
 
 ## HTTP API (integration)
 
@@ -126,7 +127,7 @@ Incident and day-2 procedures: **[`runbooks/README.md`](runbooks/README.md)**
 - **Audits (readiness / gap / cleanup):** [`audits/README.md`](audits/README.md)
 - **Generated phase reports:** [`reports/README.md`](reports/README.md)
   - [Production deploy reports](reports/production-deploy/) — failure analysis, recovery, migration evidence
-  - [Verification reports](reports/verification/) — ongoing protocol verification (non-FINAL)
+  - [Verification index](reports/verification/README.md) — archived bodies under [archive/reports/verification/](archive/reports/verification/)
   - [Archived FINAL / git-deploy evidence](archive/README.md) — historical signoff and deploy reports
   - Test coverage reports under `reports/test/` — e.g. MQTT full coverage (generated artifacts)
 

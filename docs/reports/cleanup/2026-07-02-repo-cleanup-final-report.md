@@ -4,7 +4,7 @@
 **Baseline commit:** `c69a5995df3b7fc2298da32504cee56549824213`  
 **Date:** 2026-07-02
 
-Related: [baseline](2026-07-02-repo-cleanup-baseline.md) · [inventory](2026-07-02-repo-cleanup-inventory.md) · [plan](2026-07-02-repo-cleanup-plan.md)
+Related: [baseline](../../archive/cleanup/2026-07-02/2026-07-02-repo-cleanup-baseline.md) · [inventory](../../archive/cleanup/2026-07-02/2026-07-02-repo-cleanup-inventory.md) · [plan](../../archive/cleanup/2026-07-02/2026-07-02-repo-cleanup-plan.md)
 
 ---
 
@@ -20,7 +20,7 @@ This cleanup restored CI-critical Postman paths broken by c69a5995, removed comm
 |------|--------|
 | `_deploy_artifacts/` (7 files) | Local `production-deploy-candidate` snapshot; zero repo references; CI generates dynamically |
 
-Added to [`.gitignore`](../../.gitignore): `_deploy_artifacts/`, `prod-deploy-candidate/`, `production-deploy-candidate/`.
+Added to [`.gitignore`](../../../.gitignore): `_deploy_artifacts/`, `prod-deploy-candidate/`, `production-deploy-candidate/`.
 
 ---
 
@@ -79,7 +79,7 @@ Added to [`.gitignore`](../../.gitignore): `_deploy_artifacts/`, `prod-deploy-ca
 - Transport package splits (`internal/httpserver`, `internal/grpcserver`)
 - All GitHub workflow YAML content
 - Legacy production compose under `deployments/prod/docker-compose.prod.yml`
-- `scripts/postman/generate_production_full_suite.py` OUT_DIR (still `postman/production-full-suite/`, gitignored)
+- `scripts/postman/generate_production_full_suite.py` aligned to `postman/suites/production-full/` (2026-07 deep clean)
 
 ---
 
@@ -138,4 +138,4 @@ git checkout chore/sync-local-main-20260702
 git branch -D cleanup/repo-structure-and-junk-files
 ```
 
-Per-path restore documented in [plan](2026-07-02-repo-cleanup-plan.md).
+Per-path restore documented in [plan](../../archive/cleanup/2026-07-02/2026-07-02-repo-cleanup-plan.md).
