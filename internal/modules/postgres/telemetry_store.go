@@ -202,7 +202,26 @@ ON CONFLICT (machine_id) DO UPDATE SET
 	updated_at = now()
 `
 	_, err = s.pool.Exec(ctx, q, machineID, loc.SiteID, at)
-	return err
+	if err != nil {
+		return err
+	}
+	queries := db.New(s.pool)
+	if sess, err := queries.GetCurrentMachineRuntimeAppSession(ctx, machineID); err == nil {
+		ts := pgtype.Timestamptz{Time: at.UTC(), Valid: true}
+		_ = queries.TouchRuntimeAppSessionMQTT(ctx, db.TouchRuntimeAppSessionMQTTParams{
+			ID:             sess.ID,
+			LastMqttSeenAt: ts,
+			LastMqttState:  "mqtt_heartbeat",
+		})
+		_ = queries.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+			ID:           machineID,
+			OnlineStatus: "online",
+			LastSeenAt:   ts,
+		})
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	return nil
 }
 
 // MergeTelemetryRollupMinute adds samples into the 1-minute rollup bucket.

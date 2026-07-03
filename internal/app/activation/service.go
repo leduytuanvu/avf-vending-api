@@ -14,6 +14,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
@@ -37,11 +38,12 @@ var (
 
 // Service manages kiosk activation codes.
 type Service struct {
-	pool   *pgxpool.Pool
-	issuer *plauth.SessionIssuer
-	pepper []byte
-	audit  compliance.EnterpriseRecorder
-	emqx   *emqxadmin.Client
+	pool     *pgxpool.Pool
+	issuer   *plauth.SessionIssuer
+	pepper   []byte
+	audit    compliance.EnterpriseRecorder
+	emqx     *emqxadmin.Client
+	runtime  *machineruntime.Service
 }
 
 // NewService constructs an activation service.
@@ -58,6 +60,14 @@ func (s *Service) SetEMQXClient(c *emqxadmin.Client) {
 		return
 	}
 	s.emqx = c
+}
+
+// SetMachineRuntime wires device attachment + runtime session lifecycle for reattach flows.
+func (s *Service) SetMachineRuntime(rt *machineruntime.Service) {
+	if s == nil {
+		return
+	}
+	s.runtime = rt
 }
 
 // CreateInput is an admin create request.

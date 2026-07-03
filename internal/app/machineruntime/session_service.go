@@ -1,0 +1,604 @@
+// Package machineruntime manages Android board attachments and app runtime lifecycle sessions.
+package machineruntime
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/netip"
+	"strings"
+	"time"
+
+	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+const (
+	defaultOnlineThreshold  = 60 * time.Second
+	defaultStaleThreshold   = 300 * time.Second
+	defaultOfflineThreshold = 600 * time.Second
+)
+
+// Deps wires database access.
+type Deps struct {
+	Pool              *pgxpool.Pool
+	OnlineThreshold   time.Duration
+	StaleThreshold    time.Duration
+	OfflineThreshold  time.Duration
+	AssignmentChecker TechnicianAssignmentChecker
+}
+
+// TechnicianAssignmentChecker validates technician scope for attach/reattach.
+type TechnicianAssignmentChecker interface {
+	TechnicianActiveAssignmentExists(ctx context.Context, technicianID, machineID uuid.UUID) (bool, error)
+}
+
+// Service coordinates device attachments and runtime app sessions.
+type Service struct {
+	q                *db.Queries
+	pool             *pgxpool.Pool
+	onlineThreshold  time.Duration
+	staleThreshold   time.Duration
+	offlineThreshold time.Duration
+	assignments      TechnicianAssignmentChecker
+}
+
+// NewService constructs the runtime session service.
+func NewService(d Deps) (*Service, error) {
+	if d.Pool == nil {
+		return nil, errors.New("machineruntime: nil pool")
+	}
+	on := d.OnlineThreshold
+	if on <= 0 {
+		on = defaultOnlineThreshold
+	}
+	st := d.StaleThreshold
+	if st <= 0 {
+		st = defaultStaleThreshold
+	}
+	off := d.OfflineThreshold
+	if off <= 0 {
+		off = defaultOfflineThreshold
+	}
+	return &Service{
+		q:                db.New(d.Pool),
+		pool:             d.Pool,
+		onlineThreshold:  on,
+		staleThreshold:   st,
+		offlineThreshold: off,
+		assignments:      d.AssignmentChecker,
+	}, nil
+}
+
+// DeviceIdentity captures Android board / SIM identity at attach time.
+type DeviceIdentity struct {
+	AndroidID       string
+	AndroidSerial   string
+	BoardSerial     string
+	DeviceSerial    string
+	SimSerial       string
+	SimICCID        string
+	SimOperator     string
+	SimCountryISO   string
+	Manufacturer    string
+	Brand           string
+	Model           string
+	DeviceModel     string
+	Hardware        string
+	Product         string
+	AndroidRelease  string
+	SDKInt          *int32
+	PackageName     string
+	VersionName     string
+	VersionCode     *int64
+	AppBuildSHA     string
+	BootID          string
+	NetworkType     string
+	NetworkState    string
+	IPAddress       string
+	UserAgent       string
+	Metadata        json.RawMessage
+}
+
+// AttachInput binds a board to a physical machine.
+type AttachInput struct {
+	MachineID           uuid.UUID
+	Reason              string
+	AttachedByAccountID *uuid.UUID
+	OperatorSessionID   *uuid.UUID
+	CorrelationID       *uuid.UUID
+	Identity            DeviceIdentity
+	RequireOperator     bool
+	TechnicianID        *uuid.UUID
+}
+
+// StartInput opens an app runtime session (machine JWT path).
+type StartInput struct {
+	MachineID           uuid.UUID
+	DeviceAttachmentID  *uuid.UUID
+	MachineSessionID    *uuid.UUID
+	OperatorSessionID   *uuid.UUID
+	BootID              string
+	AppStartID          string
+	AppInstanceID       string
+	PackageName         string
+	AppVersion          string
+	AppBuildSHA         string
+	StartReason         string
+	NetworkState        string
+	MqttState           string
+	StorefrontState     string
+	Metadata            json.RawMessage
+}
+
+// HeartbeatInput updates runtime session liveness.
+type HeartbeatInput struct {
+	SessionID       uuid.UUID
+	MachineID       uuid.UUID
+	NetworkState    string
+	MqttState       string
+	StorefrontState string
+	SellReady       bool
+	Blockers        json.RawMessage
+	HardwareStatus  json.RawMessage
+	CatalogStatus   json.RawMessage
+	OutboxStatus    json.RawMessage
+	RecoveryStatus  json.RawMessage
+}
+
+// EndInput closes a runtime app session.
+type EndInput struct {
+	SessionID uuid.UUID
+	MachineID uuid.UUID
+	EndReason string
+	Status    string
+}
+
+// AttachOrReplaceDevice creates a new active attachment, replacing any prior active board.
+func (s *Service) AttachOrReplaceDevice(ctx context.Context, in AttachInput) (db.MachineDeviceAttachment, error) {
+	if s == nil || s.q == nil {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: nil service")
+	}
+	if in.MachineID == uuid.Nil {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: machine required")
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		reason = "unknown"
+	}
+	if in.RequireOperator && (in.OperatorSessionID == nil || *in.OperatorSessionID == uuid.Nil) {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: operator_session_id required")
+	}
+	if in.TechnicianID != nil && s.assignments != nil {
+		ok, err := s.assignments.TechnicianActiveAssignmentExists(ctx, *in.TechnicianID, in.MachineID)
+		if err != nil {
+			return db.MachineDeviceAttachment{}, err
+		}
+		if !ok {
+			return db.MachineDeviceAttachment{}, errors.New("machineruntime: technician not assigned to machine")
+		}
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.MachineDeviceAttachment{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	row, err := s.attachOrReplaceDeviceTx(ctx, qtx, in)
+	if err != nil {
+		return db.MachineDeviceAttachment{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.MachineDeviceAttachment{}, err
+	}
+	return row, nil
+}
+
+// AttachOrReplaceDeviceInTx attaches within an existing sqlc transaction (e.g. reattach).
+func (s *Service) AttachOrReplaceDeviceInTx(ctx context.Context, qtx *db.Queries, in AttachInput) (db.MachineDeviceAttachment, error) {
+	if s == nil {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: nil service")
+	}
+	return s.attachOrReplaceDeviceTx(ctx, qtx, in)
+}
+
+func (s *Service) attachOrReplaceDeviceTx(ctx context.Context, qtx *db.Queries, in AttachInput) (db.MachineDeviceAttachment, error) {
+	if in.MachineID == uuid.Nil {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: machine required")
+	}
+	reason := strings.TrimSpace(in.Reason)
+	if reason == "" {
+		reason = "unknown"
+	}
+	var prevID pgtype.UUID
+	if cur, err := qtx.GetActiveMachineDeviceAttachment(ctx, in.MachineID); err == nil {
+		prevID = pgtype.UUID{Bytes: cur.ID, Valid: true}
+		if _, err := qtx.MarkMachineDeviceAttachmentReplaced(ctx, cur.ID); err != nil {
+			return db.MachineDeviceAttachment{}, err
+		}
+		_, _ = qtx.CloseCurrentRuntimeAppSessionForMachine(ctx, db.CloseCurrentRuntimeAppSessionForMachineParams{
+			MachineID: in.MachineID,
+			Status:    "REPLACED",
+			EndReason: pgtype.Text{String: "BOARD_REPLACED", Valid: true},
+		})
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return db.MachineDeviceAttachment{}, err
+	}
+
+	meta := in.Identity.Metadata
+	if meta == nil {
+		meta = json.RawMessage("{}")
+	}
+	var ip *netip.Addr
+	if ipStr := strings.TrimSpace(in.Identity.IPAddress); ipStr != "" {
+		if parsed, err := netip.ParseAddr(ipStr); err == nil {
+			ip = &parsed
+		}
+	}
+
+	row, err := qtx.InsertMachineDeviceAttachment(ctx, db.InsertMachineDeviceAttachmentParams{
+		MachineID:            in.MachineID,
+		PreviousAttachmentID: prevID,
+		Status:               "active",
+		Reason:               reason,
+		AttachedByAccountID:  uuidToPg(in.AttachedByAccountID),
+		OperatorSessionID:    uuidToPg(in.OperatorSessionID),
+		CorrelationID:        uuidToPg(in.CorrelationID),
+		AndroidID:            pgText(in.Identity.AndroidID),
+		AndroidSerial:        pgText(in.Identity.AndroidSerial),
+		BoardSerial:          pgText(in.Identity.BoardSerial),
+		DeviceSerial:         pgText(in.Identity.DeviceSerial),
+		SimSerial:            pgText(in.Identity.SimSerial),
+		SimIccid:             pgText(in.Identity.SimICCID),
+		SimOperator:          pgText(in.Identity.SimOperator),
+		SimCountryIso:        pgText(in.Identity.SimCountryISO),
+		Manufacturer:         pgText(in.Identity.Manufacturer),
+		Brand:                pgText(in.Identity.Brand),
+		Model:                pgText(in.Identity.Model),
+		DeviceModel:          pgText(in.Identity.DeviceModel),
+		Hardware:             pgText(in.Identity.Hardware),
+		Product:              pgText(in.Identity.Product),
+		AndroidRelease:       pgText(in.Identity.AndroidRelease),
+		SdkInt:               int32PtrToPg(in.Identity.SDKInt),
+		PackageName:          pgText(in.Identity.PackageName),
+		VersionName:          pgText(in.Identity.VersionName),
+		VersionCode:          int64PtrToPg(in.Identity.VersionCode),
+		AppBuildSha:          pgText(in.Identity.AppBuildSHA),
+		BootID:               pgText(in.Identity.BootID),
+		NetworkType:          pgText(in.Identity.NetworkType),
+		NetworkState:         pgText(in.Identity.NetworkState),
+		IpAddress:            ip,
+		UserAgent:            pgText(in.Identity.UserAgent),
+		Metadata:             meta,
+	})
+	if err != nil {
+		return db.MachineDeviceAttachment{}, err
+	}
+	if err := qtx.UpdateMachineCurrentDeviceAttachment(ctx, db.UpdateMachineCurrentDeviceAttachmentParams{
+		ID:                         in.MachineID,
+		CurrentDeviceAttachmentID: uuidToPg(&row.ID),
+	}); err != nil {
+		return db.MachineDeviceAttachment{}, err
+	}
+	return row, nil
+}
+
+// StartRuntimeAppSession opens or idempotently returns an app runtime session.
+func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db.MachineRuntimeAppSession, error) {
+	if s == nil || s.q == nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
+	}
+	if in.MachineID == uuid.Nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: machine required")
+	}
+	startReason := strings.TrimSpace(in.StartReason)
+	if startReason == "" {
+		startReason = "UNKNOWN"
+	}
+	if existing, err := s.q.GetMachineRuntimeAppSessionByBootAndStart(ctx, db.GetMachineRuntimeAppSessionByBootAndStartParams{
+		MachineID:  in.MachineID,
+		BootID:       in.BootID,
+		AppStartID:   in.AppStartID,
+	}); err == nil {
+		return existing, nil
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return db.MachineRuntimeAppSession{}, err
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+
+	endStatus := "ENDED"
+	endReason := "SUPERSEDED_BY_NEW_SESSION"
+	if startReason == "APP_CRASH_RECOVERY" {
+		endReason = "APP_CRASH_DETECTED"
+		endStatus = "CRASHED"
+	}
+	_, _ = qtx.CloseCurrentRuntimeAppSessionForMachine(ctx, db.CloseCurrentRuntimeAppSessionForMachineParams{
+		MachineID: in.MachineID,
+		Status:    endStatus,
+		EndReason: pgtype.Text{String: endReason, Valid: true},
+	})
+
+	meta := in.Metadata
+	if meta == nil {
+		meta = json.RawMessage("{}")
+	}
+	sf := strings.TrimSpace(in.StorefrontState)
+	if sf == "" {
+		sf = "INITIALIZING"
+	}
+	row, err := qtx.StartMachineRuntimeAppSession(ctx, db.StartMachineRuntimeAppSessionParams{
+		MachineID:           in.MachineID,
+		DeviceAttachmentID: uuidToPg(in.DeviceAttachmentID),
+		MachineSessionID:    uuidToPg(in.MachineSessionID),
+		OperatorSessionID:   uuidToPg(in.OperatorSessionID),
+		PreviousRuntimeSessionID: pgtype.UUID{},
+		BootID:              in.BootID,
+		AppStartID:          in.AppStartID,
+		AppInstanceID:       in.AppInstanceID,
+		PackageName:         in.PackageName,
+		AppVersion:          in.AppVersion,
+		AppBuildSha:         in.AppBuildSHA,
+		StartReason:         startReason,
+		Status:              "ONLINE",
+		LastNetworkState:    in.NetworkState,
+		LastMqttState:       in.MqttState,
+		StorefrontState:     sf,
+		SellReady:           false,
+		Blockers:            json.RawMessage("[]"),
+		HardwareStatus:      json.RawMessage("{}"),
+		CatalogStatus:       json.RawMessage("{}"),
+		OutboxStatus:        json.RawMessage("{}"),
+		RecoveryStatus:      json.RawMessage("{}"),
+		Metadata:            meta,
+	})
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	now := time.Now().UTC()
+	if err := qtx.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
+		ID:                          in.MachineID,
+		CurrentRuntimeAppSessionID: uuidToPg(&row.ID),
+	}); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	if err := qtx.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+		ID:           in.MachineID,
+		OnlineStatus: "online",
+		LastSeenAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	return row, nil
+}
+
+// HeartbeatRuntimeAppSession updates session and machine online projection.
+func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatInput) (db.MachineRuntimeAppSession, error) {
+	if s == nil || s.q == nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
+	}
+	blockers := in.Blockers
+	if blockers == nil {
+		blockers = json.RawMessage("[]")
+	}
+	row, err := s.q.HeartbeatMachineRuntimeAppSession(ctx, db.HeartbeatMachineRuntimeAppSessionParams{
+		ID:              in.SessionID,
+		LastHeartbeatAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+		Status:          "ONLINE",
+		LastNetworkState: in.NetworkState,
+		LastMqttState:   in.MqttState,
+		StorefrontState: in.StorefrontState,
+		SellReady:       in.SellReady,
+		Blockers:          blockers,
+		HardwareStatus:  defaultJSON(in.HardwareStatus),
+		CatalogStatus:   defaultJSON(in.CatalogStatus),
+		OutboxStatus:    defaultJSON(in.OutboxStatus),
+		RecoveryStatus:  defaultJSON(in.RecoveryStatus),
+	})
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	online, _ := s.ComputeMachineOnlineStatus(ctx, in.MachineID)
+	_ = s.q.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+		ID:           in.MachineID,
+		OnlineStatus: online,
+		LastSeenAt:   pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+	})
+	return row, nil
+}
+
+// EndRuntimeAppSession closes an app runtime session.
+func (s *Service) EndRuntimeAppSession(ctx context.Context, in EndInput) (db.MachineRuntimeAppSession, error) {
+	if s == nil || s.q == nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
+	}
+	status := strings.TrimSpace(in.Status)
+	if status == "" {
+		status = "ENDED"
+	}
+	row, err := s.q.EndMachineRuntimeAppSession(ctx, db.EndMachineRuntimeAppSessionParams{
+		ID:        in.SessionID,
+		Status:    status,
+		EndReason: pgtype.Text{String: in.EndReason, Valid: in.EndReason != ""},
+		EndedAt:   pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+	})
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	sess, err := s.q.GetCurrentMachineRuntimeAppSession(ctx, in.MachineID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		_ = s.q.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
+			ID:                          in.MachineID,
+			CurrentRuntimeAppSessionID: pgtype.UUID{},
+		})
+	} else if err == nil && sess.ID == row.ID {
+		_ = s.q.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
+			ID:                          in.MachineID,
+			CurrentRuntimeAppSessionID: pgtype.UUID{},
+		})
+	}
+	return row, nil
+}
+
+// ForceEndRuntimeAppSession admin-closes an app runtime session.
+func (s *Service) ForceEndRuntimeAppSession(ctx context.Context, machineID, sessionID uuid.UUID, reason string) (db.MachineRuntimeAppSession, error) {
+	if strings.TrimSpace(reason) == "" {
+		reason = "ADMIN_FORCE_END"
+	}
+	return s.EndRuntimeAppSession(ctx, EndInput{
+		SessionID: sessionID,
+		MachineID: machineID,
+		EndReason: reason,
+		Status:    "ENDED",
+	})
+}
+
+// MarkRuntimeAppSessionStale flags a session stale without ending it.
+func (s *Service) MarkRuntimeAppSessionStale(ctx context.Context, sessionID uuid.UUID) (db.MachineRuntimeAppSession, error) {
+	if s == nil || s.q == nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
+	}
+	return s.q.MarkMachineRuntimeAppSessionStale(ctx, sessionID)
+}
+
+// GetCurrentRuntimeAppSession returns the open app runtime session for a machine.
+func (s *Service) GetCurrentRuntimeAppSession(ctx context.Context, machineID uuid.UUID) (db.MachineRuntimeAppSession, error) {
+	return s.q.GetCurrentMachineRuntimeAppSession(ctx, machineID)
+}
+
+// ListRuntimeAppSessionHistory lists historical app runtime sessions.
+func (s *Service) ListRuntimeAppSessionHistory(ctx context.Context, machineID uuid.UUID, limit, offset int32) ([]db.MachineRuntimeAppSession, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	return s.q.ListMachineRuntimeAppSessionHistory(ctx, db.ListMachineRuntimeAppSessionHistoryParams{
+		MachineID: machineID,
+		LimitVal:  limit,
+		OffsetVal: offset,
+	})
+}
+
+// GetActiveDeviceAttachment returns the active board attachment.
+func (s *Service) GetActiveDeviceAttachment(ctx context.Context, machineID uuid.UUID) (db.MachineDeviceAttachment, error) {
+	return s.q.GetActiveMachineDeviceAttachment(ctx, machineID)
+}
+
+// ListDeviceAttachments lists attachment history.
+func (s *Service) ListDeviceAttachments(ctx context.Context, machineID uuid.UUID, limit, offset int32) ([]db.MachineDeviceAttachment, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	return s.q.ListMachineDeviceAttachments(ctx, db.ListMachineDeviceAttachmentsParams{
+		MachineID: machineID,
+		LimitVal:  limit,
+		OffsetVal: offset,
+	})
+}
+
+// TouchMQTTSeen records MQTT activity on the current runtime session.
+func (s *Service) TouchMQTTSeen(ctx context.Context, machineID uuid.UUID, mqttState string) error {
+	sess, err := s.q.GetCurrentMachineRuntimeAppSession(ctx, machineID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	if err := s.q.TouchRuntimeAppSessionMQTT(ctx, db.TouchRuntimeAppSessionMQTTParams{
+		ID:              sess.ID,
+		LastMqttSeenAt:  pgtype.Timestamptz{Time: now, Valid: true},
+		LastMqttState:   mqttState,
+	}); err != nil {
+		return err
+	}
+	return s.q.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+		ID:           machineID,
+		OnlineStatus: "online",
+		LastSeenAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	})
+}
+
+// ComputeMachineOnlineStatus derives online/stale/offline from last signals.
+func (s *Service) ComputeMachineOnlineStatus(ctx context.Context, machineID uuid.UUID) (string, error) {
+	sess, err := s.q.GetCurrentMachineRuntimeAppSession(ctx, machineID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "unknown", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	now := time.Now().UTC()
+	last := sess.StartedAt
+	if sess.LastHeartbeatAt.Valid {
+		last = sess.LastHeartbeatAt.Time
+	}
+	if sess.LastMqttSeenAt.Valid && sess.LastMqttSeenAt.Time.After(last) {
+		last = sess.LastMqttSeenAt.Time
+	}
+	if sess.LastCheckInAt.Valid && sess.LastCheckInAt.Time.After(last) {
+		last = sess.LastCheckInAt.Time
+	}
+	age := now.Sub(last)
+	switch {
+	case age <= s.onlineThreshold:
+		return "online", nil
+	case age <= s.staleThreshold:
+		return "stale", nil
+	case age <= s.offlineThreshold:
+		return "offline", nil
+	default:
+		if sess.EndedAt.Valid {
+			return "offline", nil
+		}
+		return "offline", nil
+	}
+}
+
+func uuidToPg(id *uuid.UUID) pgtype.UUID {
+	if id == nil || *id == uuid.Nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: *id, Valid: true}
+}
+
+func pgText(v string) pgtype.Text {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: v, Valid: true}
+}
+
+func int32PtrToPg(v *int32) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *v, Valid: true}
+}
+
+func int64PtrToPg(v *int64) pgtype.Int8 {
+	if v == nil {
+		return pgtype.Int8{}
+	}
+	return pgtype.Int8{Int64: *v, Valid: true}
+}
+
+func defaultJSON(v json.RawMessage) json.RawMessage {
+	if v == nil {
+		return json.RawMessage("{}")
+	}
+	return v
+}

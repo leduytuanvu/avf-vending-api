@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/adminops"
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -30,8 +31,13 @@ func mountAdminMachineEnterpriseRoutes(r chi.Router, app *api.HTTPApplication, c
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermFleetRead, auth.PermTechnicianRead))
+		r.Get("/machines/ops-overview", serveAdminFleetOpsOverview(app))
 		r.Get("/machines/{machineId}/runtime-sessions/current", serveAdminMachineRuntimeSessionCurrent(app))
 		r.Get("/machines/{machineId}/runtime-sessions/history", serveAdminMachineRuntimeSessionHistory(app))
+		r.Get("/machines/{machineId}/app-sessions/current", serveAdminMachineAppSessionCurrent(app))
+		r.Get("/machines/{machineId}/app-sessions/history", serveAdminMachineAppSessionHistory(app))
+		r.Get("/machines/{machineId}/device-attachments/current", serveAdminMachineDeviceAttachmentCurrent(app))
+		r.Get("/machines/{machineId}/device-attachments", serveAdminMachineDeviceAttachmentsList(app))
 		r.Get("/machines/{machineId}/ops-overview", serveAdminMachineOpsOverview(app))
 		r.Get("/machines/{machineId}/timeline/unified", serveAdminMachineUnifiedTimeline(app))
 	})
@@ -39,6 +45,8 @@ func mountAdminMachineEnterpriseRoutes(r chi.Router, app *api.HTTPApplication, c
 		r.Use(auth.RequireFleetMachineLifecycle)
 		r.With(writeRL).Post("/machines/{machineId}/reattach-device", serveAdminMachineReattachDevice(app, cfg))
 		r.With(writeRL).Post("/machines/{machineId}/runtime-sessions/revoke", serveAdminMachineRuntimeSessionRevoke(app))
+		r.With(writeRL).Post("/machines/{machineId}/app-sessions/{sessionId}/force-end", serveAdminMachineAppSessionForceEnd(app))
+		r.With(writeRL).Post("/machines/{machineId}/app-sessions/{sessionId}/mark-stale", serveAdminMachineAppSessionMarkStale(app))
 	})
 }
 
@@ -253,6 +261,190 @@ func serveAdminMachineReattachDevice(app *api.HTTPApplication, cfg *config.Confi
 	}
 }
 
+func serveAdminFleetOpsOverview(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		f := machineruntime.OverviewFilter{
+			OnlineStatus: strings.TrimSpace(r.URL.Query().Get("online_status")),
+			MachineCode:  strings.TrimSpace(r.URL.Query().Get("machine_code")),
+			Lifecycle:    strings.TrimSpace(r.URL.Query().Get("status")),
+			Limit:        int32(limit),
+			Offset:       int32(offset),
+		}
+		if v := strings.TrimSpace(r.URL.Query().Get("site_id")); v != "" {
+			if id, err := uuid.Parse(v); err == nil {
+				f.SiteID = &id
+			}
+		}
+		items, total, err := app.MachineRuntime.ListMachineAdminOperationalOverview(r.Context(), f)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		out := make([]map[string]any, 0, len(items))
+		for _, it := range items {
+			out = append(out, fleetOpsOverviewJSON(it))
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": out, "total": total})
+	}
+}
+
+func serveAdminMachineAppSessionCurrent(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
+		sess, err := app.MachineRuntime.GetCurrentRuntimeAppSession(r.Context(), machineID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusOK, map[string]any{"session": nil})
+			return
+		}
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"session": appRuntimeSessionJSON(sess)})
+	}
+}
+
+func serveAdminMachineAppSessionHistory(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		rows, err := app.MachineRuntime.ListRuntimeAppSessionHistory(r.Context(), machineID, int32(limit), int32(offset))
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		items := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			items = append(items, appRuntimeSessionJSON(row))
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}
+}
+
+func serveAdminMachineDeviceAttachmentCurrent(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
+		att, err := app.MachineRuntime.GetActiveDeviceAttachment(r.Context(), machineID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusOK, map[string]any{"attachment": nil})
+			return
+		}
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"attachment": deviceAttachmentJSON(att)})
+	}
+}
+
+func serveAdminMachineDeviceAttachmentsList(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
+		limit, offset, err := parseAdminLimitOffset(r)
+		if err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		rows, err := app.MachineRuntime.ListDeviceAttachments(r.Context(), machineID, int32(limit), int32(offset))
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		items := make([]map[string]any, 0, len(rows))
+		for _, row := range rows {
+			items = append(items, deviceAttachmentJSON(row))
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}
+}
+
+func serveAdminMachineAppSessionForceEnd(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
+		sessionID, ok := parseChiUUID(w, r, "sessionId")
+		if !ok {
+			return
+		}
+		var body struct {
+			Reason string `json:"reason"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		row, err := app.MachineRuntime.ForceEndRuntimeAppSession(r.Context(), machineID, sessionID, body.Reason)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"session": appRuntimeSessionJSON(row)})
+	}
+}
+
+func serveAdminMachineAppSessionMarkStale(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app.MachineRuntime == nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
+			return
+		}
+		sessionID, ok := parseChiUUID(w, r, "sessionId")
+		if !ok {
+			return
+		}
+		row, err := app.MachineRuntime.MarkRuntimeAppSessionStale(r.Context(), sessionID)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"session": appRuntimeSessionJSON(row)})
+	}
+}
+
 func serveAdminMachineOpsOverview(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if app.AdminOps == nil {
@@ -277,7 +469,13 @@ func serveAdminMachineOpsOverview(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, opsOverviewJSON(overview))
+		out := opsOverviewJSON(overview)
+		if app.MachineRuntime != nil {
+			if enriched, err := app.MachineRuntime.BuildMachineAdminOperationalOverview(r.Context(), machineID); err == nil {
+				mergeOpsOverviewJSON(out, enriched)
+			}
+		}
+		writeJSON(w, http.StatusOK, out)
 	}
 }
 
@@ -439,4 +637,134 @@ func optionalUUIDString(id *uuid.UUID) any {
 		return nil
 	}
 	return id.String()
+}
+
+func appRuntimeSessionJSON(sess db.MachineRuntimeAppSession) map[string]any {
+	out := map[string]any{
+		"session_id":        sess.ID.String(),
+		"machine_id":        sess.MachineID.String(),
+		"status":            sess.Status,
+		"start_reason":      sess.StartReason,
+		"started_at":        sess.StartedAt.UTC().Format(time.RFC3339Nano),
+		"storefront_state":  sess.StorefrontState,
+		"sell_ready":        sess.SellReady,
+		"last_network_state": sess.LastNetworkState,
+		"last_mqtt_state":   sess.LastMqttState,
+	}
+	if sess.LastHeartbeatAt.Valid {
+		out["last_heartbeat_at"] = sess.LastHeartbeatAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if sess.LastMqttSeenAt.Valid {
+		out["last_mqtt_seen_at"] = sess.LastMqttSeenAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if sess.EndedAt.Valid {
+		out["ended_at"] = sess.EndedAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if sess.EndReason.Valid {
+		out["end_reason"] = sess.EndReason.String
+	}
+	return out
+}
+
+func deviceAttachmentJSON(att db.MachineDeviceAttachment) map[string]any {
+	out := map[string]any{
+		"attachment_id": att.ID.String(),
+		"machine_id":    att.MachineID.String(),
+		"status":        att.Status,
+		"reason":        att.Reason,
+		"attached_at":   att.AttachedAt.UTC().Format(time.RFC3339Nano),
+	}
+	if att.DetachedAt.Valid {
+		out["detached_at"] = att.DetachedAt.Time.UTC().Format(time.RFC3339Nano)
+	}
+	if att.AndroidID.Valid {
+		out["android_id"] = att.AndroidID.String
+	}
+	if att.BoardSerial.Valid {
+		out["board_serial"] = att.BoardSerial.String
+	}
+	if att.SimIccid.Valid {
+		out["sim_iccid"] = att.SimIccid.String
+	}
+	return out
+}
+
+func fleetOpsOverviewJSON(o machineruntime.AdminOperationalOverview) map[string]any {
+	out := map[string]any{
+		"machine_id":         o.MachineID.String(),
+		"machine_code":       o.MachineCode,
+		"machine_name":       o.MachineName,
+		"lifecycle_status":   o.LifecycleStatus,
+		"online_status":      o.OnlineStatus,
+		"sale_enabled":       o.SaleEnabled,
+		"credential_version": o.CredentialVersion,
+		"site_id":            o.SiteID.String(),
+		"site_name":          o.SiteName,
+		"final_sell_ready":   o.FinalSellReady,
+	}
+	if o.MachineType != "" {
+		out["machine_type"] = o.MachineType
+	}
+	if o.LastSeenAt != nil {
+		out["last_seen_at"] = o.LastSeenAt.Format(time.RFC3339Nano)
+	}
+	if o.RuntimeAppSession != nil {
+		out["runtime_app_session"] = map[string]any{
+			"session_id":  o.RuntimeAppSession.SessionID.String(),
+			"status":      o.RuntimeAppSession.Status,
+			"sell_ready":  o.RuntimeAppSession.SellReady,
+		}
+	}
+	return out
+}
+
+func mergeOpsOverviewJSON(base map[string]any, enriched machineruntime.AdminOperationalOverview) {
+	base["machine_code"] = enriched.MachineCode
+	base["online_status"] = enriched.OnlineStatus
+	base["sale_enabled"] = enriched.SaleEnabled
+	base["final_sell_ready"] = enriched.FinalSellReady
+	if enriched.MachineType != "" {
+		base["machine_type"] = enriched.MachineType
+	}
+	if enriched.LastSeenAt != nil {
+		base["last_seen_at"] = enriched.LastSeenAt.Format(time.RFC3339Nano)
+	}
+	if len(enriched.Connectivity) > 0 {
+		base["connectivity"] = json.RawMessage(enriched.Connectivity)
+	}
+	if enriched.AndroidBoard != nil {
+		base["android_board"] = map[string]any{
+			"attachment_id": enriched.AndroidBoard.AttachmentID.String(),
+			"android_id":    enriched.AndroidBoard.AndroidID,
+			"board_serial":  enriched.AndroidBoard.BoardSerial,
+		}
+	}
+	if enriched.SIM != nil {
+		base["sim"] = map[string]any{
+			"iccid":    enriched.SIM.ICCID,
+			"operator": enriched.SIM.Operator,
+		}
+	}
+	if enriched.RuntimeAppSession != nil {
+		base["runtime_app_session"] = map[string]any{
+			"session_id":       enriched.RuntimeAppSession.SessionID.String(),
+			"status":           enriched.RuntimeAppSession.Status,
+			"start_reason":     enriched.RuntimeAppSession.StartReason,
+			"storefront_state": enriched.RuntimeAppSession.StorefrontState,
+			"sell_ready":       enriched.RuntimeAppSession.SellReady,
+		}
+	}
+	if enriched.CredentialSession != nil {
+		base["credential_session"] = map[string]any{
+			"session_id":         enriched.CredentialSession.SessionID.String(),
+			"status":             enriched.CredentialSession.Status,
+			"credential_version": enriched.CredentialSession.CredentialVersion,
+		}
+	}
+	if enriched.OperatorSession != nil {
+		base["operator_session"] = map[string]any{
+			"session_id": enriched.OperatorSession.SessionID.String(),
+			"status":     enriched.OperatorSession.Status,
+		}
+	}
 }

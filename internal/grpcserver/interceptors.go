@@ -572,7 +572,11 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCommandService_RejectCommand_FullMethodName,
 		machinev1.MachineCommandService_GetAssignedUpdate_FullMethodName,
 		machinev1.MachineCommandService_ReportUpdateStatus_FullMethodName,
-		machinev1.MachineCommandService_ReportDiagnosticBundleResult_FullMethodName:
+		machinev1.MachineCommandService_ReportDiagnosticBundleResult_FullMethodName,
+		machinev1.MachineRuntimeSessionService_StartRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_HeartbeatRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_EndRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_GetRuntimeSessionState_FullMethodName:
 		return true
 	default:
 		return false

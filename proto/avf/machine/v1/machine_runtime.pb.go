@@ -24,7 +24,7 @@ var File_avf_machine_v1_machine_runtime_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_machine_runtime_proto_rawDesc = "" +
 	"\n" +
-	"$avf/machine/v1/machine_runtime.proto\x12\x0eavf.machine.v1\x1a\x19avf/machine/v1/auth.proto\x1a\x1eavf/machine/v1/bootstrap.proto\x1a\x1cavf/machine/v1/catalog.proto\x1a\x1cavf/machine/v1/command.proto\x1a\x1davf/machine/v1/commerce.proto\x1a\x1eavf/machine/v1/inventory.proto\x1a'avf/machine/v1/machine_activation.proto\x1a\"avf/machine/v1/machine_token.proto\x1a\x1aavf/machine/v1/media.proto\x1a!avf/machine/v1/offline_sync.proto\x1a\"avf/machine/v1/operator_grpc.proto\x1a\x1eavf/machine/v1/telemetry.protoB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
+	"$avf/machine/v1/machine_runtime.proto\x12\x0eavf.machine.v1\x1a\x19avf/machine/v1/auth.proto\x1a\x1eavf/machine/v1/bootstrap.proto\x1a\x1cavf/machine/v1/catalog.proto\x1a\x1cavf/machine/v1/command.proto\x1a\x1davf/machine/v1/commerce.proto\x1a\x1eavf/machine/v1/inventory.proto\x1a'avf/machine/v1/machine_activation.proto\x1a\"avf/machine/v1/machine_token.proto\x1a\x1aavf/machine/v1/media.proto\x1a!avf/machine/v1/offline_sync.proto\x1a\"avf/machine/v1/operator_grpc.proto\x1a$avf/machine/v1/runtime_session.proto\x1a\x1eavf/machine/v1/telemetry.protoB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 
 var file_avf_machine_v1_machine_runtime_proto_goTypes = []any{}
 var file_avf_machine_v1_machine_runtime_proto_depIdxs = []int32{
@@ -51,6 +51,7 @@ func file_avf_machine_v1_machine_runtime_proto_init() {
 	file_avf_machine_v1_media_proto_init()
 	file_avf_machine_v1_offline_sync_proto_init()
 	file_avf_machine_v1_operator_grpc_proto_init()
+	file_avf_machine_v1_runtime_session_proto_init()
 	file_avf_machine_v1_telemetry_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{

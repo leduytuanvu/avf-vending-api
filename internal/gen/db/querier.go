@@ -13,6 +13,7 @@ import (
 )
 
 type Querier interface {
+	AdminCountMachineOperationalOverview(ctx context.Context, arg AdminCountMachineOperationalOverviewParams) (int64, error)
 	AdminCountNonRetiredMachinesForSite(ctx context.Context, siteID uuid.UUID) (int64, error)
 	AdminCountSitesForOrg(ctx context.Context, arg AdminCountSitesForOrgParams) (int64, error)
 	AdminCountTechniciansForOrg(ctx context.Context, arg AdminCountTechniciansForOrgParams) (int64, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	AdminInsertTechnician(ctx context.Context, arg AdminInsertTechnicianParams) (Technician, error)
 	// Admin inventory reconcile marker (append-only ledger row).
 	AdminInventoryInsertReconcileMarker(ctx context.Context, arg AdminInventoryInsertReconcileMarkerParams) (int64, error)
+	AdminListMachineOperationalOverview(ctx context.Context, arg AdminListMachineOperationalOverviewParams) ([]AdminListMachineOperationalOverviewRow, error)
 	// Lists unpublished, non-terminal outbox rows in a created_at window for operator triage (read-only).
 	AdminListOutboxEventsPendingWindow(ctx context.Context, arg AdminListOutboxEventsPendingWindowParams) ([]OutboxEvent, error)
 	AdminListSitesForOrg(ctx context.Context, arg AdminListSitesForOrgParams) ([]Site, error)
@@ -181,6 +183,7 @@ type Querier interface {
 	CatalogWriteUpsertPriceBookItem(ctx context.Context, arg CatalogWriteUpsertPriceBookItemParams) (PriceBookItem, error)
 	CatalogWriteUpsertProductMediaProjection(ctx context.Context, arg CatalogWriteUpsertProductMediaProjectionParams) (ProductMedium, error)
 	CloseCashCollection(ctx context.Context, arg CloseCashCollectionParams) (CashCollection, error)
+	CloseCurrentRuntimeAppSessionForMachine(ctx context.Context, arg CloseCurrentRuntimeAppSessionForMachineParams) ([]MachineRuntimeAppSession, error)
 	CommerceAdminCountOrderTimeline(ctx context.Context, orderID uuid.UUID) (int64, error)
 	CommerceAdminCountOrders(ctx context.Context, arg CommerceAdminCountOrdersParams) (int64, error)
 	CommerceAdminCountPayments(ctx context.Context, arg CommerceAdminCountPaymentsParams) (int64, error)
@@ -200,7 +203,9 @@ type Querier interface {
 	CommerceAdminResolveReconciliationCase(ctx context.Context, arg CommerceAdminResolveReconciliationCaseParams) (CommerceReconciliationCase, error)
 	CommerceAdminUpdateRefundRequestLinkedRefund(ctx context.Context, arg CommerceAdminUpdateRefundRequestLinkedRefundParams) (RefundRequest, error)
 	CommerceIsProductInMachinePublishedAssortment(ctx context.Context, arg CommerceIsProductInMachinePublishedAssortmentParams) (bool, error)
+	CountActiveMachineDeviceAttachments(ctx context.Context, machineID uuid.UUID) (int64, error)
 	CountActiveMachineSessionsForMachine(ctx context.Context, machineID uuid.UUID) (int64, error)
+	CountCurrentMachineRuntimeAppSessions(ctx context.Context, machineID uuid.UUID) (int64, error)
 	CountFinanceDailyCloses(ctx context.Context) (int64, error)
 	CountMachineActivationCodesAll(ctx context.Context) (int64, error)
 	CountMachineCommandAttemptsByCommandID(ctx context.Context, commandID uuid.UUID) (int64, error)
@@ -220,6 +225,7 @@ type Querier interface {
 	DeviceListDiagnosticBundleManifests(ctx context.Context, arg DeviceListDiagnosticBundleManifestsParams) ([]DiagnosticBundleManifest, error)
 	DeviceReportOTAResult(ctx context.Context, arg DeviceReportOTAResultParams) (OtaMachineResult, error)
 	EndMachineOperatorSession(ctx context.Context, arg EndMachineOperatorSessionParams) (MachineOperatorSession, error)
+	EndMachineRuntimeAppSession(ctx context.Context, arg EndMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error)
 	EnterpriseAuditCountEvents(ctx context.Context, arg EnterpriseAuditCountEventsParams) (int64, error)
 	EnterpriseAuditGetEvent(ctx context.Context, id uuid.UUID) (AuditEvent, error)
 	EnterpriseAuditInsertEvent(ctx context.Context, arg EnterpriseAuditInsertEventParams) (AuditEvent, error)
@@ -277,6 +283,7 @@ type Querier interface {
 	FleetAdminUpsertAssortmentItem(ctx context.Context, arg FleetAdminUpsertAssortmentItemParams) (AssortmentItem, error)
 	FleetAdminUpsertMachineCabinet(ctx context.Context, arg FleetAdminUpsertMachineCabinetParams) (MachineCabinet, error)
 	FleetAdminUpsertMachineSlotLayout(ctx context.Context, arg FleetAdminUpsertMachineSlotLayoutParams) (MachineSlotLayout, error)
+	GetActiveMachineDeviceAttachment(ctx context.Context, machineID uuid.UUID) (MachineDeviceAttachment, error)
 	GetActiveMachineSessionForMachine(ctx context.Context, machineID uuid.UUID) (MachineSession, error)
 	GetActiveOperatorSessionByMachineID(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error)
 	GetActiveOperatorSessionByMachineIDForUpdate(ctx context.Context, machineID uuid.UUID) (MachineOperatorSession, error)
@@ -288,6 +295,7 @@ type Querier interface {
 	GetCommandLedgerByMachineIdempotency(ctx context.Context, arg GetCommandLedgerByMachineIdempotencyParams) (CommandLedger, error)
 	GetCommandLedgerByMachineSequence(ctx context.Context, arg GetCommandLedgerByMachineSequenceParams) (CommandLedger, error)
 	GetCriticalTelemetryEventStatus(ctx context.Context, arg GetCriticalTelemetryEventStatusParams) (CriticalTelemetryEventStatus, error)
+	GetCurrentMachineRuntimeAppSession(ctx context.Context, machineID uuid.UUID) (MachineRuntimeAppSession, error)
 	GetCurrentMachineRuntimeSession(ctx context.Context, machineID uuid.UUID) (GetCurrentMachineRuntimeSessionRow, error)
 	GetDeviceCommandReceiptIDByDedupeKey(ctx context.Context, dedupeKey string) (int64, error)
 	GetFinanceDailyCloseByID(ctx context.Context, id uuid.UUID) (FinanceDailyClose, error)
@@ -304,8 +312,11 @@ type Querier interface {
 	GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Machine, error)
 	GetMachineCredentialByMachineAndVersion(ctx context.Context, arg GetMachineCredentialByMachineAndVersionParams) (MachineCredential, error)
 	GetMachineCredentialGate(ctx context.Context, id uuid.UUID) (GetMachineCredentialGateRow, error)
+	GetMachineDeviceAttachmentByID(ctx context.Context, id uuid.UUID) (MachineDeviceAttachment, error)
 	GetMachineMQTTCredentials(ctx context.Context, machineID uuid.UUID) (MachineMqttCredential, error)
 	GetMachineOfflineEventByClientEventID(ctx context.Context, arg GetMachineOfflineEventByClientEventIDParams) (MachineOfflineEvent, error)
+	GetMachineRuntimeAppSessionByBootAndStart(ctx context.Context, arg GetMachineRuntimeAppSessionByBootAndStartParams) (MachineRuntimeAppSession, error)
+	GetMachineRuntimeAppSessionByID(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)
 	GetMachineRuntimeRefreshTokenByHashForUpdate(ctx context.Context, tokenHash []byte) (MachineRuntimeRefreshToken, error)
 	GetMachineSessionByRefreshHashForUpdate(ctx context.Context, refreshTokenHash []byte) (MachineSession, error)
 	GetMachineSessionGate(ctx context.Context, arg GetMachineSessionGateParams) (GetMachineSessionGateRow, error)
@@ -339,6 +350,7 @@ type Querier interface {
 	GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendSessionByOrderAndSlotParams) (GetVendSessionByOrderAndSlotRow, error)
 	HasActiveMachineRuntimeRefreshToken(ctx context.Context, machineID uuid.UUID) (bool, error)
 	HasActiveMachineSession(ctx context.Context, machineID uuid.UUID) (bool, error)
+	HeartbeatMachineRuntimeAppSession(ctx context.Context, arg HeartbeatMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
 	InsertCashCollection(ctx context.Context, arg InsertCashCollectionParams) (CashCollection, error)
 	InsertCashReconciliation(ctx context.Context, arg InsertCashReconciliationParams) (CashReconciliation, error)
@@ -357,10 +369,11 @@ type Querier interface {
 	InsertMachineActivationClaim(ctx context.Context, arg InsertMachineActivationClaimParams) (MachineActivationClaim, error)
 	InsertMachineActivationClaimExtended(ctx context.Context, arg InsertMachineActivationClaimExtendedParams) (MachineActivationClaim, error)
 	InsertMachineActivationCode(ctx context.Context, arg InsertMachineActivationCodeParams) (MachineActivationCode, error)
-	InsertMachineCheckIn(ctx context.Context, arg InsertMachineCheckInParams) (MachineCheckIn, error)
+	InsertMachineCheckIn(ctx context.Context, arg InsertMachineCheckInParams) (InsertMachineCheckInRow, error)
 	InsertMachineCommandAttempt(ctx context.Context, arg InsertMachineCommandAttemptParams) (MachineCommandAttempt, error)
 	InsertMachineConfigApplication(ctx context.Context, arg InsertMachineConfigApplicationParams) (MachineConfig, error)
 	InsertMachineCredential(ctx context.Context, arg InsertMachineCredentialParams) (MachineCredential, error)
+	InsertMachineDeviceAttachment(ctx context.Context, arg InsertMachineDeviceAttachmentParams) (MachineDeviceAttachment, error)
 	InsertMachineOfflineEvent(ctx context.Context, arg InsertMachineOfflineEventParams) (InsertMachineOfflineEventRow, error)
 	InsertMachineOperatorAuthEvent(ctx context.Context, arg InsertMachineOperatorAuthEventParams) (MachineOperatorAuthEvent, error)
 	InsertMachineOperatorSession(ctx context.Context, arg InsertMachineOperatorSessionParams) (MachineOperatorSession, error)
@@ -415,7 +428,9 @@ type Querier interface {
 	ListMachineActivationClaimsForMachine(ctx context.Context, arg ListMachineActivationClaimsForMachineParams) ([]MachineActivationClaim, error)
 	ListMachineActivationCodesForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineActivationCode, error)
 	ListMachineActivationCodesPaged(ctx context.Context, arg ListMachineActivationCodesPagedParams) ([]MachineActivationCode, error)
+	ListMachineDeviceAttachments(ctx context.Context, arg ListMachineDeviceAttachmentsParams) ([]MachineDeviceAttachment, error)
 	ListMachineOperatorAuthEventsByMachineID(ctx context.Context, arg ListMachineOperatorAuthEventsByMachineIDParams) ([]MachineOperatorAuthEvent, error)
+	ListMachineRuntimeAppSessionHistory(ctx context.Context, arg ListMachineRuntimeAppSessionHistoryParams) ([]MachineRuntimeAppSession, error)
 	ListMachineRuntimeSessionHistory(ctx context.Context, arg ListMachineRuntimeSessionHistoryParams) ([]ListMachineRuntimeSessionHistoryRow, error)
 	ListMachinesBySiteAndCompany(ctx context.Context, siteID uuid.UUID) ([]Machine, error)
 	ListMachinesForTechnicianExternalSubject(ctx context.Context, externalSubject pgtype.Text) ([]ListMachinesForTechnicianExternalSubjectRow, error)
@@ -473,9 +488,13 @@ type Querier interface {
 	MarkMachineCredentialUsed(ctx context.Context, id uuid.UUID) error
 	MarkMachineCredentialsCompromised(ctx context.Context, machineID uuid.UUID) error
 	MarkMachineCredentialsRevokedActive(ctx context.Context, machineID uuid.UUID) error
+	MarkMachineDeviceAttachmentReplaced(ctx context.Context, id uuid.UUID) (MachineDeviceAttachment, error)
+	MarkMachineDeviceAttachmentRevoked(ctx context.Context, id uuid.UUID) (MachineDeviceAttachment, error)
 	MarkMachineIdempotencyConflict(ctx context.Context, arg MarkMachineIdempotencyConflictParams) error
 	MarkMachineIdempotencyFailed(ctx context.Context, arg MarkMachineIdempotencyFailedParams) error
 	MarkMachineIdempotencySucceeded(ctx context.Context, arg MarkMachineIdempotencySucceededParams) (MachineIdempotencyKey, error)
+	MarkMachineRuntimeAppSessionCrashed(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)
+	MarkMachineRuntimeAppSessionStale(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)
 	MarkMachineRuntimeRefreshTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkMachineSessionUsedByID(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, id int64) (MarkOutboxEventPublishedRow, error)
@@ -636,6 +655,7 @@ type Querier interface {
 	SettlementReferencedPaymentsTotalForOrg(ctx context.Context, arg SettlementReferencedPaymentsTotalForOrgParams) (SettlementReferencedPaymentsTotalForOrgRow, error)
 	SnapshotUpdateDeviceConfigFieldAck(ctx context.Context, arg SnapshotUpdateDeviceConfigFieldAckParams) error
 	SnapshotUpdateEffectiveDeviceConfig(ctx context.Context, arg SnapshotUpdateEffectiveDeviceConfigParams) error
+	StartMachineRuntimeAppSession(ctx context.Context, arg StartMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error)
 	SumNonFailedRefundAmountForPayment(ctx context.Context, paymentID uuid.UUID) (int64, error)
 	TechnicianActiveAssignmentExists(ctx context.Context, arg TechnicianActiveAssignmentExistsParams) (bool, error)
 	TelemetryRetentionCountCriticalLinkedDeviceEvents(ctx context.Context, receivedAt time.Time) (int64, error)
@@ -663,15 +683,20 @@ type Querier interface {
 	TopologyListSlotLayoutsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineSlotLayout, error)
 	TouchMachineConnectivity(ctx context.Context, id uuid.UUID) error
 	TouchMachineOperatorSessionActivity(ctx context.Context, id uuid.UUID) (MachineOperatorSession, error)
+	TouchRuntimeAppSessionMQTT(ctx context.Context, arg TouchRuntimeAppSessionMQTTParams) error
 	UpdateCommandLedgerMQTTDispatchMeta(ctx context.Context, arg UpdateCommandLedgerMQTTDispatchMetaParams) error
 	UpdateIncidentFromOperator(ctx context.Context, arg UpdateIncidentFromOperatorParams) (Incident, error)
 	UpdateInventoryCountSessionClose(ctx context.Context, arg UpdateInventoryCountSessionCloseParams) (InventoryCountSession, error)
 	UpdateMachineCommandAttemptAfterDeviceReceipt(ctx context.Context, arg UpdateMachineCommandAttemptAfterDeviceReceiptParams) error
 	UpdateMachineCommandAttemptPublishFailed(ctx context.Context, arg UpdateMachineCommandAttemptPublishFailedParams) error
 	UpdateMachineCommandAttemptSent(ctx context.Context, arg UpdateMachineCommandAttemptSentParams) error
+	UpdateMachineCurrentDeviceAttachment(ctx context.Context, arg UpdateMachineCurrentDeviceAttachmentParams) error
+	UpdateMachineCurrentRuntimeAppSession(ctx context.Context, arg UpdateMachineCurrentRuntimeAppSessionParams) error
 	UpdateMachineCurrentSnapshotLastCheckIn(ctx context.Context, arg UpdateMachineCurrentSnapshotLastCheckInParams) error
+	UpdateMachineCurrentSnapshotRuntime(ctx context.Context, arg UpdateMachineCurrentSnapshotRuntimeParams) error
 	UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error)
 	UpdateMachineOfflineEventStatus(ctx context.Context, arg UpdateMachineOfflineEventStatusParams) error
+	UpdateMachineOnlineStatus(ctx context.Context, arg UpdateMachineOnlineStatusParams) error
 	UpdateOrderStatusByOrg(ctx context.Context, arg UpdateOrderStatusByOrgParams) (Order, error)
 	UpdatePaymentProviderSettlementStatusForOrg(ctx context.Context, arg UpdatePaymentProviderSettlementStatusForOrgParams) (PaymentProviderSettlement, error)
 	UpdatePaymentState(ctx context.Context, arg UpdatePaymentStateParams) (Payment, error)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
@@ -129,6 +130,28 @@ func (s *Service) ReattachDevice(ctx context.Context, in ReattachInput, mqttBrok
 	}
 	if _, err := qtx.InsertMachineActivationClaimExtended(ctx, claimParams); err != nil {
 		return ReattachResult{}, err
+	}
+
+	if s.runtime != nil {
+		attachReason := "technician_reattach"
+		if in.AdminReattach {
+			attachReason = "admin_reattach"
+		}
+		idMeta := machineruntime.DeviceIdentityFromFingerprint(fpJSON, in.ClientIP, in.UserAgent, nil)
+		idMeta.BootID = strings.TrimSpace(in.BootID)
+		idMeta.AppBuildSHA = strings.TrimSpace(in.AppVersion)
+		_, err := s.runtime.AttachOrReplaceDeviceInTx(ctx, qtx, machineruntime.AttachInput{
+			MachineID:           in.MachineID,
+			Reason:              attachReason,
+			AttachedByAccountID: in.ActivatedByAccountID,
+			OperatorSessionID:   in.OperatorSessionID,
+			CorrelationID:       in.CorrelationID,
+			Identity:            idMeta,
+			RequireOperator:     !in.AdminReattach,
+		})
+		if err != nil {
+			return ReattachResult{}, err
+		}
 	}
 
 	if s.audit != nil {
