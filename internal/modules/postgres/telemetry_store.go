@@ -202,7 +202,56 @@ ON CONFLICT (machine_id) DO UPDATE SET
 	updated_at = now()
 `
 	_, err = s.pool.Exec(ctx, q, machineID, loc.SiteID, at)
-	return err
+	if err != nil {
+		return err
+	}
+	queries := db.New(s.pool)
+	if sess, err := queries.GetCurrentMachineRuntimeAppSession(ctx, machineID); err == nil {
+		ts := pgtype.Timestamptz{Time: at.UTC(), Valid: true}
+		_ = queries.TouchRuntimeAppSessionMQTT(ctx, db.TouchRuntimeAppSessionMQTTParams{
+			ID:             sess.ID,
+			LastMqttSeenAt: ts,
+			LastMqttState:  "mqtt_heartbeat",
+		})
+		_ = queries.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+			ID:           machineID,
+			OnlineStatus: "online",
+			LastSeenAt:   ts,
+		})
+		blockers := sess.Blockers
+		if blockers == nil {
+			blockers = []byte("[]")
+		}
+		var attachID, sessID pgtype.UUID
+		if sess.DeviceAttachmentID.Valid {
+			attachID = sess.DeviceAttachmentID
+		}
+		if !sess.EndedAt.Valid {
+			sessID = pgtype.UUID{Bytes: sess.ID, Valid: true}
+		}
+		var started, heartbeat pgtype.Timestamptz
+		started = pgtype.Timestamptz{Time: sess.StartedAt.UTC(), Valid: true}
+		if sess.LastHeartbeatAt.Valid {
+			heartbeat = sess.LastHeartbeatAt
+		}
+		_ = queries.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
+			MachineID:                  machineID,
+			CurrentDeviceAttachmentID:  attachID,
+			CurrentRuntimeAppSessionID: sessID,
+			OnlineStatus:               "online",
+			RuntimeSessionStatus:       sess.Status,
+			RuntimeStartReason:         sess.StartReason,
+			RuntimeStartedAt:           started,
+			RuntimeLastHeartbeatAt:     heartbeat,
+			LastMqttState:              "mqtt_heartbeat",
+			StorefrontState:            sess.StorefrontState,
+			SellReady:                  sess.SellReady,
+			Blockers:                   blockers,
+		})
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return err
+	}
+	return nil
 }
 
 // MergeTelemetryRollupMinute adds samples into the 1-minute rollup bucket.

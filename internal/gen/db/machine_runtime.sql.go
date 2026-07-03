@@ -105,7 +105,27 @@ type InsertMachineCheckInParams struct {
 	ID             uuid.UUID
 }
 
-func (q *Queries) InsertMachineCheckIn(ctx context.Context, arg InsertMachineCheckInParams) (MachineCheckIn, error) {
+type InsertMachineCheckInRow struct {
+	ID             int64
+	MachineID      uuid.UUID
+	AndroidID      pgtype.Text
+	SimSerial      pgtype.Text
+	PackageName    string
+	VersionName    string
+	VersionCode    int64
+	AndroidRelease string
+	SdkInt         int32
+	Manufacturer   string
+	Model          string
+	Timezone       string
+	NetworkState   string
+	BootID         string
+	OccurredAt     time.Time
+	RecordedAt     time.Time
+	Metadata       []byte
+}
+
+func (q *Queries) InsertMachineCheckIn(ctx context.Context, arg InsertMachineCheckInParams) (InsertMachineCheckInRow, error) {
 	row := q.db.QueryRow(ctx, InsertMachineCheckIn,
 		arg.AndroidID,
 		arg.SimSerial,
@@ -123,7 +143,7 @@ func (q *Queries) InsertMachineCheckIn(ctx context.Context, arg InsertMachineChe
 		arg.Metadata,
 		arg.ID,
 	)
-	var i MachineCheckIn
+	var i InsertMachineCheckInRow
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,

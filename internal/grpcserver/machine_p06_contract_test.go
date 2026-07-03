@@ -19,6 +19,10 @@ func TestP06MachineMethodsRequireMachineJWT(t *testing.T) {
 		machinev1.MachineTelemetryService_SubmitTelemetryBatch_FullMethodName,
 		machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName,
 		machinev1.MachineTelemetryService_GetEventStatus_FullMethodName,
+		machinev1.MachineRuntimeSessionService_StartRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_HeartbeatRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_EndRuntimeSession_FullMethodName,
+		machinev1.MachineRuntimeSessionService_GetRuntimeSessionState_FullMethodName,
 	}
 	for _, method := range methods {
 		method := method

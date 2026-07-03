@@ -678,7 +678,7 @@ func (q *Queries) BumpMachineCredentialVersion(ctx context.Context, id uuid.UUID
 }
 
 const GetMachineByID = `-- name: GetMachineByID :one
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 FROM machines
 WHERE id = $1
 `
@@ -709,12 +709,17 @@ func (q *Queries) GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, er
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublishedPlanogramVersionID,
+		&i.CurrentDeviceAttachmentID,
+		&i.CurrentRuntimeAppSessionID,
+		&i.OnlineStatus,
+		&i.SaleEnabled,
+		&i.MachineType,
 	)
 	return i, err
 }
 
 const GetMachineByIDForUpdate = `-- name: GetMachineByIDForUpdate :one
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 FROM machines
 WHERE id = $1
 FOR UPDATE
@@ -746,6 +751,11 @@ func (q *Queries) GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Ma
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublishedPlanogramVersionID,
+		&i.CurrentDeviceAttachmentID,
+		&i.CurrentRuntimeAppSessionID,
+		&i.OnlineStatus,
+		&i.SaleEnabled,
+		&i.MachineType,
 	)
 	return i, err
 }
@@ -851,7 +861,7 @@ INSERT INTO machines (
     $8,
     $9
 )
-RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 `
 
 type InsertMachineParams struct {
@@ -902,6 +912,11 @@ func (q *Queries) InsertMachine(ctx context.Context, arg InsertMachineParams) (M
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublishedPlanogramVersionID,
+		&i.CurrentDeviceAttachmentID,
+		&i.CurrentRuntimeAppSessionID,
+		&i.OnlineStatus,
+		&i.SaleEnabled,
+		&i.MachineType,
 	)
 	return i, err
 }
@@ -960,7 +975,7 @@ func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg Ins
 }
 
 const ListMachinesBySiteAndCompany = `-- name: ListMachinesBySiteAndCompany :many
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 FROM machines
 WHERE
     site_id = $1
@@ -1001,6 +1016,11 @@ func (q *Queries) ListMachinesBySiteAndCompany(ctx context.Context, siteID uuid.
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PublishedPlanogramVersionID,
+			&i.CurrentDeviceAttachmentID,
+			&i.CurrentRuntimeAppSessionID,
+			&i.OnlineStatus,
+			&i.SaleEnabled,
+			&i.MachineType,
 		); err != nil {
 			return nil, err
 		}
@@ -1175,7 +1195,7 @@ func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID 
 }
 
 const ListMachinesOrderedByName = `-- name: ListMachinesOrderedByName :many
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 FROM machines
 ORDER BY
     name ASC
@@ -1213,6 +1233,11 @@ func (q *Queries) ListMachinesOrderedByName(ctx context.Context) ([]Machine, err
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PublishedPlanogramVersionID,
+			&i.CurrentDeviceAttachmentID,
+			&i.CurrentRuntimeAppSessionID,
+			&i.OnlineStatus,
+			&i.SaleEnabled,
+			&i.MachineType,
 		); err != nil {
 			return nil, err
 		}
@@ -1222,6 +1247,20 @@ func (q *Queries) ListMachinesOrderedByName(ctx context.Context) ([]Machine, err
 		return nil, err
 	}
 	return items, nil
+}
+
+const LockMachineForUpdate = `-- name: LockMachineForUpdate :one
+SELECT id
+FROM machines
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, LockMachineForUpdate, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const MarkMachineCredentialUsed = `-- name: MarkMachineCredentialUsed :exec
@@ -1297,12 +1336,16 @@ SET
     model = $7,
     cabinet_type = $8,
     timezone_override = $9,
+    sale_enabled = CASE
+        WHEN $11::boolean IS TRUE THEN $12::boolean
+        ELSE sale_enabled
+    END,
     activated_at = CASE WHEN $2 = 'active' AND activated_at IS NULL THEN now() ELSE activated_at END,
     updated_at = now()
 WHERE
     id = $10
     AND TRUE
-RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id
+RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 `
 
 type UpdateMachineMetadataRowParams struct {
@@ -1316,6 +1359,8 @@ type UpdateMachineMetadataRowParams struct {
 	CabinetType       string
 	TimezoneOverride  pgtype.Text
 	ID                uuid.UUID
+	SetSaleEnabled    pgtype.Bool
+	SaleEnabled       pgtype.Bool
 }
 
 func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error) {
@@ -1330,6 +1375,8 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		arg.CabinetType,
 		arg.TimezoneOverride,
 		arg.ID,
+		arg.SetSaleEnabled,
+		arg.SaleEnabled,
 	)
 	var i Machine
 	err := row.Scan(
@@ -1355,6 +1402,11 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PublishedPlanogramVersionID,
+		&i.CurrentDeviceAttachmentID,
+		&i.CurrentRuntimeAppSessionID,
+		&i.OnlineStatus,
+		&i.SaleEnabled,
+		&i.MachineType,
 	)
 	return i, err
 }

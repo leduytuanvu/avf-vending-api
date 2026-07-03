@@ -149,6 +149,10 @@ def bootstrap(base_url: str) -> EntityRegistry:
         "address": {"line1": f"{prefix} address"},
     }
     st, site = admin_post(base_url, token, "/v1/admin/sites", site_payload)
+    if st == 409:
+        site_payload["code"] = f"{code_suffix[:14]}-{uuid.uuid4().hex[:6]}"[:24]
+        site_payload["name"] = f"{prefix} Site {uuid.uuid4().hex[:6]}"
+        st, site = admin_post(base_url, token, "/v1/admin/sites", site_payload)
     if st not in (200, 201) or not site.get("id"):
         raise RuntimeError(f"site create failed {st}: {site}")
     reg.set("siteId", site["id"], entity_type="site")
@@ -173,6 +177,10 @@ def bootstrap(base_url: str) -> EntityRegistry:
         "cabinetType": "ambient",
     }
     st, machine = admin_post(base_url, token, "/v1/admin/machines", machine_payload)
+    if st == 409:
+        machine_payload["code"] = f"{code_suffix[:12]}-m-{uuid.uuid4().hex[:6]}"[:24]
+        machine_payload["serialNumber"] = f"{prefix}-SN-{uuid.uuid4().hex[:6]}"
+        st, machine = admin_post(base_url, token, "/v1/admin/machines", machine_payload)
     if st not in (200, 201) or not machine.get("id"):
         raise RuntimeError(f"machine create failed {st}: {machine}")
     reg.set("machineId", machine["id"], entity_type="machine")

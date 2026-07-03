@@ -14,9 +14,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import http_request, new_request_id, report_dir, write_json
+from _common import REPO, http_request, new_request_id, report_dir, write_json
 from bootstrap_test_data import bootstrap, claim_activation
 from entity_registry import EntityRegistry
+from run_grpc_full_production import grpc_call
+from run_mqtt_full_production import mqtt_connect
 
 ROOT = Path(__file__).resolve().parents[2]
 UNBLOCK_DIR = ROOT / "reports" / "production-mqtt-unblock" / "20260702T210742Z"
@@ -48,6 +50,8 @@ def main() -> int:
         os.environ.get("PRODUCTION_FULL_TEST_UTC", datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")),
     )
     os.environ.setdefault("PRODUCTION_FULL_TEST_STRICT", "1")
+    # Isolated prefix so E2E bootstrap does not collide with multi-pass suffixes (p1/p2/p3).
+    os.environ["PROD_TEST_SUFFIX"] = f"e2e-{uuid.uuid4().hex[:8]}"
 
     out = report_dir()
     unblock = UNBLOCK_DIR
@@ -80,26 +84,30 @@ def main() -> int:
         )
     )
 
-    # C — gRPC bootstrap metadata (no password leak)
+    # C — gRPC GetBootstrap mqtt metadata (no password leak; REST bootstrap disabled in prod)
     token = subst.get("machineToken", "")
     c_ok = False
     c_detail = "no machine token"
     if token:
-        body = json.dumps({"meta": {"requestId": new_request_id()}}).encode()
-        st, raw, _ = http_request(
-            "POST",
-            f"{args.base_url.rstrip('/')}/v1/setup/machines/{machine_id}/bootstrap",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            body=body,
+        reg.save()
+        grpc_host = os.environ.get("GRPC_HOST", "machine-api.ldtv.dev:443")
+        body = json.dumps({"meta": {"machineId": machine_id, "requestId": new_request_id()}})
+        ok, grpc_out = grpc_call(
+            grpc_host,
+            "avf.machine.v1.MachineBootstrapService/GetBootstrap",
+            token,
+            body,
+            REPO / "proto",
         )
-        if st == 200:
-            data = json.loads(raw)
-            mqtt = data.get("mqtt") or {}
-            leaked = any(k in json.dumps(data) for k in ("mqttPassword", "mqtt_password", "password"))
-            c_ok = bool(mqtt.get("brokerUrl") or mqtt.get("broker_url")) and not leaked
-            c_detail = "bootstrap mqtt metadata without password leak" if c_ok else f"bootstrap issue leaked={leaked}"
-        else:
-            c_detail = f"bootstrap HTTP {st}"
+        out_lower = grpc_out.lower()
+        leaked = "mqttpassword" in out_lower or "mqtt_password" in out_lower
+        has_mqtt = "brokerurl" in out_lower or "broker_url" in out_lower
+        c_ok = ok and has_mqtt and not leaked
+        c_detail = (
+            "gRPC GetBootstrap mqtt metadata without password leak"
+            if c_ok
+            else f"gRPC bootstrap issue ok={ok} leaked={leaked} out={grpc_out[:240]}"
+        )
     flows.append(flow_result("C", "gRPC/REST bootstrap mqtt metadata", c_ok, c_detail))
 
     # D — Full MQTT matrix + ACL negatives
@@ -123,13 +131,13 @@ def main() -> int:
     f_detail = "skipped"
     admin_token = subst.get("adminAccessToken", "")
     if admin_token and machine_id:
-        st, _ = http_request(
+        st, _, _ = http_request(
             "PATCH",
             f"{args.base_url.rstrip('/')}/v1/admin/machines/{machine_id}",
             headers={"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"},
             body=json.dumps({"status": "suspended"}).encode(),
         )
-        st2, _ = http_request(
+        st2, _, _ = http_request(
             "PATCH",
             f"{args.base_url.rstrip('/')}/v1/admin/machines/{machine_id}",
             headers={"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"},
@@ -173,25 +181,7 @@ def main() -> int:
             g_detail = f"reattach HTTP {st}: {raw[:300]}"
     flows.append(flow_result("G", "Reattach mqtt rotation", g_ok, g_detail, blocked_by="" if g_ok else "REATTACH_MQTT"))
 
-    # H — Compromised/revoke MQTT auth fails (mark compromised then expect MQTT fail)
-    h_ok = False
-    h_detail = "skipped"
-    if admin_token and machine_id:
-        st, _ = http_request(
-            "POST",
-            f"{args.base_url.rstrip('/')}/v1/admin/machines/{machine_id}/mark-compromised",
-            headers={"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"},
-            body=json.dumps({"reason": "e2e mqtt revoke test"}).encode(),
-        )
-        if st in (200, 204):
-            rc = subprocess.call([sys.executable, str(Path(__file__).parent / "run_mqtt_full_production.py")], cwd=ROOT)
-            h_ok = rc != 0
-            h_detail = "mqtt auth failed after compromised" if h_ok else "mqtt still connected after compromised"
-        else:
-            h_detail = f"mark-compromised HTTP {st}"
-    flows.append(flow_result("H", "Compromised revokes MQTT", h_ok, h_detail, blocked_by="" if h_ok else "LIFECYCLE_MQTT_REVOKE"))
-
-    # I — Offline replay idempotency (claim replay with same fingerprint)
+    # I — Offline replay idempotency (before mark-compromised poisons eligibility)
     i_ok = False
     i_detail = "skipped"
     activation_code = subst.get("activationCode", "")
@@ -203,6 +193,42 @@ def main() -> int:
         except Exception as exc:
             i_detail = str(exc)
     flows.append(flow_result("I", "Offline replay idempotency", i_ok, i_detail))
+
+    # H — Compromised/revoke MQTT auth fails (mark compromised then expect MQTT fail)
+    h_ok = False
+    h_detail = "skipped"
+    if admin_token and machine_id:
+        st, _, _ = http_request(
+            "POST",
+            f"{args.base_url.rstrip('/')}/v1/admin/machines/{machine_id}/mark-compromised",
+            headers={"Authorization": f"Bearer {admin_token}", "Content-Type": "application/json"},
+            body=json.dumps({"reason": "e2e mqtt revoke test"}).encode(),
+        )
+        if st in (200, 204):
+            username = subst.get("mqttUsername") or machine_id
+            password = subst.get("mqttPassword", "")
+            client, err = mqtt_connect(
+                os.environ.get("MQTT_HOST", "mqtt.ldtv.dev"),
+                int(os.environ.get("MQTT_PORT", "8883")),
+                username,
+                password,
+                f"avf-compromised-{machine_id[:8]}",
+                timeout=10.0,
+            )
+            if client is not None:
+                try:
+                    client.loop_stop()
+                    client.disconnect()
+                except Exception:
+                    pass
+                h_ok = False
+                h_detail = "mqtt still connected after compromised"
+            else:
+                h_ok = bool(err)
+                h_detail = f"mqtt auth failed after compromised: {err}"
+        else:
+            h_detail = f"mark-compromised HTTP {st}"
+    flows.append(flow_result("H", "Compromised revokes MQTT", h_ok, h_detail, blocked_by="" if h_ok else "LIFECYCLE_MQTT_REVOKE"))
 
     payload = {"flows": flows, "prefix": reg.data.get("prefix"), "machine_id": machine_id}
     write_json(unblock / "E2E_FLOW_RESULTS.json", payload)

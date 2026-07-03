@@ -229,6 +229,8 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		ExternalProductImages:                      cfg.ExternalProductImages,
 		MediaUpload:                                cfg.MediaUpload,
 		CloudinaryUploader:                         cloudinaryUploader,
+		MachineOnlineThreshold:                     cfg.MachineOnlineThreshold,
+		MachineStaleThreshold:                      cfg.MachineStaleThreshold,
 	})
 	if rt.Deps.PaymentProviders != nil {
 		httpApp.ListPaymentProviders = func() []api.PaymentProviderRegistryInfo {
@@ -289,6 +291,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	grpcSrv, err := grpcserver.NewServer(cfg, log, rt.Redis(), accessRevocation, rt, replayLedger, machineTokenChecker, machineCertChecker,
 		grpcserver.RegisterMachineGRPCServices(grpcserver.MachineGRPCServicesDeps{
 			Activation:      httpApp.Activation,
+			MachineRuntime:  httpApp.MachineRuntime,
 			MachineQueries:  machineQueries,
 			FeatureFlags:    httpApp.FeatureFlags,
 			SaleCatalog:     saleCatalog,

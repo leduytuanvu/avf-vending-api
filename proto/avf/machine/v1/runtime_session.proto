@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+import "avf/machine/v1/common.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// MachineRuntimeSessionService manages true app runtime lifecycle sessions (distinct from credential JWT sessions).
+service MachineRuntimeSessionService {
+  rpc StartRuntimeSession(StartRuntimeSessionRequest) returns (StartRuntimeSessionResponse);
+  rpc HeartbeatRuntimeSession(HeartbeatRuntimeSessionRequest) returns (HeartbeatRuntimeSessionResponse);
+  rpc EndRuntimeSession(EndRuntimeSessionRequest) returns (EndRuntimeSessionResponse);
+  rpc GetRuntimeSessionState(GetRuntimeSessionStateRequest) returns (GetRuntimeSessionStateResponse);
+}
+
+message RuntimeBlocker {
+  string code = 1;
+  string severity = 2;
+  string message = 3;
+}
+
+message RuntimeSessionIdentity {
+  string boot_id = 1;
+  string app_start_id = 2;
+  string app_instance_id = 3;
+  string package_name = 4;
+  string app_version = 5;
+  string app_build_sha = 6;
+  optional string device_attachment_id = 7;
+  optional string machine_session_id = 8;
+  optional string operator_session_id = 9;
+  string android_id = 10;
+  string android_serial = 11;
+  string board_serial = 12;
+  string sim_iccid = 13;
+  string sim_operator = 14;
+}
+
+message RuntimeSessionStatus {
+  string session_id = 1;
+  string machine_id = 2;
+  string status = 3;
+  string start_reason = 4;
+  optional string end_reason = 5;
+  google.protobuf.Timestamp started_at = 6;
+  optional google.protobuf.Timestamp last_heartbeat_at = 7;
+  optional google.protobuf.Timestamp last_mqtt_seen_at = 8;
+  string last_network_state = 9;
+  string last_mqtt_state = 10;
+  string storefront_state = 11;
+  bool sell_ready = 12;
+  string online_status = 13;
+  optional google.protobuf.Timestamp ended_at = 14;
+  string boot_id = 15;
+  string app_start_id = 16;
+  optional string previous_runtime_session_id = 17;
+  repeated RuntimeBlocker blockers = 18;
+  google.protobuf.Struct hardware_status = 19;
+  google.protobuf.Struct catalog_status = 20;
+  google.protobuf.Struct outbox_status = 21;
+  google.protobuf.Struct recovery_status = 22;
+}
+
+message StartRuntimeSessionRequest {
+  MachineRequestMeta meta = 1;
+  RuntimeSessionIdentity identity = 2;
+  string start_reason = 3;
+  string network_state = 4;
+  string mqtt_state = 5;
+  string storefront_state = 6;
+}
+
+message StartRuntimeSessionResponse {
+  MachineResponseMeta meta = 1;
+  RuntimeSessionStatus session = 2;
+}
+
+message HeartbeatRuntimeSessionRequest {
+  MachineRequestMeta meta = 1;
+  string session_id = 2;
+  string network_state = 3;
+  string mqtt_state = 4;
+  string storefront_state = 5;
+  bool sell_ready = 6;
+  repeated RuntimeBlocker blockers = 7;
+  google.protobuf.Struct hardware_status = 8;
+  google.protobuf.Struct catalog_status = 9;
+  google.protobuf.Struct outbox_status = 10;
+  google.protobuf.Struct recovery_status = 11;
+}
+
+message HeartbeatRuntimeSessionResponse {
+  MachineResponseMeta meta = 1;
+  RuntimeSessionStatus session = 2;
+}
+
+message EndRuntimeSessionRequest {
+  MachineRequestMeta meta = 1;
+  string session_id = 2;
+  string end_reason = 3;
+  string status = 4;
+}
+
+message EndRuntimeSessionResponse {
+  MachineResponseMeta meta = 1;
+  RuntimeSessionStatus session = 2;
+}
+
+message GetRuntimeSessionStateRequest {
+  MachineRequestMeta meta = 1;
+}
+
+message GetRuntimeSessionStateResponse {
+  MachineResponseMeta meta = 1;
+  RuntimeSessionStatus session = 2;
+}

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
@@ -35,10 +36,12 @@ type ClaimContext struct {
 
 // ReattachInput is an admin/technician device reattach after reinstall.
 type ReattachInput struct {
-	MachineID         uuid.UUID
-	DeviceFingerprint DeviceFingerprint
+	MachineID            uuid.UUID
+	DeviceFingerprint    DeviceFingerprint
+	RawDeviceFingerprint json.RawMessage
 	ClaimContext
 	AdminReattach bool
+	TechnicianID  *uuid.UUID
 	ClientIP      string
 	UserAgent     string
 }
@@ -57,9 +60,13 @@ func (s *Service) ReattachDevice(ctx context.Context, in ReattachInput, mqttBrok
 	if in.MachineID == uuid.Nil {
 		return ReattachResult{}, fmt.Errorf("activation: machine required")
 	}
-	fpJSON, err := json.Marshal(in.DeviceFingerprint)
-	if err != nil {
-		return ReattachResult{}, err
+	fpJSON := in.RawDeviceFingerprint
+	if len(fpJSON) == 0 {
+		var err error
+		fpJSON, err = json.Marshal(in.DeviceFingerprint)
+		if err != nil {
+			return ReattachResult{}, err
+		}
 	}
 	fpHash := sha256.Sum256(fpJSON)
 	st := strings.TrimSpace(in.ActivationSource)
@@ -129,6 +136,31 @@ func (s *Service) ReattachDevice(ctx context.Context, in ReattachInput, mqttBrok
 	}
 	if _, err := qtx.InsertMachineActivationClaimExtended(ctx, claimParams); err != nil {
 		return ReattachResult{}, err
+	}
+
+	if s.runtime != nil {
+		attachReason := "technician_reattach"
+		if in.AdminReattach {
+			attachReason = "admin_reattach"
+		}
+		idMeta := machineruntime.DeviceIdentityFromFingerprint(fpJSON, in.ClientIP, in.UserAgent, nil)
+		idMeta.BootID = strings.TrimSpace(in.BootID)
+		if idMeta.AppBuildSHA == "" {
+			idMeta.AppBuildSHA = strings.TrimSpace(in.AppVersion)
+		}
+		_, err := s.runtime.AttachOrReplaceDeviceInTx(ctx, qtx, machineruntime.AttachInput{
+			MachineID:           in.MachineID,
+			Reason:              attachReason,
+			AttachedByAccountID: in.ActivatedByAccountID,
+			OperatorSessionID:   in.OperatorSessionID,
+			CorrelationID:       in.CorrelationID,
+			Identity:            idMeta,
+			RequireOperator:     !in.AdminReattach,
+			TechnicianID:        in.TechnicianID,
+		})
+		if err != nil {
+			return ReattachResult{}, err
+		}
 	}
 
 	if s.audit != nil {

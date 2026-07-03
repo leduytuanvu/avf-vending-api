@@ -5,6 +5,7 @@
 package db
 
 import (
+	"net/netip"
 	"time"
 
 	"github.com/google/uuid"
@@ -515,6 +516,11 @@ type Machine struct {
 	CreatedAt                   time.Time
 	UpdatedAt                   time.Time
 	PublishedPlanogramVersionID pgtype.UUID
+	CurrentDeviceAttachmentID   pgtype.UUID
+	CurrentRuntimeAppSessionID  pgtype.UUID
+	OnlineStatus                string
+	SaleEnabled                 bool
+	MachineType                 pgtype.Text
 }
 
 // Links domain actions to operator_session_id when known; resource_type/resource_id are polymorphic (e.g. command_ledger uuid as text).
@@ -595,23 +601,27 @@ type MachineCabinet struct {
 
 // Append-only Android device boot/runtime check-ins; occurred_at is client business time with timezone.
 type MachineCheckIn struct {
-	ID             int64
-	MachineID      uuid.UUID
-	AndroidID      pgtype.Text
-	SimSerial      pgtype.Text
-	PackageName    string
-	VersionName    string
-	VersionCode    int64
-	AndroidRelease string
-	SdkInt         int32
-	Manufacturer   string
-	Model          string
-	Timezone       string
-	NetworkState   string
-	BootID         string
-	OccurredAt     time.Time
-	RecordedAt     time.Time
-	Metadata       []byte
+	ID                  int64
+	MachineID           uuid.UUID
+	AndroidID           pgtype.Text
+	SimSerial           pgtype.Text
+	PackageName         string
+	VersionName         string
+	VersionCode         int64
+	AndroidRelease      string
+	SdkInt              int32
+	Manufacturer        string
+	Model               string
+	Timezone            string
+	NetworkState        string
+	BootID              string
+	OccurredAt          time.Time
+	RecordedAt          time.Time
+	Metadata            []byte
+	SimIccid            pgtype.Text
+	AppBuildSha         pgtype.Text
+	RuntimeAppSessionID pgtype.UUID
+	DeviceAttachmentID  pgtype.UUID
 }
 
 // Per-send attempt for a command_ledger row; machine_id denormalized for index locality—must match parent command row (enforced in application).
@@ -710,6 +720,58 @@ type MachineCurrentSnapshot struct {
 	LastAcknowledgedPlanogramVersionID pgtype.UUID
 	EffectiveDeviceConfig              []byte
 	DeviceConfigFieldAck               []byte
+	CurrentDeviceAttachmentID          pgtype.UUID
+	CurrentRuntimeAppSessionID         pgtype.UUID
+	OnlineStatus                       string
+	RuntimeSessionStatus               string
+	RuntimeStartReason                 string
+	RuntimeStartedAt                   pgtype.Timestamptz
+	RuntimeLastHeartbeatAt             pgtype.Timestamptz
+	LastMqttState                      string
+	StorefrontState                    string
+	SellReady                          bool
+	Blockers                           []byte
+}
+
+type MachineDeviceAttachment struct {
+	ID                   uuid.UUID
+	MachineID            uuid.UUID
+	PreviousAttachmentID pgtype.UUID
+	Status               string
+	Reason               string
+	AttachedAt           time.Time
+	DetachedAt           pgtype.Timestamptz
+	AttachedByAccountID  pgtype.UUID
+	OperatorSessionID    pgtype.UUID
+	CorrelationID        pgtype.UUID
+	AndroidID            pgtype.Text
+	AndroidSerial        pgtype.Text
+	BoardSerial          pgtype.Text
+	DeviceSerial         pgtype.Text
+	SimSerial            pgtype.Text
+	SimIccid             pgtype.Text
+	SimOperator          pgtype.Text
+	SimCountryIso        pgtype.Text
+	Manufacturer         pgtype.Text
+	Brand                pgtype.Text
+	Model                pgtype.Text
+	DeviceModel          pgtype.Text
+	Hardware             pgtype.Text
+	Product              pgtype.Text
+	AndroidRelease       pgtype.Text
+	SdkInt               pgtype.Int4
+	PackageName          pgtype.Text
+	VersionName          pgtype.Text
+	VersionCode          pgtype.Int8
+	AppBuildSha          pgtype.Text
+	BootID               pgtype.Text
+	NetworkType          pgtype.Text
+	NetworkState         pgtype.Text
+	IpAddress            *netip.Addr
+	UserAgent            pgtype.Text
+	Metadata             []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type MachineDeviceCertificate struct {
@@ -922,6 +984,41 @@ type MachineReconciliationSession struct {
 	// actual - expected under session convention when closed.
 	VarianceAmountMinor int64
 	Status              string
+}
+
+type MachineRuntimeAppSession struct {
+	ID                       uuid.UUID
+	MachineID                uuid.UUID
+	DeviceAttachmentID       pgtype.UUID
+	MachineSessionID         pgtype.UUID
+	OperatorSessionID        pgtype.UUID
+	PreviousRuntimeSessionID pgtype.UUID
+	BootID                   string
+	AppStartID               string
+	AppInstanceID            string
+	PackageName              string
+	AppVersion               string
+	AppBuildSha              string
+	StartReason              string
+	EndReason                pgtype.Text
+	Status                   string
+	StartedAt                time.Time
+	EndedAt                  pgtype.Timestamptz
+	LastHeartbeatAt          pgtype.Timestamptz
+	LastCheckInAt            pgtype.Timestamptz
+	LastMqttSeenAt           pgtype.Timestamptz
+	LastNetworkState         string
+	LastMqttState            string
+	StorefrontState          string
+	SellReady                bool
+	Blockers                 []byte
+	HardwareStatus           []byte
+	CatalogStatus            []byte
+	OutboxStatus             []byte
+	RecoveryStatus           []byte
+	Metadata                 []byte
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
 }
 
 type MachineRuntimeRefreshToken struct {

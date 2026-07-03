@@ -507,6 +507,15 @@ Per-RPC contract for `avf.machine.v1`. **Auth** = Machine JWT unless noted. **Id
 | `GetAssignedUpdate`, `ReportUpdateStatus`, `ReportDiagnosticBundleResult` | OTA / diagnostics | update ids, idempotency | status | JWT | reports **Yes** | Same key | OTA state | — | None | — |
 | `GetPendingCommands`, `AckCommand`, `RejectCommand` | Command poll | — | — | — | — | — | — | **Unimplemented** | None | use **MQTT** |
 
+### MachineRuntimeSessionService
+
+| RPC | Purpose | Request | Response | Auth | Idempotency | Retry | Persistence | Errors | REST | Fallback |
+|-----|---------|---------|----------|------|-------------|-------|-------------|--------|------|----------|
+| `StartRuntimeSession` | Open app runtime lifecycle session | identity (boot/app ids, attachment), start reason | session status + online projection | JWT | Boot+start idempotent replay | Safe replay | `machine_runtime_app_sessions`, snapshot | machine mismatch | admin app-session routes | — |
+| `HeartbeatRuntimeSession` | Liveness + sell readiness | session id, blockers, hardware/catalog/outbox/recovery blobs | updated session | JWT + session ownership | — | Same session id | snapshot projection | IDOR if wrong machine | admin mark-stale/force-end | MQTT touch via telemetry |
+| `EndRuntimeSession` | Close runtime session | session id, end reason/status | ended session | JWT + ownership | — | — | clears current session pointer | — | admin force-end | — |
+| `GetRuntimeSessionState` | Read current open session | meta | current session or NotFound | JWT | Read | Safe | — | — | admin current app-session GET | — |
+
 ---
 
 ## Services (proto registration)
@@ -528,6 +537,7 @@ All services below are registered when machine gRPC starts. See [`android-proto-
 | `MachineOfflineSyncService` | **Primary** offline replay |
 | `MachineOperatorService` | **Partial** — fill/adjust only |
 | `MachineCommandService` | **Partial** — OTA/diagnostics only |
+| `MachineRuntimeSessionService` | **Primary** app runtime lifecycle (distinct from credential JWT sessions) |
 
 ---
 

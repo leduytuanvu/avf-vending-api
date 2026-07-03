@@ -19,6 +19,7 @@ import (
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	appfleetadmin "github.com/avf/avf-vending-api/internal/app/fleetadmin"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
 	appotaadmin "github.com/avf/avf-vending-api/internal/app/otaadmin"
@@ -81,6 +82,8 @@ type HTTPApplication struct {
 	Planogram *appplanogram.Service
 	// AdminOps exposes company operational troubleshooting APIs (machine health, commands, inventory anomalies).
 	AdminOps *appadminops.Service
+	// MachineRuntime manages device attachments and app runtime lifecycle sessions.
+	MachineRuntime *machineruntime.Service
 	// Anomalies runs P2.4 operational detectors and unified company anomaly + restock suggestion APIs.
 	Anomalies *appanomalies.Service
 	// Provisioning creates machines in bulk (optional; nil hides routes).
@@ -151,6 +154,10 @@ type HTTPApplicationDeps struct {
 	MediaUpload config.MediaUploadConfig
 	// CloudinaryUploader optional; wired when MediaUpload.CloudinaryConfigured().
 	CloudinaryUploader appmediaadmin.ProductImageFileUploader
+	// MachineOnlineThreshold from MACHINE_ONLINE_THRESHOLD_SECONDS (zero uses machineruntime default).
+	MachineOnlineThreshold time.Duration
+	// MachineStaleThreshold from MACHINE_STALE_THRESHOLD_SECONDS (zero uses machineruntime default).
+	MachineStaleThreshold time.Duration
 }
 
 // NewHTTPApplication constructs HTTP ports backed by real adapters where they exist.
@@ -221,6 +228,16 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		Technicians: postgres.NewTechnicianRepository(pool),
 		Assignments: postgres.NewTechnicianAssignmentRepository(pool),
 	})
+	runtimeSvc, runtimeErr := machineruntime.NewService(machineruntime.Deps{
+		Pool:              pool,
+		OnlineThreshold:   deps.MachineOnlineThreshold,
+		StaleThreshold:    deps.MachineStaleThreshold,
+		AssignmentChecker: postgres.NewTechnicianAssignmentRepository(pool),
+	})
+	if runtimeErr != nil {
+		panic("api.NewHTTPApplication: machine runtime: " + runtimeErr.Error())
+	}
+	activationSvc.SetMachineRuntime(runtimeSvc)
 	fleetAdm, err := appfleetadmin.NewService(queries)
 	if err != nil {
 		panic("api.NewHTTPApplication: fleet admin: " + err.Error())
@@ -364,6 +381,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		MediaAdmin:             mediaSvc,
 		Planogram:              planogramSvc,
 		AdminOps:               adminOpsSvc,
+		MachineRuntime:         runtimeSvc,
 		Anomalies:              anomSvc,
 		Provisioning:           provSvc,
 		Rollout:                rollSvc,

@@ -55,6 +55,8 @@ func mountAdminFleetWriteRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 			r.With(writeRL).Post("/machines/{machineId}/suspend", serveAdminMachineDisable(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/enable", serveAdminMachineEnable(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/resume", serveAdminMachineEnable(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/activate", serveAdminMachineEnable(app, f))
+			r.With(writeRL).Post("/machines/{machineId}/deactivate", serveAdminMachineDisable(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/retire", serveAdminMachineRetire(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/archive", serveAdminMachineRetire(app, f))
 			r.With(writeRL).Post("/machines/{machineId}/mark-compromised", serveAdminMachineCompromised(app, f))

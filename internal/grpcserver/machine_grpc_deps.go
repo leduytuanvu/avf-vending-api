@@ -8,6 +8,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
 	appinventory "github.com/avf/avf-vending-api/internal/app/inventoryapp"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
@@ -26,6 +27,7 @@ type MachinePaymentRuntimeSource interface {
 // MachineGRPCServicesDeps wires machine-facing gRPC services without importing cmd/bootstrap.
 type MachineGRPCServicesDeps struct {
 	Activation      *activation.Service
+	MachineRuntime  *machineruntime.Service
 	MachineQueries  api.InternalMachineQueryService
 	FeatureFlags    *featureflags.Service
 	SaleCatalog     salecatalog.SnapshotBuilder
