@@ -1,0 +1,16 @@
+{
+  "verdict": "BLOCKED_BY_PRODUCTION_DEPLOY_AND_TEST",
+  "production_pass_code": null,
+  "local_build": true,
+  "local_tests": true,
+  "sqlc_generate": true,
+  "openapi_regen": true,
+  "proto_regen": true,
+  "migration_00017_present": true,
+  "grpc_runtime_session_service": true,
+  "rest_app_sessions_routes": true,
+  "production_deploy_executed": false,
+  "production_test_passes": 0,
+  "production_test_required": 3,
+  "blocked_reason": "Production deploy and 3x full suite not executed from agent environment"
+}

@@ -136,8 +136,9 @@ func (r *fleetRepository) UpdateMachineMetadata(ctx context.Context, p appfleet.
 		Model:             model,
 		CabinetType:       cabinetType,
 		TimezoneOverride:  tz,
-
-		ID: p.MachineID,
+		SetSaleEnabled:    pgtype.Bool{Bool: p.SetSaleEnabled, Valid: true},
+		SaleEnabled:       pgtype.Bool{Bool: p.SaleEnabled, Valid: p.SetSaleEnabled},
+		ID:                p.MachineID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

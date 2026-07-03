@@ -2621,6 +2621,141 @@ ADD COLUMN effective_device_config jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE machine_current_snapshot
 ADD COLUMN device_config_field_ack jsonb NOT NULL DEFAULT '{}'::jsonb;
 
+-- migrations/00017_machine_runtime_fleet.sql
+CREATE TABLE machine_device_attachments (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    previous_attachment_id uuid NULL REFERENCES machine_device_attachments (id) ON DELETE SET NULL,
+    status text NOT NULL CHECK (status IN ('active', 'replaced', 'revoked', 'compromised')),
+    reason text NOT NULL CHECK (reason IN (
+        'first_install', 'board_replacement', 'reinstall', 'clear_data', 'maintenance',
+        'recovery', 'admin_reattach', 'technician_reattach', 'unknown'
+    )),
+    attached_at timestamptz NOT NULL DEFAULT now(),
+    detached_at timestamptz NULL,
+    attached_by_account_id uuid NULL,
+    operator_session_id uuid NULL REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    correlation_id uuid NULL,
+    android_id text NULL,
+    android_serial text NULL,
+    board_serial text NULL,
+    device_serial text NULL,
+    sim_serial text NULL,
+    sim_iccid text NULL,
+    sim_operator text NULL,
+    sim_country_iso text NULL,
+    manufacturer text NULL,
+    brand text NULL,
+    model text NULL,
+    device_model text NULL,
+    hardware text NULL,
+    product text NULL,
+    android_release text NULL,
+    sdk_int int NULL,
+    package_name text NULL,
+    version_name text NULL,
+    version_code bigint NULL,
+    app_build_sha text NULL,
+    boot_id text NULL,
+    network_type text NULL,
+    network_state text NULL,
+    ip_address inet NULL,
+    user_agent text NULL,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX ux_machine_device_attachments_one_active ON machine_device_attachments (machine_id) WHERE status = 'active';
+CREATE INDEX ix_machine_device_attachments_machine_attached ON machine_device_attachments (machine_id, attached_at DESC);
+CREATE INDEX ix_machine_device_attachments_android_id ON machine_device_attachments (android_id) WHERE android_id IS NOT NULL;
+CREATE INDEX ix_machine_device_attachments_sim_iccid ON machine_device_attachments (sim_iccid) WHERE sim_iccid IS NOT NULL;
+CREATE INDEX ix_machine_device_attachments_operator_session ON machine_device_attachments (operator_session_id) WHERE operator_session_id IS NOT NULL;
+CREATE INDEX ix_machine_device_attachments_correlation ON machine_device_attachments (correlation_id) WHERE correlation_id IS NOT NULL;
+
+CREATE TABLE machine_runtime_app_sessions (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    device_attachment_id uuid NULL REFERENCES machine_device_attachments (id) ON DELETE SET NULL,
+    machine_session_id uuid NULL REFERENCES machine_sessions (id) ON DELETE SET NULL,
+    operator_session_id uuid NULL REFERENCES machine_operator_sessions (id) ON DELETE SET NULL,
+    previous_runtime_session_id uuid NULL REFERENCES machine_runtime_app_sessions (id) ON DELETE SET NULL,
+    boot_id text NOT NULL DEFAULT '',
+    app_start_id text NOT NULL DEFAULT '',
+    app_instance_id text NOT NULL DEFAULT '',
+    package_name text NOT NULL DEFAULT '',
+    app_version text NOT NULL DEFAULT '',
+    app_build_sha text NOT NULL DEFAULT '',
+    start_reason text NOT NULL,
+    end_reason text NULL,
+    status text NOT NULL DEFAULT 'STARTING' CHECK (status IN (
+        'STARTING', 'ONLINE', 'STALE', 'OFFLINE', 'ENDED', 'CRASHED', 'BLOCKED', 'MAINTENANCE', 'REPLACED'
+    )),
+    started_at timestamptz NOT NULL DEFAULT now(),
+    ended_at timestamptz NULL,
+    last_heartbeat_at timestamptz NULL,
+    last_check_in_at timestamptz NULL,
+    last_mqtt_seen_at timestamptz NULL,
+    last_network_state text NOT NULL DEFAULT '',
+    last_mqtt_state text NOT NULL DEFAULT '',
+    storefront_state text NOT NULL DEFAULT 'INITIALIZING' CHECK (storefront_state IN (
+        'INITIALIZING', 'COMMISSIONING', 'OUT_OF_SERVICE', 'SELLABLE', 'CHECKOUT_ACTIVE',
+        'PAYMENT_ACTIVE', 'VEND_ACTIVE', 'RECOVERY_REQUIRED'
+    )),
+    sell_ready boolean NOT NULL DEFAULT false,
+    blockers jsonb NOT NULL DEFAULT '[]'::jsonb,
+    hardware_status jsonb NOT NULL DEFAULT '{}'::jsonb,
+    catalog_status jsonb NOT NULL DEFAULT '{}'::jsonb,
+    outbox_status jsonb NOT NULL DEFAULT '{}'::jsonb,
+    recovery_status jsonb NOT NULL DEFAULT '{}'::jsonb,
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX ix_machine_runtime_app_sessions_machine_started ON machine_runtime_app_sessions (machine_id, started_at DESC);
+CREATE INDEX ix_machine_runtime_app_sessions_machine_heartbeat ON machine_runtime_app_sessions (machine_id, last_heartbeat_at DESC NULLS LAST);
+CREATE INDEX ix_machine_runtime_app_sessions_device_attachment ON machine_runtime_app_sessions (device_attachment_id) WHERE device_attachment_id IS NOT NULL;
+CREATE INDEX ix_machine_runtime_app_sessions_machine_session ON machine_runtime_app_sessions (machine_session_id) WHERE machine_session_id IS NOT NULL;
+CREATE INDEX ix_machine_runtime_app_sessions_operator_session ON machine_runtime_app_sessions (operator_session_id) WHERE operator_session_id IS NOT NULL;
+CREATE INDEX ix_machine_runtime_app_sessions_boot_id ON machine_runtime_app_sessions (boot_id) WHERE boot_id <> '';
+CREATE INDEX ix_machine_runtime_app_sessions_status ON machine_runtime_app_sessions (status);
+
+ALTER TABLE machines
+    ADD COLUMN current_device_attachment_id uuid NULL REFERENCES machine_device_attachments (id) ON DELETE SET NULL,
+    ADD COLUMN current_runtime_app_session_id uuid NULL REFERENCES machine_runtime_app_sessions (id) ON DELETE SET NULL,
+    ADD COLUMN online_status text NOT NULL DEFAULT 'unknown',
+    ADD COLUMN sale_enabled boolean NOT NULL DEFAULT false,
+    ADD COLUMN machine_type text NULL;
+
+ALTER TABLE machines ADD CONSTRAINT machines_online_status_check CHECK (
+    online_status IN ('unknown', 'online', 'stale', 'offline', 'crashed_suspected')
+);
+
+ALTER TABLE machine_check_ins
+    ADD COLUMN sim_iccid text NULL,
+    ADD COLUMN app_build_sha text NULL,
+    ADD COLUMN runtime_app_session_id uuid NULL REFERENCES machine_runtime_app_sessions (id) ON DELETE SET NULL,
+    ADD COLUMN device_attachment_id uuid NULL REFERENCES machine_device_attachments (id) ON DELETE SET NULL;
+
+ALTER TABLE machine_current_snapshot
+    ADD COLUMN current_device_attachment_id uuid NULL REFERENCES machine_device_attachments (id) ON DELETE SET NULL,
+    ADD COLUMN current_runtime_app_session_id uuid NULL REFERENCES machine_runtime_app_sessions (id) ON DELETE SET NULL,
+    ADD COLUMN online_status text NOT NULL DEFAULT 'unknown',
+    ADD COLUMN runtime_session_status text NOT NULL DEFAULT '',
+    ADD COLUMN runtime_start_reason text NOT NULL DEFAULT '',
+    ADD COLUMN runtime_started_at timestamptz NULL,
+    ADD COLUMN runtime_last_heartbeat_at timestamptz NULL,
+    ADD COLUMN last_mqtt_state text NOT NULL DEFAULT '',
+    ADD COLUMN storefront_state text NOT NULL DEFAULT '',
+    ADD COLUMN sell_ready boolean NOT NULL DEFAULT false,
+    ADD COLUMN blockers jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE UNIQUE INDEX ux_machine_runtime_app_sessions_one_current
+    ON machine_runtime_app_sessions (machine_id)
+    WHERE ended_at IS NULL
+        AND status IN ('STARTING', 'ONLINE', 'STALE', 'OFFLINE', 'BLOCKED', 'MAINTENANCE');
+
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     close_date date NOT NULL,

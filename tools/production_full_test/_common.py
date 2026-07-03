@@ -37,7 +37,17 @@ def report_dir() -> Path:
     return d
 
 
+def runtime_fleet_prefix() -> str:
+    suffix = os.environ.get("PROD_TEST_SUFFIX", uuid.uuid4().hex[:8])
+    return f"AVF-RUNTIME-FLEET-{utc_stamp()}_{suffix}"
+
+
 def test_prefix() -> str:
+    explicit = os.environ.get("PRODUCTION_TEST_PREFIX", "").strip()
+    if explicit:
+        return explicit
+    if os.environ.get("PRODUCTION_SUITE", "").strip().lower() in ("runtime_fleet", "runtime-fleet"):
+        return runtime_fleet_prefix()
     suffix = os.environ.get("PROD_TEST_SUFFIX", uuid.uuid4().hex[:8])
     return f"ENTERPRISE_PROD_TEST_{utc_stamp()}_{suffix}"
 

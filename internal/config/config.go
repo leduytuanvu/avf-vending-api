@@ -140,6 +140,10 @@ type Config struct {
 	Outbox   OutboxConfig
 	// Capacity limits OLTP ingress, reporting scans, and worker recovery batches (see capacity.go).
 	Capacity CapacityLimitsConfig
+	// MachineOnlineThreshold from MACHINE_ONLINE_THRESHOLD_SECONDS (default 60s).
+	MachineOnlineThreshold time.Duration
+	// MachineStaleThreshold from MACHINE_STALE_THRESHOLD_SECONDS (default 300s).
+	MachineStaleThreshold time.Duration
 
 	ReadinessStrict bool
 	MetricsEnabled  bool
@@ -1954,6 +1958,8 @@ func Load() (*Config, error) {
 		MachineJWT:                     machineJWT,
 		HTTPRateLimit:                  loadHTTPRateLimitConfig(),
 		Capacity:                       loadCapacityLimitsConfig(),
+		MachineOnlineThreshold:         time.Duration(getenvInt64("MACHINE_ONLINE_THRESHOLD_SECONDS", 60)) * time.Second,
+		MachineStaleThreshold:          time.Duration(getenvInt64("MACHINE_STALE_THRESHOLD_SECONDS", 300)) * time.Second,
 		Artifacts:                      loadArtifactsConfig(),
 		ExternalProductImages:          loadExternalProductImageConfig(),
 		MediaUpload:                    loadMediaUploadConfig(),

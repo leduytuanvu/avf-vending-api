@@ -77,6 +77,8 @@ type UpdateMachineMetadataParams struct {
 	Model             *string
 	CabinetType       *string
 	Timezone          *string
+	SetSaleEnabled    bool
+	SaleEnabled       bool
 }
 
 // InsertAssignmentParams creates a technician–machine assignment row.

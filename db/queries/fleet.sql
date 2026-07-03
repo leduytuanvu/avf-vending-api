@@ -202,12 +202,22 @@ SET
     model = $7,
     cabinet_type = $8,
     timezone_override = $9,
+    sale_enabled = CASE
+        WHEN sqlc.narg (set_sale_enabled)::boolean IS TRUE THEN sqlc.narg (sale_enabled)::boolean
+        ELSE sale_enabled
+    END,
     activated_at = CASE WHEN $2 = 'active' AND activated_at IS NULL THEN now() ELSE activated_at END,
     updated_at = now()
 WHERE
     id = $10
     AND TRUE
 RETURNING *;
+
+-- name: LockMachineForUpdate :one
+SELECT id
+FROM machines
+WHERE id = $1
+FOR UPDATE;
 
 -- name: InsertTechnicianMachineAssignment :one
 INSERT INTO technician_machine_assignments (

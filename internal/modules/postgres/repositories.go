@@ -110,6 +110,11 @@ func (r *TechnicianAssignmentRepository) HasActiveAssignment(ctx context.Context
 	})
 }
 
+// TechnicianActiveAssignmentExists implements machineruntime.TechnicianAssignmentChecker.
+func (r *TechnicianAssignmentRepository) TechnicianActiveAssignmentExists(ctx context.Context, technicianID, machineID uuid.UUID) (bool, error) {
+	return r.HasActiveAssignment(ctx, technicianID, machineID)
+}
+
 var _ fleet.TechnicianMachineAssignmentChecker = (*TechnicianAssignmentRepository)(nil)
 
 // ProductRepository implements retail.ProductRepository using sqlc queries.

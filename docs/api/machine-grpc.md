@@ -37,6 +37,7 @@ When **`GRPC_REQUIRE_IDEMPOTENCY`** is true, the process must wire a non-nil led
 | `MachineOfflineSyncService` | **`PushOfflineEvents`**, **`GetSyncCursor`** — persists offline replay rows and dispatches supported event types. |
 | `MachineCommandService` | OTA/diagnostics (**`GetAssignedUpdate`**, **`ReportUpdateStatus`**, **`ReportDiagnosticBundleResult`**). **`GetPendingCommands`**, **`AckCommand`**, **`RejectCommand`** are proto-**deprecated** — they return structured **`Unimplemented`** stating MQTT TLS + ledger delivery (**do not use as primary polling**). |
 | `MachineOperatorService` | **`SubmitFillReport`**, **`SubmitStockAdjustment`** delegate to inventory. **`OpenOperatorSession`**, **`CloseOperatorSession`** return **`Unimplemented`** (human identity uses HTTP operator routes). **`HeartbeatOperatorSession`** is implemented when operator service is configured. |
+| `MachineRuntimeSessionService` | True app runtime lifecycle (distinct from credential JWT sessions): **`StartRuntimeSession`**, **`HeartbeatRuntimeSession`**, **`EndRuntimeSession`**, **`GetRuntimeSessionState`**. Updates **`machine_runtime_app_sessions`**, projects **`machine_current_snapshot`**, and enforces machine/session ownership on heartbeat/end. |
 
 ## Authentication
 

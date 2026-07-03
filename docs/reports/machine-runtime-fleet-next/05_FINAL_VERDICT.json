@@ -1,0 +1,24 @@
+{
+  "verdict": "BLOCKED_BY_PRODUCTION_DEPLOY_AND_TEST",
+  "production_rest_grpc_mqtt_runtime_fleet_100_percent_pass": false,
+  "blocked_by": [
+    "PR_409_NOT_MERGED",
+    "PRODUCTION_DEPLOY_NOT_RUN",
+    "PRODUCTION_3X_SUITE_NOT_RUN"
+  ],
+  "branch": "feature/machine-runtime-fleet",
+  "commits": [
+    "8c7b806c",
+    "48481a59",
+    "52b7776a"
+  ],
+  "pr": "https://github.com/leduytuanvu/avf-vending-api/pull/409",
+  "local_gates": {
+    "go_test": "pass",
+    "go_build": "pass",
+    "openapi": "pass",
+    "grpc_docs": "pass"
+  },
+  "required_prefix": "AVF-RUNTIME-FLEET-{UTC}",
+  "at_utc": "2026-07-03T22:30:00Z"
+}

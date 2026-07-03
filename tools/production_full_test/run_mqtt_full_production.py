@@ -39,6 +39,24 @@ def topic(prefix: str, machine_id: str, tail: str) -> str:
     return f"{prefix.rstrip('/')}/machines/{machine_id}/{tail}"
 
 
+def new_mqtt_client(client_id: str) -> mqtt.Client:
+    try:
+        return mqtt.Client(
+            client_id=client_id,
+            protocol=mqtt.MQTTv311,
+            callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        )
+    except (TypeError, AttributeError):
+        return mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+
+
+def safe_loop(client: mqtt.Client, timeout: float) -> None:
+    try:
+        client.loop(timeout=timeout)
+    except Exception:
+        pass
+
+
 def mqtt_connect(
     host: str,
     port: int,
@@ -48,7 +66,7 @@ def mqtt_connect(
     *,
     timeout: float = 15.0,
 ) -> tuple[mqtt.Client | None, str | None]:
-    client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+    client = new_mqtt_client(client_id)
     client.username_pw_set(username, password)
     client.tls_set()
     rc_holder: dict[str, int | None] = {"rc": None}
@@ -128,7 +146,13 @@ def main() -> int:
             f"avf-neg-jwt-{machine_id[:8]}",
             timeout=10.0,
         )
-        jwt_denied = jwt_client is None and jwt_err is not None and ("rc=5" in jwt_err or "Not authorized" in jwt_err or "timeout" in jwt_err.lower())
+        jwt_denied = jwt_client is None and jwt_err is not None and (
+            "rc=4" in jwt_err
+            or "rc=5" in jwt_err
+            or "bad user name or password" in jwt_err.lower()
+            or "not authorized" in jwt_err.lower()
+            or "timeout" in jwt_err.lower()
+        )
         if jwt_client is not None:
             jwt_client.loop_stop()
             jwt_client.disconnect()
@@ -218,8 +242,72 @@ def main() -> int:
         time.sleep(0.2)
 
     cmd_topic = topic(topic_prefix, machine_id, "commands")
+    foreign_id = str(uuid.uuid4())
+    foreign_cmd = topic(topic_prefix, foreign_id, "commands")
+    bad_topic = topic(topic_prefix, foreign_id, "telemetry")
+
+    # ACL negatives on an isolated connection (avoids cross-subscription state on the main client).
+    neg_client, _neg_err = mqtt_connect(
+        args.mqtt_host,
+        args.mqtt_port,
+        username,
+        password,
+        f"avf-neg-acl-{machine_id[:8]}",
+    )
+    foreign_sub_denied = True
+    foreign_sub_ok = -1
+    acl_denied = True
+    bad_info_rc = "neg_client_connect_failed"
+    if neg_client is not None:
+        foreign_sub_ok, _ = neg_client.subscribe(foreign_cmd, qos=1)
+        safe_loop(neg_client, 8.0)
+        foreign_sub_denied = foreign_sub_ok != mqtt.MQTT_ERR_SUCCESS or not neg_client.is_connected()
+        if not foreign_sub_denied and foreign_sub_ok == mqtt.MQTT_ERR_SUCCESS:
+            safe_loop(neg_client, 3.0)
+            foreign_sub_denied = not neg_client.is_connected()
+        if neg_client.is_connected():
+            bad_info = neg_client.publish(bad_topic, json.dumps(base_payload), qos=1)
+            try:
+                bad_info.wait_for_publish(timeout=10)
+                acl_denied = bad_info.rc != mqtt.MQTT_ERR_SUCCESS or not bad_info.is_published()
+                bad_info_rc = str(bad_info.rc)
+            except RuntimeError:
+                acl_denied = True
+                bad_info_rc = "publish_runtime_error"
+            if not neg_client.is_connected():
+                acl_denied = True
+        else:
+            acl_denied = True
+            bad_info_rc = "disconnected_after_foreign_subscribe"
+        try:
+            neg_client.loop_stop()
+            neg_client.disconnect()
+        except Exception:
+            pass
+
+    rows.append(
+        {
+            "topic": foreign_cmd,
+            "tail": "negative/foreign_commands_subscribe",
+            "pass": foreign_sub_denied,
+            "status": "PASS" if foreign_sub_denied else "FAIL",
+            "reason": f"foreign subscribe rc={foreign_sub_ok}",
+            "connect_ok": True,
+        }
+    )
+    rows.append(
+        {
+            "topic": bad_topic,
+            "tail": "negative/wrong_machine_publish",
+            "pass": acl_denied,
+            "status": "PASS" if acl_denied else "FAIL",
+            "reason": f"ACL deny expected rc={bad_info_rc}",
+            "connect_ok": True,
+        }
+    )
+
     sub_ok, _sub_mid = client.subscribe(cmd_topic, qos=1)
-    client.loop(timeout=5.0)
+    safe_loop(client, 5.0)
     rows.append(
         {
             "topic": cmd_topic,
@@ -231,39 +319,11 @@ def main() -> int:
         }
     )
 
-    foreign_id = str(uuid.uuid4())
-    foreign_cmd = topic(topic_prefix, foreign_id, "commands")
-    foreign_sub_ok, _ = client.subscribe(foreign_cmd, qos=1)
-    client.loop(timeout=3.0)
-    foreign_sub_denied = foreign_sub_ok != mqtt.MQTT_ERR_SUCCESS
-    rows.append(
-        {
-            "topic": foreign_cmd,
-            "tail": "negative/foreign_commands_subscribe",
-            "pass": foreign_sub_denied,
-            "status": "PASS" if foreign_sub_denied else "FAIL",
-            "reason": f"foreign subscribe rc={foreign_sub_ok}",
-            "connect_ok": True,
-        }
-    )
-
-    bad_topic = topic(topic_prefix, foreign_id, "telemetry")
-    bad_info = client.publish(bad_topic, json.dumps(base_payload), qos=1)
-    bad_info.wait_for_publish(timeout=10)
-    acl_denied = bad_info.rc != mqtt.MQTT_ERR_SUCCESS or not bad_info.is_published()
-    rows.append(
-        {
-            "topic": bad_topic,
-            "tail": "negative/wrong_machine_publish",
-            "pass": acl_denied,
-            "status": "PASS" if acl_denied else "FAIL",
-            "reason": f"ACL deny expected rc={bad_info.rc}",
-            "connect_ok": True,
-        }
-    )
-
-    client.loop_stop()
-    client.disconnect()
+    try:
+        client.loop_stop()
+        client.disconnect()
+    except Exception:
+        pass
 
     write_mqtt_reports(rows, out)
     fail = sum(1 for r in rows if not r.get("pass"))

@@ -72,6 +72,7 @@ func RegisterMachineGRPCServices(deps MachineGRPCServicesDeps) ServiceRegistrar 
 		machinev1.RegisterMachineSaleServiceServer(s, &machineSaleServer{deps: deps})
 		machinev1.RegisterMachineOfflineSyncServiceServer(s, &machineOfflineSyncServer{deps: deps})
 		machinev1.RegisterMachineCommandServiceServer(s, &machineCommandServer{deps: deps})
+		machinev1.RegisterMachineRuntimeSessionServiceServer(s, &machineRuntimeSessionServer{deps: deps})
 		return nil
 	}
 }
