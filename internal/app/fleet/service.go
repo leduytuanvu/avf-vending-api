@@ -3,8 +3,10 @@ package fleet
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
@@ -67,6 +69,8 @@ type UpdateMachineMetadataInput struct {
 	Model             *string
 	CabinetType       *string
 	Timezone          *string
+	SetSaleEnabled    bool
+	SaleEnabled       bool
 }
 
 // AssignTechnicianInput binds a technician to a machine with a role label.
@@ -95,6 +99,11 @@ func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (dom
 	if err := validateNonZero("site_id", in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
+	if code := strings.TrimSpace(in.Code); code != "" {
+		if err := validateMachineCodeForEnv(code); err != nil {
+			return domainfleet.Machine{}, err
+		}
+	}
 	if err := s.repo.AssertSiteInCompany(ctx, uuid.Nil, in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
 	}
@@ -116,7 +125,7 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 	if err := validateNonZero("machine_id", in.MachineID); err != nil {
 		return domainfleet.Machine{}, err
 	}
-	if in.Name == nil && in.Status == nil && in.HardwareProfileID == nil && in.SiteID == nil && in.SerialNumber == nil && in.Code == nil && in.Model == nil && in.CabinetType == nil && in.Timezone == nil {
+	if in.Name == nil && in.Status == nil && in.HardwareProfileID == nil && in.SiteID == nil && in.SerialNumber == nil && in.Code == nil && in.Model == nil && in.CabinetType == nil && in.Timezone == nil && !in.SetSaleEnabled {
 		return domainfleet.Machine{}, errors.Join(ErrInvalidArgument, errors.New("at least one field must be updated"))
 	}
 	if in.Status != nil {
@@ -133,6 +142,11 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 			return domainfleet.Machine{}, err
 		}
 	}
+	if in.Code != nil {
+		if err := validateMachineCodeForEnv(*in.Code); err != nil {
+			return domainfleet.Machine{}, err
+		}
+	}
 	return s.repo.UpdateMachineMetadata(ctx, UpdateMachineMetadataParams{
 		MachineID:         in.MachineID,
 		Name:              trimStringPtr(in.Name),
@@ -144,6 +158,8 @@ func (s *Service) UpdateMachineMetadata(ctx context.Context, in UpdateMachineMet
 		Model:             trimStringPtr(in.Model),
 		CabinetType:       trimStringPtr(in.CabinetType),
 		Timezone:          trimStringPtr(in.Timezone),
+		SetSaleEnabled:    in.SetSaleEnabled,
+		SaleEnabled:       in.SaleEnabled,
 	})
 }
 
@@ -204,6 +220,24 @@ func validateMachineStatus(status string) error {
 		return errors.Join(ErrInvalidArgument, errors.New("invalid machine status"))
 	}
 	return nil
+}
+
+func validateMachineCodeForEnv(code string) error {
+	norm := machineruntime.NormalizeMachineCode(code)
+	if norm == "" {
+		return nil
+	}
+	if machineruntime.ValidMachineCode(norm) {
+		return nil
+	}
+	env := strings.ToLower(strings.TrimSpace(os.Getenv("APP_ENV")))
+	if env != "production" {
+		return nil
+	}
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("MACHINE_CODE_TEST_PREFIX_ALLOWED")), "true") {
+		return nil
+	}
+	return errors.Join(ErrInvalidArgument, errors.New("machine code must match ^AVF[0-9]{6,}$ in production"))
 }
 
 func trimStringPtr(p *string) *string {

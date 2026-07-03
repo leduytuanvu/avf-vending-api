@@ -218,6 +218,36 @@ ON CONFLICT (machine_id) DO UPDATE SET
 			OnlineStatus: "online",
 			LastSeenAt:   ts,
 		})
+		blockers := sess.Blockers
+		if blockers == nil {
+			blockers = []byte("[]")
+		}
+		var attachID, sessID pgtype.UUID
+		if sess.DeviceAttachmentID.Valid {
+			attachID = sess.DeviceAttachmentID
+		}
+		if !sess.EndedAt.Valid {
+			sessID = pgtype.UUID{Bytes: sess.ID, Valid: true}
+		}
+		var started, heartbeat pgtype.Timestamptz
+		started = pgtype.Timestamptz{Time: sess.StartedAt.UTC(), Valid: true}
+		if sess.LastHeartbeatAt.Valid {
+			heartbeat = sess.LastHeartbeatAt
+		}
+		_ = queries.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
+			MachineID:                  machineID,
+			CurrentDeviceAttachmentID:  attachID,
+			CurrentRuntimeAppSessionID: sessID,
+			OnlineStatus:               "online",
+			RuntimeSessionStatus:       sess.Status,
+			RuntimeStartReason:         sess.StartReason,
+			RuntimeStartedAt:           started,
+			RuntimeLastHeartbeatAt:     heartbeat,
+			LastMqttState:              "mqtt_heartbeat",
+			StorefrontState:            sess.StorefrontState,
+			SellReady:                  sess.SellReady,
+			Blockers:                   blockers,
+		})
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}

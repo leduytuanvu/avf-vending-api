@@ -34,6 +34,9 @@ def main() -> int:
     if mid:
         check("machine_exists", f"/v1/admin/machines/{mid}", mid)
         check("machine_runtime_sessions", f"/v1/admin/machines/{mid}/runtime-sessions/current", "machine")
+        check("machine_ops_overview", f"/v1/admin/machines/{mid}/ops-overview", "machine")
+        check("machine_device_attachments", f"/v1/admin/machines/{mid}/device-attachments/current", "machine")
+        check("fleet_ops_overview", "/v1/admin/machines/ops-overview?limit=5", "items")
 
     fail = sum(1 for c in checks if not c.get("pass"))
     write_json(out / "DATABASE_STATE_VERIFICATION.json", {"checks": checks, "fail_count": fail})

@@ -14,6 +14,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
+	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
@@ -140,8 +141,8 @@ func serveAdminMachineRuntimeSessionRevoke(app *api.HTTPApplication) http.Handle
 }
 
 type reattachDeviceBody struct {
-	DeviceFingerprint appactivation.DeviceFingerprint `json:"device_fingerprint"`
-	DeviceFpCamel     appactivation.DeviceFingerprint `json:"deviceFingerprint"`
+	DeviceFingerprint json.RawMessage                 `json:"device_fingerprint"`
+	DeviceFpCamel     json.RawMessage                 `json:"deviceFingerprint"`
 	OperatorSessionID string                          `json:"operator_session_id"`
 	OperatorSession   string                          `json:"operatorSessionId"`
 	Reason            string                          `json:"reason"`
@@ -169,13 +170,18 @@ func serveAdminMachineReattachDevice(app *api.HTTPApplication, cfg *config.Confi
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid JSON body")
 			return
 		}
-		fp := body.DeviceFingerprint
-		if fp.AndroidID == "" && body.DeviceFpCamel.AndroidID != "" {
-			fp = body.DeviceFpCamel
+		fpRaw := body.DeviceFingerprint
+		if len(fpRaw) == 0 {
+			fpRaw = body.DeviceFpCamel
+		}
+		var fp appactivation.DeviceFingerprint
+		if len(fpRaw) > 0 {
+			_ = json.Unmarshal(fpRaw, &fp)
 		}
 		in := appactivation.ReattachInput{
-			MachineID:         machineID,
-			DeviceFingerprint: fp,
+			MachineID:            machineID,
+			DeviceFingerprint:    fp,
+			RawDeviceFingerprint: fpRaw,
 			ClaimContext: appactivation.ClaimContext{
 				Reason: strings.TrimSpace(body.Reason),
 			},
@@ -225,6 +231,33 @@ func serveAdminMachineReattachDevice(app *api.HTTPApplication, cfg *config.Confi
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "operator_session_required", "operator_session_id is required")
 				return
 			}
+			if app.MachineOperator == nil {
+				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "operator service not configured")
+				return
+			}
+			osess, err := app.MachineOperator.GetSessionIfMatchesMachine(r.Context(), *in.OperatorSessionID, machineID)
+			if errors.Is(err, domainoperator.ErrSessionNotFound) {
+				writeAPIError(w, r.Context(), http.StatusNotFound, "operator_session_not_found", "operator session not found")
+				return
+			}
+			if errors.Is(err, domainoperator.ErrSessionMachineMismatch) {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "operator_session_machine_mismatch", "operator session does not match machine")
+				return
+			}
+			if err != nil {
+				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+				return
+			}
+			if !strings.EqualFold(strings.TrimSpace(osess.Status), domainoperator.SessionStatusActive) {
+				writeAPIError(w, r.Context(), http.StatusConflict, "operator_session_not_active", "operator session is not active")
+				return
+			}
+			techID, err := uuid.Parse(strings.TrimSpace(p.Subject))
+			if err != nil || osess.TechnicianID == nil || *osess.TechnicianID != techID {
+				writeAPIError(w, r.Context(), http.StatusForbidden, "operator_session_actor_mismatch", "operator session actor mismatch")
+				return
+			}
+			in.TechnicianID = &techID
 		}
 		broker := strings.TrimSpace(cfg.MQTT.BrokerURL)
 		prefix := strings.TrimSpace(cfg.MQTT.TopicPrefix)
@@ -276,8 +309,17 @@ func serveAdminFleetOpsOverview(app *api.HTTPApplication) http.HandlerFunc {
 			OnlineStatus: strings.TrimSpace(r.URL.Query().Get("online_status")),
 			MachineCode:  strings.TrimSpace(r.URL.Query().Get("machine_code")),
 			Lifecycle:    strings.TrimSpace(r.URL.Query().Get("status")),
+			MachineType:  strings.TrimSpace(r.URL.Query().Get("machine_type")),
 			Limit:        int32(limit),
 			Offset:       int32(offset),
+		}
+		if v := strings.TrimSpace(r.URL.Query().Get("sell_ready")); v != "" {
+			b := strings.EqualFold(v, "true") || v == "1"
+			f.SellReady = &b
+		}
+		if v := strings.TrimSpace(r.URL.Query().Get("has_active_operator_session")); v != "" {
+			b := strings.EqualFold(v, "true") || v == "1"
+			f.HasActiveOperatorSession = &b
 		}
 		if v := strings.TrimSpace(r.URL.Query().Get("site_id")); v != "" {
 			if id, err := uuid.Parse(v); err == nil {
@@ -432,11 +474,15 @@ func serveAdminMachineAppSessionMarkStale(app *api.HTTPApplication) http.Handler
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", "machine runtime not configured")
 			return
 		}
+		machineID, ok := parseChiUUID(w, r, "machineId")
+		if !ok {
+			return
+		}
 		sessionID, ok := parseChiUUID(w, r, "sessionId")
 		if !ok {
 			return
 		}
-		row, err := app.MachineRuntime.MarkRuntimeAppSessionStale(r.Context(), sessionID)
+		row, err := app.MachineRuntime.MarkRuntimeAppSessionStale(r.Context(), machineID, sessionID)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -702,19 +748,7 @@ func fleetOpsOverviewJSON(o machineruntime.AdminOperationalOverview) map[string]
 		"site_name":          o.SiteName,
 		"final_sell_ready":   o.FinalSellReady,
 	}
-	if o.MachineType != "" {
-		out["machine_type"] = o.MachineType
-	}
-	if o.LastSeenAt != nil {
-		out["last_seen_at"] = o.LastSeenAt.Format(time.RFC3339Nano)
-	}
-	if o.RuntimeAppSession != nil {
-		out["runtime_app_session"] = map[string]any{
-			"session_id":  o.RuntimeAppSession.SessionID.String(),
-			"status":      o.RuntimeAppSession.Status,
-			"sell_ready":  o.RuntimeAppSession.SellReady,
-		}
-	}
+	mergeOpsOverviewJSON(out, o)
 	return out
 }
 
@@ -746,25 +780,44 @@ func mergeOpsOverviewJSON(base map[string]any, enriched machineruntime.AdminOper
 		}
 	}
 	if enriched.RuntimeAppSession != nil {
-		base["runtime_app_session"] = map[string]any{
+		sess := map[string]any{
 			"session_id":       enriched.RuntimeAppSession.SessionID.String(),
 			"status":           enriched.RuntimeAppSession.Status,
 			"start_reason":     enriched.RuntimeAppSession.StartReason,
 			"storefront_state": enriched.RuntimeAppSession.StorefrontState,
 			"sell_ready":       enriched.RuntimeAppSession.SellReady,
+			"started_at":       enriched.RuntimeAppSession.StartedAt.Format(time.RFC3339Nano),
 		}
+		if enriched.RuntimeAppSession.LastHeartbeatAt != nil {
+			sess["last_heartbeat_at"] = enriched.RuntimeAppSession.LastHeartbeatAt.Format(time.RFC3339Nano)
+		}
+		if enriched.RuntimeAppSession.LastMQTTSSeenAt != nil {
+			sess["last_mqtt_seen_at"] = enriched.RuntimeAppSession.LastMQTTSSeenAt.Format(time.RFC3339Nano)
+		}
+		if enriched.RuntimeAppSession.LastMQTTState != "" {
+			sess["last_mqtt_state"] = enriched.RuntimeAppSession.LastMQTTState
+		}
+		if len(enriched.RuntimeAppSession.Blockers) > 0 {
+			sess["blockers"] = json.RawMessage(enriched.RuntimeAppSession.Blockers)
+		}
+		base["runtime_app_session"] = sess
+	}
+	if len(enriched.Readiness) > 0 {
+		base["readiness"] = json.RawMessage(enriched.Readiness)
 	}
 	if enriched.CredentialSession != nil {
 		base["credential_session"] = map[string]any{
 			"session_id":         enriched.CredentialSession.SessionID.String(),
 			"status":             enriched.CredentialSession.Status,
 			"credential_version": enriched.CredentialSession.CredentialVersion,
+			"issued_at":          enriched.CredentialSession.IssuedAt.Format(time.RFC3339Nano),
 		}
 	}
 	if enriched.OperatorSession != nil {
 		base["operator_session"] = map[string]any{
 			"session_id": enriched.OperatorSession.SessionID.String(),
 			"status":     enriched.OperatorSession.Status,
+			"started_at": enriched.OperatorSession.StartedAt.Format(time.RFC3339Nano),
 		}
 	}
 }

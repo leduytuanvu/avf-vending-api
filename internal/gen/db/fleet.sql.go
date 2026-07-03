@@ -1249,6 +1249,20 @@ func (q *Queries) ListMachinesOrderedByName(ctx context.Context) ([]Machine, err
 	return items, nil
 }
 
+const LockMachineForUpdate = `-- name: LockMachineForUpdate :one
+SELECT id
+FROM machines
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, LockMachineForUpdate, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const MarkMachineCredentialUsed = `-- name: MarkMachineCredentialUsed :exec
 UPDATE machines
 SET
@@ -1322,6 +1336,10 @@ SET
     model = $7,
     cabinet_type = $8,
     timezone_override = $9,
+    sale_enabled = CASE
+        WHEN $11::boolean IS TRUE THEN $12::boolean
+        ELSE sale_enabled
+    END,
     activated_at = CASE WHEN $2 = 'active' AND activated_at IS NULL THEN now() ELSE activated_at END,
     updated_at = now()
 WHERE
@@ -1341,6 +1359,8 @@ type UpdateMachineMetadataRowParams struct {
 	CabinetType       string
 	TimezoneOverride  pgtype.Text
 	ID                uuid.UUID
+	SetSaleEnabled    pgtype.Bool
+	SaleEnabled       pgtype.Bool
 }
 
 func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error) {
@@ -1355,6 +1375,8 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		arg.CabinetType,
 		arg.TimezoneOverride,
 		arg.ID,
+		arg.SetSaleEnabled,
+		arg.SaleEnabled,
 	)
 	var i Machine
 	err := row.Scan(

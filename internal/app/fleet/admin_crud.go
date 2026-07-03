@@ -393,9 +393,12 @@ func (s *Service) DisableMachine(ctx context.Context, companyID, machineID uuid.
 	}
 	prev := cur.Status
 	st := "suspended"
+	saleOff := false
 	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
-		MachineID: machineID,
-		Status:    &st,
+		MachineID:      machineID,
+		Status:         &st,
+		SetSaleEnabled: true,
+		SaleEnabled:    saleOff,
 	})
 	if err != nil {
 		return LifecycleMutationOutcome{}, err
@@ -420,9 +423,12 @@ func (s *Service) EnableMachine(ctx context.Context, companyID, machineID uuid.U
 	}
 	prev := cur.Status
 	st := "active"
+	saleOn := true
 	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
-		MachineID: machineID,
-		Status:    &st,
+		MachineID:      machineID,
+		Status:         &st,
+		SetSaleEnabled: true,
+		SaleEnabled:    saleOn,
 	})
 	if err != nil {
 		return LifecycleMutationOutcome{}, err
@@ -441,9 +447,12 @@ func (s *Service) RetireMachine(ctx context.Context, companyID, machineID uuid.U
 	}
 	prev := cur.Status
 	st := "decommissioned"
+	saleOff := false
 	m, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
-		MachineID: machineID,
-		Status:    &st,
+		MachineID:      machineID,
+		Status:         &st,
+		SetSaleEnabled: true,
+		SaleEnabled:    saleOff,
 	})
 	if err != nil {
 		return LifecycleMutationOutcome{}, err
@@ -462,9 +471,12 @@ func (s *Service) MarkMachineCompromised(ctx context.Context, companyID, machine
 	}
 	prev := cur.Status
 	st := "compromised"
+	saleOff := false
 	if _, err := s.UpdateMachineMetadata(ctx, UpdateMachineMetadataInput{
-		MachineID: machineID,
-		Status:    &st,
+		MachineID:      machineID,
+		Status:         &st,
+		SetSaleEnabled: true,
+		SaleEnabled:    saleOff,
 	}); err != nil {
 		return LifecycleMutationOutcome{}, err
 	}

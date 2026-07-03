@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -26,17 +27,18 @@ def main() -> int:
     parser.add_argument("--base-url", default="https://api.ldtv.dev")
     parser.add_argument("--passes", type=int, default=1)
     parser.add_argument("--skip-bootstrap", action="store_true")
+    parser.add_argument("--prefix", default="", help="Test entity prefix (e.g. AVF-RUNTIME-FLEET-<UTC>)")
     args = parser.parse_args()
 
     os.environ.setdefault("BASE_URL", args.base_url)
     os.environ.setdefault("PRODUCTION_FULL_TEST_UTC", os.environ.get("PRODUCTION_FULL_TEST_UTC", datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")))
+    if args.prefix.strip():
+        os.environ["PRODUCTION_TEST_PREFIX"] = args.prefix.strip()
+        if args.prefix.strip().startswith("AVF-RUNTIME-FLEET"):
+            os.environ["PRODUCTION_SUITE"] = "runtime_fleet"
 
     pass_results: list[dict] = []
     rc = 0
-
-    e2e_rc = run_py("run_production_e2e_flows.py", ["--base-url", args.base_url])
-    if e2e_rc != 0:
-        rc = 1
 
     for i in range(1, args.passes + 1):
         print(f"\n========== PRODUCTION FULL PASS {i}/{args.passes} ==========")
@@ -59,6 +61,24 @@ def main() -> int:
 
     out = REPO / "reports" / "production-full-api-grpc-mqtt" / os.environ["PRODUCTION_FULL_TEST_UTC"]
     out.mkdir(parents=True, exist_ok=True)
+    snap = out / "pre_e2e_mqtt_snapshot"
+    snap.mkdir(parents=True, exist_ok=True)
+    for name in (
+        "MQTT_FULL_TEST_MATRIX.json",
+        "MQTT_FINAL_COVERAGE.json",
+        "MQTT_FINAL_COVERAGE.md",
+        "MQTT_PASS_LIST.md",
+        "MQTT_FAIL_LIST.md",
+        "MQTT_UNTESTED_LIST.md",
+    ):
+        src = out / name
+        if src.is_file():
+            shutil.copy2(src, snap / name)
+
+    e2e_rc = run_py("run_production_e2e_flows.py", ["--base-url", args.base_url])
+    if e2e_rc != 0:
+        rc = 1
+
     (out / "MULTI_PASS_PRODUCTION_VALIDATION.json").write_text(json.dumps({"passes": pass_results}, indent=2) + "\n", encoding="utf-8")
     (out / "MULTI_PASS_PRODUCTION_VALIDATION.md").write_text(
         "# Multi Pass Production Validation\n\n" + "\n".join(f"- Pass {p['pass']}: {'OK' if p['ok'] else 'FAIL'}" for p in pass_results) + "\n",

@@ -471,6 +471,7 @@ type Querier interface {
 	ListStaleCommandLedgerEntries(ctx context.Context, arg ListStaleCommandLedgerEntriesParams) ([]ListStaleCommandLedgerEntriesRow, error)
 	ListVendSessionsByOrder(ctx context.Context, orderID uuid.UUID) ([]ListVendSessionsByOrderRow, error)
 	ListVendSessionsStuckForReconciliation(ctx context.Context, arg ListVendSessionsStuckForReconciliationParams) ([]ListVendSessionsStuckForReconciliationRow, error)
+	LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID) (Order, error)
 	LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error)
 	MachineAppliedConfigRevision(ctx context.Context, machineID uuid.UUID) (int32, error)
@@ -494,7 +495,7 @@ type Querier interface {
 	MarkMachineIdempotencyFailed(ctx context.Context, arg MarkMachineIdempotencyFailedParams) error
 	MarkMachineIdempotencySucceeded(ctx context.Context, arg MarkMachineIdempotencySucceededParams) (MachineIdempotencyKey, error)
 	MarkMachineRuntimeAppSessionCrashed(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)
-	MarkMachineRuntimeAppSessionStale(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)
+	MarkMachineRuntimeAppSessionStale(ctx context.Context, arg MarkMachineRuntimeAppSessionStaleParams) (MachineRuntimeAppSession, error)
 	MarkMachineRuntimeRefreshTokenUsed(ctx context.Context, id uuid.UUID) error
 	MarkMachineSessionUsedByID(ctx context.Context, id uuid.UUID) error
 	MarkOutboxEventPublished(ctx context.Context, id int64) (MarkOutboxEventPublishedRow, error)

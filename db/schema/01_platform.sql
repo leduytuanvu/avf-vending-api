@@ -2751,6 +2751,11 @@ ALTER TABLE machine_current_snapshot
     ADD COLUMN sell_ready boolean NOT NULL DEFAULT false,
     ADD COLUMN blockers jsonb NOT NULL DEFAULT '[]'::jsonb;
 
+CREATE UNIQUE INDEX ux_machine_runtime_app_sessions_one_current
+    ON machine_runtime_app_sessions (machine_id)
+    WHERE ended_at IS NULL
+        AND status IN ('STARTING', 'ONLINE', 'STALE', 'OFFLINE', 'BLOCKED', 'MAINTENANCE');
+
 CREATE TABLE finance_daily_closes (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     close_date date NOT NULL,

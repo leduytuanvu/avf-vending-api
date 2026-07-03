@@ -9,6 +9,7 @@ package machinev1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	structpb "google.golang.org/protobuf/types/known/structpb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -22,6 +23,66 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type RuntimeBlocker struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Severity      string                 `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RuntimeBlocker) Reset() {
+	*x = RuntimeBlocker{}
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RuntimeBlocker) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RuntimeBlocker) ProtoMessage() {}
+
+func (x *RuntimeBlocker) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RuntimeBlocker.ProtoReflect.Descriptor instead.
+func (*RuntimeBlocker) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *RuntimeBlocker) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RuntimeBlocker) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+func (x *RuntimeBlocker) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type RuntimeSessionIdentity struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
 	BootId             string                 `protobuf:"bytes,1,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
@@ -33,13 +94,18 @@ type RuntimeSessionIdentity struct {
 	DeviceAttachmentId *string                `protobuf:"bytes,7,opt,name=device_attachment_id,json=deviceAttachmentId,proto3,oneof" json:"device_attachment_id,omitempty"`
 	MachineSessionId   *string                `protobuf:"bytes,8,opt,name=machine_session_id,json=machineSessionId,proto3,oneof" json:"machine_session_id,omitempty"`
 	OperatorSessionId  *string                `protobuf:"bytes,9,opt,name=operator_session_id,json=operatorSessionId,proto3,oneof" json:"operator_session_id,omitempty"`
+	AndroidId          string                 `protobuf:"bytes,10,opt,name=android_id,json=androidId,proto3" json:"android_id,omitempty"`
+	AndroidSerial      string                 `protobuf:"bytes,11,opt,name=android_serial,json=androidSerial,proto3" json:"android_serial,omitempty"`
+	BoardSerial        string                 `protobuf:"bytes,12,opt,name=board_serial,json=boardSerial,proto3" json:"board_serial,omitempty"`
+	SimIccid           string                 `protobuf:"bytes,13,opt,name=sim_iccid,json=simIccid,proto3" json:"sim_iccid,omitempty"`
+	SimOperator        string                 `protobuf:"bytes,14,opt,name=sim_operator,json=simOperator,proto3" json:"sim_operator,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
 
 func (x *RuntimeSessionIdentity) Reset() {
 	*x = RuntimeSessionIdentity{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[0]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -51,7 +117,7 @@ func (x *RuntimeSessionIdentity) String() string {
 func (*RuntimeSessionIdentity) ProtoMessage() {}
 
 func (x *RuntimeSessionIdentity) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[0]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -64,7 +130,7 @@ func (x *RuntimeSessionIdentity) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeSessionIdentity.ProtoReflect.Descriptor instead.
 func (*RuntimeSessionIdentity) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{0}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *RuntimeSessionIdentity) GetBootId() string {
@@ -130,28 +196,72 @@ func (x *RuntimeSessionIdentity) GetOperatorSessionId() string {
 	return ""
 }
 
+func (x *RuntimeSessionIdentity) GetAndroidId() string {
+	if x != nil {
+		return x.AndroidId
+	}
+	return ""
+}
+
+func (x *RuntimeSessionIdentity) GetAndroidSerial() string {
+	if x != nil {
+		return x.AndroidSerial
+	}
+	return ""
+}
+
+func (x *RuntimeSessionIdentity) GetBoardSerial() string {
+	if x != nil {
+		return x.BoardSerial
+	}
+	return ""
+}
+
+func (x *RuntimeSessionIdentity) GetSimIccid() string {
+	if x != nil {
+		return x.SimIccid
+	}
+	return ""
+}
+
+func (x *RuntimeSessionIdentity) GetSimOperator() string {
+	if x != nil {
+		return x.SimOperator
+	}
+	return ""
+}
+
 type RuntimeSessionStatus struct {
-	state            protoimpl.MessageState `protogen:"open.v1"`
-	SessionId        string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	MachineId        string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
-	Status           string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
-	StartReason      string                 `protobuf:"bytes,4,opt,name=start_reason,json=startReason,proto3" json:"start_reason,omitempty"`
-	EndReason        *string                `protobuf:"bytes,5,opt,name=end_reason,json=endReason,proto3,oneof" json:"end_reason,omitempty"`
-	StartedAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	LastHeartbeatAt  *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_heartbeat_at,json=lastHeartbeatAt,proto3,oneof" json:"last_heartbeat_at,omitempty"`
-	LastMqttSeenAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_mqtt_seen_at,json=lastMqttSeenAt,proto3,oneof" json:"last_mqtt_seen_at,omitempty"`
-	LastNetworkState string                 `protobuf:"bytes,9,opt,name=last_network_state,json=lastNetworkState,proto3" json:"last_network_state,omitempty"`
-	LastMqttState    string                 `protobuf:"bytes,10,opt,name=last_mqtt_state,json=lastMqttState,proto3" json:"last_mqtt_state,omitempty"`
-	StorefrontState  string                 `protobuf:"bytes,11,opt,name=storefront_state,json=storefrontState,proto3" json:"storefront_state,omitempty"`
-	SellReady        bool                   `protobuf:"varint,12,opt,name=sell_ready,json=sellReady,proto3" json:"sell_ready,omitempty"`
-	OnlineStatus     string                 `protobuf:"bytes,13,opt,name=online_status,json=onlineStatus,proto3" json:"online_status,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	state                    protoimpl.MessageState `protogen:"open.v1"`
+	SessionId                string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	MachineId                string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	Status                   string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	StartReason              string                 `protobuf:"bytes,4,opt,name=start_reason,json=startReason,proto3" json:"start_reason,omitempty"`
+	EndReason                *string                `protobuf:"bytes,5,opt,name=end_reason,json=endReason,proto3,oneof" json:"end_reason,omitempty"`
+	StartedAt                *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	LastHeartbeatAt          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=last_heartbeat_at,json=lastHeartbeatAt,proto3,oneof" json:"last_heartbeat_at,omitempty"`
+	LastMqttSeenAt           *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=last_mqtt_seen_at,json=lastMqttSeenAt,proto3,oneof" json:"last_mqtt_seen_at,omitempty"`
+	LastNetworkState         string                 `protobuf:"bytes,9,opt,name=last_network_state,json=lastNetworkState,proto3" json:"last_network_state,omitempty"`
+	LastMqttState            string                 `protobuf:"bytes,10,opt,name=last_mqtt_state,json=lastMqttState,proto3" json:"last_mqtt_state,omitempty"`
+	StorefrontState          string                 `protobuf:"bytes,11,opt,name=storefront_state,json=storefrontState,proto3" json:"storefront_state,omitempty"`
+	SellReady                bool                   `protobuf:"varint,12,opt,name=sell_ready,json=sellReady,proto3" json:"sell_ready,omitempty"`
+	OnlineStatus             string                 `protobuf:"bytes,13,opt,name=online_status,json=onlineStatus,proto3" json:"online_status,omitempty"`
+	EndedAt                  *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=ended_at,json=endedAt,proto3,oneof" json:"ended_at,omitempty"`
+	BootId                   string                 `protobuf:"bytes,15,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	AppStartId               string                 `protobuf:"bytes,16,opt,name=app_start_id,json=appStartId,proto3" json:"app_start_id,omitempty"`
+	PreviousRuntimeSessionId *string                `protobuf:"bytes,17,opt,name=previous_runtime_session_id,json=previousRuntimeSessionId,proto3,oneof" json:"previous_runtime_session_id,omitempty"`
+	Blockers                 []*RuntimeBlocker      `protobuf:"bytes,18,rep,name=blockers,proto3" json:"blockers,omitempty"`
+	HardwareStatus           *structpb.Struct       `protobuf:"bytes,19,opt,name=hardware_status,json=hardwareStatus,proto3" json:"hardware_status,omitempty"`
+	CatalogStatus            *structpb.Struct       `protobuf:"bytes,20,opt,name=catalog_status,json=catalogStatus,proto3" json:"catalog_status,omitempty"`
+	OutboxStatus             *structpb.Struct       `protobuf:"bytes,21,opt,name=outbox_status,json=outboxStatus,proto3" json:"outbox_status,omitempty"`
+	RecoveryStatus           *structpb.Struct       `protobuf:"bytes,22,opt,name=recovery_status,json=recoveryStatus,proto3" json:"recovery_status,omitempty"`
+	unknownFields            protoimpl.UnknownFields
+	sizeCache                protoimpl.SizeCache
 }
 
 func (x *RuntimeSessionStatus) Reset() {
 	*x = RuntimeSessionStatus{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[1]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -163,7 +273,7 @@ func (x *RuntimeSessionStatus) String() string {
 func (*RuntimeSessionStatus) ProtoMessage() {}
 
 func (x *RuntimeSessionStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[1]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -176,7 +286,7 @@ func (x *RuntimeSessionStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RuntimeSessionStatus.ProtoReflect.Descriptor instead.
 func (*RuntimeSessionStatus) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{1}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *RuntimeSessionStatus) GetSessionId() string {
@@ -270,6 +380,69 @@ func (x *RuntimeSessionStatus) GetOnlineStatus() string {
 	return ""
 }
 
+func (x *RuntimeSessionStatus) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
+func (x *RuntimeSessionStatus) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *RuntimeSessionStatus) GetAppStartId() string {
+	if x != nil {
+		return x.AppStartId
+	}
+	return ""
+}
+
+func (x *RuntimeSessionStatus) GetPreviousRuntimeSessionId() string {
+	if x != nil && x.PreviousRuntimeSessionId != nil {
+		return *x.PreviousRuntimeSessionId
+	}
+	return ""
+}
+
+func (x *RuntimeSessionStatus) GetBlockers() []*RuntimeBlocker {
+	if x != nil {
+		return x.Blockers
+	}
+	return nil
+}
+
+func (x *RuntimeSessionStatus) GetHardwareStatus() *structpb.Struct {
+	if x != nil {
+		return x.HardwareStatus
+	}
+	return nil
+}
+
+func (x *RuntimeSessionStatus) GetCatalogStatus() *structpb.Struct {
+	if x != nil {
+		return x.CatalogStatus
+	}
+	return nil
+}
+
+func (x *RuntimeSessionStatus) GetOutboxStatus() *structpb.Struct {
+	if x != nil {
+		return x.OutboxStatus
+	}
+	return nil
+}
+
+func (x *RuntimeSessionStatus) GetRecoveryStatus() *structpb.Struct {
+	if x != nil {
+		return x.RecoveryStatus
+	}
+	return nil
+}
+
 type StartRuntimeSessionRequest struct {
 	state           protoimpl.MessageState  `protogen:"open.v1"`
 	Meta            *MachineRequestMeta     `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -284,7 +457,7 @@ type StartRuntimeSessionRequest struct {
 
 func (x *StartRuntimeSessionRequest) Reset() {
 	*x = StartRuntimeSessionRequest{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[2]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -296,7 +469,7 @@ func (x *StartRuntimeSessionRequest) String() string {
 func (*StartRuntimeSessionRequest) ProtoMessage() {}
 
 func (x *StartRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[2]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -309,7 +482,7 @@ func (x *StartRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRuntimeSessionRequest.ProtoReflect.Descriptor instead.
 func (*StartRuntimeSessionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{2}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StartRuntimeSessionRequest) GetMeta() *MachineRequestMeta {
@@ -364,7 +537,7 @@ type StartRuntimeSessionResponse struct {
 
 func (x *StartRuntimeSessionResponse) Reset() {
 	*x = StartRuntimeSessionResponse{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[3]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -376,7 +549,7 @@ func (x *StartRuntimeSessionResponse) String() string {
 func (*StartRuntimeSessionResponse) ProtoMessage() {}
 
 func (x *StartRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[3]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -389,7 +562,7 @@ func (x *StartRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRuntimeSessionResponse.ProtoReflect.Descriptor instead.
 func (*StartRuntimeSessionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{3}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *StartRuntimeSessionResponse) GetMeta() *MachineResponseMeta {
@@ -414,13 +587,18 @@ type HeartbeatRuntimeSessionRequest struct {
 	MqttState       string                 `protobuf:"bytes,4,opt,name=mqtt_state,json=mqttState,proto3" json:"mqtt_state,omitempty"`
 	StorefrontState string                 `protobuf:"bytes,5,opt,name=storefront_state,json=storefrontState,proto3" json:"storefront_state,omitempty"`
 	SellReady       bool                   `protobuf:"varint,6,opt,name=sell_ready,json=sellReady,proto3" json:"sell_ready,omitempty"`
+	Blockers        []*RuntimeBlocker      `protobuf:"bytes,7,rep,name=blockers,proto3" json:"blockers,omitempty"`
+	HardwareStatus  *structpb.Struct       `protobuf:"bytes,8,opt,name=hardware_status,json=hardwareStatus,proto3" json:"hardware_status,omitempty"`
+	CatalogStatus   *structpb.Struct       `protobuf:"bytes,9,opt,name=catalog_status,json=catalogStatus,proto3" json:"catalog_status,omitempty"`
+	OutboxStatus    *structpb.Struct       `protobuf:"bytes,10,opt,name=outbox_status,json=outboxStatus,proto3" json:"outbox_status,omitempty"`
+	RecoveryStatus  *structpb.Struct       `protobuf:"bytes,11,opt,name=recovery_status,json=recoveryStatus,proto3" json:"recovery_status,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
 
 func (x *HeartbeatRuntimeSessionRequest) Reset() {
 	*x = HeartbeatRuntimeSessionRequest{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[4]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -432,7 +610,7 @@ func (x *HeartbeatRuntimeSessionRequest) String() string {
 func (*HeartbeatRuntimeSessionRequest) ProtoMessage() {}
 
 func (x *HeartbeatRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[4]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -445,7 +623,7 @@ func (x *HeartbeatRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRuntimeSessionRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRuntimeSessionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{4}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *HeartbeatRuntimeSessionRequest) GetMeta() *MachineRequestMeta {
@@ -490,6 +668,41 @@ func (x *HeartbeatRuntimeSessionRequest) GetSellReady() bool {
 	return false
 }
 
+func (x *HeartbeatRuntimeSessionRequest) GetBlockers() []*RuntimeBlocker {
+	if x != nil {
+		return x.Blockers
+	}
+	return nil
+}
+
+func (x *HeartbeatRuntimeSessionRequest) GetHardwareStatus() *structpb.Struct {
+	if x != nil {
+		return x.HardwareStatus
+	}
+	return nil
+}
+
+func (x *HeartbeatRuntimeSessionRequest) GetCatalogStatus() *structpb.Struct {
+	if x != nil {
+		return x.CatalogStatus
+	}
+	return nil
+}
+
+func (x *HeartbeatRuntimeSessionRequest) GetOutboxStatus() *structpb.Struct {
+	if x != nil {
+		return x.OutboxStatus
+	}
+	return nil
+}
+
+func (x *HeartbeatRuntimeSessionRequest) GetRecoveryStatus() *structpb.Struct {
+	if x != nil {
+		return x.RecoveryStatus
+	}
+	return nil
+}
+
 type HeartbeatRuntimeSessionResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *MachineResponseMeta   `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -500,7 +713,7 @@ type HeartbeatRuntimeSessionResponse struct {
 
 func (x *HeartbeatRuntimeSessionResponse) Reset() {
 	*x = HeartbeatRuntimeSessionResponse{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -512,7 +725,7 @@ func (x *HeartbeatRuntimeSessionResponse) String() string {
 func (*HeartbeatRuntimeSessionResponse) ProtoMessage() {}
 
 func (x *HeartbeatRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -525,7 +738,7 @@ func (x *HeartbeatRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRuntimeSessionResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatRuntimeSessionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{5}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *HeartbeatRuntimeSessionResponse) GetMeta() *MachineResponseMeta {
@@ -554,7 +767,7 @@ type EndRuntimeSessionRequest struct {
 
 func (x *EndRuntimeSessionRequest) Reset() {
 	*x = EndRuntimeSessionRequest{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[6]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +779,7 @@ func (x *EndRuntimeSessionRequest) String() string {
 func (*EndRuntimeSessionRequest) ProtoMessage() {}
 
 func (x *EndRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[6]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +792,7 @@ func (x *EndRuntimeSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndRuntimeSessionRequest.ProtoReflect.Descriptor instead.
 func (*EndRuntimeSessionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{6}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *EndRuntimeSessionRequest) GetMeta() *MachineRequestMeta {
@@ -620,7 +833,7 @@ type EndRuntimeSessionResponse struct {
 
 func (x *EndRuntimeSessionResponse) Reset() {
 	*x = EndRuntimeSessionResponse{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[7]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -632,7 +845,7 @@ func (x *EndRuntimeSessionResponse) String() string {
 func (*EndRuntimeSessionResponse) ProtoMessage() {}
 
 func (x *EndRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[7]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -645,7 +858,7 @@ func (x *EndRuntimeSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndRuntimeSessionResponse.ProtoReflect.Descriptor instead.
 func (*EndRuntimeSessionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{7}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *EndRuntimeSessionResponse) GetMeta() *MachineResponseMeta {
@@ -671,7 +884,7 @@ type GetRuntimeSessionStateRequest struct {
 
 func (x *GetRuntimeSessionStateRequest) Reset() {
 	*x = GetRuntimeSessionStateRequest{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -683,7 +896,7 @@ func (x *GetRuntimeSessionStateRequest) String() string {
 func (*GetRuntimeSessionStateRequest) ProtoMessage() {}
 
 func (x *GetRuntimeSessionStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -696,7 +909,7 @@ func (x *GetRuntimeSessionStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRuntimeSessionStateRequest.ProtoReflect.Descriptor instead.
 func (*GetRuntimeSessionStateRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{8}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetRuntimeSessionStateRequest) GetMeta() *MachineRequestMeta {
@@ -716,7 +929,7 @@ type GetRuntimeSessionStateResponse struct {
 
 func (x *GetRuntimeSessionStateResponse) Reset() {
 	*x = GetRuntimeSessionStateResponse{}
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -728,7 +941,7 @@ func (x *GetRuntimeSessionStateResponse) String() string {
 func (*GetRuntimeSessionStateResponse) ProtoMessage() {}
 
 func (x *GetRuntimeSessionStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_runtime_session_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -741,7 +954,7 @@ func (x *GetRuntimeSessionStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRuntimeSessionStateResponse.ProtoReflect.Descriptor instead.
 func (*GetRuntimeSessionStateResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{9}
+	return file_avf_machine_v1_runtime_session_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *GetRuntimeSessionStateResponse) GetMeta() *MachineResponseMeta {
@@ -762,7 +975,11 @@ var File_avf_machine_v1_runtime_session_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_runtime_session_proto_rawDesc = "" +
 	"\n" +
-	"$avf/machine/v1/runtime_session.proto\x12\x0eavf.machine.v1\x1a\x1bavf/machine/v1/common.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xca\x03\n" +
+	"$avf/machine/v1/runtime_session.proto\x12\x0eavf.machine.v1\x1a\x1bavf/machine/v1/common.proto\x1a\x1cgoogle/protobuf/struct.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"Z\n" +
+	"\x0eRuntimeBlocker\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1a\n" +
+	"\bseverity\x18\x02 \x01(\tR\bseverity\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"\xf3\x04\n" +
 	"\x16RuntimeSessionIdentity\x12\x17\n" +
 	"\aboot_id\x18\x01 \x01(\tR\x06bootId\x12 \n" +
 	"\fapp_start_id\x18\x02 \x01(\tR\n" +
@@ -774,10 +991,17 @@ const file_avf_machine_v1_runtime_session_proto_rawDesc = "" +
 	"\rapp_build_sha\x18\x06 \x01(\tR\vappBuildSha\x125\n" +
 	"\x14device_attachment_id\x18\a \x01(\tH\x00R\x12deviceAttachmentId\x88\x01\x01\x121\n" +
 	"\x12machine_session_id\x18\b \x01(\tH\x01R\x10machineSessionId\x88\x01\x01\x123\n" +
-	"\x13operator_session_id\x18\t \x01(\tH\x02R\x11operatorSessionId\x88\x01\x01B\x17\n" +
+	"\x13operator_session_id\x18\t \x01(\tH\x02R\x11operatorSessionId\x88\x01\x01\x12\x1d\n" +
+	"\n" +
+	"android_id\x18\n" +
+	" \x01(\tR\tandroidId\x12%\n" +
+	"\x0eandroid_serial\x18\v \x01(\tR\randroidSerial\x12!\n" +
+	"\fboard_serial\x18\f \x01(\tR\vboardSerial\x12\x1b\n" +
+	"\tsim_iccid\x18\r \x01(\tR\bsimIccid\x12!\n" +
+	"\fsim_operator\x18\x0e \x01(\tR\vsimOperatorB\x17\n" +
 	"\x15_device_attachment_idB\x15\n" +
 	"\x13_machine_session_idB\x16\n" +
-	"\x14_operator_session_id\"\x87\x05\n" +
+	"\x14_operator_session_id\"\xad\t\n" +
 	"\x14RuntimeSessionStatus\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x1d\n" +
@@ -797,10 +1021,22 @@ const file_avf_machine_v1_runtime_session_proto_rawDesc = "" +
 	"\x10storefront_state\x18\v \x01(\tR\x0fstorefrontState\x12\x1d\n" +
 	"\n" +
 	"sell_ready\x18\f \x01(\bR\tsellReady\x12#\n" +
-	"\ronline_status\x18\r \x01(\tR\fonlineStatusB\r\n" +
+	"\ronline_status\x18\r \x01(\tR\fonlineStatus\x12:\n" +
+	"\bended_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampH\x03R\aendedAt\x88\x01\x01\x12\x17\n" +
+	"\aboot_id\x18\x0f \x01(\tR\x06bootId\x12 \n" +
+	"\fapp_start_id\x18\x10 \x01(\tR\n" +
+	"appStartId\x12B\n" +
+	"\x1bprevious_runtime_session_id\x18\x11 \x01(\tH\x04R\x18previousRuntimeSessionId\x88\x01\x01\x12:\n" +
+	"\bblockers\x18\x12 \x03(\v2\x1e.avf.machine.v1.RuntimeBlockerR\bblockers\x12@\n" +
+	"\x0fhardware_status\x18\x13 \x01(\v2\x17.google.protobuf.StructR\x0ehardwareStatus\x12>\n" +
+	"\x0ecatalog_status\x18\x14 \x01(\v2\x17.google.protobuf.StructR\rcatalogStatus\x12<\n" +
+	"\routbox_status\x18\x15 \x01(\v2\x17.google.protobuf.StructR\foutboxStatus\x12@\n" +
+	"\x0frecovery_status\x18\x16 \x01(\v2\x17.google.protobuf.StructR\x0erecoveryStatusB\r\n" +
 	"\v_end_reasonB\x14\n" +
 	"\x12_last_heartbeat_atB\x14\n" +
-	"\x12_last_mqtt_seen_at\"\xaa\x02\n" +
+	"\x12_last_mqtt_seen_atB\v\n" +
+	"\t_ended_atB\x1e\n" +
+	"\x1c_previous_runtime_session_id\"\xaa\x02\n" +
 	"\x1aStartRuntimeSessionRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12B\n" +
 	"\bidentity\x18\x02 \x01(\v2&.avf.machine.v1.RuntimeSessionIdentityR\bidentity\x12!\n" +
@@ -811,7 +1047,7 @@ const file_avf_machine_v1_runtime_session_proto_rawDesc = "" +
 	"\x10storefront_state\x18\x06 \x01(\tR\x0fstorefrontState\"\x96\x01\n" +
 	"\x1bStartRuntimeSessionResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12>\n" +
-	"\asession\x18\x02 \x01(\v2$.avf.machine.v1.RuntimeSessionStatusR\asession\"\x85\x02\n" +
+	"\asession\x18\x02 \x01(\v2$.avf.machine.v1.RuntimeSessionStatusR\asession\"\xc3\x04\n" +
 	"\x1eHeartbeatRuntimeSessionRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
 	"\n" +
@@ -821,7 +1057,13 @@ const file_avf_machine_v1_runtime_session_proto_rawDesc = "" +
 	"mqtt_state\x18\x04 \x01(\tR\tmqttState\x12)\n" +
 	"\x10storefront_state\x18\x05 \x01(\tR\x0fstorefrontState\x12\x1d\n" +
 	"\n" +
-	"sell_ready\x18\x06 \x01(\bR\tsellReady\"\x9a\x01\n" +
+	"sell_ready\x18\x06 \x01(\bR\tsellReady\x12:\n" +
+	"\bblockers\x18\a \x03(\v2\x1e.avf.machine.v1.RuntimeBlockerR\bblockers\x12@\n" +
+	"\x0fhardware_status\x18\b \x01(\v2\x17.google.protobuf.StructR\x0ehardwareStatus\x12>\n" +
+	"\x0ecatalog_status\x18\t \x01(\v2\x17.google.protobuf.StructR\rcatalogStatus\x12<\n" +
+	"\routbox_status\x18\n" +
+	" \x01(\v2\x17.google.protobuf.StructR\foutboxStatus\x12@\n" +
+	"\x0frecovery_status\x18\v \x01(\v2\x17.google.protobuf.StructR\x0erecoveryStatus\"\x9a\x01\n" +
 	"\x1fHeartbeatRuntimeSessionResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12>\n" +
 	"\asession\x18\x02 \x01(\v2$.avf.machine.v1.RuntimeSessionStatusR\asession\"\xa8\x01\n" +
@@ -858,52 +1100,65 @@ func file_avf_machine_v1_runtime_session_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_runtime_session_proto_rawDescData
 }
 
-var file_avf_machine_v1_runtime_session_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_avf_machine_v1_runtime_session_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_avf_machine_v1_runtime_session_proto_goTypes = []any{
-	(*RuntimeSessionIdentity)(nil),          // 0: avf.machine.v1.RuntimeSessionIdentity
-	(*RuntimeSessionStatus)(nil),            // 1: avf.machine.v1.RuntimeSessionStatus
-	(*StartRuntimeSessionRequest)(nil),      // 2: avf.machine.v1.StartRuntimeSessionRequest
-	(*StartRuntimeSessionResponse)(nil),     // 3: avf.machine.v1.StartRuntimeSessionResponse
-	(*HeartbeatRuntimeSessionRequest)(nil),  // 4: avf.machine.v1.HeartbeatRuntimeSessionRequest
-	(*HeartbeatRuntimeSessionResponse)(nil), // 5: avf.machine.v1.HeartbeatRuntimeSessionResponse
-	(*EndRuntimeSessionRequest)(nil),        // 6: avf.machine.v1.EndRuntimeSessionRequest
-	(*EndRuntimeSessionResponse)(nil),       // 7: avf.machine.v1.EndRuntimeSessionResponse
-	(*GetRuntimeSessionStateRequest)(nil),   // 8: avf.machine.v1.GetRuntimeSessionStateRequest
-	(*GetRuntimeSessionStateResponse)(nil),  // 9: avf.machine.v1.GetRuntimeSessionStateResponse
-	(*timestamppb.Timestamp)(nil),           // 10: google.protobuf.Timestamp
-	(*MachineRequestMeta)(nil),              // 11: avf.machine.v1.MachineRequestMeta
-	(*MachineResponseMeta)(nil),             // 12: avf.machine.v1.MachineResponseMeta
+	(*RuntimeBlocker)(nil),                  // 0: avf.machine.v1.RuntimeBlocker
+	(*RuntimeSessionIdentity)(nil),          // 1: avf.machine.v1.RuntimeSessionIdentity
+	(*RuntimeSessionStatus)(nil),            // 2: avf.machine.v1.RuntimeSessionStatus
+	(*StartRuntimeSessionRequest)(nil),      // 3: avf.machine.v1.StartRuntimeSessionRequest
+	(*StartRuntimeSessionResponse)(nil),     // 4: avf.machine.v1.StartRuntimeSessionResponse
+	(*HeartbeatRuntimeSessionRequest)(nil),  // 5: avf.machine.v1.HeartbeatRuntimeSessionRequest
+	(*HeartbeatRuntimeSessionResponse)(nil), // 6: avf.machine.v1.HeartbeatRuntimeSessionResponse
+	(*EndRuntimeSessionRequest)(nil),        // 7: avf.machine.v1.EndRuntimeSessionRequest
+	(*EndRuntimeSessionResponse)(nil),       // 8: avf.machine.v1.EndRuntimeSessionResponse
+	(*GetRuntimeSessionStateRequest)(nil),   // 9: avf.machine.v1.GetRuntimeSessionStateRequest
+	(*GetRuntimeSessionStateResponse)(nil),  // 10: avf.machine.v1.GetRuntimeSessionStateResponse
+	(*timestamppb.Timestamp)(nil),           // 11: google.protobuf.Timestamp
+	(*structpb.Struct)(nil),                 // 12: google.protobuf.Struct
+	(*MachineRequestMeta)(nil),              // 13: avf.machine.v1.MachineRequestMeta
+	(*MachineResponseMeta)(nil),             // 14: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_runtime_session_proto_depIdxs = []int32{
-	10, // 0: avf.machine.v1.RuntimeSessionStatus.started_at:type_name -> google.protobuf.Timestamp
-	10, // 1: avf.machine.v1.RuntimeSessionStatus.last_heartbeat_at:type_name -> google.protobuf.Timestamp
-	10, // 2: avf.machine.v1.RuntimeSessionStatus.last_mqtt_seen_at:type_name -> google.protobuf.Timestamp
-	11, // 3: avf.machine.v1.StartRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	0,  // 4: avf.machine.v1.StartRuntimeSessionRequest.identity:type_name -> avf.machine.v1.RuntimeSessionIdentity
-	12, // 5: avf.machine.v1.StartRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	1,  // 6: avf.machine.v1.StartRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
-	11, // 7: avf.machine.v1.HeartbeatRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	12, // 8: avf.machine.v1.HeartbeatRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	1,  // 9: avf.machine.v1.HeartbeatRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
-	11, // 10: avf.machine.v1.EndRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	12, // 11: avf.machine.v1.EndRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	1,  // 12: avf.machine.v1.EndRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
-	11, // 13: avf.machine.v1.GetRuntimeSessionStateRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	12, // 14: avf.machine.v1.GetRuntimeSessionStateResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	1,  // 15: avf.machine.v1.GetRuntimeSessionStateResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
-	2,  // 16: avf.machine.v1.MachineRuntimeSessionService.StartRuntimeSession:input_type -> avf.machine.v1.StartRuntimeSessionRequest
-	4,  // 17: avf.machine.v1.MachineRuntimeSessionService.HeartbeatRuntimeSession:input_type -> avf.machine.v1.HeartbeatRuntimeSessionRequest
-	6,  // 18: avf.machine.v1.MachineRuntimeSessionService.EndRuntimeSession:input_type -> avf.machine.v1.EndRuntimeSessionRequest
-	8,  // 19: avf.machine.v1.MachineRuntimeSessionService.GetRuntimeSessionState:input_type -> avf.machine.v1.GetRuntimeSessionStateRequest
-	3,  // 20: avf.machine.v1.MachineRuntimeSessionService.StartRuntimeSession:output_type -> avf.machine.v1.StartRuntimeSessionResponse
-	5,  // 21: avf.machine.v1.MachineRuntimeSessionService.HeartbeatRuntimeSession:output_type -> avf.machine.v1.HeartbeatRuntimeSessionResponse
-	7,  // 22: avf.machine.v1.MachineRuntimeSessionService.EndRuntimeSession:output_type -> avf.machine.v1.EndRuntimeSessionResponse
-	9,  // 23: avf.machine.v1.MachineRuntimeSessionService.GetRuntimeSessionState:output_type -> avf.machine.v1.GetRuntimeSessionStateResponse
-	20, // [20:24] is the sub-list for method output_type
-	16, // [16:20] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	11, // 0: avf.machine.v1.RuntimeSessionStatus.started_at:type_name -> google.protobuf.Timestamp
+	11, // 1: avf.machine.v1.RuntimeSessionStatus.last_heartbeat_at:type_name -> google.protobuf.Timestamp
+	11, // 2: avf.machine.v1.RuntimeSessionStatus.last_mqtt_seen_at:type_name -> google.protobuf.Timestamp
+	11, // 3: avf.machine.v1.RuntimeSessionStatus.ended_at:type_name -> google.protobuf.Timestamp
+	0,  // 4: avf.machine.v1.RuntimeSessionStatus.blockers:type_name -> avf.machine.v1.RuntimeBlocker
+	12, // 5: avf.machine.v1.RuntimeSessionStatus.hardware_status:type_name -> google.protobuf.Struct
+	12, // 6: avf.machine.v1.RuntimeSessionStatus.catalog_status:type_name -> google.protobuf.Struct
+	12, // 7: avf.machine.v1.RuntimeSessionStatus.outbox_status:type_name -> google.protobuf.Struct
+	12, // 8: avf.machine.v1.RuntimeSessionStatus.recovery_status:type_name -> google.protobuf.Struct
+	13, // 9: avf.machine.v1.StartRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	1,  // 10: avf.machine.v1.StartRuntimeSessionRequest.identity:type_name -> avf.machine.v1.RuntimeSessionIdentity
+	14, // 11: avf.machine.v1.StartRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	2,  // 12: avf.machine.v1.StartRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
+	13, // 13: avf.machine.v1.HeartbeatRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	0,  // 14: avf.machine.v1.HeartbeatRuntimeSessionRequest.blockers:type_name -> avf.machine.v1.RuntimeBlocker
+	12, // 15: avf.machine.v1.HeartbeatRuntimeSessionRequest.hardware_status:type_name -> google.protobuf.Struct
+	12, // 16: avf.machine.v1.HeartbeatRuntimeSessionRequest.catalog_status:type_name -> google.protobuf.Struct
+	12, // 17: avf.machine.v1.HeartbeatRuntimeSessionRequest.outbox_status:type_name -> google.protobuf.Struct
+	12, // 18: avf.machine.v1.HeartbeatRuntimeSessionRequest.recovery_status:type_name -> google.protobuf.Struct
+	14, // 19: avf.machine.v1.HeartbeatRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	2,  // 20: avf.machine.v1.HeartbeatRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
+	13, // 21: avf.machine.v1.EndRuntimeSessionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	14, // 22: avf.machine.v1.EndRuntimeSessionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	2,  // 23: avf.machine.v1.EndRuntimeSessionResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
+	13, // 24: avf.machine.v1.GetRuntimeSessionStateRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	14, // 25: avf.machine.v1.GetRuntimeSessionStateResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	2,  // 26: avf.machine.v1.GetRuntimeSessionStateResponse.session:type_name -> avf.machine.v1.RuntimeSessionStatus
+	3,  // 27: avf.machine.v1.MachineRuntimeSessionService.StartRuntimeSession:input_type -> avf.machine.v1.StartRuntimeSessionRequest
+	5,  // 28: avf.machine.v1.MachineRuntimeSessionService.HeartbeatRuntimeSession:input_type -> avf.machine.v1.HeartbeatRuntimeSessionRequest
+	7,  // 29: avf.machine.v1.MachineRuntimeSessionService.EndRuntimeSession:input_type -> avf.machine.v1.EndRuntimeSessionRequest
+	9,  // 30: avf.machine.v1.MachineRuntimeSessionService.GetRuntimeSessionState:input_type -> avf.machine.v1.GetRuntimeSessionStateRequest
+	4,  // 31: avf.machine.v1.MachineRuntimeSessionService.StartRuntimeSession:output_type -> avf.machine.v1.StartRuntimeSessionResponse
+	6,  // 32: avf.machine.v1.MachineRuntimeSessionService.HeartbeatRuntimeSession:output_type -> avf.machine.v1.HeartbeatRuntimeSessionResponse
+	8,  // 33: avf.machine.v1.MachineRuntimeSessionService.EndRuntimeSession:output_type -> avf.machine.v1.EndRuntimeSessionResponse
+	10, // 34: avf.machine.v1.MachineRuntimeSessionService.GetRuntimeSessionState:output_type -> avf.machine.v1.GetRuntimeSessionStateResponse
+	31, // [31:35] is the sub-list for method output_type
+	27, // [27:31] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_runtime_session_proto_init() }
@@ -912,15 +1167,15 @@ func file_avf_machine_v1_runtime_session_proto_init() {
 		return
 	}
 	file_avf_machine_v1_common_proto_init()
-	file_avf_machine_v1_runtime_session_proto_msgTypes[0].OneofWrappers = []any{}
 	file_avf_machine_v1_runtime_session_proto_msgTypes[1].OneofWrappers = []any{}
+	file_avf_machine_v1_runtime_session_proto_msgTypes[2].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_runtime_session_proto_rawDesc), len(file_avf_machine_v1_runtime_session_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

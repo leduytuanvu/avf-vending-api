@@ -27,6 +27,13 @@ CONTRACT_ONLY_RPCS = {
     "avf.machine.v1.MachineCommandService/RejectCommand",
 }
 
+INLINE_MACHINE_RUNTIME_RPCS = [
+    {"full_name": "avf.machine.v1.MachineRuntimeSessionService/StartRuntimeSession", "rpc": "StartRuntimeSession", "service": "MachineRuntimeSessionService", "auth": "machine"},
+    {"full_name": "avf.machine.v1.MachineRuntimeSessionService/HeartbeatRuntimeSession", "rpc": "HeartbeatRuntimeSession", "service": "MachineRuntimeSessionService", "auth": "machine"},
+    {"full_name": "avf.machine.v1.MachineRuntimeSessionService/GetRuntimeSessionState", "rpc": "GetRuntimeSessionState", "service": "MachineRuntimeSessionService", "auth": "machine"},
+    {"full_name": "avf.machine.v1.MachineRuntimeSessionService/EndRuntimeSession", "rpc": "EndRuntimeSession", "service": "MachineRuntimeSessionService", "auth": "machine"},
+]
+
 PUBLIC_RPCS = {"RefreshMachineToken", "ClaimActivation", "ActivateMachine"}
 
 
@@ -245,6 +252,44 @@ def default_body(method: str, service: str, reg: dict[str, str]) -> str:
     if method == "CancelSale":
         return json.dumps({"context": ctx, "orderId": oid, "reason": "prod_test_probe"})
 
+    runtime_methods = {
+        "StartRuntimeSession": {
+            "meta": meta_json(reg),
+            "identity": {
+                "bootId": f"prod-boot-{uuid.uuid4().hex[:8]}",
+                "appStartId": f"prod-start-{uuid.uuid4().hex[:8]}",
+                "appInstanceId": f"prod-inst-{uuid.uuid4().hex[:8]}",
+                "packageName": "dev.avf.vending.prodtest",
+                "appVersion": "1.0.0",
+                "appBuildSha": "prod-test-sha",
+                "androidId": "prod-test-android",
+                "simIccid": "8900000000000000000",
+            },
+            "startReason": "COLD_START",
+            "networkState": "online",
+            "mqttState": "connected",
+            "storefrontState": "READY",
+        },
+        "HeartbeatRuntimeSession": {
+            "meta": meta_json(reg),
+            "sessionId": reg.get("runtimeSessionId") or "00000000-0000-0000-0000-000000000099",
+            "networkState": "online",
+            "mqttState": "connected",
+            "storefrontState": "READY",
+            "sellReady": True,
+            "blockers": [],
+        },
+        "EndRuntimeSession": {
+            "meta": meta_json(reg),
+            "sessionId": reg.get("runtimeSessionId") or "00000000-0000-0000-0000-000000000099",
+            "endReason": "PROD_TEST",
+            "status": "ENDED",
+        },
+        "GetRuntimeSessionState": {"meta": meta_json(reg)},
+    }
+    if method in runtime_methods:
+        return json.dumps(runtime_methods[method])
+
     return json.dumps({"meta": meta_json(reg)})
 
 
@@ -276,16 +321,21 @@ def main() -> int:
     proto_root = REPO / "proto"
 
     inv_path = REPO / "reports/enterprise-flow-verification/20260703T013119Z/GRPC_INVENTORY.json"
-    rpcs = []
+    rpcs: list[dict] = []
     if inv_path.is_file():
         data = json.loads(inv_path.read_text(encoding="utf-8"))
         rpcs = [r for r in data.get("rpcs", []) if r.get("full_name", "").startswith("avf.machine.v1.")]
+    seen = {r["full_name"] for r in rpcs}
+    for rpc in INLINE_MACHINE_RUNTIME_RPCS:
+        if rpc["full_name"] not in seen:
+            rpcs.append(rpc)
 
     rows: list[dict] = []
+    runtime_session_id = ""
     for rpc in rpcs:
         full = rpc["full_name"]
         method = rpc["rpc"]
-        body = default_body(method, rpc.get("service", ""), reg)
+        body = default_body(method, rpc.get("service", ""), {**reg, "runtimeSessionId": runtime_session_id})
         if method == "RefreshMachineToken":
             use_token = ""
         elif method in PUBLIC_RPCS:
@@ -293,6 +343,20 @@ def main() -> int:
         else:
             use_token = token
         ok, msg = grpc_call(args.grpc_host, full, use_token, body, proto_root)
+        if ok and method == "StartRuntimeSession":
+            try:
+                parsed = json.loads(msg.split("\n", 1)[0] if msg else "{}")
+                runtime_session_id = (
+                    (parsed.get("session") or {}).get("sessionId")
+                    or parsed.get("sessionId")
+                    or runtime_session_id
+                )
+                if runtime_session_id:
+                    reg_obj = EntityRegistry()
+                    reg_obj.set("runtimeSessionId", runtime_session_id)
+                    reg_obj.save()
+            except (json.JSONDecodeError, TypeError, AttributeError):
+                pass
         row = {"full_name": full, "service": rpc.get("service"), "rpc": method, "pass": ok, "status": "PASS" if ok else "FAIL", "reason": msg[:400], "auth": rpc.get("auth")}
         rows.append(row)
 

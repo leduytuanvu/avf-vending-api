@@ -107,6 +107,8 @@ SET
     ended_at = $4,
     updated_at = now()
 WHERE id = $1
+    AND machine_id = $5
+    AND ended_at IS NULL
 RETURNING id, machine_id, device_attachment_id, machine_session_id, operator_session_id, previous_runtime_session_id, boot_id, app_start_id, app_instance_id, package_name, app_version, app_build_sha, start_reason, end_reason, status, started_at, ended_at, last_heartbeat_at, last_check_in_at, last_mqtt_seen_at, last_network_state, last_mqtt_state, storefront_state, sell_ready, blockers, hardware_status, catalog_status, outbox_status, recovery_status, metadata, created_at, updated_at
 `
 
@@ -115,6 +117,7 @@ type EndMachineRuntimeAppSessionParams struct {
 	Status    string
 	EndReason pgtype.Text
 	EndedAt   pgtype.Timestamptz
+	MachineID uuid.UUID
 }
 
 func (q *Queries) EndMachineRuntimeAppSession(ctx context.Context, arg EndMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error) {
@@ -123,6 +126,7 @@ func (q *Queries) EndMachineRuntimeAppSession(ctx context.Context, arg EndMachin
 		arg.Status,
 		arg.EndReason,
 		arg.EndedAt,
+		arg.MachineID,
 	)
 	var i MachineRuntimeAppSession
 	err := row.Scan(
@@ -331,6 +335,8 @@ SET
     recovery_status = $12,
     updated_at = now()
 WHERE id = $1
+    AND machine_id = $13
+    AND ended_at IS NULL
 RETURNING id, machine_id, device_attachment_id, machine_session_id, operator_session_id, previous_runtime_session_id, boot_id, app_start_id, app_instance_id, package_name, app_version, app_build_sha, start_reason, end_reason, status, started_at, ended_at, last_heartbeat_at, last_check_in_at, last_mqtt_seen_at, last_network_state, last_mqtt_state, storefront_state, sell_ready, blockers, hardware_status, catalog_status, outbox_status, recovery_status, metadata, created_at, updated_at
 `
 
@@ -347,6 +353,7 @@ type HeartbeatMachineRuntimeAppSessionParams struct {
 	CatalogStatus    []byte
 	OutboxStatus     []byte
 	RecoveryStatus   []byte
+	MachineID        uuid.UUID
 }
 
 func (q *Queries) HeartbeatMachineRuntimeAppSession(ctx context.Context, arg HeartbeatMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error) {
@@ -363,6 +370,7 @@ func (q *Queries) HeartbeatMachineRuntimeAppSession(ctx context.Context, arg Hea
 		arg.CatalogStatus,
 		arg.OutboxStatus,
 		arg.RecoveryStatus,
+		arg.MachineID,
 	)
 	var i MachineRuntimeAppSession
 	err := row.Scan(
@@ -525,12 +533,19 @@ UPDATE machine_runtime_app_sessions
 SET
     status = 'STALE',
     updated_at = now()
-WHERE id = $1 AND ended_at IS NULL
+WHERE id = $1
+    AND machine_id = $2
+    AND ended_at IS NULL
 RETURNING id, machine_id, device_attachment_id, machine_session_id, operator_session_id, previous_runtime_session_id, boot_id, app_start_id, app_instance_id, package_name, app_version, app_build_sha, start_reason, end_reason, status, started_at, ended_at, last_heartbeat_at, last_check_in_at, last_mqtt_seen_at, last_network_state, last_mqtt_state, storefront_state, sell_ready, blockers, hardware_status, catalog_status, outbox_status, recovery_status, metadata, created_at, updated_at
 `
 
-func (q *Queries) MarkMachineRuntimeAppSessionStale(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error) {
-	row := q.db.QueryRow(ctx, MarkMachineRuntimeAppSessionStale, id)
+type MarkMachineRuntimeAppSessionStaleParams struct {
+	ID        uuid.UUID
+	MachineID uuid.UUID
+}
+
+func (q *Queries) MarkMachineRuntimeAppSessionStale(ctx context.Context, arg MarkMachineRuntimeAppSessionStaleParams) (MachineRuntimeAppSession, error) {
+	row := q.db.QueryRow(ctx, MarkMachineRuntimeAppSessionStale, arg.ID, arg.MachineID)
 	var i MachineRuntimeAppSession
 	err := row.Scan(
 		&i.ID,

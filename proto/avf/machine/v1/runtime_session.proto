@@ -5,6 +5,7 @@ package avf.machine.v1;
 option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
 
 import "avf/machine/v1/common.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
 // MachineRuntimeSessionService manages true app runtime lifecycle sessions (distinct from credential JWT sessions).
@@ -13,6 +14,12 @@ service MachineRuntimeSessionService {
   rpc HeartbeatRuntimeSession(HeartbeatRuntimeSessionRequest) returns (HeartbeatRuntimeSessionResponse);
   rpc EndRuntimeSession(EndRuntimeSessionRequest) returns (EndRuntimeSessionResponse);
   rpc GetRuntimeSessionState(GetRuntimeSessionStateRequest) returns (GetRuntimeSessionStateResponse);
+}
+
+message RuntimeBlocker {
+  string code = 1;
+  string severity = 2;
+  string message = 3;
 }
 
 message RuntimeSessionIdentity {
@@ -25,6 +32,11 @@ message RuntimeSessionIdentity {
   optional string device_attachment_id = 7;
   optional string machine_session_id = 8;
   optional string operator_session_id = 9;
+  string android_id = 10;
+  string android_serial = 11;
+  string board_serial = 12;
+  string sim_iccid = 13;
+  string sim_operator = 14;
 }
 
 message RuntimeSessionStatus {
@@ -41,6 +53,15 @@ message RuntimeSessionStatus {
   string storefront_state = 11;
   bool sell_ready = 12;
   string online_status = 13;
+  optional google.protobuf.Timestamp ended_at = 14;
+  string boot_id = 15;
+  string app_start_id = 16;
+  optional string previous_runtime_session_id = 17;
+  repeated RuntimeBlocker blockers = 18;
+  google.protobuf.Struct hardware_status = 19;
+  google.protobuf.Struct catalog_status = 20;
+  google.protobuf.Struct outbox_status = 21;
+  google.protobuf.Struct recovery_status = 22;
 }
 
 message StartRuntimeSessionRequest {
@@ -64,6 +85,11 @@ message HeartbeatRuntimeSessionRequest {
   string mqtt_state = 4;
   string storefront_state = 5;
   bool sell_ready = 6;
+  repeated RuntimeBlocker blockers = 7;
+  google.protobuf.Struct hardware_status = 8;
+  google.protobuf.Struct catalog_status = 9;
+  google.protobuf.Struct outbox_status = 10;
+  google.protobuf.Struct recovery_status = 11;
 }
 
 message HeartbeatRuntimeSessionResponse {

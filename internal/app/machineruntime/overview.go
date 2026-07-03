@@ -18,13 +18,16 @@ var machineCodePattern = regexp.MustCompile(`^AVF[0-9]{6,}$`)
 
 // OverviewFilter filters fleet operational overview rows.
 type OverviewFilter struct {
-	SiteID       *uuid.UUID
-	MachineID    *uuid.UUID
-	OnlineStatus string
-	MachineCode  string
-	Lifecycle    string
-	Limit        int32
-	Offset       int32
+	SiteID                   *uuid.UUID
+	MachineID                *uuid.UUID
+	OnlineStatus             string
+	MachineCode              string
+	Lifecycle                string
+	MachineType              string
+	SellReady                *bool
+	HasActiveOperatorSession *bool
+	Limit                    int32
+	Offset                   int32
 }
 
 // AdminOperationalOverview is the enriched admin machine ops snapshot.
@@ -189,6 +192,7 @@ func overviewListParams(f OverviewFilter) db.AdminListMachineOperationalOverview
 		p.Column9 = true
 		p.Column10 = lc
 	}
+	applyOverviewFilterExtras(f, &p.Column11, &p.Column12, &p.Column13, &p.Column14, &p.Column15, &p.Column16)
 	return p
 }
 
@@ -222,7 +226,23 @@ func overviewCountParams(f OverviewFilter) db.AdminCountMachineOperationalOvervi
 		p.Column9 = true
 		p.Column10 = lc
 	}
+	applyOverviewFilterExtras(f, &p.Column11, &p.Column12, &p.Column13, &p.Column14, &p.Column15, &p.Column16)
 	return p
+}
+
+func applyOverviewFilterExtras(f OverviewFilter, c11 *bool, c12 *string, c13 *bool, c14 *bool, c15 *bool, c16 *bool) {
+	if mt := strings.TrimSpace(f.MachineType); mt != "" {
+		*c11 = true
+		*c12 = mt
+	}
+	if f.SellReady != nil {
+		*c13 = true
+		*c14 = *f.SellReady
+	}
+	if f.HasActiveOperatorSession != nil {
+		*c15 = true
+		*c16 = *f.HasActiveOperatorSession
+	}
 }
 
 func mapOverviewRow(ctx context.Context, q *db.Queries, row db.AdminListMachineOperationalOverviewRow) (AdminOperationalOverview, error) {
@@ -283,7 +303,7 @@ func mapOverviewRow(ctx context.Context, q *db.Queries, row db.AdminListMachineO
 			sv.Blockers = json.RawMessage(row.Blockers)
 		}
 		out.RuntimeAppSession = sv
-		out.FinalSellReady = sellReady && strings.EqualFold(row.LifecycleStatus, "active") && row.SaleEnabled
+		out.FinalSellReady = computeFinalSellReady(row.LifecycleStatus, row.SaleEnabled, sellReady, row.Blockers)
 	}
 	if row.CredentialSessionID.Valid {
 		id := uuid.UUID(row.CredentialSessionID.Bytes)
@@ -317,6 +337,33 @@ func mapOverviewRow(ctx context.Context, q *db.Queries, row db.AdminListMachineO
 		out.Readiness = json.RawMessage(out.RuntimeAppSession.Blockers)
 	}
 	return out, nil
+}
+
+func computeFinalSellReady(lifecycleStatus string, saleEnabled, runtimeSellReady bool, blockers []byte) bool {
+	if !strings.EqualFold(strings.TrimSpace(lifecycleStatus), "active") {
+		return false
+	}
+	if !saleEnabled || !runtimeSellReady {
+		return false
+	}
+	return !hasCriticalBlockers(blockers)
+}
+
+func hasCriticalBlockers(blockers []byte) bool {
+	if len(blockers) == 0 {
+		return false
+	}
+	var items []map[string]any
+	if err := json.Unmarshal(blockers, &items); err != nil {
+		return false
+	}
+	for _, item := range items {
+		sev, _ := item["severity"].(string)
+		if strings.EqualFold(strings.TrimSpace(sev), "critical") {
+			return true
+		}
+	}
+	return false
 }
 
 func computeOnlineFromRow(row db.AdminListMachineOperationalOverviewRow) (string, error) {

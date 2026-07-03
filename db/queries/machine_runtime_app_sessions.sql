@@ -75,6 +75,8 @@ SET
     recovery_status = $12,
     updated_at = now()
 WHERE id = $1
+    AND machine_id = $13
+    AND ended_at IS NULL
 RETURNING *;
 
 -- name: EndMachineRuntimeAppSession :one
@@ -85,6 +87,8 @@ SET
     ended_at = $4,
     updated_at = now()
 WHERE id = $1
+    AND machine_id = $5
+    AND ended_at IS NULL
 RETURNING *;
 
 -- name: MarkMachineRuntimeAppSessionStale :one
@@ -92,7 +96,9 @@ UPDATE machine_runtime_app_sessions
 SET
     status = 'STALE',
     updated_at = now()
-WHERE id = $1 AND ended_at IS NULL
+WHERE id = $1
+    AND machine_id = $2
+    AND ended_at IS NULL
 RETURNING *;
 
 -- name: MarkMachineRuntimeAppSessionCrashed :one

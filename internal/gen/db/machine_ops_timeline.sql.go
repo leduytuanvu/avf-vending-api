@@ -185,7 +185,11 @@ FROM (
     UNION ALL
     SELECT
         COALESCE(mda.detached_at, mda.updated_at) AS occurred_at,
-        'device.attachment.replaced'::text AS event_type,
+        CASE mda.status
+            WHEN 'revoked' THEN 'device.attachment.revoked'::text
+            WHEN 'compromised' THEN 'device.attachment.compromised'::text
+            ELSE 'device.attachment.replaced'::text
+        END AS event_type,
         'info'::text AS severity,
         mda.machine_id,
         'system'::text AS actor_type,
@@ -259,11 +263,89 @@ FROM (
         )
     UNION ALL
     SELECT
+        mras.last_heartbeat_at AS occurred_at,
+        'runtime.app_session.heartbeat'::text AS event_type,
+        'info'::text AS severity,
+        mras.machine_id,
+        'machine'::text AS actor_type,
+        NULL::uuid AS actor_account_id,
+        mras.operator_session_id,
+        mras.machine_session_id,
+        'machine_runtime_app_session'::text AS resource_type,
+        mras.id::text AS resource_id,
+        NULL::uuid AS order_id,
+        NULL::uuid AS payment_id,
+        NULL::uuid AS vend_session_id,
+        NULL::text AS request_id,
+        NULL::uuid AS correlation_id,
+        NULL::text AS reason,
+        NULL::text AS error_code,
+        mras.status AS summary,
+        jsonb_build_object(
+            'sell_ready', mras.sell_ready,
+            'storefront_state', mras.storefront_state
+        ) AS metadata
+    FROM
+        machine_runtime_app_sessions mras
+    WHERE
+        mras.machine_id = $1
+        AND mras.last_heartbeat_at IS NOT NULL
+        AND mras.last_heartbeat_at > mras.started_at
+        AND (
+            $2::timestamptz IS NULL
+            OR mras.last_heartbeat_at >= $2
+        )
+        AND (
+            $3::timestamptz IS NULL
+            OR mras.last_heartbeat_at <= $3
+        )
+    UNION ALL
+    SELECT
+        mras.started_at AS occurred_at,
+        'runtime.app_session.recovered'::text AS event_type,
+        'info'::text AS severity,
+        mras.machine_id,
+        'machine'::text AS actor_type,
+        NULL::uuid AS actor_account_id,
+        mras.operator_session_id,
+        mras.machine_session_id,
+        'machine_runtime_app_session'::text AS resource_type,
+        mras.id::text AS resource_id,
+        NULL::uuid AS order_id,
+        NULL::uuid AS payment_id,
+        NULL::uuid AS vend_session_id,
+        NULL::text AS request_id,
+        NULL::uuid AS correlation_id,
+        mras.start_reason AS reason,
+        NULL::text AS error_code,
+        mras.status AS summary,
+        jsonb_build_object(
+            'boot_id', mras.boot_id,
+            'app_start_id', mras.app_start_id
+        ) AS metadata
+    FROM
+        machine_runtime_app_sessions mras
+    WHERE
+        mras.machine_id = $1
+        AND mras.start_reason = 'APP_CRASH_RECOVERY'
+        AND (
+            $2::timestamptz IS NULL
+            OR mras.started_at >= $2
+        )
+        AND (
+            $3::timestamptz IS NULL
+            OR mras.started_at <= $3
+        )
+    UNION ALL
+    SELECT
         mras.ended_at AS occurred_at,
-        'runtime.app_session.ended'::text AS event_type,
         CASE
-            WHEN mras.status = 'CRASHED' THEN 'warning'
-            ELSE 'info'
+            WHEN mras.status = 'CRASHED' THEN 'runtime.app_session.crashed'::text
+            ELSE 'runtime.app_session.ended'::text
+        END AS event_type,
+        CASE
+            WHEN mras.status = 'CRASHED' THEN 'warning'::text
+            ELSE 'info'::text
         END AS severity,
         mras.machine_id,
         'machine'::text AS actor_type,

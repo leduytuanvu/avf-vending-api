@@ -48,6 +48,17 @@ WHERE
     AND ($5::boolean IS FALSE OR m.online_status = $6::text)
     AND ($7::boolean IS FALSE OR upper(regexp_replace(btrim(m.code), '\s+', '', 'g')) LIKE upper($8::text))
     AND ($9::boolean IS FALSE OR m.status = $10::text)
+    AND ($11::boolean IS FALSE OR m.machine_type = $12::text)
+    AND ($13::boolean IS FALSE OR EXISTS (
+        SELECT 1 FROM machine_runtime_app_sessions ras2
+        WHERE ras2.id = m.current_runtime_app_session_id
+            AND ras2.ended_at IS NULL
+            AND ras2.sell_ready = $14::boolean
+    ))
+    AND ($15::boolean IS FALSE OR EXISTS (
+        SELECT 1 FROM machine_operator_sessions mos2
+        WHERE mos2.machine_id = m.id AND mos2.status = 'ACTIVE' AND mos2.ended_at IS NULL
+    ) = $16::boolean)
 ORDER BY m.last_seen_at DESC NULLS LAST, m.name ASC
 LIMIT sqlc.arg (limit_val) OFFSET sqlc.arg (offset_val);
 
@@ -59,4 +70,15 @@ WHERE
     AND ($3::boolean IS FALSE OR m.id = $4::uuid)
     AND ($5::boolean IS FALSE OR m.online_status = $6::text)
     AND ($7::boolean IS FALSE OR upper(regexp_replace(btrim(m.code), '\s+', '', 'g')) LIKE upper($8::text))
-    AND ($9::boolean IS FALSE OR m.status = $10::text);
+    AND ($9::boolean IS FALSE OR m.status = $10::text)
+    AND ($11::boolean IS FALSE OR m.machine_type = $12::text)
+    AND ($13::boolean IS FALSE OR EXISTS (
+        SELECT 1 FROM machine_runtime_app_sessions ras2
+        WHERE ras2.id = m.current_runtime_app_session_id
+            AND ras2.ended_at IS NULL
+            AND ras2.sell_ready = $14::boolean
+    ))
+    AND ($15::boolean IS FALSE OR EXISTS (
+        SELECT 1 FROM machine_operator_sessions mos2
+        WHERE mos2.machine_id = m.id AND mos2.status = 'ACTIVE' AND mos2.ended_at IS NULL
+    ) = $16::boolean);

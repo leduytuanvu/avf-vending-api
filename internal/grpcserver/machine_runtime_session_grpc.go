@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
@@ -11,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -119,6 +121,11 @@ func (s *machineRuntimeSessionServer) HeartbeatRuntimeSession(ctx context.Contex
 		MqttState:       strings.TrimSpace(req.GetMqttState()),
 		StorefrontState: strings.TrimSpace(req.GetStorefrontState()),
 		SellReady:       req.GetSellReady(),
+		Blockers:        runtimeBlockersToJSON(req.GetBlockers()),
+		HardwareStatus:  structToJSON(req.GetHardwareStatus()),
+		CatalogStatus:   structToJSON(req.GetCatalogStatus()),
+		OutboxStatus:    structToJSON(req.GetOutboxStatus()),
+		RecoveryStatus:  structToJSON(req.GetRecoveryStatus()),
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "heartbeat runtime session: %v", err)
@@ -208,6 +215,13 @@ func mapRuntimeSessionProto(row db.MachineRuntimeAppSession, online string) *mac
 		SellReady:        row.SellReady,
 		OnlineStatus:     online,
 		StartedAt:        timestamppb.New(row.StartedAt.UTC()),
+		BootId:           row.BootID,
+		AppStartId:       row.AppStartID,
+		Blockers:         runtimeBlockersFromJSON(row.Blockers),
+		HardwareStatus:   jsonBytesToStruct(row.HardwareStatus),
+		CatalogStatus:    jsonBytesToStruct(row.CatalogStatus),
+		OutboxStatus:     jsonBytesToStruct(row.OutboxStatus),
+		RecoveryStatus:   jsonBytesToStruct(row.RecoveryStatus),
 	}
 	if row.EndReason.Valid {
 		er := row.EndReason.String
@@ -219,7 +233,84 @@ func mapRuntimeSessionProto(row db.MachineRuntimeAppSession, online string) *mac
 	if row.LastMqttSeenAt.Valid {
 		out.LastMqttSeenAt = timestamppb.New(row.LastMqttSeenAt.Time.UTC())
 	}
+	if row.EndedAt.Valid {
+		out.EndedAt = timestamppb.New(row.EndedAt.Time.UTC())
+	}
+	if row.PreviousRuntimeSessionID.Valid {
+		prev := uuid.UUID(row.PreviousRuntimeSessionID.Bytes).String()
+		out.PreviousRuntimeSessionId = &prev
+	}
 	return out
+}
+
+func runtimeBlockersToJSON(blockers []*machinev1.RuntimeBlocker) json.RawMessage {
+	if len(blockers) == 0 {
+		return json.RawMessage("[]")
+	}
+	items := make([]map[string]string, 0, len(blockers))
+	for _, b := range blockers {
+		if b == nil {
+			continue
+		}
+		items = append(items, map[string]string{
+			"code":     strings.TrimSpace(b.GetCode()),
+			"severity": strings.TrimSpace(b.GetSeverity()),
+			"message":  strings.TrimSpace(b.GetMessage()),
+		})
+	}
+	raw, err := json.Marshal(items)
+	if err != nil {
+		return json.RawMessage("[]")
+	}
+	return raw
+}
+
+func runtimeBlockersFromJSON(raw []byte) []*machinev1.RuntimeBlocker {
+	if len(raw) == 0 {
+		return nil
+	}
+	var items []map[string]any
+	if err := json.Unmarshal(raw, &items); err != nil {
+		return nil
+	}
+	out := make([]*machinev1.RuntimeBlocker, 0, len(items))
+	for _, item := range items {
+		code, _ := item["code"].(string)
+		sev, _ := item["severity"].(string)
+		msg, _ := item["message"].(string)
+		out = append(out, &machinev1.RuntimeBlocker{
+			Code:     code,
+			Severity: sev,
+			Message:  msg,
+		})
+	}
+	return out
+}
+
+func structToJSON(st *structpb.Struct) json.RawMessage {
+	if st == nil {
+		return json.RawMessage("{}")
+	}
+	raw, err := json.Marshal(st.AsMap())
+	if err != nil {
+		return json.RawMessage("{}")
+	}
+	return raw
+}
+
+func jsonBytesToStruct(raw []byte) *structpb.Struct {
+	if len(raw) == 0 {
+		return nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return nil
+	}
+	st, err := structpb.NewStruct(m)
+	if err != nil {
+		return nil
+	}
+	return st
 }
 
 func machineResponseMetaOK(meta *machinev1.MachineRequestMeta) *machinev1.MachineResponseMeta {

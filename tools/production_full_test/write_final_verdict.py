@@ -15,11 +15,18 @@ from _common import report_dir, write_json
 ROOT = Path(__file__).resolve().parents[2]
 
 
+MQTT_SNAPSHOT_FILES = frozenset({"MQTT_FINAL_COVERAGE.json", "MQTT_FULL_TEST_MATRIX.json"})
+
+
 def load_json(name: str) -> dict:
-    p = report_dir() / name
-    if not p.is_file():
-        return {}
-    return json.loads(p.read_text(encoding="utf-8"))
+    out = report_dir()
+    paths = [out / name]
+    if name in MQTT_SNAPSHOT_FILES:
+        paths.insert(0, out / "pre_e2e_mqtt_snapshot" / name)
+    for p in paths:
+        if p.is_file():
+            return json.loads(p.read_text(encoding="utf-8"))
+    return {}
 
 
 def main() -> int:

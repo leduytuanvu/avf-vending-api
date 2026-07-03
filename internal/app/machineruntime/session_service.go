@@ -210,6 +210,18 @@ func (s *Service) attachOrReplaceDeviceTx(ctx context.Context, qtx *db.Queries, 
 	if in.MachineID == uuid.Nil {
 		return db.MachineDeviceAttachment{}, errors.New("machineruntime: machine required")
 	}
+	if in.RequireOperator && (in.OperatorSessionID == nil || *in.OperatorSessionID == uuid.Nil) {
+		return db.MachineDeviceAttachment{}, errors.New("machineruntime: operator_session_id required")
+	}
+	if in.TechnicianID != nil && s.assignments != nil {
+		ok, err := s.assignments.TechnicianActiveAssignmentExists(ctx, *in.TechnicianID, in.MachineID)
+		if err != nil {
+			return db.MachineDeviceAttachment{}, err
+		}
+		if !ok {
+			return db.MachineDeviceAttachment{}, errors.New("machineruntime: technician not assigned to machine")
+		}
+	}
 	reason := strings.TrimSpace(in.Reason)
 	if reason == "" {
 		reason = "unknown"
@@ -322,11 +334,19 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 		endReason = "APP_CRASH_DETECTED"
 		endStatus = "CRASHED"
 	}
-	_, _ = qtx.CloseCurrentRuntimeAppSessionForMachine(ctx, db.CloseCurrentRuntimeAppSessionForMachineParams{
+	var prevSessID pgtype.UUID
+	if _, err := qtx.LockMachineForUpdate(ctx, in.MachineID); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	if closed, err := qtx.CloseCurrentRuntimeAppSessionForMachine(ctx, db.CloseCurrentRuntimeAppSessionForMachineParams{
 		MachineID: in.MachineID,
 		Status:    endStatus,
 		EndReason: pgtype.Text{String: endReason, Valid: true},
-	})
+	}); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	} else if len(closed) > 0 {
+		prevSessID = pgtype.UUID{Bytes: closed[0].ID, Valid: true}
+	}
 
 	meta := in.Metadata
 	if meta == nil {
@@ -341,7 +361,7 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 		DeviceAttachmentID: uuidToPg(in.DeviceAttachmentID),
 		MachineSessionID:    uuidToPg(in.MachineSessionID),
 		OperatorSessionID:   uuidToPg(in.OperatorSessionID),
-		PreviousRuntimeSessionID: pgtype.UUID{},
+		PreviousRuntimeSessionID: prevSessID,
 		BootID:              in.BootID,
 		AppStartID:          in.AppStartID,
 		AppInstanceID:       in.AppInstanceID,
@@ -378,6 +398,9 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 	}); err != nil {
 		return db.MachineRuntimeAppSession{}, err
 	}
+	if err := s.projectRuntimeSnapshot(ctx, qtx, in.MachineID, row, "online"); err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return db.MachineRuntimeAppSession{}, err
 	}
@@ -406,9 +429,13 @@ func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatIn
 		CatalogStatus:   defaultJSON(in.CatalogStatus),
 		OutboxStatus:    defaultJSON(in.OutboxStatus),
 		RecoveryStatus:  defaultJSON(in.RecoveryStatus),
+		MachineID:       in.MachineID,
 	})
 	if err != nil {
 		return db.MachineRuntimeAppSession{}, err
+	}
+	if row.MachineID != in.MachineID {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session machine mismatch")
 	}
 	online, _ := s.ComputeMachineOnlineStatus(ctx, in.MachineID)
 	_ = s.q.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
@@ -416,6 +443,7 @@ func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatIn
 		OnlineStatus: online,
 		LastSeenAt:   pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
 	})
+	_ = s.projectRuntimeSnapshot(ctx, s.q, in.MachineID, row, online)
 	return row, nil
 }
 
@@ -433,9 +461,13 @@ func (s *Service) EndRuntimeAppSession(ctx context.Context, in EndInput) (db.Mac
 		Status:    status,
 		EndReason: pgtype.Text{String: in.EndReason, Valid: in.EndReason != ""},
 		EndedAt:   pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+		MachineID: in.MachineID,
 	})
 	if err != nil {
 		return db.MachineRuntimeAppSession{}, err
+	}
+	if row.MachineID != in.MachineID {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session machine mismatch")
 	}
 	sess, err := s.q.GetCurrentMachineRuntimeAppSession(ctx, in.MachineID)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -449,11 +481,22 @@ func (s *Service) EndRuntimeAppSession(ctx context.Context, in EndInput) (db.Mac
 			CurrentRuntimeAppSessionID: pgtype.UUID{},
 		})
 	}
+	_ = s.projectRuntimeSnapshot(ctx, s.q, in.MachineID, row, "offline")
 	return row, nil
 }
 
-// ForceEndRuntimeAppSession admin-closes an app runtime session.
+// ForceEndRuntimeAppSession admin-closes an app runtime session after ownership check.
 func (s *Service) ForceEndRuntimeAppSession(ctx context.Context, machineID, sessionID uuid.UUID, reason string) (db.MachineRuntimeAppSession, error) {
+	if s == nil || s.q == nil {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
+	}
+	sess, err := s.q.GetMachineRuntimeAppSessionByID(ctx, sessionID)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	if sess.MachineID != machineID {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session not on machine")
+	}
 	if strings.TrimSpace(reason) == "" {
 		reason = "ADMIN_FORCE_END"
 	}
@@ -466,11 +509,23 @@ func (s *Service) ForceEndRuntimeAppSession(ctx context.Context, machineID, sess
 }
 
 // MarkRuntimeAppSessionStale flags a session stale without ending it.
-func (s *Service) MarkRuntimeAppSessionStale(ctx context.Context, sessionID uuid.UUID) (db.MachineRuntimeAppSession, error) {
+func (s *Service) MarkRuntimeAppSessionStale(ctx context.Context, machineID, sessionID uuid.UUID) (db.MachineRuntimeAppSession, error) {
 	if s == nil || s.q == nil {
 		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
 	}
-	return s.q.MarkMachineRuntimeAppSessionStale(ctx, sessionID)
+	row, err := s.q.MarkMachineRuntimeAppSessionStale(ctx, db.MarkMachineRuntimeAppSessionStaleParams{
+		ID:        sessionID,
+		MachineID: machineID,
+	})
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	if row.MachineID != machineID {
+		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session not on machine")
+	}
+	online, _ := s.ComputeMachineOnlineStatus(ctx, machineID)
+	_ = s.projectRuntimeSnapshot(ctx, s.q, machineID, row, online)
+	return row, nil
 }
 
 // GetCurrentRuntimeAppSession returns the open app runtime session for a machine.
@@ -524,10 +579,52 @@ func (s *Service) TouchMQTTSeen(ctx context.Context, machineID uuid.UUID, mqttSt
 	}); err != nil {
 		return err
 	}
-	return s.q.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
+	if err := s.q.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
 		ID:           machineID,
 		OnlineStatus: "online",
 		LastSeenAt:   pgtype.Timestamptz{Time: now, Valid: true},
+	}); err != nil {
+		return err
+	}
+	sess.LastMqttSeenAt = pgtype.Timestamptz{Time: now, Valid: true}
+	sess.LastMqttState = mqttState
+	return s.projectRuntimeSnapshot(ctx, s.q, machineID, sess, "online")
+}
+
+func (s *Service) projectRuntimeSnapshot(ctx context.Context, q *db.Queries, machineID uuid.UUID, sess db.MachineRuntimeAppSession, online string) error {
+	if q == nil {
+		return nil
+	}
+	var attachID pgtype.UUID
+	if sess.DeviceAttachmentID.Valid {
+		attachID = sess.DeviceAttachmentID
+	}
+	var started, heartbeat pgtype.Timestamptz
+	started = pgtype.Timestamptz{Time: sess.StartedAt.UTC(), Valid: true}
+	if sess.LastHeartbeatAt.Valid {
+		heartbeat = sess.LastHeartbeatAt
+	}
+	blockers := sess.Blockers
+	if blockers == nil {
+		blockers = []byte("[]")
+	}
+	var sessID pgtype.UUID
+	if !sess.EndedAt.Valid {
+		sessID = pgtype.UUID{Bytes: sess.ID, Valid: true}
+	}
+	return q.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
+		MachineID:                   machineID,
+		CurrentDeviceAttachmentID:   attachID,
+		CurrentRuntimeAppSessionID:  sessID,
+		OnlineStatus:           online,
+		RuntimeSessionStatus:   sess.Status,
+		RuntimeStartReason:     sess.StartReason,
+		RuntimeStartedAt:       started,
+		RuntimeLastHeartbeatAt: heartbeat,
+		LastMqttState:          sess.LastMqttState,
+		StorefrontState:        sess.StorefrontState,
+		SellReady:              sess.SellReady,
+		Blockers:               blockers,
 	})
 }
 
