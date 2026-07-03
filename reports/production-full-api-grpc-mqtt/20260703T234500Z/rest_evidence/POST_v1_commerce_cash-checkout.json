@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/commerce/cash-checkout",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b142d96f-7a55-41b1-b4d8-7a00682138ce",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 157
+}

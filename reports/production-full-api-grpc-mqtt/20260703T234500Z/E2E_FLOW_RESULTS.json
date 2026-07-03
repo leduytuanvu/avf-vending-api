@@ -1,0 +1,78 @@
+{
+  "flows": [
+    {
+      "flow": "A",
+      "name": "Admin setup chain",
+      "ok": true,
+      "detail": "prefix=AVF-RUNTIME-FLEET-20260703T234500Z",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:26.999221+00:00"
+    },
+    {
+      "flow": "B",
+      "name": "Claim mqtt credentials",
+      "ok": true,
+      "detail": "mqttPassword present from claim",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:26.999251+00:00"
+    },
+    {
+      "flow": "C",
+      "name": "gRPC/REST bootstrap mqtt metadata",
+      "ok": true,
+      "detail": "gRPC GetBootstrap mqtt metadata without password leak",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:29.249153+00:00"
+    },
+    {
+      "flow": "D",
+      "name": "MQTT matrix + ACL negatives",
+      "ok": true,
+      "detail": "mqtt matrix rc=0",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:35.652693+00:00"
+    },
+    {
+      "flow": "E",
+      "name": "Runtime health subset",
+      "ok": true,
+      "detail": "health/live HTTP 200",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:35.784324+00:00"
+    },
+    {
+      "flow": "F",
+      "name": "REST admin lifecycle smoke",
+      "ok": true,
+      "detail": "suspend=200 enable=200",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:36.672949+00:00"
+    },
+    {
+      "flow": "I",
+      "name": "Offline replay idempotency",
+      "ok": true,
+      "detail": "idempotent claim replay returned token",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:37.569343+00:00"
+    },
+    {
+      "flow": "G",
+      "name": "Reattach mqtt rotation",
+      "ok": true,
+      "detail": "reattach returned mqtt_password",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:38.780888+00:00"
+    },
+    {
+      "flow": "H",
+      "name": "Compromised revokes MQTT",
+      "ok": true,
+      "detail": "mqtt auth failed after compromised: CONNACK rc=Not authorized",
+      "blocked_by": "",
+      "at_utc": "2026-07-03T23:52:41.301671+00:00"
+    }
+  ],
+  "prefix": "AVF-RUNTIME-FLEET-20260703T234500Z",
+  "machine_id": "019f2a66-0676-78cd-92a9-da8d94413e20"
+}

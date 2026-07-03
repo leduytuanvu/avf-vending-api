@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/auth/users/00000000-0000-0000-0000-000000000001/deactivate",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "eae9d630-1ace-49b3-aa2d-6bd9a3b99cf7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"account not found\",\"requestId\":\"eae9d630-1ace-49b3-aa2d-6bd9a3b99cf7\"}}\n"
+  },
+  "duration_ms": 227
+}

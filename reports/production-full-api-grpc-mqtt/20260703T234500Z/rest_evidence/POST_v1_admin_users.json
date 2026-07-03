@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/users",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "cc1b682d-61d4-49e7-ab1a-dc6146e990d7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"weak_password\",\"details\":{},\"message\":\"password must be at least 10 characters\",\"requestId\":\"cc1b682d-61d4-49e7-ab1a-dc6146e990d7\"}}\n"
+  },
+  "duration_ms": 178
+}

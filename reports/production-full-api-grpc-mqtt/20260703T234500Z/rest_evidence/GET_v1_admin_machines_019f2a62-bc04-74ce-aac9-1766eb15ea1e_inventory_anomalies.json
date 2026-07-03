@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/inventory/anomalies",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f46ee1ce-54eb-4c43-a6f0-542d2744565d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[]}\n"
+  },
+  "duration_ms": 227
+}

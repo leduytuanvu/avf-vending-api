@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/cash-collections/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "23f6865d-6614-4d8e-b205-9dbc9b3c87e0",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"collection_not_found\",\"details\":{},\"message\":\"collection not found\",\"requestId\":\"23f6865d-6614-4d8e-b205-9dbc9b3c87e0\"}}\n"
+  },
+  "duration_ms": 401
+}

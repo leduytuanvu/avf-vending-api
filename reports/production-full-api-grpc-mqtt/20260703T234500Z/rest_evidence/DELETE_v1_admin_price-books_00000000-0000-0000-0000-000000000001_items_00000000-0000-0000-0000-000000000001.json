@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/admin/price-books/00000000-0000-0000-0000-000000000001/items/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "aabb86a7-35c3-402a-88a3-a0e4cb6a87c3",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"aabb86a7-35c3-402a-88a3-a0e4cb6a87c3\"}}\n"
+  },
+  "duration_ms": 141
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/orders/00000000-0000-0000-0000-000000000001/refunds",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3ea86620-9d6f-45a0-b2d1-21d1d829117b",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"3ea86620-9d6f-45a0-b2d1-21d1d829117b\"}}\n"
+  },
+  "duration_ms": 155
+}

@@ -1,0 +1,17 @@
+- negative/jwt_as_password
+- negative/wrong_password
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/commands/ack
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/commands/receipt
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/presence
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/state/heartbeat
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/telemetry
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/telemetry/snapshot
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/telemetry/incident
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/events
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/events/vend
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/events/cash
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/events/inventory
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/shadow/reported
+- avf/devices/machines/eb61e534-a6ce-4bef-b380-7954db0b2d29/commands
+- avf/devices/machines/eb61e534-a6ce-4bef-b380-7954db0b2d29/telemetry
+- avf/devices/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/commands

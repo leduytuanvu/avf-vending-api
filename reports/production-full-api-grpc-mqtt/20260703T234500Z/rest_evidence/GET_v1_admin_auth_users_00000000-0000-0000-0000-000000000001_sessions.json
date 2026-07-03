@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/auth/users/00000000-0000-0000-0000-000000000001/sessions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6e919076-cf9a-4929-919e-edd698cb9722",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"account not found\",\"requestId\":\"6e919076-cf9a-4929-919e-edd698cb9722\"}}\n"
+  },
+  "duration_ms": 224
+}

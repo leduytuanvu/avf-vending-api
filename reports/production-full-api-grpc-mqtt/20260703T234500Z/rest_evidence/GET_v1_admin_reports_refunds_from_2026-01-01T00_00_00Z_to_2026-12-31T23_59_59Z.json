@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/refunds?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2c0faa19-da64-4367-a502-2cfe616e8582",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"total\":0},\"items\":[]}\n"
+  },
+  "duration_ms": 252
+}

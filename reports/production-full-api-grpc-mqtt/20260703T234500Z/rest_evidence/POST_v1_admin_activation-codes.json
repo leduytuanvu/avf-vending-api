@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/activation-codes",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ae1ddfaf-2a9d-47ef-b034-e8f08b59e790",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_machine_id\",\"details\":{},\"message\":\"machineId is required\",\"requestId\":\"ae1ddfaf-2a9d-47ef-b034-e8f08b59e790\"}}\n"
+  },
+  "duration_ms": 168
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/device/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/commands/poll",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2019b0c8-32f5-49ee-992a-3c038c0ce79a",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 121
+}

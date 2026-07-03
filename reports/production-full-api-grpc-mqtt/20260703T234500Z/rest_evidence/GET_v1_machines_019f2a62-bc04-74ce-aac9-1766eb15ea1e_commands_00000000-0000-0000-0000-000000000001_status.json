@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/commands/00000000-0000-0000-0000-000000000001/status",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e858e3bd-23b5-4b5d-896d-5505ed5f7276",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_sequence\",\"details\":{},\"message\":\"sequence must be a non-negative integer\",\"requestId\":\"e858e3bd-23b5-4b5d-896d-5505ed5f7276\"}}\n"
+  },
+  "duration_ms": 157
+}

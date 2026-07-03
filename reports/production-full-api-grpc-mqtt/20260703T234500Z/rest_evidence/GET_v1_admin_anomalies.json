@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/anomalies",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "41943c98-beeb-4101-a271-5d7f5f357fae",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[]}\n"
+  },
+  "duration_ms": 189
+}

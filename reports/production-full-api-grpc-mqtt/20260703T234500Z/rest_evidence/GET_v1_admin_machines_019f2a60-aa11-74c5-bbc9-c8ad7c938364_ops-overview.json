@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/ops-overview",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "89b6c0f8-866a-490c-8523-eedcb1d8de9c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"connectivity\":{\"lastSeenAt\":null,\"onlineStatus\":\"unknown\"},\"credential_session\":{\"credential_version\":0,\"issued_at\":\"2026-07-03T23:46:46.967582Z\",\"session_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"status\":\"active\"},\"credential_version\":0,\"final_sell_ready\":false,\"health\":{\"failedCommandCount\":0,\"inventoryAnomalyCount\":0,\"machineId\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"pendingCommandCount\":0,\"status\":\"active\"},\"last_activation_claim\":{\"activationSource\":\"activation_code\",\"appVersion\":\"\",\"claimedAt\":\"2026-07-03T23:46:46.967582Z\",\"id\":\"019f2a60-b04c-7e9f-8271-93b0c45e62c3\"},\"machine_code\":\"AVF20260703234500597599\",\"machine_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"online_status\":\"unknown\",\"runtime_session\":{\"credential_version\":0,\"expires_at\":\"2026-08-02T23:46:48.064016Z\",\"issued_at\":\"2026-07-03T23:46:46.967582Z\",\"session_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"status\":\"active\"},\"sale_enabled\":false,\"status\":\"active\"}\n"
+  },
+  "duration_ms": 525
+}

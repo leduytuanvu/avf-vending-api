@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/provisioning/batches/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b49748e0-5cfc-44cf-b82f-2991c6c108ac",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"provisioning: not found\",\"requestId\":\"b49748e0-5cfc-44cf-b82f-2991c6c108ac\"}}\n"
+  },
+  "duration_ms": 188
+}

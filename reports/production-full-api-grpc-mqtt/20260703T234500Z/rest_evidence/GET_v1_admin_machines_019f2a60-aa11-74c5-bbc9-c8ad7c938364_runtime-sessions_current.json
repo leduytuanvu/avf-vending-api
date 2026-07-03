@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/runtime-sessions/current",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6b699ff3-3ac7-4700-9bae-ce2c7b2dd004",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"session\":{\"credential_version\":0,\"expires_at\":\"2026-08-02T23:46:48.064016Z\",\"issued_at\":\"2026-07-03T23:46:46.967582Z\",\"machine_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"session_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"status\":\"active\"}}\n"
+  },
+  "duration_ms": 264
+}

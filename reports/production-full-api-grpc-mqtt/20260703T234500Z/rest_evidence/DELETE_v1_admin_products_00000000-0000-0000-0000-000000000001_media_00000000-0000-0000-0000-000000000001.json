@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/admin/products/00000000-0000-0000-0000-000000000001/media/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ac7bf98f-8735-4fa1-8da6-13e291f169e7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"mediaadmin: not found\",\"requestId\":\"ac7bf98f-8735-4fa1-8da6-13e291f169e7\"}}\n"
+  },
+  "duration_ms": 305
+}

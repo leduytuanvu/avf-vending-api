@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/technician-assignments",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6284e5e3-deee-44ec-9c58-de824eeac271",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_technician_id\",\"details\":{},\"message\":\"invalid technician_id\",\"requestId\":\"6284e5e3-deee-44ec-9c58-de824eeac271\"}}\n"
+  },
+  "duration_ms": 163
+}

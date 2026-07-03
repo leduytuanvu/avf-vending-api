@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/inventory/low-stock",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "62c36cb8-eda7-4722-a779-b899b713414b",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"velocityWindowDays\":14,\"windowStart\":\"2026-06-19T23:49:18.07029054Z\",\"windowEnd\":\"2026-07-03T23:49:18.07029054Z\",\"items\":[{\"machineId\":\"019f151a-ffb7-7b30-bae2-b137fe2776bc\",\"machineName\":\"E2E Machine\",\"siteId\":\"019f151a-fdca-7d97-9a7c-d5ba0468cba8\",\"siteName\":\"E2E Site\",\"planogramId\":\"cccccccc-cccc-cccc-cccc-000000000001\",\"planogramName\":\"Default Planogram\",\"slotIndex\":1,\"productId\":\"aaaaaaaa-aaaa-aaaa-aaaa-000000000002\",\"productSku\":\"SKU-WATER\",\"productName\":\"Still water 500ml\",\"currentQuantity\":0,\"maxQuantity\":10,\"unitsSoldInWindow\":0,\"dailyVelocity\":0,\"daysToEmpty\":0,\"fillRatio\":0,\"suggestedRefillQuantity\":10,\"urgency\":\"critical\"}],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":1,\"total\":1}}\n"
+  },
+  "duration_ms": 247
+}

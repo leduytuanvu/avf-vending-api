@@ -1,0 +1,230 @@
+{
+  "total": 17,
+  "topics": [
+    {
+      "topic": "negative/jwt_as_password",
+      "tail": "negative/jwt_as_password",
+      "pass": true,
+      "status": "PASS",
+      "reason": "CONNACK rc=Bad user name or password",
+      "connect_ok": false
+    },
+    {
+      "topic": "negative/wrong_password",
+      "tail": "negative/wrong_password",
+      "pass": true,
+      "status": "PASS",
+      "reason": "CONNACK rc=Bad user name or password",
+      "connect_ok": false
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands/ack",
+      "tail": "commands/ack",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "commandId": "c12acb5e-ae2e-4add-b7b2-93874ebe769d",
+        "status": "acked"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands/receipt",
+      "tail": "commands/receipt",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "commandId": "90ad1151-d235-4d4f-bbea-56bcdba0ff64",
+        "status": "acked"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/presence",
+      "tail": "presence",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/state/heartbeat",
+      "tail": "state/heartbeat",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry",
+      "tail": "telemetry",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "metric": "prod_test",
+        "value": 1
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry/snapshot",
+      "tail": "telemetry/snapshot",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "metric": "prod_test",
+        "value": 1
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry/incident",
+      "tail": "telemetry/incident",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "metric": "prod_test",
+        "value": 1
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events",
+      "tail": "events",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "eventType": "prod_test"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/vend",
+      "tail": "events/vend",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "eventType": "prod_test"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/cash",
+      "tail": "events/cash",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "eventType": "prod_test"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/inventory",
+      "tail": "events/inventory",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1",
+        "eventType": "prod_test"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/shadow/reported",
+      "tail": "shadow/reported",
+      "pass": true,
+      "status": "PASS",
+      "reason": "rc=0",
+      "payload_sample": {
+        "machineId": "019f2a66-0676-78cd-92a9-da8d94413e20",
+        "correlationId": "c6c23232-a2cb-4756-8971-58e1d493b4c9",
+        "occurredAt": "2026-07-03T23:52:32.241771+00:00",
+        "schemaVersion": "1"
+      },
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/9215372d-3e1d-4d90-800c-c65e020789f2/commands",
+      "tail": "negative/foreign_commands_subscribe",
+      "pass": true,
+      "status": "PASS",
+      "reason": "foreign subscribe rc=0",
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/9215372d-3e1d-4d90-800c-c65e020789f2/telemetry",
+      "tail": "negative/wrong_machine_publish",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ACL deny expected rc=disconnected_after_foreign_subscribe",
+      "connect_ok": true
+    },
+    {
+      "topic": "avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands",
+      "tail": "commands/subscribe",
+      "pass": true,
+      "status": "PASS",
+      "reason": "subscribe rc=0",
+      "connect_ok": true
+    }
+  ],
+  "pass_count": 17,
+  "fail_count": 0,
+  "untested_count": 0
+}

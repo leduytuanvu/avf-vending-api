@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/device/machines/019f2a5e-73de-7359-be5a-3a15deeff543/events/reconcile",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "5aebda9c-6adc-4192-8033-284fdfc879c0",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 123
+}

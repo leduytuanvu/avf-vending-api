@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/system/retention/dry-run",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3fa88303-b43f-49c7-920b-9e29174cee72",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"telemetry\":{\"enabled\":true,\"dryRun\":true,\"stages\":{\"critical_telemetry_event_status\":0,\"device_telemetry_events_critical\":0,\"device_telemetry_events_non_critical\":0,\"diagnostic_bundle_manifests\":0,\"machine_check_ins\":0,\"machine_incidents_high_critical\":0,\"machine_incidents_normal\":0,\"machine_state_transitions\":0,\"telemetry_rollups_1h\":0,\"telemetry_rollups_1m\":0}},\"enterprise\":{\"enabled\":false,\"dryRun\":false},\"overallDryRun\":true,\"wouldModifyDatabase\":false}\n"
+  },
+  "duration_ms": 1026
+}

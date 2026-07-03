@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/payments?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "24a56d78-5c02-4814-82b1-e76689138323",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"timezone\":\"UTC\",\"items\":[{\"bucketStart\":\"2026-05-24T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-05-25T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":22,\"amountMinor\":330000},{\"bucketStart\":\"2026-05-26T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":4,\"amountMinor\":60000},{\"bucketStart\":\"2026-06-01T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-06-03T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":6,\"amountMinor\":90000},{\"bucketStart\":\"2026-06-04T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":16,\"amountMinor\":240000},{\"bucketStart\":\"2026-06-21T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-06-22T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":3,\"amountMinor\":45000},{\"bucketStart\":\"2026-06-24T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":4,\"amountMinor\":60000},{\"bucketStart\":\"2026-06-26T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":1,\"amountMinor\":15000},{\"bucketStart\":\"2026-06-28T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":3,\"amountMinor\":45000},{\"bucketStart\":\"2026-06-29T00:00:00Z\",\"provider\":\"cash\",\"state\":\"captured\",\"settlementStatus\":\"unsettled\",\"reconciliationStatus\":\"pending\",\"paymentCount\":2,\"amountMinor\":30000}],\"meta\":{\"limit\":12,\"offset\":0,\"returned\":12,\"total\":12}}\n"
+  },
+  "duration_ms": 190
+}

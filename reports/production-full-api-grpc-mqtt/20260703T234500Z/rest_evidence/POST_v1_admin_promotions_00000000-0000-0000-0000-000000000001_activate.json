@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/promotions/00000000-0000-0000-0000-000000000001/activate",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "94120d00-9beb-4baf-93f7-6a7cfa2c90c2",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"resource not found\",\"requestId\":\"94120d00-9beb-4baf-93f7-6a7cfa2c90c2\"}}\n"
+  },
+  "duration_ms": 191
+}

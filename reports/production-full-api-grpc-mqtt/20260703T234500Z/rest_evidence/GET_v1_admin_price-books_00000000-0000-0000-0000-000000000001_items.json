@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/price-books/00000000-0000-0000-0000-000000000001/items",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "a8fcad37-ce57-4e48-b927-d16e00ba324c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"price book not found\",\"requestId\":\"a8fcad37-ce57-4e48-b927-d16e00ba324c\"}}\n"
+  },
+  "duration_ms": 187
+}

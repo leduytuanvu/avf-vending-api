@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PATCH",
+    "url": "https://api.ldtv.dev/v1/admin/sites/019f2a62-ba9c-7727-9bd7-568e22de5ce0",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "fe5c409f-2586-444d-be6e-b573a2bef7c3",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"address\":{\"line1\":\"AVF-RUNTIME-FLEET-20260703T234500Z address\"},\"code\":\"AVF-RUNTIME-FL-3ee13a\",\"created_at\":\"2026-07-03T23:49:01.212085Z\",\"id\":\"019f2a62-ba9c-7727-9bd7-568e22de5ce0\",\"name\":\"AVF-RUNTIME-FLEET-20260703T234500Z updated\",\"status\":\"active\",\"timezone\":\"UTC\",\"updated_at\":\"2026-07-03T23:49:59.816461Z\"}\n"
+  },
+  "duration_ms": 364
+}

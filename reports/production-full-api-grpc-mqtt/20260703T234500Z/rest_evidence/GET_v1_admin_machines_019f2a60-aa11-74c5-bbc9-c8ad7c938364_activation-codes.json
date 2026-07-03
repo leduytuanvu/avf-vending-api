@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/activation-codes",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2a43ae1a-b619-4ddf-9308-41fb18d6af8d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[{\"activationCodeId\":\"019f2a60-ad65-73fa-8652-797e08482197\",\"createdAt\":\"2026-07-03T23:46:46Z\",\"expiresAt\":\"2026-07-04T23:46:46Z\",\"machineId\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"maxUses\":1,\"notes\":\"\",\"remainingUses\":0,\"status\":\"expired\",\"uses\":1}]}\n"
+  },
+  "duration_ms": 330
+}

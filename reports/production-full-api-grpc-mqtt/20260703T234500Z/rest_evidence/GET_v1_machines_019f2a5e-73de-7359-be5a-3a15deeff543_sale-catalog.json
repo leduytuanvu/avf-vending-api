@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a5e-73de-7359-be5a-3a15deeff543/sale-catalog",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "293f49b4-ad3f-4722-8c5a-0fd4bf6bb3fd",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 134
+}

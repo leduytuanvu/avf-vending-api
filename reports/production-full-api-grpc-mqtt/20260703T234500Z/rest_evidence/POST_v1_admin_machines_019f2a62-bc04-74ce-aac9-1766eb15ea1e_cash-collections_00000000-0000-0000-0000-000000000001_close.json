@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/cash-collections/00000000-0000-0000-0000-000000000001/close",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b01e2098-94ea-49db-9791-509d284321f4",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"b01e2098-94ea-49db-9791-509d284321f4\"}}\n"
+  },
+  "duration_ms": 223
+}

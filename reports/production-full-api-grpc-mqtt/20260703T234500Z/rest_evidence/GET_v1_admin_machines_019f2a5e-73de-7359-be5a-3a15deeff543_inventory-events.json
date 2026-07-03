@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a5e-73de-7359-be5a-3a15deeff543/inventory-events",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "9acf83c4-111c-4b4f-9d44-6f0ba8d3fc89",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[]}\n"
+  },
+  "duration_ms": 370
+}

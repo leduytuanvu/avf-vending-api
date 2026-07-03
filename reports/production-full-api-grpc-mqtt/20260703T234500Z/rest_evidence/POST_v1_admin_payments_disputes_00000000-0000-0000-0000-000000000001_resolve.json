@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/payments/disputes/00000000-0000-0000-0000-000000000001/resolve",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "66391627-263e-4bbf-8763-7aca69dd891c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"payments: status must be won, lost, or closed\",\"requestId\":\"66391627-263e-4bbf-8763-7aca69dd891c\"}}\n"
+  },
+  "duration_ms": 161
+}

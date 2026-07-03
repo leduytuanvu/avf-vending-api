@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/setup/activation-codes/claim",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6a066d16-de30-4c4f-9cf5-b04adfddfa26"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"activation_invalid\",\"details\":{},\"message\":\"activation code is not valid\",\"requestId\":\"6a066d16-de30-4c4f-9cf5-b04adfddfa26\"}}\n"
+  },
+  "duration_ms": 117
+}

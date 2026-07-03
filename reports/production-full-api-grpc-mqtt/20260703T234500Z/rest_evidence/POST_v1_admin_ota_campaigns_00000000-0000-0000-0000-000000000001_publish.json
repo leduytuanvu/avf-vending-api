@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/ota/campaigns/00000000-0000-0000-0000-000000000001/publish",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b08f97ce-29a3-449c-9263-b057aed36f7a",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"b08f97ce-29a3-449c-9263-b057aed36f7a\"}}\n"
+  },
+  "duration_ms": 156
+}

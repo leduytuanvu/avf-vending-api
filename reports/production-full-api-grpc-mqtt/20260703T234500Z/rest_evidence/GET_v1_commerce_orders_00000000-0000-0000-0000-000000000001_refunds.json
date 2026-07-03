@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/commerce/orders/00000000-0000-0000-0000-000000000001/refunds",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "33a9e70a-6cf1-4368-adeb-b7abb7874b35",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 123
+}

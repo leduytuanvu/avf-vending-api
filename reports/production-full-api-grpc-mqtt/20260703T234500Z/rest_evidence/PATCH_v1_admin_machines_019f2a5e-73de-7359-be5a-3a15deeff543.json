@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PATCH",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a5e-73de-7359-be5a-3a15deeff543",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b60ecb19-14bd-48ba-8e2d-d98e6f022bf6",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"activated_at\":\"2026-07-03T23:44:21.574596Z\",\"cabinet_type\":\"ambient\",\"code\":\"AVF20260703234500736446\",\"command_sequence\":0,\"created_at\":\"2026-07-03T23:44:20.9515Z\",\"credential_version\":0,\"id\":\"019f2a5e-73de-7359-be5a-3a15deeff543\",\"model\":\"AVF-PROD-TEST\",\"name\":\"AVF-RUNTIME-FLEET-20260703T234500Z updated\",\"serial_number\":\"AVF-RUNTIME-FLEET-20260703T234500Z-SN-p1\",\"site_id\":\"019f2a5e-71db-7e6d-877d-a7f05d5fa5b8\",\"status\":\"active\",\"timezone\":\"UTC\",\"updated_at\":\"2026-07-03T23:44:47.775923Z\"}\n"
+  },
+  "duration_ms": 802
+}

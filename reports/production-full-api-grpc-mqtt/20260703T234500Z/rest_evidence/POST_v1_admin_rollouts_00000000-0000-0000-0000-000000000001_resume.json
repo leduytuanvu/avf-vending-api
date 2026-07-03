@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/rollouts/00000000-0000-0000-0000-000000000001/resume",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "10c94d70-09d4-4136-bd24-1b86c88a253a",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 500,
+    "body": "{\"error\":{\"code\":\"internal\",\"details\":{},\"message\":\"no rows in result set\",\"requestId\":\"10c94d70-09d4-4136-bd24-1b86c88a253a\"}}\n"
+  },
+  "duration_ms": 185
+}

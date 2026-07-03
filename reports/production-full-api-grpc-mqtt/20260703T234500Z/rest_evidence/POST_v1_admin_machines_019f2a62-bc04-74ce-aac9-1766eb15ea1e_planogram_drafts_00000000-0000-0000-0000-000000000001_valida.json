@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/planogram/drafts/00000000-0000-0000-0000-000000000001/validate",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "238ad345-dd57-4dbb-a290-22a138bb9b70",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 160
+}

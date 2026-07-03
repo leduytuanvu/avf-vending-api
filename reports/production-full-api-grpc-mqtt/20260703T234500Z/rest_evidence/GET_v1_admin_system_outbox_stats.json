@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/system/outbox/stats",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "8563a961-12d5-40fc-baf0-993d369edd4a",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"stats\":{\"pendingTotal\":0,\"pendingDueNow\":0,\"deadLetteredTotal\":0,\"publishingLeasedTotal\":0,\"maxPendingAttempts\":0}}\n"
+  },
+  "duration_ms": 224
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/artifacts",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f46a2e3b-2fa1-438a-8064-1767886f90a9",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 133
+}

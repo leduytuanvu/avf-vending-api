@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a5e-73de-7359-be5a-3a15deeff543/diagnostics/bundles",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "9b9c94a8-42ad-4551-ab98-b90087705ffc",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0}}\n"
+  },
+  "duration_ms": 308
+}

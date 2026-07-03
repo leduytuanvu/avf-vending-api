@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/version",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2e5d8539-4e50-4caa-ae63-40f1bbac2036"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"name\":\"avf-vending-api\",\"version\":\"v1.0.01\",\"git_sha\":\"51485f5583a4f550cfe6fdb6e529e7339daad9ca\",\"build_time\":\"2026-07-03T23:26:39Z\",\"app_env\":\"production\",\"process\":\"api\",\"runtime_role\":\"api\",\"region\":\"ap-southeast-1\",\"node_name\":\"app-node-a\",\"instance_id\":\"app-node-a\",\"public_base_url\":\"https://api.ldtv.dev\",\"machine_public_base_url\":\"https://api.ldtv.dev\",\"payment_runtime\":{\"payment_env\":\"cash_only\",\"payment_mode\":\"cash_only\",\"card_qr_provider_status\":\"unavailable\",\"card_qr_sessions_available\":false,\"cash_allowed_by_deployment\":true,\"qr_card_unavailable_reason\":\"provider_unavailable\"}}\n"
+  },
+  "duration_ms": 157
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machine-config/rollouts",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "94917160-4fd9-49ad-8931-8231a2cb4aa1",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"94917160-4fd9-49ad-8931-8231a2cb4aa1\"}}\n"
+  },
+  "duration_ms": 158
+}

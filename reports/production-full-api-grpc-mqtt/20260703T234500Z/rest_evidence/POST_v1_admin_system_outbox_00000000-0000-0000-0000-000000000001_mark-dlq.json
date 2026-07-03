@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/system/outbox/00000000-0000-0000-0000-000000000001/mark-dlq",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ee010fa6-3fb9-46de-a12c-e7be7a2f4858",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_outbox_id\",\"details\":{},\"message\":\"eventId must be a positive integer\",\"requestId\":\"ee010fa6-3fb9-46de-a12c-e7be7a2f4858\"}}\n"
+  },
+  "duration_ms": 152
+}

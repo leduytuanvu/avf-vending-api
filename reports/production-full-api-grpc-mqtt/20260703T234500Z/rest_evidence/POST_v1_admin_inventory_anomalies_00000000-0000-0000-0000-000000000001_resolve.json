@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/inventory/anomalies/00000000-0000-0000-0000-000000000001/resolve",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7e2fdf2b-e3c4-4e10-aa8b-ec7c0563b7a7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"anomaly not found or already resolved\",\"requestId\":\"7e2fdf2b-e3c4-4e10-aa8b-ec7c0563b7a7\"}}\n"
+  },
+  "duration_ms": 223
+}

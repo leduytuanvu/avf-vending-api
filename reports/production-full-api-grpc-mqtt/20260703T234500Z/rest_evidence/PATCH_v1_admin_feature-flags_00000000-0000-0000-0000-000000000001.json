@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PATCH",
+    "url": "https://api.ldtv.dev/v1/admin/feature-flags/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2260f5d8-df20-4eca-a22e-4555869e53d5",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"feature flag not found\",\"requestId\":\"2260f5d8-df20-4eca-a22e-4555869e53d5\"}}\n"
+  },
+  "duration_ms": 227
+}

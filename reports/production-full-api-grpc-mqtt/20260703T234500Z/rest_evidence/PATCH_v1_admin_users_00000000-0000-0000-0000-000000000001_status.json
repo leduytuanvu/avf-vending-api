@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PATCH",
+    "url": "https://api.ldtv.dev/v1/admin/users/00000000-0000-0000-0000-000000000001/status",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "d1095e9d-0d78-4bb8-aa78-b15124db3adc",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"account not found\",\"requestId\":\"d1095e9d-0d78-4bb8-aa78-b15124db3adc\"}}\n"
+  },
+  "duration_ms": 187
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/telemetry/snapshot",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "5e530b19-abc9-40a4-b37b-eda2c5d15ce3",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 159
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/feature-flags",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3160b348-b329-4e7d-b162-2ea28c310659",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"3160b348-b329-4e7d-b162-2ea28c310659\"}}\n"
+  },
+  "duration_ms": 121
+}

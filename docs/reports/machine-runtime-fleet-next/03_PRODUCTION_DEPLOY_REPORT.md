@@ -1,17 +1,17 @@
 # Production Deploy Report — Machine Runtime Fleet
 
 **Date:** 2026-07-04  
-**Verdict:** **BLOCKED_BY_MERGE_AND_CI**
+**Verdict:** **BLOCKED_BY_MANUAL_DEPLOY_INPUTS**
 
 ## Pre-deploy checklist
 
 | Item | Status |
 |------|--------|
-| PR #409 merged to `develop` | **NOT DONE** — awaiting CI |
-| `develop` merged to `main` | **NOT DONE** |
-| pg_dump backup | **NOT RUN** |
-| `/version` + migration version recorded | **NOT RUN** |
-| Deploy workflow from `main` with `run_migration=true` | **NOT RUN** |
+| PR #409 merged to `develop` | **DONE** @ `8991f526` |
+| `develop` merged to `main` | **DONE** @ `277a3ad4` (PR #410) |
+| Branch parity `develop..main` | **EMPTY DIFF** |
+| pg_dump backup | **NOT RUN** (operator step) |
+| Deploy workflow `deploy-prod.yml` | **NOT RUN** — requires manual `workflow_dispatch` with build_run_id, security_release_run_id, digest-pinned images, `DEPLOY_PRODUCTION` confirmation |
 
 ## Intended deploy
 

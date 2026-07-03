@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/auth/login",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "92f1dc8e-3c1f-4130-b207-927c2aaf5a99",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"accountId\":\"019f16b1-da40-755b-a67b-c9427ae278ca\",\"email\":\"admin@avf.com\",\"roles\":[\"admin\",\"platform_admin\"],\"tokens\":{\"accessToken\":***REDACTED***,\"accessExpiresAt\":\"2026-07-04T00:05:10.626707848Z\",\"refreshToken\":***REDACTED***,\"refreshExpiresAt\":\"2026-08-02T23:50:10.626796161Z\",\"tokenType\":\"Bearer\"}}\n"
+  },
+  "duration_ms": 577
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/operator-insights/technicians/00000000-0000-0000-0000-000000000001/action-attributions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "21a4d18c-ee70-46dc-81ad-faea0db6d134",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"not found\",\"requestId\":\"21a4d18c-ee70-46dc-81ad-faea0db6d134\"}}\n"
+  },
+  "duration_ms": 302
+}

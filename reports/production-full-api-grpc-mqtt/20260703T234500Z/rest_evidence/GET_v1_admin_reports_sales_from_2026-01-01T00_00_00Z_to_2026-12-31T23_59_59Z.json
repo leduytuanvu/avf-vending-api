@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/sales?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "316fabcf-ab55-4f1f-a928-ae18562cb076",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"groupBy\":\"day\",\"summary\":{\"grossTotalMinor\":2115000,\"subtotalMinor\":2115000,\"taxMinor\":0,\"orderCount\":141,\"avgOrderValueMinor\":15000},\"breakdown\":[{\"bucketStart\":\"2026-05-24T00:00:00Z\",\"orderCount\":14,\"totalMinor\":210000,\"subtotalMinor\":210000,\"taxMinor\":0},{\"bucketStart\":\"2026-05-25T00:00:00Z\",\"orderCount\":37,\"totalMinor\":555000,\"subtotalMinor\":555000,\"taxMinor\":0},{\"bucketStart\":\"2026-05-26T00:00:00Z\",\"orderCount\":7,\"totalMinor\":105000,\"subtotalMinor\":105000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-01T00:00:00Z\",\"orderCount\":12,\"totalMinor\":180000,\"subtotalMinor\":180000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-03T00:00:00Z\",\"orderCount\":9,\"totalMinor\":135000,\"subtotalMinor\":135000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-04T00:00:00Z\",\"orderCount\":27,\"totalMinor\":405000,\"subtotalMinor\":405000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-21T00:00:00Z\",\"orderCount\":10,\"totalMinor\":150000,\"subtotalMinor\":150000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-22T00:00:00Z\",\"orderCount\":3,\"totalMinor\":45000,\"subtotalMinor\":45000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-24T00:00:00Z\",\"orderCount\":4,\"totalMinor\":60000,\"subtotalMinor\":60000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-26T00:00:00Z\",\"orderCount\":1,\"totalMinor\":15000,\"subtotalMinor\":15000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-27T00:00:00Z\",\"orderCount\":1,\"totalMinor\":15000,\"subtotalMinor\":15000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-28T00:00:00Z\",\"orderCount\":3,\"totalMinor\":45000,\"subtotalMinor\":45000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-29T00:00:00Z\",\"orderCount\":2,\"totalMinor\":30000,\"subtotalMinor\":30000,\"taxMinor\":0},{\"bucketStart\":\"2026-06-30T00:00:00Z\",\"orderCount\":7,\"totalMinor\":105000,\"subtotalMinor\":105000,\"taxMinor\":0},{\"bucketStart\":\"2026-07-01T00:00:00Z\",\"orderCount\":1,\"totalMinor\":15000,\"subtotalMinor\":15000,\"taxMinor\":0},{\"bucketStart\":\"2026-07-02T00:00:00Z\",\"orderCount\":3,\"totalMinor\":45000,\"subtotalMinor\":45000,\"taxMinor\":0}]}\n"
+  },
+  "duration_ms": 248
+}

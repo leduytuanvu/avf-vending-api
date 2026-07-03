@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/rollouts",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "5a6ec12f-fd50-4fc9-871a-0c5da2ec8bbd",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0}}\n"
+  },
+  "duration_ms": 223
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/activation-codes",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7bb61583-ffd2-4f1c-89de-fd0f2ad3f4fe",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": "{\"activationCode\":\"AVF-A57170-6FE528\",\"activationCodeId\":\"019f2a63-0894-7e75-889d-b19a0ad0edca\",\"expiresAt\":\"2026-07-04T23:49:21Z\",\"machineId\":\"019f2a62-bc04-74ce-aac9-1766eb15ea1e\",\"maxUses\":1,\"remainingUses\":1,\"status\":\"active\"}\n"
+  },
+  "duration_ms": 226
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/retire",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e2844fb2-0b2c-4f30-b1fc-272d6c19e699",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"e2844fb2-0b2c-4f30-b1fc-272d6c19e699\"}}\n"
+  },
+  "duration_ms": 133
+}

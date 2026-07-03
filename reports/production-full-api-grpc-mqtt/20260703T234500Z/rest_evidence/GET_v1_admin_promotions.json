@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/promotions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "68c8ade1-3431-4741-b95d-28e01eb1e3de",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"totalCount\":0}}\n"
+  },
+  "duration_ms": 292
+}

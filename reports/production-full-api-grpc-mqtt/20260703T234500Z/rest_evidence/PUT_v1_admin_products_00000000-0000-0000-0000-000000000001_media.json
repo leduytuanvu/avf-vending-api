@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://api.ldtv.dev/v1/admin/products/00000000-0000-0000-0000-000000000001/media",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ecf2c5cf-129e-4214-bdbd-0f84a64c33a8",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_media_id\",\"details\":{},\"message\":\"media_id required\",\"requestId\":\"ecf2c5cf-129e-4214-bdbd-0f84a64c33a8\"}}\n"
+  },
+  "duration_ms": 162
+}

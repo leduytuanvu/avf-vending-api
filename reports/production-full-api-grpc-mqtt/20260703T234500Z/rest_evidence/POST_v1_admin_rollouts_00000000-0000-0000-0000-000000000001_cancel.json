@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/rollouts/00000000-0000-0000-0000-000000000001/cancel",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "cf682942-2199-4fbd-a8e4-1add3e815015",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 500,
+    "body": "{\"error\":{\"code\":\"internal\",\"details\":{},\"message\":\"no rows in result set\",\"requestId\":\"cf682942-2199-4fbd-a8e4-1add3e815015\"}}\n"
+  },
+  "duration_ms": 222
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/planograms/publish",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e9e7ec56-8efc-4203-9c09-79b5866829b1",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"e9e7ec56-8efc-4203-9c09-79b5866829b1\"}}\n"
+  },
+  "duration_ms": 201
+}

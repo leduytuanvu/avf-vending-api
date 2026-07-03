@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/reports/inventory-exceptions?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2233eedc-a48a-437a-99d6-bb78d601bbaa",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"exceptionKind\":\"all\",\"meta\":{\"limit\":50,\"offset\":0,\"returned\":1,\"total\":1},\"items\":[{\"machineId\":\"019f151a-ffb7-7b30-bae2-b137fe2776bc\",\"machineName\":\"E2E Machine\",\"machineSerialNumber\":\"SN-E2E-1782765506\",\"machineStatus\":\"active\",\"planogramId\":\"cccccccc-cccc-cccc-cccc-000000000001\",\"planogramName\":\"Default Planogram\",\"slotIndex\":1,\"currentQuantity\":0,\"maxQuantity\":10,\"productId\":\"aaaaaaaa-aaaa-aaaa-aaaa-000000000002\",\"productSku\":\"SKU-WATER\",\"productName\":\"Still water 500ml\",\"outOfStock\":true,\"lowStock\":false,\"attentionNeeded\":true}]}\n"
+  },
+  "duration_ms": 266
+}

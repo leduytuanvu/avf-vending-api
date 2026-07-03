@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a5e-73de-7359-be5a-3a15deeff543/operator-sessions/00000000-0000-0000-0000-000000000001/heartbeat",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e810ac9c-0d39-4246-9fe4-cd59d8c3fefe",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 119
+}

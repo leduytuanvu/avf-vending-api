@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/products?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f340cb11-198d-4c26-9e39-2abff9438de1",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"reporting_error\",\"details\":{},\"message\":\"reporting product performance: ERROR: missing FROM-clause entry for table \\\"pr\\\" (SQLSTATE 42P01)\",\"requestId\":\"f340cb11-198d-4c26-9e39-2abff9438de1\"}}\n"
+  },
+  "duration_ms": 222
+}

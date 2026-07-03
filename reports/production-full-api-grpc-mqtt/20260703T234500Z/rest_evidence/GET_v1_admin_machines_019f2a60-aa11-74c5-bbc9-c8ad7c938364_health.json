@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/health",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "53e2bc17-f196-4b77-88d9-39c4058b09d8",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"failedCommandCount\":0,\"inventoryAnomalyCount\":0,\"machineId\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"pendingCommandCount\":0,\"status\":\"active\"}\n"
+  },
+  "duration_ms": 188
+}

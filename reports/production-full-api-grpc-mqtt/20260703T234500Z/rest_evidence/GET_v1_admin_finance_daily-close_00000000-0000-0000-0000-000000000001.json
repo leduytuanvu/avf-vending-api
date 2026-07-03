@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/finance/daily-close/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "4407c38d-5e2a-4bab-997d-a80614c0a87c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"daily_close_not_found\",\"details\":{},\"message\":\"finance: daily close not found\",\"requestId\":\"4407c38d-5e2a-4bab-997d-a80614c0a87c\"}}\n"
+  },
+  "duration_ms": 222
+}

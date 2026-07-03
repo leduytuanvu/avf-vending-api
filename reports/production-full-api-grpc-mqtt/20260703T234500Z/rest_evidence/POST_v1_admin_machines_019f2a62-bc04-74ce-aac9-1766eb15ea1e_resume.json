@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/resume",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "55091dc5-79cc-48f5-8319-f1cc597e2e01",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"55091dc5-79cc-48f5-8319-f1cc597e2e01\"}}\n"
+  },
+  "duration_ms": 121
+}

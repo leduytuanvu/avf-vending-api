@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/stock-adjustments",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2d775324-68b7-4d4b-a0c0-5d6028a25d5d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"2d775324-68b7-4d4b-a0c0-5d6028a25d5d\"}}\n"
+  },
+  "duration_ms": 193
+}

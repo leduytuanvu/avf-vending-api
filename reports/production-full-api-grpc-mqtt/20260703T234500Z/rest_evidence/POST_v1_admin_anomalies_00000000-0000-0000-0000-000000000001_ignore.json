@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/anomalies/00000000-0000-0000-0000-000000000001/ignore",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "c8de3280-c4ab-48ff-8b94-ff35ada5825f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"anomaly not found or already ignored\",\"requestId\":\"c8de3280-c4ab-48ff-8b94-ff35ada5825f\"}}\n"
+  },
+  "duration_ms": 244
+}

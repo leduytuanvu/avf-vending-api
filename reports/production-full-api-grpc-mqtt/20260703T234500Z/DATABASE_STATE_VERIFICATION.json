@@ -1,0 +1,41 @@
+{
+  "checks": [
+    {
+      "name": "site_exists",
+      "path": "/v1/admin/sites/019f2a62-ba9c-7727-9bd7-568e22de5ce0",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "machine_exists",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "machine_runtime_sessions",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/runtime-sessions/current",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "machine_ops_overview",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/ops-overview",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "machine_device_attachments",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/device-attachments/current",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "fleet_ops_overview",
+      "path": "/v1/admin/machines/ops-overview?limit=5",
+      "status": 200,
+      "pass": true
+    }
+  ],
+  "fail_count": 0
+}

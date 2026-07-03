@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/orders/00000000-0000-0000-0000-000000000001/timeline",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b991d802-d3f0-470a-acae-176454dc5bd4",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"order not found for company\",\"requestId\":\"b991d802-d3f0-470a-acae-176454dc5bd4\"}}\n"
+  },
+  "duration_ms": 249
+}

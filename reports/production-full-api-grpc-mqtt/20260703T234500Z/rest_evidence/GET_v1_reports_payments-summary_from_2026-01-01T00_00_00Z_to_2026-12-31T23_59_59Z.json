@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/reports/payments-summary?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7a746391-1b75-45c3-89ca-2e2b430c4e78",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"groupBy\":\"day\",\"summary\":{\"authorizedCount\":0,\"capturedCount\":85,\"failedCount\":0,\"refundedCount\":0,\"capturedAmountMinor\":1275000,\"authorizedAmountMinor\":0,\"failedAmountMinor\":0,\"refundedAmountMinor\":0},\"breakdown\":[{\"bucketStart\":\"2026-05-24T00:00:00Z\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-05-25T00:00:00Z\",\"paymentCount\":22,\"amountMinor\":330000},{\"bucketStart\":\"2026-05-26T00:00:00Z\",\"paymentCount\":4,\"amountMinor\":60000},{\"bucketStart\":\"2026-06-01T00:00:00Z\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-06-03T00:00:00Z\",\"paymentCount\":6,\"amountMinor\":90000},{\"bucketStart\":\"2026-06-04T00:00:00Z\",\"paymentCount\":16,\"amountMinor\":240000},{\"bucketStart\":\"2026-06-21T00:00:00Z\",\"paymentCount\":8,\"amountMinor\":120000},{\"bucketStart\":\"2026-06-22T00:00:00Z\",\"paymentCount\":3,\"amountMinor\":45000},{\"bucketStart\":\"2026-06-24T00:00:00Z\",\"paymentCount\":4,\"amountMinor\":60000},{\"bucketStart\":\"2026-06-26T00:00:00Z\",\"paymentCount\":1,\"amountMinor\":15000},{\"bucketStart\":\"2026-06-28T00:00:00Z\",\"paymentCount\":3,\"amountMinor\":45000},{\"bucketStart\":\"2026-06-29T00:00:00Z\",\"paymentCount\":2,\"amountMinor\":30000}]}\n"
+  },
+  "duration_ms": 289
+}

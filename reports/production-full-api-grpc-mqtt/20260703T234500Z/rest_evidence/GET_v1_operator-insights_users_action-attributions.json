@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/operator-insights/users/action-attributions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ea00054d-a764-4cd2-9866-a0d05d46f6fe",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_user_principal\",\"details\":{},\"message\":\"user_principal query is required\",\"requestId\":\"ea00054d-a764-4cd2-9866-a0d05d46f6fe\"}}\n"
+  },
+  "duration_ms": 119
+}

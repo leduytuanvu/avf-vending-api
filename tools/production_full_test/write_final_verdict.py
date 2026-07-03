@@ -62,7 +62,15 @@ def main() -> int:
         and multi_ok
         and (e2e_ok or hardware_blocked)
     )
-    verdict = "PRODUCTION_REST_GRPC_MQTT_100_PERCENT_PASS" if all_green else "BLOCKED_BY_VERIFICATION_GAPS"
+    suite = os.environ.get("PRODUCTION_SUITE", "").strip().lower()
+    if suite in ("runtime_fleet", "runtime-fleet"):
+        verdict = (
+            "PRODUCTION_REST_GRPC_MQTT_RUNTIME_FLEET_100_PERCENT_PASS"
+            if all_green
+            else "BLOCKED_BY_VERIFICATION_GAPS"
+        )
+    else:
+        verdict = "PRODUCTION_REST_GRPC_MQTT_100_PERCENT_PASS" if all_green else "BLOCKED_BY_VERIFICATION_GAPS"
 
     answers = {
         "q01_rest_fail_count": rest_fail,

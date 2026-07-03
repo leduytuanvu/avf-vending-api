@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/auth/mfa/totp/enroll",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ff271a51-0b7c-4772-86f1-2fa453841b5c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 503,
+    "body": "{\"error\":{\"code\":\"mfa_misconfigured\",\"details\":{},\"message\":\"MFA encryption is not configured\",\"requestId\":\"ff271a51-0b7c-4772-86f1-2fa453841b5c\"}}\n"
+  },
+  "duration_ms": 123
+}

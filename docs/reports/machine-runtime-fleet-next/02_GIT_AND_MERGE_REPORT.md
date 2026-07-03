@@ -11,14 +11,12 @@
 
 ## Pull request
 
-- **PR:** https://github.com/leduytuanvu/avf-vending-api/pull/409
-- **Head:** `feature/machine-runtime-fleet`
-- **Base:** `develop`
-- **Status:** Open — awaiting CI green before merge
+- **PR #409:** https://github.com/leduytuanvu/avf-vending-api/pull/409 — **MERGED** to `develop` @ `8991f526`
+- **PR #410:** https://github.com/leduytuanvu/avf-vending-api/pull/410 — **MERGED** `develop` → `main` @ `277a3ad4`
 
 ## develop → main parity
 
-**Not yet merged.** `develop→main` promotion blocked until PR #409 merges and CI passes.
+**Verified:** `git diff origin/develop..origin/main` is empty after PR #410 merge.
 
 ## Files in fix commit (high level)
 

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/auth/logout",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "c2afd992-db34-4319-833c-01321b2bb384",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 204,
+    "body": ""
+  },
+  "duration_ms": 156
+}

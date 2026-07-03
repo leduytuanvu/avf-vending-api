@@ -1,0 +1,17 @@
+- negative/jwt_as_password
+- negative/wrong_password
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands/ack
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands/receipt
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/presence
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/state/heartbeat
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry/snapshot
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/telemetry/incident
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/vend
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/cash
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/events/inventory
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/shadow/reported
+- avf/devices/machines/9215372d-3e1d-4d90-800c-c65e020789f2/commands
+- avf/devices/machines/9215372d-3e1d-4d90-800c-c65e020789f2/telemetry
+- avf/devices/machines/019f2a66-0676-78cd-92a9-da8d94413e20/commands

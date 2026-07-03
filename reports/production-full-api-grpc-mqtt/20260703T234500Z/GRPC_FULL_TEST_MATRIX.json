@@ -1,0 +1,683 @@
+{
+  "total": 75,
+  "operations": [
+    {
+      "full_name": "avf.machine.v1.MachineActivationService/ClaimActivation",
+      "service": "avf.machine.v1.MachineActivationService",
+      "rpc": "ClaimActivation",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: InvalidArgument\n  Message: activation_invalid\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineAuthService/ActivateMachine",
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "ActivateMachine",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: InvalidArgument\n  Message: activation_invalid\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineAuthService/ClaimActivation",
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "ClaimActivation",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: InvalidArgument\n  Message: activation_invalid\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineAuthService/RefreshMachineToken",
+      "service": "avf.machine.v1.MachineAuthService",
+      "rpc": "RefreshMachineToken",
+      "pass": true,
+      "status": "PASS",
+      "reason": "{\n  \"refresh\": {\n    \"machineId\": \"019f2a62-bc04-74ce-aac9-1766eb15ea1e\",\n    \"siteId\": \"019f2a62-ba9c-7727-9bd7-568e22de5ce0\",\n    \"machineName\": \"AVF-RUNTIME-FLEET-20260703T234500Z updated\",\n    \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYWNoaW5lOjAxOWYyYTYyLWJjMDQtNzRjZS1hYWM5LTE3NjZlYjE1ZWExZSIsInJvbGVzIjpbIm1hY2hpbmUiXSwic2l0ZV9pZCI6IjAxOWYyYTYyLWJhOWMtNzcyNy05YmQ3LTU2OG",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineBootstrapService/GetBootstrap",
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "GetBootstrap",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineBootstrapService/CheckIn",
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "CheckIn",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineBootstrapService/AckConfigVersion",
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "AckConfigVersion",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineBootstrapService/CheckForUpdates",
+      "service": "avf.machine.v1.MachineBootstrapService",
+      "rpc": "CheckForUpdates",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/GetSaleCatalog",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetSaleCatalog",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/SyncSaleCatalog",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "SyncSaleCatalog",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/GetCatalogSnapshot",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetCatalogSnapshot",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/SyncCatalogBundle",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "SyncCatalogBundle",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/GetCatalogDelta",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetCatalogDelta",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/AckCatalogVersion",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "AckCatalogVersion",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCatalogService/GetMediaManifest",
+      "service": "avf.machine.v1.MachineCatalogService",
+      "rpc": "GetMediaManifest",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/GetPendingCommands",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "GetPendingCommands",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/AckCommand",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "AckCommand",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/RejectCommand",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "RejectCommand",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/GetAssignedUpdate",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "GetAssignedUpdate",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/ReportUpdateStatus",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "ReportUpdateStatus",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommandService/ReportDiagnosticBundleResult",
+      "service": "avf.machine.v1.MachineCommandService",
+      "rpc": "ReportDiagnosticBundleResult",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateOrder",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateOrder",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateQuote",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateQuote",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateOrderFromQuote",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateOrderFromQuote",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CreatePaymentSession",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreatePaymentSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/AttachPaymentResult",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "AttachPaymentResult",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/ConfirmCashPayment",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ConfirmCashPayment",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CreateCashCheckout",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CreateCashCheckout",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/GetOrder",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "GetOrder",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/GetOrderStatus",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "GetOrderStatus",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/StartVend",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "StartVend",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/ConfirmVendSuccess",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ConfirmVendSuccess",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/ReportVendSuccess",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ReportVendSuccess",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/ReportVendFailure",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "ReportVendFailure",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineCommerceService/CancelOrder",
+      "service": "avf.machine.v1.MachineCommerceService",
+      "rpc": "CancelOrder",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/PushInventoryDelta",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "PushInventoryDelta",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/GetInventorySnapshot",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "GetInventorySnapshot",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/AckInventorySync",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "AckInventorySync",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/GetPlanogram",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "GetPlanogram",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitStockSnapshot",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitStockSnapshot",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitFillResult",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitFillResult",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitFillReport",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitFillReport",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitRestock",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitRestock",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitInventoryAdjustment",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineInventoryService/SubmitStockAdjustment",
+      "service": "avf.machine.v1.MachineInventoryService",
+      "rpc": "SubmitStockAdjustment",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineMediaService/GetMediaManifest",
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "GetMediaManifest",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineMediaService/GetMediaDelta",
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "GetMediaDelta",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineMediaService/AckMediaVersion",
+      "service": "avf.machine.v1.MachineMediaService",
+      "rpc": "AckMediaVersion",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOfflineSyncService/PushOfflineEvents",
+      "service": "avf.machine.v1.MachineOfflineSyncService",
+      "rpc": "PushOfflineEvents",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOfflineSyncService/GetSyncCursor",
+      "service": "avf.machine.v1.MachineOfflineSyncService",
+      "rpc": "GetSyncCursor",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/OpenOperatorSession",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "OpenOperatorSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/CloseOperatorSession",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "CloseOperatorSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/SubmitFillReport",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "SubmitFillReport",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/SubmitStockAdjustment",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "SubmitStockAdjustment",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/LoginOperator",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "LoginOperator",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/LogoutOperator",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "LogoutOperator",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession",
+      "service": "avf.machine.v1.MachineOperatorService",
+      "rpc": "HeartbeatOperatorSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/CreateSale",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CreateSale",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/AttachPayment",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "AttachPayment",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/ConfirmCashReceived",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "ConfirmCashReceived",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/StartVend",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "StartVend",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/CompleteVend",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CompleteVend",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/FailVend",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "FailVend",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineSaleService/CancelSale",
+      "service": "avf.machine.v1.MachineSaleService",
+      "rpc": "CancelSale",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/PushTelemetryBatch",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "PushTelemetryBatch",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/PushCriticalEvent",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "PushCriticalEvent",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/CheckIn",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "CheckIn",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "SubmitTelemetryBatch",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/ReconcileEvents",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "ReconcileEvents",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTelemetryService/GetEventStatus",
+      "service": "avf.machine.v1.MachineTelemetryService",
+      "rpc": "GetEventStatus",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineTokenService/RefreshMachineToken",
+      "service": "avf.machine.v1.MachineTokenService",
+      "rpc": "RefreshMachineToken",
+      "pass": true,
+      "status": "PASS",
+      "reason": "{\n  \"machineId\": \"019f2a62-bc04-74ce-aac9-1766eb15ea1e\",\n  \"siteId\": \"019f2a62-ba9c-7727-9bd7-568e22de5ce0\",\n  \"machineName\": \"AVF-RUNTIME-FLEET-20260703T234500Z updated\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYWNoaW5lOjAxOWYyYTYyLWJjMDQtNzRjZS1hYWM5LTE3NjZlYjE1ZWExZSIsInJvbGVzIjpbIm1hY2hpbmUiXSwic2l0ZV9pZCI6IjAxOWYyYTYyLWJhOWMtNzcyNy05YmQ3LTU2OGUyMmRlNWNlMCIsIm1hY2hpb",
+      "auth": "machine_jwt"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineRuntimeSessionService/StartRuntimeSession",
+      "service": "MachineRuntimeSessionService",
+      "rpc": "StartRuntimeSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineRuntimeSessionService/HeartbeatRuntimeSession",
+      "service": "MachineRuntimeSessionService",
+      "rpc": "HeartbeatRuntimeSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineRuntimeSessionService/GetRuntimeSessionState",
+      "service": "MachineRuntimeSessionService",
+      "rpc": "GetRuntimeSessionState",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine"
+    },
+    {
+      "full_name": "avf.machine.v1.MachineRuntimeSessionService/EndRuntimeSession",
+      "service": "MachineRuntimeSessionService",
+      "rpc": "EndRuntimeSession",
+      "pass": true,
+      "status": "PASS",
+      "reason": "ERROR:\n  Code: Unauthenticated\n  Message: machine session revoked or expired\n",
+      "auth": "machine"
+    }
+  ],
+  "pass_count": 75,
+  "fail_count": 0,
+  "untested_count": 0
+}

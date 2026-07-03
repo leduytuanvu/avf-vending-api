@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/rotate-token-version",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f11610aa-9617-4e24-b437-60fa78ffecf9",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"f11610aa-9617-4e24-b437-60fa78ffecf9\"}}\n"
+  },
+  "duration_ms": 142
+}

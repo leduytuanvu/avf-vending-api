@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/refunds/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "57042d47-0aa6-493c-a727-241e61ce2242",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"refund request not found\",\"requestId\":\"57042d47-0aa6-493c-a727-241e61ce2242\"}}\n"
+  },
+  "duration_ms": 223
+}

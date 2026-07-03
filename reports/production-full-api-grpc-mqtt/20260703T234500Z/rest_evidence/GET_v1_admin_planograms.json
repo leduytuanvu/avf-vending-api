@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/planograms",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "49f9b01a-ed8d-49b0-9342-294623779949",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[{\"id\":\"cccccccc-cccc-cccc-cccc-000000000001\",\"name\":\"Default Planogram\",\"revision\":1,\"status\":\"published\",\"meta\":{},\"createdAt\":\"2026-05-19T12:13:50.268531Z\"}],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":1,\"totalCount\":1}}\n"
+  },
+  "duration_ms": 251
+}

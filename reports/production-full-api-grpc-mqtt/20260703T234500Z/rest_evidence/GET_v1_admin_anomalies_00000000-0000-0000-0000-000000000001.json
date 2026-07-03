@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/anomalies/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e35b913e-39f1-4f51-a47f-45dfb22a83e6",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"anomaly not found\",\"requestId\":\"e35b913e-39f1-4f51-a47f-45dfb22a83e6\"}}\n"
+  },
+  "duration_ms": 202
+}
