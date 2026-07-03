@@ -46,6 +46,10 @@ REQUIRED_FLOW_ANCHORS = [
     "SubmitStockAdjustment",
     "GetAssignedUpdate",
     "ReportDiagnosticBundleResult",
+    "StartRuntimeSession",
+    "HeartbeatRuntimeSession",
+    "EndRuntimeSession",
+    "GetRuntimeSessionState",
 ]
 
 REQUIRED_ANDROID_FLOW_INDEX = [
