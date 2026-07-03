@@ -32,70 +32,70 @@ type OverviewFilter struct {
 
 // AdminOperationalOverview is the enriched admin machine ops snapshot.
 type AdminOperationalOverview struct {
-	MachineID           uuid.UUID       `json:"machineId"`
-	MachineCode         string          `json:"machineCode"`
-	MachineName         string          `json:"machineName"`
-	LifecycleStatus     string          `json:"lifecycleStatus"`
-	OnlineStatus        string          `json:"onlineStatus"`
-	SaleEnabled         bool            `json:"saleEnabled"`
-	MachineType         string          `json:"machineType,omitempty"`
-	LastSeenAt          *time.Time      `json:"lastSeenAt,omitempty"`
-	CredentialVersion   int64           `json:"credentialVersion"`
-	SiteID              uuid.UUID       `json:"siteId"`
-	SiteName            string          `json:"siteName"`
-	AndroidBoard        *AndroidBoard   `json:"androidBoard,omitempty"`
-	SIM                 *SIMInfo        `json:"sim,omitempty"`
-	RuntimeAppSession   *AppSessionView `json:"runtimeAppSession,omitempty"`
-	CredentialSession   *CredentialView `json:"credentialSession,omitempty"`
-	OperatorSession     *OperatorView   `json:"operatorSession,omitempty"`
-	FinalSellReady      bool            `json:"finalSellReady"`
-	Readiness           json.RawMessage `json:"readiness,omitempty"`
-	Connectivity        json.RawMessage `json:"connectivity,omitempty"`
+	MachineID         uuid.UUID       `json:"machineId"`
+	MachineCode       string          `json:"machineCode"`
+	MachineName       string          `json:"machineName"`
+	LifecycleStatus   string          `json:"lifecycleStatus"`
+	OnlineStatus      string          `json:"onlineStatus"`
+	SaleEnabled       bool            `json:"saleEnabled"`
+	MachineType       string          `json:"machineType,omitempty"`
+	LastSeenAt        *time.Time      `json:"lastSeenAt,omitempty"`
+	CredentialVersion int64           `json:"credentialVersion"`
+	SiteID            uuid.UUID       `json:"siteId"`
+	SiteName          string          `json:"siteName"`
+	AndroidBoard      *AndroidBoard   `json:"androidBoard,omitempty"`
+	SIM               *SIMInfo        `json:"sim,omitempty"`
+	RuntimeAppSession *AppSessionView `json:"runtimeAppSession,omitempty"`
+	CredentialSession *CredentialView `json:"credentialSession,omitempty"`
+	OperatorSession   *OperatorView   `json:"operatorSession,omitempty"`
+	FinalSellReady    bool            `json:"finalSellReady"`
+	Readiness         json.RawMessage `json:"readiness,omitempty"`
+	Connectivity      json.RawMessage `json:"connectivity,omitempty"`
 }
 
 // AndroidBoard is a safe view of the active device attachment.
 type AndroidBoard struct {
-	AttachmentID  uuid.UUID `json:"attachmentId"`
-	AndroidID     string    `json:"androidId,omitempty"`
-	BoardSerial   string    `json:"boardSerial,omitempty"`
-	DeviceSerial  string    `json:"deviceSerial,omitempty"`
-	Manufacturer  string    `json:"manufacturer,omitempty"`
-	Model         string    `json:"model,omitempty"`
-	AppBuildSHA   string    `json:"appBuildSha,omitempty"`
-	PackageName   string    `json:"packageName,omitempty"`
-	VersionName   string    `json:"versionName,omitempty"`
-	AttachedAt    time.Time `json:"attachedAt,omitempty"`
-	Reason        string    `json:"reason,omitempty"`
+	AttachmentID uuid.UUID `json:"attachmentId"`
+	AndroidID    string    `json:"androidId,omitempty"`
+	BoardSerial  string    `json:"boardSerial,omitempty"`
+	DeviceSerial string    `json:"deviceSerial,omitempty"`
+	Manufacturer string    `json:"manufacturer,omitempty"`
+	Model        string    `json:"model,omitempty"`
+	AppBuildSHA  string    `json:"appBuildSha,omitempty"`
+	PackageName  string    `json:"packageName,omitempty"`
+	VersionName  string    `json:"versionName,omitempty"`
+	AttachedAt   time.Time `json:"attachedAt,omitempty"`
+	Reason       string    `json:"reason,omitempty"`
 }
 
 // SIMInfo captures SIM identity from the active attachment.
 type SIMInfo struct {
-	ICCID     string `json:"iccid,omitempty"`
-	Operator  string `json:"operator,omitempty"`
+	ICCID      string `json:"iccid,omitempty"`
+	Operator   string `json:"operator,omitempty"`
 	CountryISO string `json:"countryIso,omitempty"`
-	Serial    string `json:"serial,omitempty"`
+	Serial     string `json:"serial,omitempty"`
 }
 
 // AppSessionView is the true app runtime lifecycle session (not credential JWT session).
 type AppSessionView struct {
-	SessionID         uuid.UUID       `json:"sessionId"`
-	Status            string          `json:"status"`
-	StartReason       string          `json:"startReason,omitempty"`
-	StartedAt         time.Time       `json:"startedAt"`
-	LastHeartbeatAt   *time.Time      `json:"lastHeartbeatAt,omitempty"`
-	LastMQTTSSeenAt   *time.Time      `json:"lastMqttSeenAt,omitempty"`
-	LastMQTTState     string          `json:"lastMqttState,omitempty"`
-	StorefrontState   string          `json:"storefrontState,omitempty"`
-	SellReady         bool            `json:"sellReady"`
-	Blockers          json.RawMessage `json:"blockers,omitempty"`
+	SessionID       uuid.UUID       `json:"sessionId"`
+	Status          string          `json:"status"`
+	StartReason     string          `json:"startReason,omitempty"`
+	StartedAt       time.Time       `json:"startedAt"`
+	LastHeartbeatAt *time.Time      `json:"lastHeartbeatAt,omitempty"`
+	LastMQTTSSeenAt *time.Time      `json:"lastMqttSeenAt,omitempty"`
+	LastMQTTState   string          `json:"lastMqttState,omitempty"`
+	StorefrontState string          `json:"storefrontState,omitempty"`
+	SellReady       bool            `json:"sellReady"`
+	Blockers        json.RawMessage `json:"blockers,omitempty"`
 }
 
 // CredentialView is machine_sessions (JWT credential session).
 type CredentialView struct {
-	SessionID         uuid.UUID  `json:"sessionId"`
-	Status            string     `json:"status"`
-	IssuedAt          time.Time  `json:"issuedAt"`
-	CredentialVersion int64      `json:"credentialVersion"`
+	SessionID         uuid.UUID `json:"sessionId"`
+	Status            string    `json:"status"`
+	IssuedAt          time.Time `json:"issuedAt"`
+	CredentialVersion int64     `json:"credentialVersion"`
 }
 
 // OperatorView is the active human operator session.
@@ -162,10 +162,10 @@ func (s *Service) ListMachineAdminOperationalOverview(ctx context.Context, f Ove
 
 func overviewListParams(f OverviewFilter) db.AdminListMachineOperationalOverviewParams {
 	p := db.AdminListMachineOperationalOverviewParams{
-		Column5:  false,
-		Column7:  false,
-		Column9:  false,
-		LimitVal: f.Limit,
+		Column5:   false,
+		Column7:   false,
+		Column9:   false,
+		LimitVal:  f.Limit,
 		OffsetVal: f.Offset,
 	}
 	if f.SiteID != nil {

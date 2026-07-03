@@ -141,18 +141,18 @@ func serveAdminMachineRuntimeSessionRevoke(app *api.HTTPApplication) http.Handle
 }
 
 type reattachDeviceBody struct {
-	DeviceFingerprint json.RawMessage                 `json:"device_fingerprint"`
-	DeviceFpCamel     json.RawMessage                 `json:"deviceFingerprint"`
-	OperatorSessionID string                          `json:"operator_session_id"`
-	OperatorSession   string                          `json:"operatorSessionId"`
-	Reason            string                          `json:"reason"`
-	AppVersion        string                          `json:"app_version"`
-	AppVersionCamel   string                          `json:"appVersion"`
-	BootID            string                          `json:"boot_id"`
-	BootIDCamel       string                          `json:"bootId"`
-	CorrelationID     string                          `json:"correlation_id"`
-	CorrelationCamel  string                          `json:"correlationId"`
-	Metadata          json.RawMessage                 `json:"metadata"`
+	DeviceFingerprint json.RawMessage `json:"device_fingerprint"`
+	DeviceFpCamel     json.RawMessage `json:"deviceFingerprint"`
+	OperatorSessionID string          `json:"operator_session_id"`
+	OperatorSession   string          `json:"operatorSessionId"`
+	Reason            string          `json:"reason"`
+	AppVersion        string          `json:"app_version"`
+	AppVersionCamel   string          `json:"appVersion"`
+	BootID            string          `json:"boot_id"`
+	BootIDCamel       string          `json:"bootId"`
+	CorrelationID     string          `json:"correlation_id"`
+	CorrelationCamel  string          `json:"correlationId"`
+	Metadata          json.RawMessage `json:"metadata"`
 }
 
 func serveAdminMachineReattachDevice(app *api.HTTPApplication, cfg *config.Config) http.HandlerFunc {
@@ -687,15 +687,15 @@ func optionalUUIDString(id *uuid.UUID) any {
 
 func appRuntimeSessionJSON(sess db.MachineRuntimeAppSession) map[string]any {
 	out := map[string]any{
-		"session_id":        sess.ID.String(),
-		"machine_id":        sess.MachineID.String(),
-		"status":            sess.Status,
-		"start_reason":      sess.StartReason,
-		"started_at":        sess.StartedAt.UTC().Format(time.RFC3339Nano),
-		"storefront_state":  sess.StorefrontState,
-		"sell_ready":        sess.SellReady,
+		"session_id":         sess.ID.String(),
+		"machine_id":         sess.MachineID.String(),
+		"status":             sess.Status,
+		"start_reason":       sess.StartReason,
+		"started_at":         sess.StartedAt.UTC().Format(time.RFC3339Nano),
+		"storefront_state":   sess.StorefrontState,
+		"sell_ready":         sess.SellReady,
 		"last_network_state": sess.LastNetworkState,
-		"last_mqtt_state":   sess.LastMqttState,
+		"last_mqtt_state":    sess.LastMqttState,
 	}
 	if sess.LastHeartbeatAt.Valid {
 		out["last_heartbeat_at"] = sess.LastHeartbeatAt.Time.UTC().Format(time.RFC3339Nano)

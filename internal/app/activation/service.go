@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
@@ -38,12 +38,12 @@ var (
 
 // Service manages kiosk activation codes.
 type Service struct {
-	pool     *pgxpool.Pool
-	issuer   *plauth.SessionIssuer
-	pepper   []byte
-	audit    compliance.EnterpriseRecorder
-	emqx     *emqxadmin.Client
-	runtime  *machineruntime.Service
+	pool    *pgxpool.Pool
+	issuer  *plauth.SessionIssuer
+	pepper  []byte
+	audit   compliance.EnterpriseRecorder
+	emqx    *emqxadmin.Client
+	runtime *machineruntime.Service
 }
 
 // NewService constructs an activation service.

@@ -75,32 +75,32 @@ func NewService(d Deps) (*Service, error) {
 
 // DeviceIdentity captures Android board / SIM identity at attach time.
 type DeviceIdentity struct {
-	AndroidID       string
-	AndroidSerial   string
-	BoardSerial     string
-	DeviceSerial    string
-	SimSerial       string
-	SimICCID        string
-	SimOperator     string
-	SimCountryISO   string
-	Manufacturer    string
-	Brand           string
-	Model           string
-	DeviceModel     string
-	Hardware        string
-	Product         string
-	AndroidRelease  string
-	SDKInt          *int32
-	PackageName     string
-	VersionName     string
-	VersionCode     *int64
-	AppBuildSHA     string
-	BootID          string
-	NetworkType     string
-	NetworkState    string
-	IPAddress       string
-	UserAgent       string
-	Metadata        json.RawMessage
+	AndroidID      string
+	AndroidSerial  string
+	BoardSerial    string
+	DeviceSerial   string
+	SimSerial      string
+	SimICCID       string
+	SimOperator    string
+	SimCountryISO  string
+	Manufacturer   string
+	Brand          string
+	Model          string
+	DeviceModel    string
+	Hardware       string
+	Product        string
+	AndroidRelease string
+	SDKInt         *int32
+	PackageName    string
+	VersionName    string
+	VersionCode    *int64
+	AppBuildSHA    string
+	BootID         string
+	NetworkType    string
+	NetworkState   string
+	IPAddress      string
+	UserAgent      string
+	Metadata       json.RawMessage
 }
 
 // AttachInput binds a board to a physical machine.
@@ -117,21 +117,21 @@ type AttachInput struct {
 
 // StartInput opens an app runtime session (machine JWT path).
 type StartInput struct {
-	MachineID           uuid.UUID
-	DeviceAttachmentID  *uuid.UUID
-	MachineSessionID    *uuid.UUID
-	OperatorSessionID   *uuid.UUID
-	BootID              string
-	AppStartID          string
-	AppInstanceID       string
-	PackageName         string
-	AppVersion          string
-	AppBuildSHA         string
-	StartReason         string
-	NetworkState        string
-	MqttState           string
-	StorefrontState     string
-	Metadata            json.RawMessage
+	MachineID          uuid.UUID
+	DeviceAttachmentID *uuid.UUID
+	MachineSessionID   *uuid.UUID
+	OperatorSessionID  *uuid.UUID
+	BootID             string
+	AppStartID         string
+	AppInstanceID      string
+	PackageName        string
+	AppVersion         string
+	AppBuildSHA        string
+	StartReason        string
+	NetworkState       string
+	MqttState          string
+	StorefrontState    string
+	Metadata           json.RawMessage
 }
 
 // HeartbeatInput updates runtime session liveness.
@@ -291,7 +291,7 @@ func (s *Service) attachOrReplaceDeviceTx(ctx context.Context, qtx *db.Queries, 
 		return db.MachineDeviceAttachment{}, err
 	}
 	if err := qtx.UpdateMachineCurrentDeviceAttachment(ctx, db.UpdateMachineCurrentDeviceAttachmentParams{
-		ID:                         in.MachineID,
+		ID:                        in.MachineID,
 		CurrentDeviceAttachmentID: uuidToPg(&row.ID),
 	}); err != nil {
 		return db.MachineDeviceAttachment{}, err
@@ -313,8 +313,8 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 	}
 	if existing, err := s.q.GetMachineRuntimeAppSessionByBootAndStart(ctx, db.GetMachineRuntimeAppSessionByBootAndStartParams{
 		MachineID:  in.MachineID,
-		BootID:       in.BootID,
-		AppStartID:   in.AppStartID,
+		BootID:     in.BootID,
+		AppStartID: in.AppStartID,
 	}); err == nil {
 		return existing, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
@@ -357,36 +357,36 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 		sf = "INITIALIZING"
 	}
 	row, err := qtx.StartMachineRuntimeAppSession(ctx, db.StartMachineRuntimeAppSessionParams{
-		MachineID:           in.MachineID,
-		DeviceAttachmentID: uuidToPg(in.DeviceAttachmentID),
-		MachineSessionID:    uuidToPg(in.MachineSessionID),
-		OperatorSessionID:   uuidToPg(in.OperatorSessionID),
+		MachineID:                in.MachineID,
+		DeviceAttachmentID:       uuidToPg(in.DeviceAttachmentID),
+		MachineSessionID:         uuidToPg(in.MachineSessionID),
+		OperatorSessionID:        uuidToPg(in.OperatorSessionID),
 		PreviousRuntimeSessionID: prevSessID,
-		BootID:              in.BootID,
-		AppStartID:          in.AppStartID,
-		AppInstanceID:       in.AppInstanceID,
-		PackageName:         in.PackageName,
-		AppVersion:          in.AppVersion,
-		AppBuildSha:         in.AppBuildSHA,
-		StartReason:         startReason,
-		Status:              "ONLINE",
-		LastNetworkState:    in.NetworkState,
-		LastMqttState:       in.MqttState,
-		StorefrontState:     sf,
-		SellReady:           false,
-		Blockers:            json.RawMessage("[]"),
-		HardwareStatus:      json.RawMessage("{}"),
-		CatalogStatus:       json.RawMessage("{}"),
-		OutboxStatus:        json.RawMessage("{}"),
-		RecoveryStatus:      json.RawMessage("{}"),
-		Metadata:            meta,
+		BootID:                   in.BootID,
+		AppStartID:               in.AppStartID,
+		AppInstanceID:            in.AppInstanceID,
+		PackageName:              in.PackageName,
+		AppVersion:               in.AppVersion,
+		AppBuildSha:              in.AppBuildSHA,
+		StartReason:              startReason,
+		Status:                   "ONLINE",
+		LastNetworkState:         in.NetworkState,
+		LastMqttState:            in.MqttState,
+		StorefrontState:          sf,
+		SellReady:                false,
+		Blockers:                 json.RawMessage("[]"),
+		HardwareStatus:           json.RawMessage("{}"),
+		CatalogStatus:            json.RawMessage("{}"),
+		OutboxStatus:             json.RawMessage("{}"),
+		RecoveryStatus:           json.RawMessage("{}"),
+		Metadata:                 meta,
 	})
 	if err != nil {
 		return db.MachineRuntimeAppSession{}, err
 	}
 	now := time.Now().UTC()
 	if err := qtx.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
-		ID:                          in.MachineID,
+		ID:                         in.MachineID,
 		CurrentRuntimeAppSessionID: uuidToPg(&row.ID),
 	}); err != nil {
 		return db.MachineRuntimeAppSession{}, err
@@ -417,19 +417,19 @@ func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatIn
 		blockers = json.RawMessage("[]")
 	}
 	row, err := s.q.HeartbeatMachineRuntimeAppSession(ctx, db.HeartbeatMachineRuntimeAppSessionParams{
-		ID:              in.SessionID,
-		LastHeartbeatAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
-		Status:          "ONLINE",
+		ID:               in.SessionID,
+		LastHeartbeatAt:  pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+		Status:           "ONLINE",
 		LastNetworkState: in.NetworkState,
-		LastMqttState:   in.MqttState,
-		StorefrontState: in.StorefrontState,
-		SellReady:       in.SellReady,
-		Blockers:          blockers,
-		HardwareStatus:  defaultJSON(in.HardwareStatus),
-		CatalogStatus:   defaultJSON(in.CatalogStatus),
-		OutboxStatus:    defaultJSON(in.OutboxStatus),
-		RecoveryStatus:  defaultJSON(in.RecoveryStatus),
-		MachineID:       in.MachineID,
+		LastMqttState:    in.MqttState,
+		StorefrontState:  in.StorefrontState,
+		SellReady:        in.SellReady,
+		Blockers:         blockers,
+		HardwareStatus:   defaultJSON(in.HardwareStatus),
+		CatalogStatus:    defaultJSON(in.CatalogStatus),
+		OutboxStatus:     defaultJSON(in.OutboxStatus),
+		RecoveryStatus:   defaultJSON(in.RecoveryStatus),
+		MachineID:        in.MachineID,
 	})
 	if err != nil {
 		return db.MachineRuntimeAppSession{}, err
@@ -472,12 +472,12 @@ func (s *Service) EndRuntimeAppSession(ctx context.Context, in EndInput) (db.Mac
 	sess, err := s.q.GetCurrentMachineRuntimeAppSession(ctx, in.MachineID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		_ = s.q.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
-			ID:                          in.MachineID,
+			ID:                         in.MachineID,
 			CurrentRuntimeAppSessionID: pgtype.UUID{},
 		})
 	} else if err == nil && sess.ID == row.ID {
 		_ = s.q.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
-			ID:                          in.MachineID,
+			ID:                         in.MachineID,
 			CurrentRuntimeAppSessionID: pgtype.UUID{},
 		})
 	}
@@ -573,9 +573,9 @@ func (s *Service) TouchMQTTSeen(ctx context.Context, machineID uuid.UUID, mqttSt
 	}
 	now := time.Now().UTC()
 	if err := s.q.TouchRuntimeAppSessionMQTT(ctx, db.TouchRuntimeAppSessionMQTTParams{
-		ID:              sess.ID,
-		LastMqttSeenAt:  pgtype.Timestamptz{Time: now, Valid: true},
-		LastMqttState:   mqttState,
+		ID:             sess.ID,
+		LastMqttSeenAt: pgtype.Timestamptz{Time: now, Valid: true},
+		LastMqttState:  mqttState,
 	}); err != nil {
 		return err
 	}
@@ -613,18 +613,18 @@ func (s *Service) projectRuntimeSnapshot(ctx context.Context, q *db.Queries, mac
 		sessID = pgtype.UUID{Bytes: sess.ID, Valid: true}
 	}
 	return q.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
-		MachineID:                   machineID,
-		CurrentDeviceAttachmentID:   attachID,
-		CurrentRuntimeAppSessionID:  sessID,
-		OnlineStatus:           online,
-		RuntimeSessionStatus:   sess.Status,
-		RuntimeStartReason:     sess.StartReason,
-		RuntimeStartedAt:       started,
-		RuntimeLastHeartbeatAt: heartbeat,
-		LastMqttState:          sess.LastMqttState,
-		StorefrontState:        sess.StorefrontState,
-		SellReady:              sess.SellReady,
-		Blockers:               blockers,
+		MachineID:                  machineID,
+		CurrentDeviceAttachmentID:  attachID,
+		CurrentRuntimeAppSessionID: sessID,
+		OnlineStatus:               online,
+		RuntimeSessionStatus:       sess.Status,
+		RuntimeStartReason:         sess.StartReason,
+		RuntimeStartedAt:           started,
+		RuntimeLastHeartbeatAt:     heartbeat,
+		LastMqttState:              sess.LastMqttState,
+		StorefrontState:            sess.StorefrontState,
+		SellReady:                  sess.SellReady,
+		Blockers:                   blockers,
 	})
 }
 
