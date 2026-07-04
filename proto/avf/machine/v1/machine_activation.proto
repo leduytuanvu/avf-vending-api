@@ -19,6 +19,23 @@ message DeviceFingerprint {
   string package_name = 5;
   string version_name = 6;
   int32 version_code = 7;
+  string android_serial = 8;
+  string board_serial = 9;
+  string device_serial = 10;
+  string sim_serial = 11;
+  string sim_iccid = 12;
+  string sim_operator = 13;
+  string sim_country_iso = 14;
+  string brand = 15;
+  string device_model = 16;
+  string hardware = 17;
+  string product = 18;
+  string android_release = 19;
+  int32 sdk_int = 20;
+  string app_build_sha = 21;
+  string boot_id = 22;
+  string network_type = 23;
+  string network_state = 24;
 }
 
 message ClaimActivationRequest {
@@ -43,4 +60,6 @@ message ClaimActivationResponse {
   // Per-machine broker credentials (returned once on claim when EMQX provisioning is enabled).
   string mqtt_username = 14;
   string mqtt_password = 15;
+  // Active machine_device_attachments row created or reused during claim.
+  string device_attachment_id = 16;
 }
