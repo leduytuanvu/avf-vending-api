@@ -1,0 +1,27 @@
+{
+  "verdict": "ACTIVATION_CODE_API_ALIGNMENT_PASS",
+  "date": "2026-07-05",
+  "branch": "feature/activation-code-api-alignment",
+  "checks": {
+    "device_fingerprint_fields_8_24": true,
+    "claim_response_device_attachment_id_16": true,
+    "go_proto_regenerated": true,
+    "grpc_maps_expanded_fingerprint": true,
+    "http_accepts_expanded_fingerprint": true,
+    "first_claim_creates_attachment": true,
+    "replay_avoids_duplicate_attachment": true,
+    "different_fingerprint_replaces_attachment": true,
+    "replacement_closes_runtime_session_board_replaced": true,
+    "grpc_returns_device_attachment_id": true,
+    "http_returns_device_attachment_id": true,
+    "no_operator_session_required": true,
+    "no_technician_assignment_required": true,
+    "reattach_unchanged": true,
+    "tests_green": true
+  },
+  "test_evidence": {
+    "go_build": "pass",
+    "go_test_short": "pass",
+    "integration_tests": "require TEST_DATABASE_URL; skip locally when unset; run in CI"
+  }
+}

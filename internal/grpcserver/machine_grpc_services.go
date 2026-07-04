@@ -155,18 +155,10 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 	fp := req.GetDeviceFingerprint()
 	cip, ua := grpcActivationClaimTransport(ctx)
 	out, err := s.deps.Activation.Claim(ctx, activation.ClaimInput{
-		ActivationCode: req.GetActivationCode(),
-		DeviceFingerprint: activation.DeviceFingerprint{
-			AndroidID:    fp.GetAndroidId(),
-			SerialNumber: fp.GetSerialNumber(),
-			Manufacturer: fp.GetManufacturer(),
-			Model:        fp.GetModel(),
-			PackageName:  fp.GetPackageName(),
-			VersionName:  fp.GetVersionName(),
-			VersionCode:  int(fp.GetVersionCode()),
-		},
-		ClientIP:  cip,
-		UserAgent: ua,
+		ActivationCode:    req.GetActivationCode(),
+		DeviceFingerprint: activation.DeviceFingerprintFromProto(fp),
+		ClientIP:          cip,
+		UserAgent:         ua,
 	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix, resolveMQTTTopicLayout(s.deps))
 	if err != nil {
 		return nil, mapActivationError(err)
@@ -188,6 +180,9 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 	if out.RefreshToken != "" {
 		resp.RefreshToken = out.RefreshToken
 		resp.RefreshTokenExpiresAt = timestamppb.New(out.RefreshExpiresAt)
+	}
+	if out.DeviceAttachmentID != nil && *out.DeviceAttachmentID != uuid.Nil {
+		resp.DeviceAttachmentId = out.DeviceAttachmentID.String()
 	}
 	return resp, nil
 }
