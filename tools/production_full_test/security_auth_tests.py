@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import http_request, report_dir, write_json
+from _common import http_request, is_market_readiness_strict, report_dir, write_json
 from entity_registry import EntityRegistry
 
 SECURITY_RULES = [
@@ -60,14 +60,20 @@ def run_rule(base_url: str, rule: tuple, reg: dict[str, str]) -> dict:
     elif auth_kind in ("viewer", "finance", "catalog_manager", "technician", "disabled"):
         token = reg.get(f"token_{auth_kind}") or reg.get(f"{auth_kind}AccessToken")
         if not token:
+            strict = is_market_readiness_strict() or os.environ.get("PRODUCTION_FULL_TEST_STRICT", "").strip().lower() in (
+                "1",
+                "true",
+                "yes",
+            )
+            skip_ok = auth_kind in ("viewer", "finance", "catalog_manager", "technician", "disabled") and not strict
             return {
                 "rule": name,
                 "method": method,
                 "path": path,
                 "expected": list(expected),
                 "actual": "SKIPPED",
-                "pass": auth_kind in ("viewer", "finance", "catalog_manager", "technician", "disabled"),
-                "body_snippet": f"no production token for role {auth_kind}; rule validated in Go contract tests",
+                "pass": skip_ok,
+                "body_snippet": f"no production token for role {auth_kind}; strict={strict}",
             }
         headers["Authorization"] = f"Bearer {token}"
     if method == "POST" and path.endswith("/suspend"):

@@ -19,6 +19,7 @@ from _common import (
     SWAGGER,
     append_jsonl,
     http_request,
+    is_market_readiness_strict,
     iter_openapi_ops,
     load_json,
     path_has_unresolved_params,
@@ -38,6 +39,14 @@ CHI_ONLY_ROUTES = [
     ("POST", "/v1/admin/machines/{machineId}/planogram/drafts/{draftId}/publish"),
     ("POST", "/v1/admin/machines/{machineId}/planogram/versions/{versionId}/rollback"),
     ("POST", "/v1/admin/machines/{machineId}/operator-sessions/start"),
+    ("GET", "/v1/admin/machines/ops-overview"),
+    ("GET", "/v1/admin/machines/{machineId}/ops-overview"),
+    ("GET", "/v1/admin/machines/{machineId}/device-attachments/current"),
+    ("GET", "/v1/admin/machines/{machineId}/device-attachments"),
+    ("GET", "/v1/admin/machines/{machineId}/timeline/unified"),
+    ("POST", "/v1/admin/machines/{machineId}/reattach-device"),
+    ("GET", "/v1/admin/machines/{machineId}/runtime-sessions/current"),
+    ("GET", "/v1/admin/machines/{machineId}/app-sessions/current"),
 ]
 
 
@@ -102,8 +111,24 @@ def append_query(path: str) -> str:
 
 
 def expected_ok_status(method: str, path: str, status: int) -> bool:
+    strict = is_market_readiness_strict() or os.environ.get("PRODUCTION_FULL_TEST_STRICT", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
     if status in (200, 201, 202, 204):
         return True
+    if strict:
+        low = path.lower()
+        if status in (401, 403) and ("webhook" in low or "login" in low):
+            return True
+        if status == 404 and path in ("/metrics",):
+            return True
+        if status == 503 and ("/media/" in low or "/mfa/" in low):
+            return True
+        if status in (400, 404, 409, 422):
+            return "00000000-0000-0000-0000-000000000001" in path
+        return False
     if status in (400, 404, 409, 422):
         return True
     if status == 500 and "/rollouts/" in path.lower():

@@ -42,12 +42,34 @@ def runtime_fleet_prefix() -> str:
     return f"AVF-RUNTIME-FLEET-{utc_stamp()}_{suffix}"
 
 
+def market_ready_prefix() -> str:
+    suffix = os.environ.get("PROD_TEST_SUFFIX", uuid.uuid4().hex[:8])
+    return f"AVF-MARKET-READY-{utc_stamp()}_{suffix}"
+
+
+def market_report_dir() -> Path:
+    d = REPO / "reports" / "production-market-readiness-final" / utc_stamp()
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def is_market_readiness_strict() -> bool:
+    v = os.environ.get("MARKET_READINESS_STRICT", "").strip().lower()
+    if v in ("1", "true", "yes"):
+        return True
+    suite = os.environ.get("PRODUCTION_SUITE", "").strip().lower()
+    return suite in ("market_readiness", "market-readiness", "market_readiness_final")
+
+
 def test_prefix() -> str:
     explicit = os.environ.get("PRODUCTION_TEST_PREFIX", "").strip()
     if explicit:
         return explicit
-    if os.environ.get("PRODUCTION_SUITE", "").strip().lower() in ("runtime_fleet", "runtime-fleet"):
+    suite = os.environ.get("PRODUCTION_SUITE", "").strip().lower()
+    if suite in ("runtime_fleet", "runtime-fleet"):
         return runtime_fleet_prefix()
+    if suite in ("market_readiness", "market-readiness", "market_readiness_final"):
+        return market_ready_prefix()
     suffix = os.environ.get("PROD_TEST_SUFFIX", uuid.uuid4().hex[:8])
     return f"ENTERPRISE_PROD_TEST_{utc_stamp()}_{suffix}"
 
