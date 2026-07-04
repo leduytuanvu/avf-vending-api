@@ -308,20 +308,20 @@ type ClaimInput struct {
 
 // ClaimResult is returned on successful claim (and idempotent replay).
 type ClaimResult struct {
-	MachineID         uuid.UUID
-	SiteID            uuid.UUID
-	MachineName       string
-	MachineToken      string
-	TokenExpiresAt    time.Time
-	RefreshToken      string
-	RefreshExpiresAt  time.Time
-	MQTTBrokerURL     string
-	MQTTTopicPrefix   string
-	MQTTTopicLayout   string
-	MQTTUsername      string
-	MQTTPassword      string
-	BootstrapPath     string
-	BootstrapRequired bool
+	MachineID          uuid.UUID
+	SiteID             uuid.UUID
+	MachineName        string
+	MachineToken       string
+	TokenExpiresAt     time.Time
+	RefreshToken       string
+	RefreshExpiresAt   time.Time
+	MQTTBrokerURL      string
+	MQTTTopicPrefix    string
+	MQTTTopicLayout    string
+	MQTTUsername       string
+	MQTTPassword       string
+	BootstrapPath      string
+	BootstrapRequired  bool
 	DeviceAttachmentID *uuid.UUID
 }
 
@@ -635,21 +635,21 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 		return ClaimResult{}, err
 	}
 	return ClaimResult{
-		MachineID:            row.MachineID,
-		SiteID:               m.SiteID,
-		MachineName:          m.Name,
-		MachineToken:         tok,
-		TokenExpiresAt:       exp.UTC(),
-		RefreshToken:         plainRefresh,
-		RefreshExpiresAt:     refreshExp,
-		MQTTBrokerURL:        mqttBrokerURL,
-		MQTTTopicPrefix:      mqttTopicPrefix,
-		MQTTTopicLayout:      mqttTopicLayout,
-		MQTTUsername:         mqttUser,
-		MQTTPassword:         mqttPass,
-		BootstrapPath:        fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
-		BootstrapRequired:    true,
-		DeviceAttachmentID:   deviceAttachmentID,
+		MachineID:          row.MachineID,
+		SiteID:             m.SiteID,
+		MachineName:        m.Name,
+		MachineToken:       tok,
+		TokenExpiresAt:     exp.UTC(),
+		RefreshToken:       plainRefresh,
+		RefreshExpiresAt:   refreshExp,
+		MQTTBrokerURL:      mqttBrokerURL,
+		MQTTTopicPrefix:    mqttTopicPrefix,
+		MQTTTopicLayout:    mqttTopicLayout,
+		MQTTUsername:       mqttUser,
+		MQTTPassword:       mqttPass,
+		BootstrapPath:      fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
+		BootstrapRequired:  true,
+		DeviceAttachmentID: deviceAttachmentID,
 	}, nil
 }
 

@@ -167,14 +167,14 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 type publicClaimBody struct {
 	ActivationCode    string         `json:"activationCode"`
 	DeviceFingerprint fingerprintDTO `json:"deviceFingerprint"`
-	RequestID         string                       `json:"requestId"`
-	CorrelationID     string                       `json:"correlationId"`
-	AppVersion        string                       `json:"appVersion"`
-	BootID            string                       `json:"bootId"`
-	DeviceSerial      string                       `json:"deviceSerial"`
-	Reason            string                       `json:"reason"`
-	ActivationSource  string                       `json:"activationSource"`
-	OperatorSessionID string                       `json:"operatorSessionId"`
+	RequestID         string         `json:"requestId"`
+	CorrelationID     string         `json:"correlationId"`
+	AppVersion        string         `json:"appVersion"`
+	BootID            string         `json:"bootId"`
+	DeviceSerial      string         `json:"deviceSerial"`
+	Reason            string         `json:"reason"`
+	ActivationSource  string         `json:"activationSource"`
+	OperatorSessionID string         `json:"operatorSessionId"`
 }
 
 func claimContextFromRequest(r *http.Request, body publicClaimBody) activation.ClaimContext {

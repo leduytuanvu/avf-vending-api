@@ -13,12 +13,12 @@ import (
 
 // ActivationAttachInput binds a device fingerprint during activation-code claim.
 type ActivationAttachInput struct {
-	MachineID         uuid.UUID
-	FingerprintJSON   json.RawMessage
-	ClientIP          string
-	UserAgent         string
-	Reason            string
-	ActivationSource  string
+	MachineID        uuid.UUID
+	FingerprintJSON  json.RawMessage
+	ClientIP         string
+	UserAgent        string
+	Reason           string
+	ActivationSource string
 }
 
 // DeviceIdentityMatchesAttachment returns true when the active attachment matches the submitted identity.
