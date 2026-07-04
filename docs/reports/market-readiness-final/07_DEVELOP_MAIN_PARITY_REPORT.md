@@ -1,41 +1,39 @@
 # Develop / Main Parity Report
 
-**UTC:** 20260704T002500Z
+**UTC:** 20260704T012500Z (updated after PR #413 merge)
 
-## Action taken
+## Result
 
-| Step | Result |
-|------|--------|
-| `git fetch origin main develop` | OK |
-| Confirm diff | PR #411 only — 2 files (`machine_ops_timeline.sql`, generated Go) |
-| Local merge | Fast-forward `origin/develop` (8991f526) → `origin/main` (51485f55) on local `develop` |
-| `git push origin develop` | **Rejected** — branch protection requires PR |
-| Resolution path | Push `feature/market-readiness-final` including parity fast-forward + harness; open PR to `develop` |
+| Check | Status |
+|-------|--------|
+| PR #411 timeline hotfix on `origin/develop` | **PASS** — `51485f55` is ancestor of `origin/develop` |
+| Commits on `main` missing from `develop` | **None** — `git log origin/develop..origin/main` empty |
+| Timeline SQL parity | **PASS** — no diff on `machine_ops_timeline.sql` / generated Go |
+| Remote `develop` == remote `main` (full tree) | **Pending** — develop ahead with market-readiness harness (PR #413) |
 
-## SHAs
+## SHAs (post PR #413)
 
 | Ref | SHA |
 |-----|-----|
 | `origin/main` | `51485f5583a4f550cfe6fdb6e529e7339daad9ca` |
-| `origin/develop` (remote, pre-PR) | `8991f526d883fd6cfbc996ba5a4affbd558ae02d` |
-| Local `feature/market-readiness-final` base | `51485f5583a4f550cfe6fdb6e529e7339daad9ca` (parity with main) |
+| `origin/develop` | `25326b71b72f2d0f2adc47caf81bd4774cf71893` |
 | Live `/version` git_sha | `51485f5583a4f550cfe6fdb6e529e7339daad9ca` |
 
-## Diff after local merge
+## Actions completed
 
-```text
-(empty — local develop == origin/main)
+1. Merged [PR #413](https://github.com/leduytuanvu/avf-vending-api/pull/413) (`feature/market-readiness-final` → `develop`) at `2026-07-04T01:24:27Z`
+2. CI green on PR #413 (Go CI Gates, Linux race/contract, Security scans, Postman parity)
+3. PR #411 hotfix included in develop via feature branch base on `main`
+
+## Verification commands
+
+```bash
+git fetch origin main develop
+git log origin/develop..origin/main          # expect empty
+git merge-base --is-ancestor origin/main origin/develop   # expect 0
+git diff origin/main origin/develop -- db/queries/machine_ops_timeline.sql internal/gen/db/machine_ops_timeline.sql.go  # expect empty
 ```
 
-## Remote parity gate
+## Next step for full tree parity
 
-**Pending PR merge** — remote `origin/develop` still at 8991f526 until PR lands. Verdict writer treats parity as PASS when local `origin/main == origin/develop` SHA or diff empty after fetch.
-
-## CI
-
-Harness PR CI to be recorded after push (expected: `go test ./...`, OpenAPI/gRPC coverage scripts).
-
-## Notes
-
-- Do not push directly to `develop` (GH013 repository rule).
-- After PR #411 parity PR merges, verify `git diff origin/develop..origin/main` is empty before claiming production parity gate on remote.
+Promote `develop` → `main` via PR (harness-only; no product runtime change beyond what is already on main).
