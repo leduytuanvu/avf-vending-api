@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import admin_headers, build_full_fingerprint, bundle_dir, http_request, setup_market_env, write_matrix_result  # noqa: E402
+from market_common import admin_headers, build_full_fingerprint, bundle_dir, http_request, setup_market_env, write_matrix_result  # noqa: E402
 from bootstrap_market_rbac import bootstrap_market_rbac  # noqa: E402
 
 
@@ -74,13 +74,13 @@ def run_pass(base: str, pass_num: int) -> tuple[list[dict], int, int]:
     )
     rows.append({"case": "technician_activate_denied", "pass": st in (401, 403), "status": st})
 
-    # Operator sessions on A and B
+    # Operator sessions on A and B (admin start; body fields are auth_method-only)
     for label, mid in (("A", machine_a), ("B", machine_b)):
         st, raw, _ = http_request(
             "POST",
             f"{base.rstrip('/')}/v1/admin/machines/{mid}/operator-sessions/start",
             headers=admin_headers(admin_token),
-            body=json.dumps({"technicianId": subst.get("technicianId")}).encode(),
+            body=json.dumps({"auth_method": "oidc"}).encode(),
         )
         rows.append({"case": f"operator_session_{label}", "pass": st in (200, 201, 409), "status": st})
 
@@ -105,7 +105,12 @@ def main() -> int:
     out = bundle_dir()
     rc = 0
     for p in ([args.pass_num] if args.pass_num else [1, 2, 3]):
-        rows, pc, fc = run_pass(args.base_url, p)
+        rows: list[dict] = []
+        pc, fc = 0, 1
+        try:
+            rows, pc, fc = run_pass(args.base_url, p)
+        except Exception as exc:
+            rows = [{"case": "bootstrap", "pass": False, "detail": str(exc)}]
         write_matrix_result(out, f"TECHNICIAN_RBAC_PASS_{p}", rows, pass_count=pc, fail_count=fc)
         if fc:
             rc = 1

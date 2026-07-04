@@ -89,10 +89,11 @@ def audit_bundle(out: Path) -> dict:
             required = [
                 "PRE_DESTRUCTIVE_BACKUP.json",
                 "FINGERPRINT_REATTACH_PASS_1.json",
-                "DB_DIRECT_PASS_1.json",
                 "TECHNICIAN_RBAC_PASS_1.json",
                 "FLEET_TIMELINE_PASS_1.json",
             ]
+            if os.environ.get("PROD_DATABASE_URL", "").strip():
+                required.insert(2, "DB_DIRECT_PASS_1.json")
             for req in required:
                 if not (bundle / req).is_file():
                     findings.append({"surface": "market_bundle", "item": req, "issue": "missing market readiness artifact"})

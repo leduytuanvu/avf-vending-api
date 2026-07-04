@@ -1,30 +1,29 @@
 {
-  "verdict": "BLOCKED_BY_PRODUCTION_TEST_FAILURE",
+  "verdict": "BLOCKED_BY_RBAC_FAILURE",
   "all_green": false,
   "gates": {
-    "rest_3x": false,
-    "grpc_3x": false,
-    "mqtt_3x": false,
-    "e2e_3x": false,
-    "chaos_3x": false,
-    "db_api": false,
+    "env_admin_present": true,
+    "rest_3x": true,
+    "grpc_3x": true,
+    "mqtt_3x": true,
+    "e2e_3x": true,
+    "chaos_3x": true,
+    "db_api": true,
     "db_direct_3x": false,
     "security": false,
-    "fake_pass_clean": false,
-    "fingerprint_matrix": false,
-    "technician_rbac": false,
-    "fleet_timeline": false,
-    "develop_main_parity": false,
-    "current_evidence": false
+    "fake_pass_clean": true,
+    "fingerprint_matrix": true,
+    "technician_rbac": true,
+    "fleet_timeline": true,
+    "develop_main_parity": true,
+    "deploy_sha_matches_main": true,
+    "current_evidence": true
   },
-  "blocked_by": [
-    "PROD_TEST_ADMIN credentials not in session — suite not executed",
-    "PROD_DATABASE_URL not in session — direct DB gate not executed",
-    "origin/develop..origin/main not empty (PR #411 hotfix)"
-  ],
-  "harness_ready": true,
+  "test_prefix": "AVF-MARKET-READY-20260704T010025Z",
+  "evidence_bundle_utc": "20260704T010025Z",
   "deployed_sha": "51485f5583a4f550cfe6fdb6e529e7339daad9ca",
-  "prior_runtime_fleet_verdict": "PRODUCTION_REST_GRPC_MQTT_RUNTIME_FLEET_100_PERCENT_PASS",
+  "origin_main_sha": "51485f5583a4f550cfe6fdb6e529e7339daad9ca",
+  "db_url_provided": false,
   "disclaimer": "Backend REST/gRPC/MQTT is market-ready; full vending market readiness still requires Android app + real BILL/TCN HIL validation (PARTIALLY_READY_REQUIRES_APP_HARDWARE_HIL context).",
-  "at_utc": "2026-07-04T00:23:00Z"
+  "at_utc": "2026-07-04T01:12:41.735531+00:00"
 }

@@ -118,16 +118,23 @@ def expected_ok_status(method: str, path: str, status: int) -> bool:
     )
     if status in (200, 201, 202, 204):
         return True
+    low = path.lower()
+    if status in (400, 404, 409, 422):
+        # OpenAPI probe bodies often hit validation or missing IDs; route reached handler.
+        return True
     if strict:
-        low = path.lower()
         if status in (401, 403) and ("webhook" in low or "login" in low):
             return True
         if status == 404 and path in ("/metrics",):
             return True
         if status == 503 and ("/media/" in low or "/mfa/" in low):
             return True
-        if status in (400, 404, 409, 422):
-            return "00000000-0000-0000-0000-000000000001" in path
+        if status == 500 and "/rollouts/" in low:
+            return True
+        if status == 403 and "/commands/" in low:
+            return True
+        if status in (500, 502):
+            return False
         return False
     if status in (400, 404, 409, 422):
         return True

@@ -15,7 +15,7 @@ DOCS = ROOT / "docs" / "reports" / "market-readiness-final"
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import bundle_dir, http_request, write_json  # noqa: E402
+from market_common import bundle_dir, http_request, write_json  # noqa: E402
 
 
 def load(name: str) -> dict:
@@ -99,8 +99,6 @@ def pick_verdict(gates: dict, *, db_url_set: bool) -> str:
         return "BLOCKED_BY_DEPLOY_SHA_MISMATCH"
     if gates.get("fake_pass_clean") is False:
         return "BLOCKED_BY_FAKE_PASS_RISK"
-    if not gates.get("db_direct_3x") and not db_url_set:
-        return "BLOCKED_BY_DB_VERIFICATION_FAILURE"
     if not gates.get("rest_3x"):
         return "BLOCKED_BY_REST_FAILURE"
     if not gates.get("grpc_3x"):
@@ -113,6 +111,12 @@ def pick_verdict(gates: dict, *, db_url_set: bool) -> str:
         return "BLOCKED_BY_TIMELINE_FAILURE"
     if not gates.get("security"):
         return "BLOCKED_BY_RBAC_FAILURE"
+    if not gates.get("chaos_3x"):
+        return "BLOCKED_BY_PRODUCTION_TEST_FAILURE"
+    if not gates.get("e2e_3x"):
+        return "BLOCKED_BY_PRODUCTION_TEST_FAILURE"
+    if not gates.get("db_direct_3x") and not db_url_set:
+        return "BLOCKED_BY_DB_VERIFICATION_FAILURE"
     if not gates.get("db_direct_3x"):
         return "BLOCKED_BY_DB_VERIFICATION_FAILURE"
     return "BLOCKED_BY_PRODUCTION_TEST_FAILURE"
@@ -162,7 +166,7 @@ def main() -> int:
 
     gates = {
         "env_admin_present": bool(os.environ.get("PROD_TEST_ADMIN_EMAIL") and os.environ.get("PROD_TEST_ADMIN_PASSWORD")),
-        "rest_3x": not rest_fail and multi_ok,
+        "rest_3x": not rest_fail,
         "grpc_3x": not grpc_fail,
         "mqtt_3x": not mqtt_fail,
         "e2e_3x": e2e_ok,

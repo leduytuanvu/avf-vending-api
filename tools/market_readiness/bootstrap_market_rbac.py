@@ -12,47 +12,46 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import bundle_dir, setup_market_env, write_json  # noqa: E402
+from market_common import bundle_dir, setup_market_env, write_json  # noqa: E402
 from bootstrap_test_data import admin_patch, admin_post, bootstrap, claim_activation, login  # noqa: E402
 from entity_registry import EntityRegistry  # noqa: E402
 
 
 def create_technician(base_url: str, admin_token: str, prefix: str) -> tuple[str, str, str]:
+    """Create fleet technician entity + login user; returns (technician_entity_id, token, email)."""
     email = os.environ.get("PROD_TEST_TECHNICIAN_EMAIL", "").strip()
     password = os.environ.get("PROD_TEST_TECHNICIAN_PASSWORD", "").strip()
-    if email and password:
-        tech_token = login(base_url, email, password)
-        st, body = admin_post(
-            base_url,
-            admin_token,
-            "/v1/admin/technicians",
-            {"email": email, "password": password, "displayName": f"{prefix} Technician"},
-        )
-        tech_id = str(body.get("id") or body.get("technicianId") or "")
-        if st not in (200, 201) and not tech_id:
-            tech_id = email
-        return tech_id or email, tech_token, email
-
-    email = f"{prefix.lower().replace('-', '.')[:40]}.tech.{uuid.uuid4().hex[:6]}@avf-market.test"
-    password = secrets.token_urlsafe(16)
-    payload = {
-        "email": email,
-        "password": password,
-        "displayName": f"{prefix} Technician",
-        "phone": "+84900000001",
-    }
-    st, body = admin_post(base_url, admin_token, "/v1/admin/technicians", payload)
+    suffix = prefix.replace("AVF-MARKET-READY-", "")[:24]
+    if not email:
+        email = f"{suffix}.tech.{uuid.uuid4().hex[:6]}@avf-market.test"
+    if not password:
+        password = secrets.token_urlsafe(16)
+    display_name = f"{prefix} Technician"
+    st, tech_body = admin_post(
+        base_url,
+        admin_token,
+        "/v1/admin/technicians",
+        {"display_name": display_name, "email": email},
+    )
     if st not in (200, 201):
-        raise RuntimeError(f"technician create failed {st}: {body}")
-    tech_id = str(body.get("id") or body.get("technicianId") or "")
-    if not tech_id:
-        raise RuntimeError(f"technician create missing id: {body}")
+        raise RuntimeError(f"technician entity create failed {st}: {tech_body}")
+    tech_entity_id = str(tech_body.get("id") or "")
+    if not tech_entity_id:
+        raise RuntimeError(f"technician entity missing id: {tech_body}")
+    st, user_body = admin_post(
+        base_url,
+        admin_token,
+        "/v1/admin/users",
+        {"email": email, "password": password, "roles": ["technician"], "status": "active"},
+    )
+    if st not in (200, 201):
+        raise RuntimeError(f"technician user create failed {st}: {user_body}")
     tech_token = login(base_url, email, password)
-    return tech_id, tech_token, email
+    return tech_entity_id, tech_token, email
 
 
 def create_machine(base_url: str, admin_token: str, prefix: str, site_id: str, label: str) -> dict:
-    from _common import production_machine_code  # noqa: E402
+    from market_common import production_machine_code  # noqa: E402
 
     code = production_machine_code()
     serial = f"{prefix}-{label}-SN-{uuid.uuid4().hex[:6]}"
@@ -85,7 +84,7 @@ def create_machine(base_url: str, admin_token: str, prefix: str, site_id: str, l
 
 
 def assign_technician(base_url: str, admin_token: str, machine_id: str, technician_id: str) -> None:
-    payload = {"technicianId": technician_id, "role": "primary"}
+    payload = {"technician_id": technician_id, "role": "field_service"}
     st, body = admin_post(base_url, admin_token, f"/v1/admin/machines/{machine_id}/technicians", payload)
     if st not in (200, 201, 409):
         raise RuntimeError(f"technician assign failed {st}: {body}")
@@ -100,7 +99,6 @@ ROLE_MAP = {
 
 
 def bootstrap_security_roles(base_url: str, admin_token: str, prefix: str, reg: EntityRegistry) -> None:
-    """Create/login role test accounts for strict security_auth_tests."""
     suffix = prefix.replace("AVF-MARKET-READY-", "")[:24]
     for auth_kind, roles in ROLE_MAP.items():
         email = f"{suffix}.{auth_kind}.{uuid.uuid4().hex[:6]}@avf-market.test"
@@ -111,17 +109,13 @@ def bootstrap_security_roles(base_url: str, admin_token: str, prefix: str, reg: 
             "/v1/admin/users",
             {"email": email, "password": password, "roles": roles, "status": "active"},
         )
-        if st not in (200, 201) and auth_kind != "disabled":
-            continue
-        if auth_kind == "disabled" and st in (200, 201):
-            uid = str(body.get("accountId") or body.get("id") or "")
-            token = login(base_url, email, password)
-            if uid:
-                admin_patch(base_url, admin_token, f"/v1/admin/users/{uid}/status", {"status": "inactive"})
-            if token:
-                reg.set(f"token_{auth_kind}", token, entity_type="token")
-            continue
+        if st not in (200, 201):
+            raise RuntimeError(f"security role {auth_kind} create failed {st}: {body}")
+        uid = str(body.get("accountId") or body.get("id") or "")
         token = login(base_url, email, password)
+        if auth_kind == "disabled" and uid:
+            admin_post(base_url, admin_token, f"/v1/admin/users/{uid}/disable", {})
+            admin_post(base_url, admin_token, f"/v1/admin/users/{uid}/revoke-sessions", {})
         if token:
             reg.set(f"token_{auth_kind}", token, entity_type="token")
 

@@ -12,19 +12,9 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROD_TEST = Path(__file__).resolve().parents[1] / "production_full_test"
-sys.path.insert(0, str(PROD_TEST))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import importlib.util
-
-_spec = importlib.util.spec_from_file_location("production_full_common", PROD_TEST / "_common.py")
-_pc = importlib.util.module_from_spec(_spec)
-assert _spec.loader is not None
-_spec.loader.exec_module(_pc)
-http_request = _pc.http_request
-write_json = _pc.write_json
-
-REPO = Path(__file__).resolve().parents[2]
+from market_common import REPO, bundle_dir, http_request, write_json  # noqa: E402
 
 
 def env_present(name: str) -> bool:
@@ -126,31 +116,25 @@ def run_preflight(base_url: str, bundle: Path) -> tuple[bool, dict]:
     for path in ("/health/live", "/health/ready", "/version"):
         st, raw, _ = http_request("GET", base_url.rstrip("/") + path)
         pass_ok = st == 200
-        if path == "/health/live" or path == "/health/ready":
+        if path in ("/health/live", "/health/ready"):
             pass_ok = pass_ok and "ok" in raw.lower()
         checks.append({"check": path, "status": st, "pass": pass_ok})
         if not pass_ok:
             ok = False
 
     live_sha = ""
+    _, raw, _ = http_request("GET", base_url.rstrip("/") + "/version")
     try:
-        ver = json.loads(checks[-1].get("raw", "") if False else http_request("GET", base_url.rstrip("/") + "/version")[1])
-        live_sha = str(ver.get("git_sha") or "")
+        live_sha = str(json.loads(raw).get("git_sha") or "")
     except Exception:
-        pass
-    if not live_sha:
-        _, raw, _ = http_request("GET", base_url.rstrip("/") + "/version")
-        try:
-            live_sha = str(json.loads(raw).get("git_sha") or "")
-        except Exception:
-            live_sha = ""
+        live_sha = ""
 
     try:
         origin_main = subprocess.check_output(["git", "rev-parse", "origin/main"], cwd=REPO, text=True).strip()
     except Exception:
         origin_main = ""
 
-    sha_match = bool(live_sha and origin_main and live_sha.startswith(origin_main[:12]) or live_sha == origin_main)
+    sha_match = bool(live_sha and origin_main and (live_sha == origin_main or live_sha.startswith(origin_main[:12])))
     checks.append({"check": "deploy_sha_matches_origin_main", "pass": sha_match, "live_sha": live_sha, "origin_main": origin_main})
     if not sha_match and live_sha and origin_main:
         ok = False
@@ -206,7 +190,10 @@ def run_preflight(base_url: str, bundle: Path) -> tuple[bool, dict]:
     md = "# Market Readiness Preflight\n\n" + f"**ok:** {ok}\n\n"
     md += "\n".join(f"- {c.get('check')}: {'PASS' if c.get('pass') else 'FAIL'}" for c in checks)
     md += "\n\n## Env (presence only)\n\n"
-    md += "\n".join(f"- {k}: {'present' if v is True else ('strict' if k.endswith('STRICT') and v else 'missing')}" for k, v in env_checks.items())
+    md += "\n".join(
+        f"- {k}: {'present' if v is True else ('strict' if k.endswith('STRICT') and v else 'missing')}"
+        for k, v in env_checks.items()
+    )
     md += "\n"
     (bundle / "00_PREFLIGHT.md").write_text(md, encoding="utf-8")
     return ok, payload
@@ -214,15 +201,7 @@ def run_preflight(base_url: str, bundle: Path) -> tuple[bool, dict]:
 
 def main() -> int:
     base = os.environ.get("BASE_URL", "https://api.ldtv.dev")
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("mr_common", Path(__file__).resolve().parent / "_common.py")
-    mr = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(mr)
-    bundle = mr.bundle_dir()
-    ok, _ = run_preflight(base, bundle)
+    ok, _ = run_preflight(base, bundle_dir())
     return 0 if ok else 1
 
 

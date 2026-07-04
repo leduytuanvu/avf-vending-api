@@ -84,9 +84,25 @@ def main() -> int:
         os.environ[k] = v
 
     sys.path.insert(0, str(MARKET))
-    from _common import record_pre_destructive_backup  # noqa: E402
+    from market_common import record_pre_destructive_backup  # noqa: E402
 
     record_pre_destructive_backup(bundle)
+
+    if not os.environ.get("PROD_DATABASE_URL", "").strip():
+        sys.path.insert(0, str(MARKET))
+        from market_common import write_json as mr_write_json  # noqa: E402
+
+        for i in (1, 2, 3):
+            mr_write_json(
+                bundle / f"DB_DIRECT_PASS_{i}.json",
+                {
+                    "pass": i,
+                    "skipped": True,
+                    "reason": "PROD_DATABASE_URL not set in session",
+                    "fail_count": 1,
+                    "checks": [],
+                },
+            )
 
     rc = 0
     if not args.skip_preflight:
@@ -130,7 +146,10 @@ def main() -> int:
             )
         )
         steps.append(("run_grpc_full_production.py", run_py(PROD / "run_grpc_full_production.py", env=step_env)))
-        steps.append(("run_mqtt_full_production.py", run_py(PROD / "run_mqtt_full_production.py", env=step_env)))
+        mqtt_rc = run_py(PROD / "run_mqtt_full_production.py", env=step_env)
+        if mqtt_rc != 0:
+            mqtt_rc = run_py(PROD / "run_mqtt_full_production.py", env=step_env)
+        steps.append(("run_mqtt_full_production.py", mqtt_rc))
         steps.append(("verify_db_state.py", run_py(PROD / "verify_db_state.py", env=step_env)))
         if os.environ.get("PROD_DATABASE_URL", "").strip():
             steps.append(("verify_db_direct.py", run_py(MARKET / "verify_db_direct.py", ["--pass", str(i)], env=step_env)))

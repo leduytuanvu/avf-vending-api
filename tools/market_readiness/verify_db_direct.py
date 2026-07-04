@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import ATTACHMENT_SQL_COLUMNS, bundle_dir, record_pre_destructive_backup, write_json  # noqa: E402
+from market_common import ATTACHMENT_SQL_COLUMNS, bundle_dir, record_pre_destructive_backup, write_json  # noqa: E402
 from entity_registry import EntityRegistry  # noqa: E402
 
 

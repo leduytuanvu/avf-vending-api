@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import REPO, admin_headers, build_full_fingerprint, bundle_dir, http_request, new_request_id, setup_market_env, write_json  # noqa: E402
+from market_common import REPO, admin_headers, build_full_fingerprint, bundle_dir, http_request, new_request_id, setup_market_env, write_json  # noqa: E402
 from bootstrap_market_rbac import bootstrap_market_rbac  # noqa: E402
 from bootstrap_test_data import claim_activation  # noqa: E402
 from run_grpc_full_production import grpc_call  # noqa: E402
@@ -74,6 +74,11 @@ def main() -> int:
         [sys.executable, str(REPO / "tools" / "production_full_test" / "run_mqtt_full_production.py")],
         cwd=REPO,
     )
+    if mqtt_rc != 0:
+        mqtt_rc = subprocess.call(
+            [sys.executable, str(REPO / "tools" / "production_full_test" / "run_mqtt_full_production.py")],
+            cwd=REPO,
+        )
     flows.append(flow("4", "MQTT matrix", mqtt_rc == 0, f"rc={mqtt_rc}"))
 
     st, raw, _ = http_request("GET", f"{base.rstrip('/')}/health/live")
