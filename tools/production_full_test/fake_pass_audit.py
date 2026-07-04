@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -71,6 +72,32 @@ def audit_bundle(out: Path) -> dict:
             stale += 1
             findings.append({"surface": "evidence", "item": str(name.relative_to(out)), "issue": "stale evidence path from prior UTC bundle"})
             fake_pass_risk = True
+
+    from pathlib import Path as _Path
+
+    _mr = _Path(__file__).resolve().parents[1] / "market_readiness"
+    if _mr.is_dir() and os.environ.get("MARKET_READINESS_STRICT", "").strip().lower() in ("1", "true", "yes"):
+        bundle = _Path(os.environ.get("MARKET_READINESS_BUNDLE_DIR", "")) if os.environ.get("MARKET_READINESS_BUNDLE_DIR") else None
+        sec = out / "SECURITY_AUTH_TEST_RESULTS.json"
+        if sec.is_file():
+            data = json.loads(sec.read_text(encoding="utf-8"))
+            for rule in data.get("rules", []):
+                if rule.get("actual") == "SKIPPED" and rule.get("pass"):
+                    findings.append({"surface": "security", "item": rule.get("rule"), "issue": "skipped counted as pass in market strict mode"})
+                    fake_pass_risk = True
+        if bundle and bundle.is_dir():
+            required = [
+                "PRE_DESTRUCTIVE_BACKUP.json",
+                "FINGERPRINT_REATTACH_PASS_1.json",
+                "TECHNICIAN_RBAC_PASS_1.json",
+                "FLEET_TIMELINE_PASS_1.json",
+            ]
+            if os.environ.get("PROD_DATABASE_URL", "").strip():
+                required.insert(2, "DB_DIRECT_PASS_1.json")
+            for req in required:
+                if not (bundle / req).is_file():
+                    findings.append({"surface": "market_bundle", "item": req, "issue": "missing market readiness artifact"})
+                    fake_pass_risk = True
 
     return {
         "fakePassRisk": fake_pass_risk,
