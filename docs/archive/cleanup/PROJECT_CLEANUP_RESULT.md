@@ -41,7 +41,7 @@
 
 ## Repomix
 
-- Added `repomix.config.json` with safe excludes (`.e2e-runs`, `.tmp-*`, coverage, Newman reports, binaries, etc.)
+- Added `repomix.config.json` with safe excludes (`.e2e-runs`, `.tmp-*`, coverage, Newman reports, binaries, etc.) — **removed 2026-07-04** (PR #416); repomix outputs remain gitignored
 - Does **not** exclude source, migrations, OpenAPI, core docs, manifests, tests, workflows, deploy scripts
 
 ## Validation

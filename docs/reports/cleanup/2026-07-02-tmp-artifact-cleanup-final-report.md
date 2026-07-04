@@ -11,7 +11,7 @@ Safely removed **~188 MB** of gitignored local temp, test, e2e, and repomix arti
 ## 2. What was inspected
 
 - Git state: branch, SHA, `git ls-files` (1813 tracked files), `git status --short --ignored`
-- Ignore rules: [`.gitignore`](../../../.gitignore), [`.dockerignore`](../../../.dockerignore), [`repomix.config.json`](../../../repomix.config.json)
+- Ignore rules: [`.gitignore`](../../../.gitignore), [`.dockerignore`](../../../.dockerignore) (`repomix.config.json` removed 2026-07-04; repomix outputs still gitignored)
 - Artifact directories via depth-limited scan and pattern search
 - Reference checks via `rg` for `.tmp`, `.test-runs`, `.e2e-runs`, `migration-evidence`
 - Mandatory `git ls-files` check for every deletion candidate

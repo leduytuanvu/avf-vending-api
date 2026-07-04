@@ -1,6 +1,6 @@
 # Day-2 operations documentation
 
-This directory holds **day-2 operational** docs (latency runbooks, resource sizing, repomix guides, go-live checklists). Canonical locations for other layers:
+This directory holds **day-2 operational** docs (latency runbooks, resource sizing, go-live checklists). Canonical locations for other layers:
 
 | Topic | Canonical path |
 | --- | --- |
