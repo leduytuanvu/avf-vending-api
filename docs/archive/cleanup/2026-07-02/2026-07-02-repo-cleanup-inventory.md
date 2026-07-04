@@ -85,7 +85,7 @@ Classification key: **KEEP** | **MOVE** | **ARCHIVE** | **DELETE** | **MERGE** |
 | `docs/api/`, `docs/architecture/` | Contracts, design | CI contract checks | HIGH | KEEP | — |
 | `docs/deployment/` (11 files) | Env, secrets, release | Runbooks | HIGH | KEEP | — |
 | `docs/cicd/` (3 files) | Enterprise CI contract | README | MEDIUM | KEEP | — |
-| `docs/operations/` (6 files) | Day-2 ops, repomix | docs/README | LOW | KEEP | — |
+| `docs/operations/` (6 files) | Day-2 ops | docs/README | LOW | KEEP | — |
 | `docs/production/` | Go-live checklists | Field ops | HIGH | KEEP | — |
 | `docs/testing/` | Test guides | E2E scripts | MEDIUM | KEEP | — |
 | `docs/audits/` (6 active files) | Current readiness | docs/README canonical | MEDIUM | KEEP | — |

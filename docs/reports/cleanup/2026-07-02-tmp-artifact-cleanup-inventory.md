@@ -14,11 +14,11 @@
 | `.e2e-runs/` | E2E/Newman run artifacts | untracked | No | Yes (`.e2e-runs/`) | `tests/e2e/README.md`, `scripts/ci/verify_governance_protection_window.sh` (expects dir ignored, not contents) | LOW | DELETE_LOCAL_ONLY | ~15k files; runtime evidence only |
 | `migration-evidence/migration-safety-report.json` | Migration safety report | untracked | No | Yes (`migration-evidence/*.json`) | `scripts/deploy/migration_preflight.sh`, `.github/workflows/deploy-develop.yml` (artifact upload path) | LOW | DELETE_LOCAL_ONLY | Regenerable via `verify_migrations.sh --report`; **keep `migration-evidence/` directory** |
 | `bin/` | Build output | absent | No | Yes (`/bin/`) | Makefile `build` target | LOW | N/A (absent) | Not on disk |
-| `dist/` | Build output | absent | No | Yes (`/dist/`) | repomix.config.json | LOW | N/A (absent) | Not on disk |
+| `dist/` | Build output | absent | No | Yes (`/dist/`) | Makefile | LOW | N/A (absent) | Not on disk |
 | `coverage/` | Coverage reports | absent | No | Yes (`coverage/`) | `scripts/test/run-mqtt-full-coverage.sh` | LOW | N/A (absent) | Not on disk |
 | `ci-reports/` | Local CI reports | absent | No | Yes (`ci-reports/`) | None | LOW | N/A (absent) | Not on disk |
 | `security-reports/` | Security scan reports | absent | No | Yes (`security-reports/`) | None | LOW | N/A (absent) | Not on disk |
-| `repomix-output*.xml` | Repomix export | absent | No | Yes | `repomix.config.json`, `docs/operations/repomix-generation-guide.md` | LOW | N/A (absent) | Not on disk |
+| `repomix-output*.xml` | Repomix export | absent | No | Yes | `.gitignore`, `scripts/local/clean-local-artifacts.*` | LOW | N/A (absent) | Not on disk |
 | `*.log` under `.e2e-runs/` | E2E logs | untracked | No | Yes (`*.log`) | E2E docs (runtime layout) | LOW | DELETE_LOCAL_ONLY | Removed with parent `.e2e-runs/` |
 | `newman-report.json` / `newman-junit.xml` under `.e2e-runs/` | Newman outputs | untracked | No | Yes (`.e2e-runs/**/`) | E2E postman docs | LOW | DELETE_LOCAL_ONLY | Removed with parent `.e2e-runs/` |
 | `migration-evidence/` (directory) | CI artifact path | N/A | No (dir untracked) | Partial (`*.json` only) | deploy-develop workflow | MEDIUM | KEEP | Workflow uploads `migration-evidence/migration-safety-report.json`; directory must exist |

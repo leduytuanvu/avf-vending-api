@@ -1,5 +1,7 @@
 # 2026-07-02 repository cleanup plan
 
+> **Note (2026-07-04):** `repomix.config.json` was removed from the repo (PR #416). References below are historical snapshots.
+
 **Branch:** `cleanup/repo-structure-and-junk-files`  
 **Baseline commit:** `c69a5995df3b7fc2298da32504cee56549824213`
 

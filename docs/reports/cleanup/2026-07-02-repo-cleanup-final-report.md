@@ -69,7 +69,7 @@ Added to [`.gitignore`](../../../.gitignore): `_deploy_artifacts/`, `prod-deploy
 | `scripts/README.md` | Added `repair/`, `governance/`, `e2e/` rows |
 | `.gitignore` | Ignore local deploy artifact dirs |
 | `.gitattributes` | LF for `postman/suites/**/*.json` |
-| `repomix.config.json` | Ignore `_deploy_artifacts/**` |
+| `repomix.config.json` (removed 2026-07-04) | Ignore `_deploy_artifacts/**` |
 
 ---
 
@@ -99,7 +99,7 @@ Added to [`.gitignore`](../../../.gitignore): `_deploy_artifacts/`, `prod-deploy
 | `make postman-check` | **PASS (manual)** | Regen + `check_postman_artifacts.py` + clean diff on collections/environments (PowerShell `python`) |
 | `make api-contract-check` | **Deferred** | Requires buf/sqlc pin + full make chain |
 | `make verify-enterprise-release` | **Deferred** | Requires full bash make chain |
-| `rg _deploy_artifacts` | **PASS** | Only `.gitignore`, `repomix.config.json`, cleanup docs |
+| `rg _deploy_artifacts` | **PASS** | Only `.gitignore`, cleanup docs (historical: also `repomix.config.json`, removed 2026-07-04) |
 
 **Tracked file count:** 1796 → 1803 (net +7: cleanup reports + archive READMEs; −7 deploy artifacts; + restored Postman paths).
 
