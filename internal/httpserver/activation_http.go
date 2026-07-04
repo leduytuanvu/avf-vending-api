@@ -165,16 +165,16 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 }
 
 type publicClaimBody struct {
-	ActivationCode    string                       `json:"activationCode"`
-	DeviceFingerprint activation.DeviceFingerprint `json:"deviceFingerprint"`
-	RequestID         string                       `json:"requestId"`
-	CorrelationID     string                       `json:"correlationId"`
-	AppVersion        string                       `json:"appVersion"`
-	BootID            string                       `json:"bootId"`
-	DeviceSerial      string                       `json:"deviceSerial"`
-	Reason            string                       `json:"reason"`
-	ActivationSource  string                       `json:"activationSource"`
-	OperatorSessionID string                       `json:"operatorSessionId"`
+	ActivationCode    string         `json:"activationCode"`
+	DeviceFingerprint fingerprintDTO `json:"deviceFingerprint"`
+	RequestID         string         `json:"requestId"`
+	CorrelationID     string         `json:"correlationId"`
+	AppVersion        string         `json:"appVersion"`
+	BootID            string         `json:"bootId"`
+	DeviceSerial      string         `json:"deviceSerial"`
+	Reason            string         `json:"reason"`
+	ActivationSource  string         `json:"activationSource"`
+	OperatorSessionID string         `json:"operatorSessionId"`
 }
 
 func claimContextFromRequest(r *http.Request, body publicClaimBody) activation.ClaimContext {
@@ -226,7 +226,7 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 		layout := platformmqtt.LayoutString(platformmqtt.NormalizeTopicLayout(cfg.MQTT.TopicLayout))
 		out, err := app.Activation.Claim(r.Context(), activation.ClaimInput{
 			ActivationCode:    body.ActivationCode,
-			DeviceFingerprint: body.DeviceFingerprint,
+			DeviceFingerprint: body.DeviceFingerprint.DeviceFingerprint,
 			ClientIP:          clientIP(r),
 			UserAgent:         strings.TrimSpace(r.UserAgent()),
 			ClaimContext:      claimContextFromRequest(r, body),
@@ -270,6 +270,9 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 		}
 		if out.MQTTPassword != "" {
 			resp["mqttPassword"] = out.MQTTPassword
+		}
+		if out.DeviceAttachmentID != nil {
+			resp["deviceAttachmentId"] = out.DeviceAttachmentID.String()
 		}
 		writeJSON(w, http.StatusOK, resp)
 	}

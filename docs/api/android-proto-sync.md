@@ -1,6 +1,6 @@
 # Android proto sync index (generated)
 
-**Generated:** `2026-06-17T21:37:17Z` by `scripts/ci/generate_android_proto_sync_doc.py`
+**Generated:** `2026-07-04T23:06:10Z` by `scripts/ci/generate_android_proto_sync_doc.py`
 
 Copy `proto/avf/machine/v1/*.proto` into the Android app (Buf, Gradle protobuf, or manual sync).
 Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc-production-contract.md).
@@ -38,7 +38,9 @@ Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc
 | `MachineCommerceService` | `ConfirmVendSuccess` | `ConfirmVendSuccessRequest` | `ConfirmVendSuccessResponse` | active |
 | `MachineCommerceService` | `CreateCashCheckout` | `ConfirmCashPaymentRequest` | `ConfirmCashPaymentResponse` | active |
 | `MachineCommerceService` | `CreateOrder` | `CreateOrderRequest` | `CreateOrderResponse` | active |
+| `MachineCommerceService` | `CreateOrderFromQuote` | `CreateOrderFromQuoteRequest` | `CreateOrderFromQuoteResponse` | active |
 | `MachineCommerceService` | `CreatePaymentSession` | `CreatePaymentSessionRequest` | `CreatePaymentSessionResponse` | active |
+| `MachineCommerceService` | `CreateQuote` | `CreateQuoteRequest` | `CreateQuoteResponse` | active |
 | `MachineCommerceService` | `CreateSale` | `CreateSaleRequest` | `CreateSaleResponse` | active |
 | `MachineCommerceService` | `FailVend` | `ReportVendFailureRequest` | `ReportVendFailureResponse` | active |
 | `MachineCommerceService` | `GetOrder` | `GetOrderRequest` | `GetOrderResponse` | active |
@@ -69,6 +71,10 @@ Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc
 | `MachineOperatorService` | `OpenOperatorSession` | `OpenOperatorSessionRequest` | `OpenOperatorSessionResponse` | active |
 | `MachineOperatorService` | `SubmitFillReport` | `SubmitFillReportRequest` | `SubmitFillReportResponse` | active |
 | `MachineOperatorService` | `SubmitStockAdjustment` | `SubmitStockAdjustmentRequest` | `SubmitStockAdjustmentResponse` | active |
+| `MachineRuntimeSessionService` | `EndRuntimeSession` | `EndRuntimeSessionRequest` | `EndRuntimeSessionResponse` | active |
+| `MachineRuntimeSessionService` | `GetRuntimeSessionState` | `GetRuntimeSessionStateRequest` | `GetRuntimeSessionStateResponse` | active |
+| `MachineRuntimeSessionService` | `HeartbeatRuntimeSession` | `HeartbeatRuntimeSessionRequest` | `HeartbeatRuntimeSessionResponse` | active |
+| `MachineRuntimeSessionService` | `StartRuntimeSession` | `StartRuntimeSessionRequest` | `StartRuntimeSessionResponse` | active |
 | `MachineSaleService` | `AttachPayment` | `AttachPaymentRequest` | `AttachPaymentResponse` | active |
 | `MachineSaleService` | `AttachPaymentResult` | `CreatePaymentSessionRequest` | `CreatePaymentSessionResponse` | active |
 | `MachineSaleService` | `CancelOrder` | `CancelOrderRequest` | `CancelOrderResponse` | active |
@@ -79,7 +85,9 @@ Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc
 | `MachineSaleService` | `ConfirmVendSuccess` | `ConfirmVendSuccessRequest` | `ConfirmVendSuccessResponse` | active |
 | `MachineSaleService` | `CreateCashCheckout` | `ConfirmCashPaymentRequest` | `ConfirmCashPaymentResponse` | active |
 | `MachineSaleService` | `CreateOrder` | `CreateOrderRequest` | `CreateOrderResponse` | active |
+| `MachineSaleService` | `CreateOrderFromQuote` | `CreateOrderFromQuoteRequest` | `CreateOrderFromQuoteResponse` | active |
 | `MachineSaleService` | `CreatePaymentSession` | `CreatePaymentSessionRequest` | `CreatePaymentSessionResponse` | active |
+| `MachineSaleService` | `CreateQuote` | `CreateQuoteRequest` | `CreateQuoteResponse` | active |
 | `MachineSaleService` | `CreateSale` | `CreateSaleRequest` | `CreateSaleResponse` | active |
 | `MachineSaleService` | `FailVend` | `ReportVendFailureRequest` | `ReportVendFailureResponse` | active |
 | `MachineSaleService` | `GetOrder` | `GetOrderRequest` | `GetOrderResponse` | active |
@@ -96,4 +104,4 @@ Canonical runtime contract: [`machine-grpc-production-contract.md`](machine-grpc
 | `MachineTelemetryService` | `SubmitTelemetryBatch` | `SubmitTelemetryBatchRequest` | `SubmitTelemetryBatchResponse` | active |
 | `MachineTokenService` | `RefreshMachineToken` | `RefreshMachineTokenRequest` | `RefreshMachineTokenResponse` | active |
 
-**Total RPCs:** 88
+**Total RPCs:** 96

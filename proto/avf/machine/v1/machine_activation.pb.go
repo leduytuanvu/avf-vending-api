@@ -23,16 +23,33 @@ const (
 )
 
 type DeviceFingerprint struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	AndroidId     string                 `protobuf:"bytes,1,opt,name=android_id,json=androidId,proto3" json:"android_id,omitempty"`
-	SerialNumber  string                 `protobuf:"bytes,2,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
-	Manufacturer  string                 `protobuf:"bytes,3,opt,name=manufacturer,proto3" json:"manufacturer,omitempty"`
-	Model         string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
-	PackageName   string                 `protobuf:"bytes,5,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
-	VersionName   string                 `protobuf:"bytes,6,opt,name=version_name,json=versionName,proto3" json:"version_name,omitempty"`
-	VersionCode   int32                  `protobuf:"varint,7,opt,name=version_code,json=versionCode,proto3" json:"version_code,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AndroidId      string                 `protobuf:"bytes,1,opt,name=android_id,json=androidId,proto3" json:"android_id,omitempty"`
+	SerialNumber   string                 `protobuf:"bytes,2,opt,name=serial_number,json=serialNumber,proto3" json:"serial_number,omitempty"`
+	Manufacturer   string                 `protobuf:"bytes,3,opt,name=manufacturer,proto3" json:"manufacturer,omitempty"`
+	Model          string                 `protobuf:"bytes,4,opt,name=model,proto3" json:"model,omitempty"`
+	PackageName    string                 `protobuf:"bytes,5,opt,name=package_name,json=packageName,proto3" json:"package_name,omitempty"`
+	VersionName    string                 `protobuf:"bytes,6,opt,name=version_name,json=versionName,proto3" json:"version_name,omitempty"`
+	VersionCode    int32                  `protobuf:"varint,7,opt,name=version_code,json=versionCode,proto3" json:"version_code,omitempty"`
+	AndroidSerial  string                 `protobuf:"bytes,8,opt,name=android_serial,json=androidSerial,proto3" json:"android_serial,omitempty"`
+	BoardSerial    string                 `protobuf:"bytes,9,opt,name=board_serial,json=boardSerial,proto3" json:"board_serial,omitempty"`
+	DeviceSerial   string                 `protobuf:"bytes,10,opt,name=device_serial,json=deviceSerial,proto3" json:"device_serial,omitempty"`
+	SimSerial      string                 `protobuf:"bytes,11,opt,name=sim_serial,json=simSerial,proto3" json:"sim_serial,omitempty"`
+	SimIccid       string                 `protobuf:"bytes,12,opt,name=sim_iccid,json=simIccid,proto3" json:"sim_iccid,omitempty"`
+	SimOperator    string                 `protobuf:"bytes,13,opt,name=sim_operator,json=simOperator,proto3" json:"sim_operator,omitempty"`
+	SimCountryIso  string                 `protobuf:"bytes,14,opt,name=sim_country_iso,json=simCountryIso,proto3" json:"sim_country_iso,omitempty"`
+	Brand          string                 `protobuf:"bytes,15,opt,name=brand,proto3" json:"brand,omitempty"`
+	DeviceModel    string                 `protobuf:"bytes,16,opt,name=device_model,json=deviceModel,proto3" json:"device_model,omitempty"`
+	Hardware       string                 `protobuf:"bytes,17,opt,name=hardware,proto3" json:"hardware,omitempty"`
+	Product        string                 `protobuf:"bytes,18,opt,name=product,proto3" json:"product,omitempty"`
+	AndroidRelease string                 `protobuf:"bytes,19,opt,name=android_release,json=androidRelease,proto3" json:"android_release,omitempty"`
+	SdkInt         int32                  `protobuf:"varint,20,opt,name=sdk_int,json=sdkInt,proto3" json:"sdk_int,omitempty"`
+	AppBuildSha    string                 `protobuf:"bytes,21,opt,name=app_build_sha,json=appBuildSha,proto3" json:"app_build_sha,omitempty"`
+	BootId         string                 `protobuf:"bytes,22,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	NetworkType    string                 `protobuf:"bytes,23,opt,name=network_type,json=networkType,proto3" json:"network_type,omitempty"`
+	NetworkState   string                 `protobuf:"bytes,24,opt,name=network_state,json=networkState,proto3" json:"network_state,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *DeviceFingerprint) Reset() {
@@ -114,6 +131,125 @@ func (x *DeviceFingerprint) GetVersionCode() int32 {
 	return 0
 }
 
+func (x *DeviceFingerprint) GetAndroidSerial() string {
+	if x != nil {
+		return x.AndroidSerial
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetBoardSerial() string {
+	if x != nil {
+		return x.BoardSerial
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetDeviceSerial() string {
+	if x != nil {
+		return x.DeviceSerial
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetSimSerial() string {
+	if x != nil {
+		return x.SimSerial
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetSimIccid() string {
+	if x != nil {
+		return x.SimIccid
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetSimOperator() string {
+	if x != nil {
+		return x.SimOperator
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetSimCountryIso() string {
+	if x != nil {
+		return x.SimCountryIso
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetBrand() string {
+	if x != nil {
+		return x.Brand
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetDeviceModel() string {
+	if x != nil {
+		return x.DeviceModel
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetHardware() string {
+	if x != nil {
+		return x.Hardware
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetProduct() string {
+	if x != nil {
+		return x.Product
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetAndroidRelease() string {
+	if x != nil {
+		return x.AndroidRelease
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetSdkInt() int32 {
+	if x != nil {
+		return x.SdkInt
+	}
+	return 0
+}
+
+func (x *DeviceFingerprint) GetAppBuildSha() string {
+	if x != nil {
+		return x.AppBuildSha
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetNetworkType() string {
+	if x != nil {
+		return x.NetworkType
+	}
+	return ""
+}
+
+func (x *DeviceFingerprint) GetNetworkState() string {
+	if x != nil {
+		return x.NetworkState
+	}
+	return ""
+}
+
 type ClaimActivationRequest struct {
 	state             protoimpl.MessageState `protogen:"open.v1"`
 	ActivationCode    string                 `protobuf:"bytes,1,opt,name=activation_code,json=activationCode,proto3" json:"activation_code,omitempty"`
@@ -182,10 +318,12 @@ type ClaimActivationResponse struct {
 	BootstrapHttpPath string `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
 	BootstrapRequired bool   `protobuf:"varint,12,opt,name=bootstrap_required,json=bootstrapRequired,proto3" json:"bootstrap_required,omitempty"`
 	// Per-machine broker credentials (returned once on claim when EMQX provisioning is enabled).
-	MqttUsername  string `protobuf:"bytes,14,opt,name=mqtt_username,json=mqttUsername,proto3" json:"mqtt_username,omitempty"`
-	MqttPassword  string `protobuf:"bytes,15,opt,name=mqtt_password,json=mqttPassword,proto3" json:"mqtt_password,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	MqttUsername string `protobuf:"bytes,14,opt,name=mqtt_username,json=mqttUsername,proto3" json:"mqtt_username,omitempty"`
+	MqttPassword string `protobuf:"bytes,15,opt,name=mqtt_password,json=mqttPassword,proto3" json:"mqtt_password,omitempty"`
+	// Active machine_device_attachments row created or reused during claim.
+	DeviceAttachmentId string `protobuf:"bytes,16,opt,name=device_attachment_id,json=deviceAttachmentId,proto3" json:"device_attachment_id,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *ClaimActivationResponse) Reset() {
@@ -316,11 +454,18 @@ func (x *ClaimActivationResponse) GetMqttPassword() string {
 	return ""
 }
 
+func (x *ClaimActivationResponse) GetDeviceAttachmentId() string {
+	if x != nil {
+		return x.DeviceAttachmentId
+	}
+	return ""
+}
+
 var File_avf_machine_v1_machine_activation_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\n" +
-	"'avf/machine/v1/machine_activation.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfa\x01\n" +
+	"'avf/machine/v1/machine_activation.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa6\x06\n" +
 	"\x11DeviceFingerprint\x12\x1d\n" +
 	"\n" +
 	"android_id\x18\x01 \x01(\tR\tandroidId\x12#\n" +
@@ -329,10 +474,29 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\x05model\x18\x04 \x01(\tR\x05model\x12!\n" +
 	"\fpackage_name\x18\x05 \x01(\tR\vpackageName\x12!\n" +
 	"\fversion_name\x18\x06 \x01(\tR\vversionName\x12!\n" +
-	"\fversion_code\x18\a \x01(\x05R\vversionCode\"\x93\x01\n" +
+	"\fversion_code\x18\a \x01(\x05R\vversionCode\x12%\n" +
+	"\x0eandroid_serial\x18\b \x01(\tR\randroidSerial\x12!\n" +
+	"\fboard_serial\x18\t \x01(\tR\vboardSerial\x12#\n" +
+	"\rdevice_serial\x18\n" +
+	" \x01(\tR\fdeviceSerial\x12\x1d\n" +
+	"\n" +
+	"sim_serial\x18\v \x01(\tR\tsimSerial\x12\x1b\n" +
+	"\tsim_iccid\x18\f \x01(\tR\bsimIccid\x12!\n" +
+	"\fsim_operator\x18\r \x01(\tR\vsimOperator\x12&\n" +
+	"\x0fsim_country_iso\x18\x0e \x01(\tR\rsimCountryIso\x12\x14\n" +
+	"\x05brand\x18\x0f \x01(\tR\x05brand\x12!\n" +
+	"\fdevice_model\x18\x10 \x01(\tR\vdeviceModel\x12\x1a\n" +
+	"\bhardware\x18\x11 \x01(\tR\bhardware\x12\x18\n" +
+	"\aproduct\x18\x12 \x01(\tR\aproduct\x12'\n" +
+	"\x0fandroid_release\x18\x13 \x01(\tR\x0eandroidRelease\x12\x17\n" +
+	"\asdk_int\x18\x14 \x01(\x05R\x06sdkInt\x12\"\n" +
+	"\rapp_build_sha\x18\x15 \x01(\tR\vappBuildSha\x12\x17\n" +
+	"\aboot_id\x18\x16 \x01(\tR\x06bootId\x12!\n" +
+	"\fnetwork_type\x18\x17 \x01(\tR\vnetworkType\x12#\n" +
+	"\rnetwork_state\x18\x18 \x01(\tR\fnetworkState\"\x93\x01\n" +
 	"\x16ClaimActivationRequest\x12'\n" +
 	"\x0factivation_code\x18\x01 \x01(\tR\x0eactivationCode\x12P\n" +
-	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\x8d\x05\n" +
+	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xbf\x05\n" +
 	"\x17ClaimActivationResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -349,7 +513,8 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath\x12-\n" +
 	"\x12bootstrap_required\x18\f \x01(\bR\x11bootstrapRequired\x12#\n" +
 	"\rmqtt_username\x18\x0e \x01(\tR\fmqttUsername\x12#\n" +
-	"\rmqtt_password\x18\x0f \x01(\tR\fmqttPassword2~\n" +
+	"\rmqtt_password\x18\x0f \x01(\tR\fmqttPassword\x120\n" +
+	"\x14device_attachment_id\x18\x10 \x01(\tR\x12deviceAttachmentId2~\n" +
 	"\x18MachineActivationService\x12b\n" +
 	"\x0fClaimActivation\x12&.avf.machine.v1.ClaimActivationRequest\x1a'.avf.machine.v1.ClaimActivationResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 

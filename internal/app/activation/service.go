@@ -269,13 +269,30 @@ func (s *Service) RevokeCodeByID(ctx context.Context, codeID uuid.UUID) error {
 
 // DeviceFingerprint is submitted on claim.
 type DeviceFingerprint struct {
-	AndroidID    string `json:"androidId"`
-	SerialNumber string `json:"serialNumber"`
-	Manufacturer string `json:"manufacturer"`
-	Model        string `json:"model"`
-	PackageName  string `json:"packageName"`
-	VersionName  string `json:"versionName"`
-	VersionCode  int    `json:"versionCode"`
+	AndroidID      string `json:"androidId"`
+	SerialNumber   string `json:"serialNumber"`
+	Manufacturer   string `json:"manufacturer"`
+	Model          string `json:"model"`
+	PackageName    string `json:"packageName"`
+	VersionName    string `json:"versionName"`
+	VersionCode    int    `json:"versionCode"`
+	AndroidSerial  string `json:"androidSerial"`
+	BoardSerial    string `json:"boardSerial"`
+	DeviceSerial   string `json:"deviceSerial"`
+	SimSerial      string `json:"simSerial"`
+	SimIccid       string `json:"simIccid"`
+	SimOperator    string `json:"simOperator"`
+	SimCountryIso  string `json:"simCountryIso"`
+	Brand          string `json:"brand"`
+	DeviceModel    string `json:"deviceModel"`
+	Hardware       string `json:"hardware"`
+	Product        string `json:"product"`
+	AndroidRelease string `json:"androidRelease"`
+	SdkInt         int    `json:"sdkInt"`
+	AppBuildSha    string `json:"appBuildSha"`
+	BootID         string `json:"bootId"`
+	NetworkType    string `json:"networkType"`
+	NetworkState   string `json:"networkState"`
 }
 
 // ClaimInput is the public claim body.
@@ -291,20 +308,21 @@ type ClaimInput struct {
 
 // ClaimResult is returned on successful claim (and idempotent replay).
 type ClaimResult struct {
-	MachineID         uuid.UUID
-	SiteID            uuid.UUID
-	MachineName       string
-	MachineToken      string
-	TokenExpiresAt    time.Time
-	RefreshToken      string
-	RefreshExpiresAt  time.Time
-	MQTTBrokerURL     string
-	MQTTTopicPrefix   string
-	MQTTTopicLayout   string
-	MQTTUsername      string
-	MQTTPassword      string
-	BootstrapPath     string
-	BootstrapRequired bool
+	MachineID          uuid.UUID
+	SiteID             uuid.UUID
+	MachineName        string
+	MachineToken       string
+	TokenExpiresAt     time.Time
+	RefreshToken       string
+	RefreshExpiresAt   time.Time
+	MQTTBrokerURL      string
+	MQTTTopicPrefix    string
+	MQTTTopicLayout    string
+	MQTTUsername       string
+	MQTTPassword       string
+	BootstrapPath      string
+	BootstrapRequired  bool
+	DeviceAttachmentID *uuid.UUID
 }
 
 func (s *Service) refreshTTL() time.Duration {
@@ -527,7 +545,7 @@ func (s *Service) recordRefreshFailureAudit(ctx context.Context, scopeID uuid.UU
 	})
 }
 
-func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.MachineActivationCode, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string, auditMeta map[string]any) (ClaimResult, error) {
+func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.MachineActivationCode, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string, auditMeta map[string]any, fpJSON []byte, ip, ua string, cc ClaimContext) (ClaimResult, error) {
 	qtx := db.New(tx)
 	m, err := qtx.GetMachineByID(ctx, row.MachineID)
 	if err != nil {
@@ -586,6 +604,30 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 	if s.emqx != nil && (mqttUser == "" || mqttPass == "") {
 		return ClaimResult{}, ErrMQTTProvisioning
 	}
+	var deviceAttachmentID *uuid.UUID
+	if s.runtime != nil && len(fpJSON) > 0 {
+		reason := strings.TrimSpace(cc.Reason)
+		if reason == "" {
+			reason = "first_install"
+		}
+		activationSource := strings.TrimSpace(cc.ActivationSource)
+		if activationSource == "" {
+			activationSource = "activation_code"
+		}
+		attach, aerr := s.runtime.EnsureActivationDeviceAttachmentInTx(ctx, qtx, machineruntime.ActivationAttachInput{
+			MachineID:        row.MachineID,
+			FingerprintJSON:  fpJSON,
+			ClientIP:         ip,
+			UserAgent:        ua,
+			Reason:           reason,
+			ActivationSource: activationSource,
+		})
+		if aerr != nil {
+			return ClaimResult{}, aerr
+		}
+		aid := attach.ID
+		deviceAttachmentID = &aid
+	}
 	if err := tx.Commit(ctx); err != nil {
 		if s.emqx != nil && mqttUser != "" {
 			_ = s.emqx.DeleteUser(context.WithoutCancel(ctx), mqttUser)
@@ -593,20 +635,21 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 		return ClaimResult{}, err
 	}
 	return ClaimResult{
-		MachineID:         row.MachineID,
-		SiteID:            m.SiteID,
-		MachineName:       m.Name,
-		MachineToken:      tok,
-		TokenExpiresAt:    exp.UTC(),
-		RefreshToken:      plainRefresh,
-		RefreshExpiresAt:  refreshExp,
-		MQTTBrokerURL:     mqttBrokerURL,
-		MQTTTopicPrefix:   mqttTopicPrefix,
-		MQTTTopicLayout:   mqttTopicLayout,
-		MQTTUsername:      mqttUser,
-		MQTTPassword:      mqttPass,
-		BootstrapPath:     fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
-		BootstrapRequired: true,
+		MachineID:          row.MachineID,
+		SiteID:             m.SiteID,
+		MachineName:        m.Name,
+		MachineToken:       tok,
+		TokenExpiresAt:     exp.UTC(),
+		RefreshToken:       plainRefresh,
+		RefreshExpiresAt:   refreshExp,
+		MQTTBrokerURL:      mqttBrokerURL,
+		MQTTTopicPrefix:    mqttTopicPrefix,
+		MQTTTopicLayout:    mqttTopicLayout,
+		MQTTUsername:       mqttUser,
+		MQTTPassword:       mqttPass,
+		BootstrapPath:      fmt.Sprintf("/v1/setup/machines/%s/bootstrap", row.MachineID),
+		BootstrapRequired:  true,
+		DeviceAttachmentID: deviceAttachmentID,
 	}, nil
 }
 
@@ -651,7 +694,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 		return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout, map[string]any{
 			"idempotent_replay":   true,
 			"activation_claim_id": prevSucc.ID.String(),
-		})
+		}, fpJSON, ip, ua, in.ClaimContext)
 	}
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return ClaimResult{}, err
@@ -713,7 +756,7 @@ func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttT
 
 	return s.deliverActivationClaim(ctx, tx, row, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout, map[string]any{
 		"first_claim": true,
-	})
+	}, fpJSON, ip, ua, in.ClaimContext)
 }
 
 // RefreshInput exchanges a refresh token for rotated credentials.
