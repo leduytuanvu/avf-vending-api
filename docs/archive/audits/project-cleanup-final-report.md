@@ -16,17 +16,17 @@ Nonessential local and tracked artifacts were removed or archived. **No applicat
 | Tracked files | ~34.5 MB | **~34.0 MB** (net −~0.5 MB tracked docs removed) |
 | Local `.e2e-runs/` | ~57 MB | **0** (deleted) |
 
-## Repomix (after `repomix.config.json` update)
+## Repomix (historical — config removed 2026-07-04)
 
-| Metric | Value |
+At the time of this report, the repo used `repomix.config.json` and a generation guide under `docs/operations/`. Both were **removed** in PR #416; local `repomix-output*.xml` remains gitignored via [`.gitignore`](../../../.gitignore). Ad-hoc packs may still be generated with `npx repomix@latest --include "..."` if needed for external review.
+
+| Metric (2026-05-28 snapshot) | Value |
 |--------|-------|
-| Command | `npx repomix@latest --config repomix.config.json` |
+| Command (historical) | `npx repomix@latest --config repomix.config.json` |
 | Files packed | 1,734 |
 | Tokens | ~5.27M |
 | Output size | `repomix-output.xml` ~17.0 MB (gitignored) |
 | Excluded | Large `.postman_collection.json`, E2E dirs, `build/reports/`, run logs |
-
-See [`../operations/repomix-generation-guide.md`](../operations/repomix-generation-guide.md).
 
 ## Deleted (Bucket A)
 
@@ -71,8 +71,8 @@ Moved to `docs/archive/cleanup/`:
 ## Updated configuration
 
 - **`.gitignore`:** `.repomix/`, `repomix-output*.xml`, `docs/reports/test/mqtt-full-coverage.*`
-- **`repomix.config.json`:** exclude E2E/smoke/latency dirs, Postman collections, `build/reports/`, timestamped E2E docs
-- **`docs/README.md`:** Repomix guide + archive pointer
+- **`repomix.config.json` (removed 2026-07-04):** formerly excluded E2E/smoke/latency dirs, Postman collections, `build/reports/`, timestamped E2E docs
+- **`docs/README.md`:** archive pointer (Repomix guide removed 2026-07-04)
 - **`docs/audits/README.md`:** New cleanup audit links
 
 ## Regenerated (Phase 6)
