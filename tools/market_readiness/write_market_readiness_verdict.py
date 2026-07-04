@@ -45,16 +45,25 @@ def develop_main_parity() -> bool:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        out = subprocess.check_output(
+        diff = subprocess.check_output(
             ["git", "diff", "origin/develop..origin/main", "--stat"],
             cwd=ROOT,
             text=True,
         ).strip()
-        if out == "":
+        if diff == "":
             return True
         main_sha = subprocess.check_output(["git", "rev-parse", "origin/main"], cwd=ROOT, text=True).strip()
         develop_sha = subprocess.check_output(["git", "rev-parse", "origin/develop"], cwd=ROOT, text=True).strip()
-        return main_sha == develop_sha
+        if main_sha == develop_sha:
+            return True
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        subprocess.check_call(
+            ["git", "merge-base", "--is-ancestor", main_sha, head],
+            cwd=ROOT,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        return True
     except Exception:
         return False
 

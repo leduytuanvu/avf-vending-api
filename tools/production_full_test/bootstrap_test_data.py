@@ -15,7 +15,7 @@ from base64 import b64encode
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _common import http_request, new_request_id, report_dir, test_prefix
+from _common import http_request, new_request_id, production_machine_code, report_dir, test_prefix
 from entity_registry import EntityRegistry
 
 
@@ -135,6 +135,7 @@ def bootstrap(base_url: str) -> EntityRegistry:
         raise RuntimeError("Set PROD_TEST_ADMIN_EMAIL and PROD_TEST_ADMIN_PASSWORD")
 
     prefix = test_prefix()
+    pass_suffix = os.environ.get("PROD_TEST_SUFFIX", uuid.uuid4().hex[:8])
     reg = EntityRegistry()
     reg.set_prefix(prefix)
 
@@ -166,11 +167,12 @@ def bootstrap(base_url: str) -> EntityRegistry:
         response_body=site,
     )
 
+    machine_code = production_machine_code()
     machine_payload = {
         "name": f"{prefix} Machine",
-        "code": f"{code_suffix}-m"[:24],
+        "code": machine_code,
         "siteId": site["id"],
-        "serialNumber": f"{prefix}-SN",
+        "serialNumber": f"{prefix}-SN-{pass_suffix}",
         "model": "AVF-PROD-TEST",
         "status": "draft",
         "timezone": "UTC",
@@ -178,12 +180,13 @@ def bootstrap(base_url: str) -> EntityRegistry:
     }
     st, machine = admin_post(base_url, token, "/v1/admin/machines", machine_payload)
     if st == 409:
-        machine_payload["code"] = f"{code_suffix[:12]}-m-{uuid.uuid4().hex[:6]}"[:24]
+        machine_payload["code"] = production_machine_code()
         machine_payload["serialNumber"] = f"{prefix}-SN-{uuid.uuid4().hex[:6]}"
         st, machine = admin_post(base_url, token, "/v1/admin/machines", machine_payload)
     if st not in (200, 201) or not machine.get("id"):
         raise RuntimeError(f"machine create failed {st}: {machine}")
     reg.set("machineId", machine["id"], entity_type="machine")
+    reg.set("machineSerialNumber", machine_payload["serialNumber"], entity_type="config")
     reg.record_write(
         surface="REST",
         action="POST /v1/admin/machines",
@@ -206,7 +209,7 @@ def bootstrap(base_url: str) -> EntityRegistry:
         raise RuntimeError(f"no activation code in response: {act}")
     reg.set("activationCode", str(activation_code), entity_type="activation_code")
 
-    claim = claim_activation(base_url, str(activation_code), f"{prefix}-SN")
+    claim = claim_activation(base_url, str(activation_code), machine_payload["serialNumber"])
     machine_token = claim.get("accessToken") or claim.get("machineAccessToken") or claim.get("machineToken")
     refresh = claim.get("refreshToken") or claim.get("machineRefreshToken")
     if machine_token:

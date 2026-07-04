@@ -11,20 +11,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 PROD_TEST = ROOT / "tools" / "production_full_test"
-sys.path.insert(0, str(PROD_TEST))
 
-from _common import (  # noqa: E402
-    REPO,
-    http_request,
-    is_market_readiness_strict,
-    market_report_dir,
-    market_ready_prefix,
-    new_request_id,
-    production_machine_code,
-    redact,
-    utc_stamp,
-    write_json,
-)
+import importlib.util
+
+_prod_path = PROD_TEST / "_common.py"
+_spec = importlib.util.spec_from_file_location("production_full_common", _prod_path)
+_pc = importlib.util.module_from_spec(_spec)
+assert _spec.loader is not None
+_spec.loader.exec_module(_pc)
+
+REPO = _pc.REPO
+http_request = _pc.http_request
+is_market_readiness_strict = _pc.is_market_readiness_strict
+market_report_dir = _pc.market_report_dir
+market_ready_prefix = _pc.market_ready_prefix
+new_request_id = _pc.new_request_id
+production_machine_code = _pc.production_machine_code
+redact = _pc.redact
+utc_stamp = _pc.utc_stamp
+write_json = _pc.write_json
+
+sys.path.insert(0, str(PROD_TEST))
 from entity_registry import EntityRegistry  # noqa: E402
 
 BACKUP_PATH = "deployments/prod/backups/backup-20260703T230257Z.dump"

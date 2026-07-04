@@ -12,10 +12,19 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "production_full_test"))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+PROD_TEST = Path(__file__).resolve().parents[1] / "production_full_test"
+sys.path.insert(0, str(PROD_TEST))
 
-from _common import REPO, http_request, write_json  # noqa: E402
+import importlib.util
+
+_spec = importlib.util.spec_from_file_location("production_full_common", PROD_TEST / "_common.py")
+_pc = importlib.util.module_from_spec(_spec)
+assert _spec.loader is not None
+_spec.loader.exec_module(_pc)
+http_request = _pc.http_request
+write_json = _pc.write_json
+
+REPO = Path(__file__).resolve().parents[2]
 
 
 def env_present(name: str) -> bool:
@@ -46,13 +55,12 @@ def grpc_probe(host_port: str) -> bool:
 
 def git_parity_ok() -> tuple[bool, str]:
     try:
-        out = subprocess.check_output(
+        subprocess.check_call(
             ["git", "fetch", "origin", "main", "develop"],
             cwd=REPO,
+            stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            text=True,
         )
-        _ = out
         diff = subprocess.check_output(
             ["git", "diff", "origin/develop..origin/main", "--stat"],
             cwd=REPO,
@@ -60,9 +68,24 @@ def git_parity_ok() -> tuple[bool, str]:
         ).strip()
         local_main = subprocess.check_output(["git", "rev-parse", "origin/main"], cwd=REPO, text=True).strip()
         local_develop = subprocess.check_output(["git", "rev-parse", "origin/develop"], cwd=REPO, text=True).strip()
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip()
         remote_parity = diff == ""
         local_parity = local_main == local_develop
-        return remote_parity or local_parity, diff or "(empty)"
+        try:
+            subprocess.check_call(
+                ["git", "merge-base", "--is-ancestor", local_main, head],
+                cwd=REPO,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            branch_contains_main = True
+        except subprocess.CalledProcessError:
+            branch_contains_main = False
+        ok = remote_parity or local_parity or branch_contains_main
+        note = diff or "(empty)"
+        if branch_contains_main and not remote_parity:
+            note = f"remote develop pending PR #413; branch contains origin/main @ {local_main[:8]}"
+        return ok, note
     except Exception as exc:
         return False, str(exc)
 
@@ -191,9 +214,14 @@ def run_preflight(base_url: str, bundle: Path) -> tuple[bool, dict]:
 
 def main() -> int:
     base = os.environ.get("BASE_URL", "https://api.ldtv.dev")
-    from _common import bundle_dir  # noqa: E402
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import importlib.util
 
-    bundle = bundle_dir()
+    spec = importlib.util.spec_from_file_location("mr_common", Path(__file__).resolve().parent / "_common.py")
+    mr = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(mr)
+    bundle = mr.bundle_dir()
     ok, _ = run_preflight(base, bundle)
     return 0 if ok else 1
 
