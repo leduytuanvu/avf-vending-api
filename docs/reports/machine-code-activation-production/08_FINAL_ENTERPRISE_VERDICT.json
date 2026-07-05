@@ -1,0 +1,57 @@
+{
+  "verdict": "GO_WITH_LIMITED_SCOPE",
+  "commit_sha": "e57c9486633b5842aa448e8c114c9cf7163b4f7b",
+  "production_sha": "22e56f0f972cc94031d95371ce79007f57cf6fb8",
+  "rest": {
+    "total": 363,
+    "passed": 363,
+    "failed": 0,
+    "skipped": 0,
+    "blocked": 0,
+    "not_run": 0
+  },
+  "grpc": {
+    "total": 75,
+    "passed": 75,
+    "failed": 0,
+    "skipped": 0,
+    "blocked": 0,
+    "not_run": 0
+  },
+  "mqtt": {
+    "total": 17,
+    "passed": 17,
+    "failed": 0,
+    "skipped": 0,
+    "blocked": 0,
+    "not_run": 0
+  },
+  "activation_by_machine_code": {
+    "passed": true,
+    "machine_code": "AVF156537",
+    "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+    "activation_code_created": true,
+    "uuid_backward_compatible": true
+  },
+  "board_replacement": {
+    "tested": true,
+    "passed": true,
+    "notes": "Local integration tests pass; production claim returns deviceAttachmentId; dedicated prod A/B fingerprint swap not executed as standalone test"
+  },
+  "deployment": {
+    "deployed_to_production": false,
+    "deploy_attempt_sha": "e57c9486633b5842aa448e8c114c9cf7163b4f7b",
+    "deploy_run_id": "28755628234",
+    "deploy_failure": "Collect pre-deploy SLO evidence (automatic rollback succeeded)",
+    "production_serving_sha": "22e56f0f972cc94031d95371ce79007f57cf6fb8",
+    "production_has_machine_code_activation": true,
+    "health_live": "pass",
+    "health_ready": "pass",
+    "version_verified": true
+  },
+  "remaining_gaps": [
+    "Deploy e57c9486 (MachineIdentityRef struct) blocked by pre-deploy SLO gate — production still serves 22e56f0f which already includes machine-code activation routes",
+    "E2E flow I offline replay idempotency failed (pre-existing, not activation regression)",
+    "Bootstrap production_machine_code() uses >6 digits; activation admin resolver requires ^AVF[0-9]{6}$ — documented divergence"
+  ]
+}
