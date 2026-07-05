@@ -1,0 +1,77 @@
+{
+  "run_prefix": "MCODE-ACT-PROD-20260706",
+  "machine_code": "AVF156537",
+  "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+  "results": [
+    {
+      "name": "GET /health/live",
+      "status": "pass",
+      "http_status": 200
+    },
+    {
+      "name": "GET /health/ready",
+      "status": "pass",
+      "http_status": 200
+    },
+    {
+      "name": "GET /version",
+      "status": "pass",
+      "http_status": 200
+    },
+    {
+      "name": "GET /v1/auth/me",
+      "status": "pass",
+      "http_status": 200
+    },
+    {
+      "name": "ensure_activation_test_machine",
+      "status": "pass",
+      "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+      "machine_code": "AVF156537"
+    },
+    {
+      "name": "POST /machine-codes/{code}/activation-codes",
+      "status": "pass",
+      "http_status": 201,
+      "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+      "machine_code": "AVF156537"
+    },
+    {
+      "name": "POST /machines/{uuid}/activation-codes",
+      "status": "pass",
+      "http_status": 201
+    },
+    {
+      "name": "POST /machines/{code}/activation-codes",
+      "status": "pass",
+      "http_status": 201
+    },
+    {
+      "name": "POST /activation-codes body machineCode",
+      "status": "pass",
+      "http_status": 201
+    },
+    {
+      "name": "POST /activation-codes body machine_code",
+      "status": "pass",
+      "http_status": 201
+    },
+    {
+      "name": "GET /machine-codes/{code}/activation-codes",
+      "status": "pass",
+      "http_status": 200
+    },
+    {
+      "name": "DELETE /machine-codes/{code}/activation-codes/{id}",
+      "status": "pass",
+      "http_status": 204
+    },
+    {
+      "name": "POST /setup/activation-codes/claim",
+      "status": "pass",
+      "http_status": 200,
+      "has_device_attachment": true
+    }
+  ],
+  "fail_count": 0
+}
