@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -15,6 +16,52 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import http_request, new_request_id, redact, report_dir, write_json
 
 REPO = Path(__file__).resolve().parents[2]
+ACTIVATION_CODE_RE = re.compile(r"^AVF[0-9]{6}$")
+
+
+def machine_code_from_registry(reg: dict, machine_id: str) -> str:
+    for row in reversed(reg.get("writes") or []):
+        if row.get("action") != "POST /v1/admin/machines":
+            continue
+        if row.get("entity_id") != machine_id:
+            continue
+        try:
+            req = json.loads(str(row.get("request_body") or "{}"))
+        except json.JSONDecodeError:
+            continue
+        code = str(req.get("code") or "").strip().upper()
+        if ACTIVATION_CODE_RE.match(code):
+            return code
+    return ""
+
+
+def ensure_activation_test_machine(base_url: str, token: str, run_prefix: str) -> tuple[str, str]:
+    """Return machine_id + 6-digit AVF machine code, creating an isolated machine if needed."""
+    site_payload = {
+        "name": f"{run_prefix} Activation Site",
+        "code": f"ACT-{uuid.uuid4().hex[:8]}"[:20],
+        "timezone": "UTC",
+        "address": {"line1": f"{run_prefix} activation test"},
+    }
+    st, site = admin_json(base_url, token, "POST", "/v1/admin/sites", site_payload)
+    if st not in (200, 201) or not site.get("id"):
+        raise RuntimeError(f"activation site create failed HTTP {st}")
+    machine_code = f"AVF{uuid.uuid4().int % 1_000_000:06d}"
+    machine_payload = {
+        "name": f"{run_prefix} Activation Machine",
+        "code": machine_code,
+        "siteId": site["id"],
+        "serialNumber": f"{run_prefix}-ACT-{uuid.uuid4().hex[:6]}",
+        "model": "AVF-PROD-TEST",
+        "status": "draft",
+        "timezone": "UTC",
+        "cabinetType": "ambient",
+    }
+    st, machine = admin_json(base_url, token, "POST", "/v1/admin/machines", machine_payload)
+    if st not in (200, 201) or not machine.get("id"):
+        raise RuntimeError(f"activation machine create failed HTTP {st}")
+    admin_json(base_url, token, "PATCH", f"/v1/admin/machines/{machine['id']}", {"status": "active"})
+    return str(machine["id"]), machine_code
 
 
 def login(base_url: str, email: str, password: str) -> str:
@@ -28,7 +75,14 @@ def login(base_url: str, email: str, password: str) -> str:
     if status not in (200, 201):
         raise RuntimeError(f"login failed HTTP {status}: {redact(raw[:500])}")
     data = json.loads(raw)
-    token = data.get("accessToken") or data.get("access_token") or data.get("token")
+    tokens = data.get("tokens") or {}
+    token = (
+        data.get("accessToken")
+        or data.get("access_token")
+        or data.get("token")
+        or tokens.get("accessToken")
+        or tokens.get("access_token")
+    )
     if not token:
         raise RuntimeError("login missing access token")
     return str(token)
@@ -82,13 +136,25 @@ def main() -> int:
     record("GET /v1/auth/me", st == 200, http_status=st)
 
     # Resolve test machine from bootstrap entity registry if present
-    reg_path = report_dir() / "ENTITY_REGISTRY.json"
+    reg_path = report_dir() / "PRODUCTION_TEST_ENTITY_REGISTRY.json"
     machine_id = os.environ.get("TEST_MACHINE_ID", "")
     machine_code = os.environ.get("TEST_MACHINE_CODE", "")
     if reg_path.is_file():
         reg = json.loads(reg_path.read_text(encoding="utf-8"))
-        machine_id = machine_id or str(reg.get("machine_id", ""))
-        machine_code = machine_code or str(reg.get("machine_code", ""))
+        machine_id = machine_id or str((reg.get("entities") or {}).get("machineId", {}).get("id", ""))
+        if machine_id and not machine_code:
+            machine_code = machine_code_from_registry(reg, machine_id)
+
+    if not machine_code or not ACTIVATION_CODE_RE.match(machine_code.upper()):
+        try:
+            machine_id, machine_code = ensure_activation_test_machine(base_url, token, run_prefix)
+            record("ensure_activation_test_machine", True, machine_id=machine_id, machine_code=machine_code)
+        except RuntimeError as exc:
+            record("ensure_activation_test_machine", False, error=str(exc))
+            evidence = REPO / "docs" / "reports" / "machine-code-activation-production" / "evidence"
+            evidence.mkdir(parents=True, exist_ok=True)
+            write_json(evidence / "activation_smoke_results.json", {"results": results, "blocked": "machine_setup_failed"})
+            return 2
 
     if not machine_code:
         print("No TEST_MACHINE_CODE or bootstrap registry — run bootstrap first", file=sys.stderr)
