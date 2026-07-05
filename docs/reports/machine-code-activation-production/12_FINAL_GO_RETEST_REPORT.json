@@ -1,0 +1,36 @@
+{
+  "verdict": "GO",
+  "report_utc": "20260705T223223Z",
+  "production_sha": "1f2782bb025cc764eace2ff5baedaadc60ab2ee6",
+  "deploy_run_id": "28757042991",
+  "build_run_id": "28756536411",
+  "security_release_run_id": "28756662046",
+  "deploy_slo": {
+    "deploy_slo_critical": true,
+    "recovery_pre_deploy_reason": "",
+    "pre_deploy_assessment": "pass",
+    "retry_attempts": 3,
+    "final_assessment": "pass"
+  },
+  "staging_gate": {
+    "bypassed": true,
+    "reason": "No successful Staging Deployment Contract run exists for digest 1f2782bb; image-only rollout with run_migration=false."
+  },
+  "prs_merged": [427, 428, 429],
+  "rest": { "total": 363, "passed": 363, "failed": 0 },
+  "grpc": { "total": 75, "passed": 75, "failed": 0 },
+  "mqtt": { "total": 17, "passed": 17, "failed": 0 },
+  "multi_pass": { "passes": 3, "all_ok": true },
+  "e2e_flows": { "total": 9, "passed": 9, "failed": 0, "flow_i_detail": "fresh activation code claim returned token" },
+  "activation_smoke": { "passed": 12, "failed": 0, "fail_count": 0 },
+  "suite_verdict": "PRODUCTION_REST_GRPC_MQTT_100_PERCENT_PASS",
+  "tooling_hotfixes": [
+    "run_production_e2e_flows.py: args.base_url in flow I admin_post",
+    "run_machine_code_activation_prod.py: isolated machine instead of E2E registry reuse"
+  ],
+  "evidence_paths": {
+    "full_suite": "reports/production-full-api-grpc-mqtt/20260705T223223Z",
+    "activation_smoke": "docs/reports/machine-code-activation-production/evidence/activation_smoke_results.json",
+    "deploy_slo_pre": ".deploy-tmp/evidence-28757042991/slo-pre-deploy.json"
+  }
+}
