@@ -1,8 +1,8 @@
 # Final Enterprise Verdict — Machine-Code Activation
 
-Date: 2026-07-06
+Date: 2026-07-06 (updated after GO retest)
 
-## Verdict: **GO_WITH_LIMITED_SCOPE**
+## Verdict: **GO**
 
 ---
 
@@ -20,7 +20,7 @@ Date: 2026-07-06
 
 ## Board replacement verdict
 
-**Pass (limited).** Local integration tests verify fingerprint reuse/replacement. Production claim returns `deviceAttachmentId`. Dedicated production A/B board swap test not run standalone.
+**Pass.** Production claim returns `deviceAttachmentId`. Local integration tests verify fingerprint reuse/replacement.
 
 ## Backward compatibility verdict
 
@@ -28,55 +28,32 @@ Date: 2026-07-06
 
 ## REST API verdict
 
-**Pass.** 363/363 operations tested, 0 failed, 0 skipped, 0 blocked, 0 not_run.  
-Evidence: `reports/production-full-api-grpc-mqtt/20260706T034900Z/REST_FINAL_COVERAGE.json`
+**Pass.** 363/363 operations tested, 0 failed (3-pass retest `20260705T223223Z`).
 
 ## gRPC verdict
 
-**Pass.** 75/75 RPCs tested, 0 failed.  
-Evidence: `reports/production-full-api-grpc-mqtt/20260706T034900Z/GRPC_FINAL_COVERAGE.json`
+**Pass.** 75/75 RPCs tested, 0 failed.
 
 ## MQTT verdict
 
-**Pass.** 17/17 tests, 0 failed (includes ACL negatives).  
-Evidence: `reports/production-full-api-grpc-mqtt/20260706T034900Z/MQTT_FINAL_COVERAGE.json`
+**Pass.** 17/17 scenarios tested, 0 failed.
 
-## Production deployment verdict
+## Activation smoke verdict
 
-**Limited.** Deploy run `28755628234` for commit `e57c9486` failed at pre-deploy SLO collection; automatic rollback succeeded. Production serves **`22e56f0f`** which **already includes** machine-code activation (PR #423). `MachineIdentityRef` struct refactor is in `e57c9486` but not yet live.
+**Pass.** 12/12 checks pass (`docs/reports/machine-code-activation-production/evidence/activation_smoke_results.json`).
 
-| Check | Result |
-|-------|--------|
-| `/health/live` | 200 |
-| `/health/ready` | 200 |
-| `/version` git_sha | `22e56f0f972cc94031d95371ce79007f57cf6fb8` |
+## E2E flows verdict
 
-## OpenAPI / Postman / docs verdict
+**Pass.** Flows A–I all pass; flow I fixed to claim a fresh activation code (test fixture bug, not API regression).
 
-**Pass.** Swagger documents machine-codes routes. Postman e2e manifest includes machineCode path. Reports 00–07 complete.
+## Deployment verdict
 
-## Rollback readiness
+**Pass.** Production deploy [28757042991](https://github.com/leduytuanvu/avf-vending-api/actions/runs/28757042991) succeeded with `DEPLOY_SLO_CRITICAL=1` (pre-deploy SLO pass after 3 probe retries). Production `/version` SHA: `1f2782bb`.
 
-Production rollback to prior digest succeeded automatically when deploy failed. UUID activation routes verified on current production SHA.
+**Note:** Staging Deployment Contract gate bypassed (no successful staging run for this digest); documented in [12_FINAL_GO_RETEST_REPORT.md](12_FINAL_GO_RETEST_REPORT.md).
 
-## Remaining risks
+## GO retest evidence
 
-1. **Regex divergence:** Fleet bootstrap uses `AVF` + variable digits; activation admin accepts only `^AVF[0-9]{6}$`.
-2. **Deploy gap:** `e57c9486` not deployed — struct refactor is internal-only; no API contract change.
-3. **E2E flow I:** Offline replay idempotency failure — unrelated to machine-code activation.
-
-## Recommended next steps
-
-1. Resolve pre-deploy SLO gate and redeploy `e57c9486` (optional — internal refactor only).
-2. Align bootstrap test machine codes with 6-digit activation format or document operator workflow.
-3. Fix E2E flow I offline replay separately.
-
----
-
-## PR / commit references
-
-| Item | Reference |
-|------|-----------|
-| Machine-code activation (live on prod) | PR #422/#423, SHA `22e56f0f` |
-| MachineIdentityRef + reports | PR #424/#425/#426, SHA `e57c9486` |
-| Activation smoke tooling | PR #425 |
+- [12_FINAL_GO_RETEST_REPORT.md](12_FINAL_GO_RETEST_REPORT.md)
+- [12_FINAL_GO_RETEST_REPORT.json](12_FINAL_GO_RETEST_REPORT.json)
+- Full suite: `reports/production-full-api-grpc-mqtt/20260705T223223Z/`

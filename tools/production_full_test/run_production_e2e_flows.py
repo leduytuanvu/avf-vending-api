@@ -186,7 +186,7 @@ def main() -> int:
     i_detail = "skipped"
     if admin_token and machine_id:
         st_i, act_i = admin_post(
-            base_url,
+            args.base_url,
             admin_token,
             f"/v1/admin/machines/{machine_id}/activation-codes",
             {"expiresInMinutes": 60, "maxUses": 1},

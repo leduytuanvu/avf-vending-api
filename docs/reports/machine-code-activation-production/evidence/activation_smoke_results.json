@@ -1,7 +1,7 @@
 {
-  "run_prefix": "MCODE-ACT-PROD-20260706",
-  "machine_code": "AVF156537",
-  "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+  "run_prefix": "MCODE-ACT-PROD-20260706-034800",
+  "machine_code": "AVF928508",
+  "machine_id": "019f3471-575d-787b-881f-72bb8ab12cb7",
   "results": [
     {
       "name": "GET /health/live",
@@ -26,15 +26,15 @@
     {
       "name": "ensure_activation_test_machine",
       "status": "pass",
-      "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
-      "machine_code": "AVF156537"
+      "machine_id": "019f3471-575d-787b-881f-72bb8ab12cb7",
+      "machine_code": "AVF928508"
     },
     {
       "name": "POST /machine-codes/{code}/activation-codes",
       "status": "pass",
       "http_status": 201,
-      "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
-      "machine_code": "AVF156537"
+      "machine_id": "019f3471-575d-787b-881f-72bb8ab12cb7",
+      "machine_code": "AVF928508"
     },
     {
       "name": "POST /machines/{uuid}/activation-codes",

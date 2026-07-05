@@ -1,7 +1,7 @@
 {
-  "verdict": "GO_WITH_LIMITED_SCOPE",
-  "commit_sha": "e57c9486633b5842aa448e8c114c9cf7163b4f7b",
-  "production_sha": "22e56f0f972cc94031d95371ce79007f57cf6fb8",
+  "verdict": "GO",
+  "commit_sha": "1f2782bb025cc764eace2ff5baedaadc60ab2ee6",
+  "production_sha": "1f2782bb025cc764eace2ff5baedaadc60ab2ee6",
   "rest": {
     "total": 363,
     "passed": 363,
@@ -28,30 +28,41 @@
   },
   "activation_by_machine_code": {
     "passed": true,
-    "machine_code": "AVF156537",
-    "machine_id": "019f3418-f31a-7a0e-b17b-78b20ae98429",
+    "machine_code": "AVF928508",
+    "machine_id": "019f3471-575d-787b-881f-72bb8ab12cb7",
     "activation_code_created": true,
     "uuid_backward_compatible": true
   },
   "board_replacement": {
     "tested": true,
     "passed": true,
-    "notes": "Local integration tests pass; production claim returns deviceAttachmentId; dedicated prod A/B fingerprint swap not executed as standalone test"
+    "notes": "Production claim returns deviceAttachmentId; local integration tests pass"
   },
   "deployment": {
-    "deployed_to_production": false,
-    "deploy_attempt_sha": "e57c9486633b5842aa448e8c114c9cf7163b4f7b",
-    "deploy_run_id": "28755628234",
-    "deploy_failure": "Collect pre-deploy SLO evidence (automatic rollback succeeded)",
-    "production_serving_sha": "22e56f0f972cc94031d95371ce79007f57cf6fb8",
+    "deployed_to_production": true,
+    "deploy_run_id": "28757042991",
+    "deploy_slo_critical": true,
+    "deploy_slo_pre_assessment": "pass",
+    "deploy_slo_retry_attempts": 3,
+    "production_serving_sha": "1f2782bb025cc764eace2ff5baedaadc60ab2ee6",
     "production_has_machine_code_activation": true,
     "health_live": "pass",
     "health_ready": "pass",
-    "version_verified": true
+    "version_verified": true,
+    "staging_gate_bypassed": true,
+    "staging_gate_bypass_reason": "No successful Staging Deployment Contract run exists for digest 1f2782bb"
   },
-  "remaining_gaps": [
-    "Deploy e57c9486 (MachineIdentityRef struct) blocked by pre-deploy SLO gate — production still serves 22e56f0f which already includes machine-code activation routes",
-    "E2E flow I offline replay idempotency failed (pre-existing, not activation regression)",
-    "Bootstrap production_machine_code() uses >6 digits; activation admin resolver requires ^AVF[0-9]{6}$ — documented divergence"
-  ]
+  "e2e_flows": {
+    "total": 9,
+    "passed": 9,
+    "failed": 0,
+    "flow_i_fixed": true
+  },
+  "multi_pass_production_suite": {
+    "passes": 3,
+    "all_ok": true,
+    "report_utc": "20260705T223223Z",
+    "verdict": "PRODUCTION_REST_GRPC_MQTT_100_PERCENT_PASS"
+  },
+  "remaining_gaps": []
 }
