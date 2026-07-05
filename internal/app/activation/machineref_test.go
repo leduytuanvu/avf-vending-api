@@ -32,30 +32,30 @@ func TestValidActivationMachineCode(t *testing.T) {
 
 func TestResolveMachineRef_emptyRef(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolveMachineRef(t.Context(), nil, "")
+	_, err := ResolveMachineRef(t.Context(), nil, "")
 	require.ErrorIs(t, err, ErrMachineIdentifierRequired)
 }
 
 func TestResolveMachineRef_invalidFormat(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolveMachineRef(t.Context(), nil, "not-a-code")
+	_, err := ResolveMachineRef(t.Context(), nil, "not-a-code")
 	require.ErrorIs(t, err, ErrInvalidMachineIdentifier)
 }
 
 func TestResolveMachineRef_shortAVFCode(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolveMachineRef(t.Context(), nil, "AVF00001")
+	_, err := ResolveMachineRef(t.Context(), nil, "AVF00001")
 	require.ErrorIs(t, err, ErrInvalidMachineIdentifier)
 }
 
 func TestResolveMachineBody_empty(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolveMachineBody(t.Context(), nil, "", "", "", "")
+	_, err := ResolveMachineBody(t.Context(), nil, "", "", "", "")
 	require.ErrorIs(t, err, ErrMachineIdentifierRequired)
 }
 
 func TestResolveMachineBody_invalidCode(t *testing.T) {
 	t.Parallel()
-	_, _, err := ResolveMachineBody(t.Context(), nil, "", "", "BAD", "")
+	_, err := ResolveMachineBody(t.Context(), nil, "", "", "BAD", "")
 	require.ErrorIs(t, err, ErrInvalidMachineIdentifier)
 }

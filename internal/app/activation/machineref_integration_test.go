@@ -29,15 +29,15 @@ func TestResolveMachineRef_integration_knownCode(t *testing.T) {
 	machineID := id.NewUUIDV7()
 	insertMachineWithCode(t, pool, siteID, machineID, "AVF000001")
 
-	gotID, gotCode, err := ResolveMachineRef(ctx, pool, "AVF000001")
+	got, err := ResolveMachineRef(ctx, pool, "AVF000001")
 	require.NoError(t, err)
-	require.Equal(t, machineID, gotID)
-	require.Equal(t, "AVF000001", gotCode)
+	require.Equal(t, machineID, got.MachineID)
+	require.Equal(t, "AVF000001", got.MachineCode)
 
-	gotID, gotCode, err = ResolveMachineRef(ctx, pool, machineID.String())
+	got, err = ResolveMachineRef(ctx, pool, machineID.String())
 	require.NoError(t, err)
-	require.Equal(t, machineID, gotID)
-	require.Equal(t, "AVF000001", gotCode)
+	require.Equal(t, machineID, got.MachineID)
+	require.Equal(t, "AVF000001", got.MachineCode)
 }
 
 func TestResolveMachineRef_integration_unknownCode(t *testing.T) {
@@ -45,7 +45,7 @@ func TestResolveMachineRef_integration_unknownCode(t *testing.T) {
 	pool := activationTestPool(t)
 	ctx := context.Background()
 
-	_, _, err := ResolveMachineRef(ctx, pool, "AVF999999")
+	_, err := ResolveMachineRef(ctx, pool, "AVF999999")
 	require.ErrorIs(t, err, ErrMachineNotFound)
 }
 
@@ -59,7 +59,7 @@ func TestResolveMachineBody_integration_conflict(t *testing.T) {
 	insertMachineWithCode(t, pool, siteID, machineA, "AVF000010")
 	insertMachineWithCode(t, pool, siteID, machineB, "AVF000011")
 
-	_, _, err := ResolveMachineBody(ctx, pool, machineA.String(), "", "AVF000011", "")
+	_, err := ResolveMachineBody(ctx, pool, machineA.String(), "", "AVF000011", "")
 	require.ErrorIs(t, err, ErrMachineIdentifierConflict)
 }
 
@@ -71,8 +71,22 @@ func TestResolveMachineBody_integration_byCode(t *testing.T) {
 	machineID := id.NewUUIDV7()
 	insertMachineWithCode(t, pool, siteID, machineID, "AVF000020")
 
-	gotID, gotCode, err := ResolveMachineBody(ctx, pool, "", "", "AVF000020", "")
+	got, err := ResolveMachineBody(ctx, pool, "", "", "AVF000020", "")
 	require.NoError(t, err)
-	require.Equal(t, machineID, gotID)
-	require.Equal(t, "AVF000020", gotCode)
+	require.Equal(t, machineID, got.MachineID)
+	require.Equal(t, "AVF000020", got.MachineCode)
+}
+
+func TestResolveMachineBody_integration_byCodeSnake(t *testing.T) {
+	t.Parallel()
+	pool := activationTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	insertMachineWithCode(t, pool, siteID, machineID, "AVF000021")
+
+	got, err := ResolveMachineBody(ctx, pool, "", "", "", "AVF000021")
+	require.NoError(t, err)
+	require.Equal(t, machineID, got.MachineID)
+	require.Equal(t, "AVF000021", got.MachineCode)
 }

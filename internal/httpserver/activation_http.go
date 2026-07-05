@@ -53,9 +53,9 @@ type adminCreateActivationBody struct {
 	Notes            string `json:"notes"`
 }
 
-func resolveAdminMachineRef(w http.ResponseWriter, r *http.Request, app *api.HTTPApplication, paramName string) (uuid.UUID, string, bool) {
+func resolveAdminMachineRef(w http.ResponseWriter, r *http.Request, app *api.HTTPApplication, paramName string) (activation.MachineIdentityRef, bool) {
 	ref := strings.TrimSpace(chi.URLParam(r, paramName))
-	machineID, machineCode, err := app.Activation.ResolveMachineRef(r.Context(), ref)
+	identity, err := app.Activation.ResolveMachineRef(r.Context(), ref)
 	if err != nil {
 		switch {
 		case errors.Is(err, activation.ErrMachineIdentifierRequired):
@@ -67,9 +67,9 @@ func resolveAdminMachineRef(w http.ResponseWriter, r *http.Request, app *api.HTT
 		default:
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 		}
-		return uuid.Nil, "", false
+		return activation.MachineIdentityRef{}, false
 	}
-	return machineID, machineCode, true
+	return identity, true
 }
 
 func writeAdminActivationCreateResponse(w http.ResponseWriter, out activation.CreateResult) {
@@ -108,7 +108,7 @@ func postAdminCreateActivationCode(app *api.HTTPApplication, paramName string) h
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		identity, ok := resolveAdminMachineRef(w, r, app, paramName)
 		if !ok {
 			return
 		}
@@ -118,7 +118,7 @@ func postAdminCreateActivationCode(app *api.HTTPApplication, paramName string) h
 			return
 		}
 		out, err := app.Activation.CreateCode(r.Context(), activation.CreateInput{
-			MachineID:        machineID,
+			MachineID:        identity.MachineID,
 			ExpiresInMinutes: body.ExpiresInMinutes,
 			MaxUses:          body.MaxUses,
 			Notes:            body.Notes,
@@ -139,11 +139,11 @@ func getAdminListActivationCodes(app *api.HTTPApplication, paramName string) htt
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		identity, ok := resolveAdminMachineRef(w, r, app, paramName)
 		if !ok {
 			return
 		}
-		rows, err := app.Activation.ListCodes(r.Context(), machineID)
+		rows, err := app.Activation.ListCodes(r.Context(), identity.MachineID)
 		if err != nil {
 			if errors.Is(err, activation.ErrUnauthorized) {
 				writeAPIError(w, r.Context(), http.StatusForbidden, "forbidden", "forbidden")
@@ -172,7 +172,7 @@ func deleteAdminActivationCode(app *api.HTTPApplication, paramName string) http.
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		identity, ok := resolveAdminMachineRef(w, r, app, paramName)
 		if !ok {
 			return
 		}
@@ -181,7 +181,7 @@ func deleteAdminActivationCode(app *api.HTTPApplication, paramName string) http.
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_activation_code_id", "invalid activationCodeId")
 			return
 		}
-		if err := app.Activation.RevokeCode(r.Context(), machineID, codeID); err != nil {
+		if err := app.Activation.RevokeCode(r.Context(), identity.MachineID, codeID); err != nil {
 			if errors.Is(err, activation.ErrNotFound) {
 				writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "not found")
 				return
@@ -385,7 +385,7 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		machineID, _, err := app.Activation.ResolveMachineBody(r.Context(), body.MachineID, body.MachineIDSnake, body.MachineCode, body.MachineCodeSnake)
+		identity, err := app.Activation.ResolveMachineBody(r.Context(), body.MachineID, body.MachineIDSnake, body.MachineCode, body.MachineCodeSnake)
 		if err != nil {
 			switch {
 			case errors.Is(err, activation.ErrMachineIdentifierRequired):
@@ -402,7 +402,7 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			return
 		}
 		out, err := app.Activation.CreateCode(r.Context(), activation.CreateInput{
-			MachineID:        machineID,
+			MachineID:        identity.MachineID,
 			ExpiresInMinutes: body.ExpiresInMinutes,
 			MaxUses:          body.MaxUses,
 			Notes:            body.Notes,

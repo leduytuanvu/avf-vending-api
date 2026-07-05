@@ -162,6 +162,27 @@ func TestAdminCreateActivationCode_byMachineUUIDPath(t *testing.T) {
 	require.Equal(t, code, resp["machineCode"])
 }
 
+func TestAdminCreateActivationCode_byMachineCodeInMachinePath(t *testing.T) {
+	t.Parallel()
+	pool := activationHTTPTestPool(t)
+	svc := activationHTTPTestService(t, pool)
+	r := activationHTTPTestRouter(t, svc)
+	machineID, code := insertActivationHTTPTestMachine(t, pool)
+
+	body := bytes.NewBufferString(`{"expiresInMinutes":60,"maxUses":1}`)
+	req := httptest.NewRequest(http.MethodPost, "/machines/"+code+"/activation-codes", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withAdminPrincipal(req)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, code, resp["machineCode"])
+	require.Equal(t, machineID.String(), resp["machineId"])
+}
+
 func TestAdminCreateActivationCode_invalidMachineIdentifier(t *testing.T) {
 	t.Parallel()
 	pool := activationHTTPTestPool(t)
@@ -266,4 +287,71 @@ func TestAdminCatalogCreateActivationCode_identifierConflict(t *testing.T) {
 	var resp map[string]any
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.Equal(t, "machine_identifier_conflict", resp["code"])
+}
+
+func TestAdminCatalogCreateActivationCode_bodyMachineCodeSnake(t *testing.T) {
+	t.Parallel()
+	pool := activationHTTPTestPool(t)
+	svc := activationHTTPTestService(t, pool)
+	r := activationHTTPTestRouter(t, svc)
+	machineID, code := insertActivationHTTPTestMachine(t, pool)
+
+	body := bytes.NewBufferString(`{"machine_code":"` + code + `","expiresInMinutes":60,"maxUses":1}`)
+	req := httptest.NewRequest(http.MethodPost, "/activation-codes", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withAdminPrincipal(req)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, machineID.String(), resp["machineId"])
+	require.Equal(t, code, resp["machineCode"])
+}
+
+func TestAdminCatalogCreateActivationCode_bodyMachineIDSnake(t *testing.T) {
+	t.Parallel()
+	pool := activationHTTPTestPool(t)
+	svc := activationHTTPTestService(t, pool)
+	r := activationHTTPTestRouter(t, svc)
+	machineID, code := insertActivationHTTPTestMachine(t, pool)
+
+	body := bytes.NewBufferString(`{"machine_id":"` + machineID.String() + `","expiresInMinutes":60,"maxUses":1}`)
+	req := httptest.NewRequest(http.MethodPost, "/activation-codes", body)
+	req.Header.Set("Content-Type", "application/json")
+	req = withAdminPrincipal(req)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusCreated, rec.Code)
+
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, machineID.String(), resp["machineId"])
+	require.Equal(t, code, resp["machineCode"])
+}
+
+func TestAdminDeleteActivationCode_byMachineCodePath(t *testing.T) {
+	t.Parallel()
+	pool := activationHTTPTestPool(t)
+	svc := activationHTTPTestService(t, pool)
+	r := activationHTTPTestRouter(t, svc)
+	_, code := insertActivationHTTPTestMachine(t, pool)
+
+	createBody := bytes.NewBufferString(`{"expiresInMinutes":60,"maxUses":1}`)
+	createReq := httptest.NewRequest(http.MethodPost, "/machine-codes/"+code+"/activation-codes", createBody)
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq = withAdminPrincipal(createReq)
+	createRec := httptest.NewRecorder()
+	r.ServeHTTP(createRec, createReq)
+	require.Equal(t, http.StatusCreated, createRec.Code)
+	var created map[string]any
+	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
+	codeID := created["activationCodeId"].(string)
+
+	delReq := httptest.NewRequest(http.MethodDelete, "/machine-codes/"+code+"/activation-codes/"+codeID, nil)
+	delReq = withAdminPrincipal(delReq)
+	delRec := httptest.NewRecorder()
+	r.ServeHTTP(delRec, delReq)
+	require.Equal(t, http.StatusNoContent, delRec.Code)
 }
