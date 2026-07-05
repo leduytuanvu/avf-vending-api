@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/payments-summary/export.csv?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3edbb3b0-13e1-4fb6-a933-c8ae1f80ec44",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "from,to,group_by,row_type,bucket_start,provider,state,payment_count,amount_minor,authorized_count,captured_count,failed_count,refunded_count,captured_amount_minor,authorized_amount_minor,failed_amount_minor,refunded_amount_minor\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,SUMMARY,,,,,,0,85,0,0,1275000,0,0,0\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-05-24T00:00:00Z,,,8,120000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-05-25T00:00:00Z,,,22,330000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-05-26T00:00:00Z,,,4,60000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-01T00:00:00Z,,,8,120000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-03T00:00:00Z,,,6,90000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-04T00:00:00Z,,,16,240000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-21T00:00:00Z,,,8,120000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-22T00:00:00Z,,,3,45000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-24T00:00:00Z,,,4,60000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-26T00:00:00Z,,,1,15000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-28T00:00:00Z,,,3,45000,,,,,,,,\n2026-01-01T00:00:00Z,2026-12-31T23:59:59Z,day,BREAKDOWN,2026-06-29T00:00:00Z,,,2,30000,,,,,,,,\n"
+  },
+  "duration_ms": 354
+}

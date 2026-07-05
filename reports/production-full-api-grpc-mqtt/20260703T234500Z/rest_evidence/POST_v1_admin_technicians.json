@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/technicians",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "67b89ab2-0a6b-45de-beaa-739478fee952",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"fleet: invalid argument\\ndisplay_name is required\",\"requestId\":\"67b89ab2-0a6b-45de-beaa-739478fee952\"}}\n"
+  },
+  "duration_ms": 158
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a5e-73de-7359-be5a-3a15deeff543/telemetry/incidents",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "c7aa54bf-21bc-4a04-8fb2-2aeab0ac2db8",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 123
+}

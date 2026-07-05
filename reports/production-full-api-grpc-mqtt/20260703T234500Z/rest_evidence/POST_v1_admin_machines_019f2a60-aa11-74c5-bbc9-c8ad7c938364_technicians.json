@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/technicians",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "610498d0-a646-49f4-bad0-9eafccfa3d4d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_user_id\",\"details\":{},\"message\":\"invalid userId\",\"requestId\":\"610498d0-a646-49f4-bad0-9eafccfa3d4d\"}}\n"
+  },
+  "duration_ms": 177
+}

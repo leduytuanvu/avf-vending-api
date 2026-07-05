@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/commerce/orders/00000000-0000-0000-0000-000000000001/payment-session",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "1b395ee1-9461-4855-ae87-02702be3275e",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 158
+}

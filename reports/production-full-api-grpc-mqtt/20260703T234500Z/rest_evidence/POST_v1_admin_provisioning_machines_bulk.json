@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/provisioning/machines/bulk",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "9837e50e-b428-4c56-bfe2-80e63c79357b",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"siteId and non-empty machines are required\",\"requestId\":\"9837e50e-b428-4c56-bfe2-80e63c79357b\"}}\n"
+  },
+  "duration_ms": 167
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/device/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/vend-results",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7592caf0-dd4b-4026-b898-af0d73d375d1",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 133
+}

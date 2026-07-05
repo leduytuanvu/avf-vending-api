@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/cash?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e4dc242a-d6ac-4d57-90b3-7d8db0253979",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"total\":0},\"items\":[]}\n"
+  },
+  "duration_ms": 257
+}

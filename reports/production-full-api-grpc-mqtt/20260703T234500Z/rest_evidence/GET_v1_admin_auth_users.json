@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/auth/users",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ddd2629c-c8a5-4d1f-8c37-c59deebc9f81",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[{\"accountId\":\"019f20f2-4cce-7b1b-ba11-ced4c79bba52\",\"email\":\"new.user@example.com\",\"roles\":[\"viewer\"],\"status\":\"active\",\"createdAt\":\"2026-07-02T03:49:37.978119Z\",\"updatedAt\":\"2026-07-02T03:49:37.978119Z\"},{\"accountId\":\"019f209f-2409-7b5b-8655-585fd0a45dd0\",\"email\":\"tech@avf.com\",\"roles\":[\"technician\"],\"status\":\"active\",\"createdAt\":\"2026-07-02T02:18:48.070376Z\",\"updatedAt\":\"2026-07-02T02:18:48.070376Z\"},{\"accountId\":\"019f16b1-da40-755b-a67b-c9427ae278ca\",\"email\":\"admin@avf.com\",\"roles\":[\"admin\",\"platform_admin\"],\"status\":\"active\",\"createdAt\":\"2026-06-30T04:03:02.081932Z\",\"updatedAt\":\"2026-07-03T23:49:00.46085Z\"},{\"accountId\":\"019f163b-27d0-7551-96d2-1f8e3682014c\",\"email\":\"admin3@ldtv.dev\",\"roles\":[\"admin\"],\"status\":\"active\",\"createdAt\":\"2026-06-30T01:53:23.277621Z\",\"updatedAt\":\"2026-06-30T03:43:52.006384Z\"},{\"accountId\":\"019f1572-1bae-7d65-ac26-aafbf9b66132\",\"email\":\"admin2@ldtv.dev\",\"roles\":[\"admin\"],\"status\":\"active\",\"createdAt\":\"2026-06-29T22:13:47.500255Z\",\"updatedAt\":\"2026-06-30T01:53:16.579749Z\"},{\"accountId\":\"019f1568-f577-7115-ba36-320f536b0bdf\",\"email\":\"admin1@ldtv.dev\",\"roles\":[\"admin\"],\"status\":\"active\",\"createdAt\":\"2026-06-29T22:03:47.880804Z\",\"updatedAt\":\"2026-06-29T22:13:51.671371Z\"},{\"accountId\":\"019f1561-18ec-7506-b731-e470910d437d\",\"email\":\"tech1@ldtv.dev\",\"roles\":[\"technician\"],\"status\":\"active\",\"createdAt\":\"2026-06-29T21:55:12.673446Z\",\"updatedAt\":\"2026-06-29T22:04:36.24333Z\"},{\"accountId\":\"019f155f-2b8e-7d9c-9b51-4847c890b137\",\"email\":\"tech-verify-1782769973@ldtv.dev\",\"roles\":[\"technician\"],\"status\":\"active\",\"createdAt\":\"2026-06-29T21:53:06.317916Z\",\"updatedAt\":\"2026-06-29T21:53:06.988233Z\"},{\"accountId\":\"d80fa04f-baec-4852-b55b-4017641e47b9\",\"email\":\"admin@ldtv.dev\",\"roles\":[\"admin\",\"platform_admin\"],\"status\":\"active\",\"createdAt\":\"2026-05-19T17:26:29.709539Z\",\"updatedAt\":\"2026-07-02T07:53:39.35363Z\"}],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":9,\"total\":9}}\n"
+  },
+  "duration_ms": 257
+}

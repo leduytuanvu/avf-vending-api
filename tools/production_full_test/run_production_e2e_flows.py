@@ -147,6 +147,20 @@ def main() -> int:
         f_detail = f"suspend={st} enable={st2}"
     flows.append(flow_result("F", "REST admin lifecycle smoke", f_ok, f_detail))
 
+    # I — Offline replay idempotency (before reattach/compromised invalidate activation)
+    i_ok = False
+    i_detail = "skipped"
+    activation_code = subst.get("activationCode", "")
+    claim_serial = subst.get("machineSerialNumber", "")
+    if activation_code and claim_serial:
+        try:
+            claim2 = claim_activation(args.base_url, activation_code, claim_serial)
+            i_ok = bool(claim2.get("machineToken") or claim2.get("accessToken"))
+            i_detail = "idempotent claim replay returned token"
+        except Exception as exc:
+            i_detail = str(exc)
+    flows.append(flow_result("I", "Offline replay idempotency", i_ok, i_detail))
+
     # G — Reattach rotates MQTT (requires admin + device fingerprint)
     g_ok = False
     g_detail = "skipped"
@@ -180,19 +194,6 @@ def main() -> int:
         else:
             g_detail = f"reattach HTTP {st}: {raw[:300]}"
     flows.append(flow_result("G", "Reattach mqtt rotation", g_ok, g_detail, blocked_by="" if g_ok else "REATTACH_MQTT"))
-
-    # I — Offline replay idempotency (before mark-compromised poisons eligibility)
-    i_ok = False
-    i_detail = "skipped"
-    activation_code = subst.get("activationCode", "")
-    if activation_code:
-        try:
-            claim2 = claim_activation(args.base_url, activation_code, f"{reg.data.get('prefix', 'prod')}-SN")
-            i_ok = bool(claim2.get("machineToken") or claim2.get("accessToken"))
-            i_detail = "idempotent claim replay returned token"
-        except Exception as exc:
-            i_detail = str(exc)
-    flows.append(flow_result("I", "Offline replay idempotency", i_ok, i_detail))
 
     # H — Compromised/revoke MQTT auth fails (mark compromised then expect MQTT fail)
     h_ok = False

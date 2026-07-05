@@ -1,0 +1,257 @@
+{
+  "schema_version": "production-test-entity-registry-v1",
+  "created_at_utc": "2026-07-03T23:44:06.504704+00:00",
+  "prefix": "AVF-RUNTIME-FLEET-20260703T234500Z",
+  "entities": {
+    "adminAccessToken": {
+      "id": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMTlmMTZiMS1kYTQwLTc1NWItYTY3Yi1jOTQyN2FlMjc4Y2EiLCJyb2xlcyI6WyJhZG1pbiIsInBsYXRmb3JtX2FkbWluIl0sImFjY291bnRfc3RhdHVzIjoiYWN0aXZlIiwiaXNzIjoiaHR0cHM6Ly9hcGkubGR0di5kZXYiLCJpYXQiOjE3ODMxMjI3NTYsImV4cCI6MTc4MzEyMzY1NiwidG9rZW5fdXNlIjoiYWNjZXNzIiwianRpIjoiMzJjZjk4YzQtMGUxMC00NTc3LThkYTgtMzFmYWQwNTJlYzdmIiwibmJmIjoxNzgzMTIyNzU2fQ.cimFMe1Ze68ZnpfCI1ZTw19-ZgoGmFxKR8_kNxJGVB8",
+      "type": "token",
+      "meta": {}
+    },
+    "siteId": {
+      "id": "019f2a66-04eb-794a-ad59-24d6feedb958",
+      "type": "site",
+      "meta": {}
+    },
+    "machineId": {
+      "id": "019f2a66-0676-78cd-92a9-da8d94413e20",
+      "type": "machine",
+      "meta": {}
+    },
+    "activationCode": {
+      "id": "AVF-72B00C-0F8A27",
+      "type": "activation_code",
+      "meta": {}
+    },
+    "machineToken": {
+      "id": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJtYWNoaW5lOjAxOWYyYTY2LTA2NzYtNzhjZC05MmE5LWRhOGQ5NDQxM2UyMCIsInJvbGVzIjpbIm1hY2hpbmUiXSwic2l0ZV9pZCI6IjAxOWYyYTY2LTA0ZWItNzk0YS1hZDU5LTI0ZDZmZWVkYjk1OCIsIm1hY2hpbmVfaWRzIjpbIjAxOWYyYTY2LTA2NzYtNzhjZC05MmE5LWRhOGQ5NDQxM2UyMCJdLCJtYWNoaW5lX2lkIjoiMDE5ZjJhNjYtMDY3Ni03OGNkLTkyYTktZGE4ZDk0NDEzZTIwIiwic2Vzc2lvbl9pZCI6IjAxOWYyYTY2LTBkNWEtN2NhZC1hNDdiLTlkMTRhZGRjODMzMCIsImFjdG9yX3R5cGUiOiJzZXJ2aWNlIiwidHlwIjoibWFjaGluZSIsInNjb3BlcyI6WyJtYWNoaW5lOmJvb3RzdHJhcCIsIm1hY2hpbmU6Y29tbWVyY2UiLCJtYWNoaW5lOnRlbGVtZXRyeSIsIm1hY2hpbmU6b3BlcmF0b3IiXSwiaXNzIjoiaHR0cHM6Ly9hcGkubGR0di5kZXYiLCJhdWQiOiJhdmYtbWFjaGluZS1ncnBjIiwiaWF0IjoxNzgzMTIyNzU5LCJleHAiOjE3ODMxMjM2NTksInRva2VuX3VzZSI6Im1hY2hpbmVfYWNjZXNzIiwianRpIjoiYzNlMGM1NGEtNWUwMS00ODIzLTljZWUtZTEwNzMzZWU3NjgzIiwibmJmIjoxNzgzMTIyNzU5fQ.QcOqr8X0nyaSk53LJovJKocITH9-4jgjN8Ruk-UBmDA",
+      "type": "token",
+      "meta": {}
+    },
+    "machineRefreshToken": {
+      "id": "NLKq4IxzcAp4-FG-h95TANLdeTJzhgr8Y5gaGi3Cdbs",
+      "type": "token",
+      "meta": {}
+    },
+    "mqttTopicPrefix": {
+      "id": "avf/devices",
+      "type": "config",
+      "meta": {}
+    },
+    "mqttUsername": {
+      "id": "019f2a66-0676-78cd-92a9-da8d94413e20",
+      "type": "credential",
+      "meta": {}
+    },
+    "mqttPassword": {
+      "id": "bbb823cdaf21a305165adcae1f0326f3244881da868d9ae7",
+      "type": "credential",
+      "meta": {}
+    },
+    "machineSerialNumber": {
+      "id": "AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-26429647",
+      "type": "config",
+      "meta": {}
+    }
+  },
+  "writes": [
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "ff3164c3-5cb9-4072-b37e-d001651f8a57",
+      "correlation_id": "df856a72-5c95-4a6e-be41-408d6412b014",
+      "entity_id": "019f2a5e-71db-7e6d-877d-a7f05d5fa5b8",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site b86f87\", \"code\": \"AVF-RUNTIME-FL-c3642e\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-c3642e', 'created_at': '2026-07-03T23:44:20.44301Z', 'id': '019f2a5e-71db-7e6d-877d-a7f05d5fa5b8', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site b86f87', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:44:20.44301Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:44:07.908503+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "133087d6-8c36-4ebf-b7d3-30078d828ec5",
+      "correlation_id": "2e14292b-5b13-4816-9ff5-4d2c953201e3",
+      "entity_id": "019f2a5e-73de-7359-be5a-3a15deeff543",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500736446\", \"siteId\": \"019f2a5e-71db-7e6d-877d-a7f05d5fa5b8\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-p1\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500736446', 'command_sequence': 0, 'created_at': '2026-07-03T23:44:20.9515Z', 'credential_version': 0, 'id': '019f2a5e-73de-7359-be5a-3a15deeff543', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-p1', 'site_id': '019f2a5e-71db-7e6d-877d-a7f05d5fa5b8', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:44:20.9515Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:44:08.483969+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "a94fee94-5022-4810-bb08-5ff697639cad",
+      "correlation_id": "cca7b9c3-9f54-45a8-804c-330fe5ba80f6",
+      "entity_id": "019f2a5e-73de-7359-be5a-3a15deeff543",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a5e-73de-7359-be5a-3a15deeff543', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:44:11.803736+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "2396df5f-d6dd-49f8-8241-9147686797d6",
+      "correlation_id": "30e7897f-26dd-4e79-b3a0-b54e74817521",
+      "entity_id": "019f2a60-a832-77ce-ac9a-e6c5b5d3cf68",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site 6b5f8a\", \"code\": \"AVF-RUNTIME-FL-10d775\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-10d775', 'created_at': '2026-07-03T23:46:45.426082Z', 'id': '019f2a60-a832-77ce-ac9a-e6c5b5d3cf68', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site 6b5f8a', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:46:45.426082Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:46:32.891500+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "eb6e93f9-6185-4a55-a8fb-4f2802912844",
+      "correlation_id": "f597314b-2411-420d-adbe-1f6bae9195b1",
+      "entity_id": "019f2a60-aa11-74c5-bbc9-c8ad7c938364",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500597599\", \"siteId\": \"019f2a60-a832-77ce-ac9a-e6c5b5d3cf68\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-p2\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500597599', 'command_sequence': 0, 'created_at': '2026-07-03T23:46:45.905356Z', 'credential_version': 0, 'id': '019f2a60-aa11-74c5-bbc9-c8ad7c938364', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-p2', 'site_id': '019f2a60-a832-77ce-ac9a-e6c5b5d3cf68', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:46:45.905356Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:46:33.391594+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "dff80ae1-6df0-4e81-8780-6e1737ee0513",
+      "correlation_id": "e1bdef2b-2461-4307-af96-c8fea2f81300",
+      "entity_id": "019f2a60-aa11-74c5-bbc9-c8ad7c938364",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a60-aa11-74c5-bbc9-c8ad7c938364', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:46:35.786059+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "936677a8-1750-4321-b9b3-016370031c45",
+      "correlation_id": "76dfde3d-6be1-4d32-98ec-17e0fcac46b7",
+      "entity_id": "019f2a62-ba9c-7727-9bd7-568e22de5ce0",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site 9e72ca\", \"code\": \"AVF-RUNTIME-FL-3ee13a\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-3ee13a', 'created_at': '2026-07-03T23:49:01.212085Z', 'id': '019f2a62-ba9c-7727-9bd7-568e22de5ce0', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site 9e72ca', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:49:01.212085Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:48:48.693205+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "b073f227-a6bc-4d3d-9090-c3a1f2f645b3",
+      "correlation_id": "2f7f3e58-7479-4547-b106-3866bef04728",
+      "entity_id": "019f2a62-bc04-74ce-aac9-1766eb15ea1e",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500141056\", \"siteId\": \"019f2a62-ba9c-7727-9bd7-568e22de5ce0\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-p3\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500141056', 'command_sequence': 0, 'created_at': '2026-07-03T23:49:01.571551Z', 'credential_version': 0, 'id': '019f2a62-bc04-74ce-aac9-1766eb15ea1e', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-p3', 'site_id': '019f2a62-ba9c-7727-9bd7-568e22de5ce0', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:49:01.571551Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:48:49.053847+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "de337b6f-2852-4fed-ae0a-37b4e06fb65f",
+      "correlation_id": "1b84affa-508f-4e6b-929e-092df3f91c5a",
+      "entity_id": "019f2a62-bc04-74ce-aac9-1766eb15ea1e",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a62-bc04-74ce-aac9-1766eb15ea1e', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:48:50.926103+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "10494e02-256b-4bc5-834c-598f8cc7284a",
+      "correlation_id": "b18988b7-7f28-4d83-a897-13e41218095e",
+      "entity_id": "019f2a64-a9ea-7acf-b80b-661696fe19ea",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site 4a2767\", \"code\": \"AVF-RUNTIME-FL-6991d7\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-6991d7', 'created_at': '2026-07-03T23:51:08.010221Z', 'id': '019f2a64-a9ea-7acf-b80b-661696fe19ea', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site 4a2767', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:51:08.010221Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:50:55.484755+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "8655f180-211a-4514-b61f-99b70bc65649",
+      "correlation_id": "71ce0c1b-c58d-41fd-94f8-ef03c0db8bcd",
+      "entity_id": "019f2a64-abcc-7743-8024-e42835ace950",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500658961\", \"siteId\": \"019f2a64-a9ea-7acf-b80b-661696fe19ea\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-bee29f88\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500658961', 'command_sequence': 0, 'created_at': '2026-07-03T23:51:08.490866Z', 'credential_version': 0, 'id': '019f2a64-abcc-7743-8024-e42835ace950', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-bee29f88', 'site_id': '019f2a64-a9ea-7acf-b80b-661696fe19ea', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:51:08.490866Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:50:55.979985+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "e4f1d8a9-4414-415a-8712-d82cddd18be3",
+      "correlation_id": "c8e48633-13f2-405a-886b-746bb3769859",
+      "entity_id": "019f2a64-abcc-7743-8024-e42835ace950",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a64-abcc-7743-8024-e42835ace950', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:50:58.176547+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "3cec7866-cdf5-47e8-9ab1-99f8c09eeb2e",
+      "correlation_id": "1cdf0e0c-cb00-4e95-bc5a-29887985ba89",
+      "entity_id": "019f2a65-75bc-73ee-ab90-ca530a65374a",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site 562045\", \"code\": \"AVF-RUNTIME-FL-8e95d7\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-8e95d7', 'created_at': '2026-07-03T23:52:00.188621Z', 'id': '019f2a65-75bc-73ee-ab90-ca530a65374a', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site 562045', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:52:00.188621Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:51:47.672327+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "cf436d2a-e7e9-4e62-9f3d-e49824608842",
+      "correlation_id": "5c157dd0-358a-4688-970d-7d6df453547b",
+      "entity_id": "019f2a65-770e-7c64-a371-8c31e160db9e",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500731178\", \"siteId\": \"019f2a65-75bc-73ee-ab90-ca530a65374a\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-57ef3fd6\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500731178', 'command_sequence': 0, 'created_at': '2026-07-03T23:52:00.525902Z', 'credential_version': 0, 'id': '019f2a65-770e-7c64-a371-8c31e160db9e', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-57ef3fd6', 'site_id': '019f2a65-75bc-73ee-ab90-ca530a65374a', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:52:00.525902Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:51:47.997402+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "6ba215e7-8e3b-4cb2-ba88-7adfcb390d26",
+      "correlation_id": "a83f7700-fa42-410b-8120-9d824d8f8382",
+      "entity_id": "019f2a65-770e-7c64-a371-8c31e160db9e",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a65-770e-7c64-a371-8c31e160db9e', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:51:49.726301+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/sites",
+      "request_id": "4a3b3ba8-8c4f-4ccb-8091-3b135f5ca94c",
+      "correlation_id": "548cb64f-4f11-4e4b-89a4-a531313054da",
+      "entity_id": "019f2a66-04eb-794a-ad59-24d6feedb958",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Site ee4b4f\", \"code\": \"AVF-RUNTIME-FL-f32f3e\", \"timezone\": \"UTC\", \"address\": {\"line1\": \"AVF-RUNTIME-FLEET-20260703T234500Z address\"}}",
+      "response_body": "{'address': {'line1': 'AVF-RUNTIME-FLEET-20260703T234500Z address'}, 'code': 'AVF-RUNTIME-FL-f32f3e', 'created_at': '2026-07-03T23:52:36.842613Z', 'id': '019f2a66-04eb-794a-ad59-24d6feedb958', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Site ee4b4f', 'status': 'active', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:52:36.842613Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:52:24.327612+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/admin/machines",
+      "request_id": "c668cbb9-afe4-4879-bd2f-bc156246550e",
+      "correlation_id": "2f6b6424-830f-4e5e-8892-3d85c8df13f4",
+      "entity_id": "019f2a66-0676-78cd-92a9-da8d94413e20",
+      "request_body": "{\"name\": \"AVF-RUNTIME-FLEET-20260703T234500Z Machine\", \"code\": \"AVF20260703234500151500\", \"siteId\": \"019f2a66-04eb-794a-ad59-24d6feedb958\", \"serialNumber\": \"AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-26429647\", \"model\": \"AVF-PROD-TEST\", \"status\": \"draft\", \"timezone\": \"UTC\", \"cabinetType\": \"ambient\"}",
+      "response_body": "{'cabinet_type': 'ambient', 'code': 'AVF20260703234500151500', 'command_sequence': 0, 'created_at': '2026-07-03T23:52:37.233773Z', 'credential_version': 0, 'id': '019f2a66-0676-78cd-92a9-da8d94413e20', 'model': 'AVF-PROD-TEST', 'name': 'AVF-RUNTIME-FLEET-20260703T234500Z Machine', 'serial_number': 'AVF-RUNTIME-FLEET-20260703T234500Z-SN-e2e-26429647', 'site_id': '019f2a66-04eb-794a-ad59-24d6feedb958', 'status': 'draft', 'timezone': 'UTC', 'updated_at': '2026-07-03T23:52:37.233773Z'}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:52:24.716214+00:00"
+    },
+    {
+      "surface": "REST",
+      "action": "POST /v1/setup/activation-codes/claim",
+      "request_id": "e7d4ef7c-f808-4b20-a876-a619d68aa534",
+      "correlation_id": "17209cfc-cbde-4989-8af0-d97640223265",
+      "entity_id": "019f2a66-0676-78cd-92a9-da8d94413e20",
+      "request_body": "{\"activationCode\": \"***\"}",
+      "response_body": "{'machineId': '019f2a66-0676-78cd-92a9-da8d94413e20', 'hasToken': True}",
+      "final_state": "created",
+      "at_utc": "2026-07-03T23:52:26.617774+00:00"
+    }
+  ]
+}

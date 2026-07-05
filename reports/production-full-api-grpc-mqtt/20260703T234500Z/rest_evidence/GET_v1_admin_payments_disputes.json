@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/payments/disputes",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "a63307dc-33d0-4696-b42d-2cf58b414f80",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"total\":0}\n"
+  },
+  "duration_ms": 384
+}

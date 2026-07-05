@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/auth/me",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3d1a09f4-465b-4f7e-a8fb-a2ee34c04b0f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"accountId\":\"019f16b1-da40-755b-a67b-c9427ae278ca\",\"email\":\"admin@avf.com\",\"roles\":[\"admin\",\"platform_admin\"]}\n"
+  },
+  "duration_ms": 204
+}

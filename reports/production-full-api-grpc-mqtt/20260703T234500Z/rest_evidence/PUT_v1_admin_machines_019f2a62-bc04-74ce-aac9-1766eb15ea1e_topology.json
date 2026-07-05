@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/topology",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2e453f69-7467-430f-b386-9ad3517e91b9",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"2e453f69-7467-430f-b386-9ad3517e91b9\"}}\n"
+  },
+  "duration_ms": 232
+}

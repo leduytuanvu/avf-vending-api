@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/inventory?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "0ea02b90-762a-494c-a288-8b29740d95bf",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"exceptionKind\":\"low_stock\",\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"total\":0},\"items\":[]}\n"
+  },
+  "duration_ms": 256
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/metrics",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "cf7028cd-a3ec-4d65-a04b-963437a457df",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 159
+}

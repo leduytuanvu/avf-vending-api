@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/health/live",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "4696ef09-924e-4eaa-8165-0b5f64921cf6"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "ok"
+  },
+  "duration_ms": 190
+}

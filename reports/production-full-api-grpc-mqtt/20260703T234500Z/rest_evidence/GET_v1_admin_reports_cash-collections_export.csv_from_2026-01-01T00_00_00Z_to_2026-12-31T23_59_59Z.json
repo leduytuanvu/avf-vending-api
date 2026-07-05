@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/reports/cash-collections/export.csv?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2a33ab82-bc89-4a60-85d8-3920224e848f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "from,to,collection_id,machine_id,site_id,site_name,machine_serial_number,collected_at,opened_at,closed_at,lifecycle_status,amount_minor,expected_amount_minor,variance_amount_minor,currency,reconciliation_status,created_at\n"
+  },
+  "duration_ms": 296
+}

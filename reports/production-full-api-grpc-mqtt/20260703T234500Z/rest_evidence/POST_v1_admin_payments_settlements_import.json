@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/payments/settlements/import",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "9f5c6bb4-f279-4fde-9aa5-553ba0b15d48",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"payments: provider required\",\"requestId\":\"9f5c6bb4-f279-4fde-9aa5-553ba0b15d48\"}}\n"
+  },
+  "duration_ms": 160
+}

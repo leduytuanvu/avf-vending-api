@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/auth/refresh",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "05e07bb2-5c9e-40a7-8e20-0ca13d09854d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_request\",\"details\":{},\"message\":\"invalid request\",\"requestId\":\"05e07bb2-5c9e-40a7-8e20-0ca13d09854d\"}}\n"
+  },
+  "duration_ms": 163
+}

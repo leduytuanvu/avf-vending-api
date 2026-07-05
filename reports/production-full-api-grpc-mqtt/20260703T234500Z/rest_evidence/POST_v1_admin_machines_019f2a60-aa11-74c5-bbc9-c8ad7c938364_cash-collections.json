@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/cash-collections",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e6ec9a0b-1ced-4255-bff4-29d91c9044cd",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"e6ec9a0b-1ced-4255-bff4-29d91c9044cd\"}}\n"
+  },
+  "duration_ms": 222
+}

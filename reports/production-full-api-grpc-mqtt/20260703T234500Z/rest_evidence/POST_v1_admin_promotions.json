@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/promotions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "382810b5-9b39-4090-83b4-8b888b02bcd2",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"startsAt must be RFC3339/RFC3339Nano\",\"requestId\":\"382810b5-9b39-4090-83b4-8b888b02bcd2\"}}\n"
+  },
+  "duration_ms": 161
+}

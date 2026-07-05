@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/admin/assignments/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "edead976-63b0-4b03-b55d-502d16687cd1",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"fleet: not found\",\"requestId\":\"edead976-63b0-4b03-b55d-502d16687cd1\"}}\n"
+  },
+  "duration_ms": 235
+}

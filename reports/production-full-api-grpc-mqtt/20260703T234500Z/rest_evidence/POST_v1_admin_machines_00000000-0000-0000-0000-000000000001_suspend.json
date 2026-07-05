@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/00000000-0000-0000-0000-000000000001/suspend",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ffa7c1cd-b64f-470c-8a27-5c85cab96d24",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"ffa7c1cd-b64f-470c-8a27-5c85cab96d24\"}}\n"
+  },
+  "duration_ms": 156
+}

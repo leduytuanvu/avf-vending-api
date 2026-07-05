@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/inventory/reconcile",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "9f08784a-1a30-4422-ac48-46004ef09585",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 202,
+    "body": "{\"inventoryEventId\":779}\n"
+  },
+  "duration_ms": 433
+}

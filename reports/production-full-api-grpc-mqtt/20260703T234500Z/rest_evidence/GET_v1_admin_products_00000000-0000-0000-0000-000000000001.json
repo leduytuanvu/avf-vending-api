@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/products/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "4dbced6b-34ca-44e1-8cb6-be656b9defde",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"product_not_found\",\"details\":{},\"message\":\"product not found\",\"requestId\":\"4dbced6b-34ca-44e1-8cb6-be656b9defde\"}}\n"
+  },
+  "duration_ms": 222
+}

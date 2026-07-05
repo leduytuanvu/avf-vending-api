@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a5e-73de-7359-be5a-3a15deeff543/cash-collections",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "074e5d2c-9d61-4afa-95de-a5af15d09bde",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"total\":0}}\n"
+  },
+  "duration_ms": 429
+}

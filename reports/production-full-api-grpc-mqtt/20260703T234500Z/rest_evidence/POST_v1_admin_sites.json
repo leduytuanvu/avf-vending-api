@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/sites",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "20d0413a-f5e2-4f5c-ad24-372a78eccb61",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": "{\"address\":{},\"code\":\"t0be51518\",\"created_at\":\"2026-07-03T23:49:58.971751Z\",\"id\":\"019f2a63-9c3b-71d0-9881-03b5bd225521\",\"name\":\"AVF-RUNTIME-FLEET-20260703T234500Z Site2\",\"status\":\"active\",\"timezone\":\"UTC\",\"updated_at\":\"2026-07-03T23:49:58.971751Z\"}\n"
+  },
+  "duration_ms": 292
+}

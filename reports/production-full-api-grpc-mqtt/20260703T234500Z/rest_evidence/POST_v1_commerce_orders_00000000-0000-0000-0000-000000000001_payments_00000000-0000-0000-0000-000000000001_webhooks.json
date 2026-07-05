@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/commerce/orders/00000000-0000-0000-0000-000000000001/payments/00000000-0000-0000-0000-000000000001/webhooks",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "092bece4-dece-4d52-bec5-95b10e7d036c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": "{\"error\":{\"code\":\"webhook_auth_failed\",\"details\":{},\"message\":\"missing X-AVF-Webhook-Timestamp or X-AVF-Webhook-Signature\",\"requestId\":\"092bece4-dece-4d52-bec5-95b10e7d036c\"}}\n"
+  },
+  "duration_ms": 183
+}

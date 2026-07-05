@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/pricing/preview",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e9a85c81-09e4-43d1-824b-ae67fb0fc279",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"productIds required\",\"requestId\":\"e9a85c81-09e4-43d1-824b-ae67fb0fc279\"}}\n"
+  },
+  "duration_ms": 176
+}

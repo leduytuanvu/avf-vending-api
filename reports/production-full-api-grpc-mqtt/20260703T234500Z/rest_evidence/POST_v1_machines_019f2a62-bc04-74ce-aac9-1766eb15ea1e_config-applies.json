@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/config-applies",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2a5accca-f450-4fe6-8e5b-7a2305b4f8ec",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 125
+}

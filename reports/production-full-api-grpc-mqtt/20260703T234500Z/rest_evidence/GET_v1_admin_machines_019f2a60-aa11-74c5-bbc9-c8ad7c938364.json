@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ca352a38-1fde-41ec-ba66-302d0b445cd7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"machineId\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"machineName\":\"AVF-RUNTIME-FLEET-20260703T234500Z Machine\",\"siteId\":\"019f2a60-a832-77ce-ac9a-e6c5b5d3cf68\",\"siteName\":\"AVF-RUNTIME-FLEET-20260703T234500Z Site 6b5f8a\",\"serialNumber\":\"AVF-RUNTIME-FLEET-20260703T234500Z-SN-p2\",\"name\":\"AVF-RUNTIME-FLEET-20260703T234500Z Machine\",\"status\":\"active\",\"commandSequence\":0,\"createdAt\":\"2026-07-03T23:46:45.905356Z\",\"updatedAt\":\"2026-07-03T23:46:46.415533Z\",\"effectiveTimezone\":\"UTC\",\"assignedTechnicians\":[],\"currentOperator\":null,\"inventorySummary\":{\"totalSlots\":0,\"occupiedSlots\":0,\"lowStockSlots\":0,\"outOfStockSlots\":0}}\n"
+  },
+  "duration_ms": 385
+}

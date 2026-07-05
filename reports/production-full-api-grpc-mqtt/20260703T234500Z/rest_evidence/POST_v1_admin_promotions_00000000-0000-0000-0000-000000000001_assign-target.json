@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/promotions/00000000-0000-0000-0000-000000000001/assign-target",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "afb3a940-8306-4d32-a3f2-8ca899793f2d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"catalogadmin: invalid argument: target_type required\",\"requestId\":\"afb3a940-8306-4d32-a3f2-8ca899793f2d\"}}\n"
+  },
+  "duration_ms": 119
+}

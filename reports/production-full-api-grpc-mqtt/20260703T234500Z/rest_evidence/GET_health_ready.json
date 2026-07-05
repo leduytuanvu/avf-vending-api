@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/health/ready",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "472b989b-6b16-4f07-9a90-6da75bbfa040"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "ok"
+  },
+  "duration_ms": 223
+}

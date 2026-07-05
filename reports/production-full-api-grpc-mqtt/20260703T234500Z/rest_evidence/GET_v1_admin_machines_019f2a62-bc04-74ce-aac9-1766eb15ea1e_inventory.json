@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/inventory",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e14d1598-9b4f-4b31-8c4d-e4d307b7d292",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[]}\n"
+  },
+  "duration_ms": 387
+}

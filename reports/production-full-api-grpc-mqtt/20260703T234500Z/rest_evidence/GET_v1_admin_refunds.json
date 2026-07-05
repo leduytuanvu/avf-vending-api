@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/refunds",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6d3c1496-5d1a-49c2-ba3f-fabeb38913b7",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":0,\"total\":0}}\n"
+  },
+  "duration_ms": 286
+}

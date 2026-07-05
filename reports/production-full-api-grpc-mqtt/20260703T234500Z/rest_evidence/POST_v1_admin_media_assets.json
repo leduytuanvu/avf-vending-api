@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/media/assets",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "122b9845-5741-48cb-b25e-a4ed4db97d20",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 503,
+    "body": "{\"error\":{\"code\":\"capability_not_configured\",\"details\":{\"capability\":\"v1.admin.media.upload\",\"implemented\":false},\"message\":\"object storage media upload is not configured for this process\",\"requestId\":\"122b9845-5741-48cb-b25e-a4ed4db97d20\"}}\n"
+  },
+  "duration_ms": 132
+}

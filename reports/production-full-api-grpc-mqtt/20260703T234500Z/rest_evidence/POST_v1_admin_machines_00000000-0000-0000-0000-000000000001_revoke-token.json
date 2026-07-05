@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/00000000-0000-0000-0000-000000000001/revoke-token",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "3584f917-a81a-4980-a06b-ab130bdaeced",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"3584f917-a81a-4980-a06b-ab130bdaeced\"}}\n"
+  },
+  "duration_ms": 122
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/commerce/orders/00000000-0000-0000-0000-000000000001/cancel",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f4920ea9-157d-4f33-8094-544010dd2a5b",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 154
+}

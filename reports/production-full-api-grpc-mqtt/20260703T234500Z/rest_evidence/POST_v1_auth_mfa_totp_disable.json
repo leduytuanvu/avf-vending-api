@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/auth/mfa/totp/disable",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "a2a822de-a971-4991-9879-c4fe8ebc74b4",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_request\",\"details\":{},\"message\":\"invalid request\",\"requestId\":\"a2a822de-a971-4991-9879-c4fe8ebc74b4\"}}\n"
+  },
+  "duration_ms": 134
+}

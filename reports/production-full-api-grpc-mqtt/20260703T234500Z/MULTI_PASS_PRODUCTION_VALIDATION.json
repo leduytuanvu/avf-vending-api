@@ -1,0 +1,43 @@
+{
+  "passes": [
+    {
+      "pass": 1,
+      "ok": true,
+      "steps": {
+        "bootstrap_test_data.py": 0,
+        "run_rest_full_production.py": 0,
+        "run_grpc_full_production.py": 0,
+        "run_mqtt_full_production.py": 0,
+        "verify_db_state.py": 0,
+        "security_auth_tests.py": 0,
+        "fake_pass_audit.py": 0
+      }
+    },
+    {
+      "pass": 2,
+      "ok": true,
+      "steps": {
+        "bootstrap_test_data.py": 0,
+        "run_rest_full_production.py": 0,
+        "run_grpc_full_production.py": 0,
+        "run_mqtt_full_production.py": 0,
+        "verify_db_state.py": 0,
+        "security_auth_tests.py": 0,
+        "fake_pass_audit.py": 0
+      }
+    },
+    {
+      "pass": 3,
+      "ok": true,
+      "steps": {
+        "bootstrap_test_data.py": 0,
+        "run_rest_full_production.py": 0,
+        "run_grpc_full_production.py": 0,
+        "run_mqtt_full_production.py": 0,
+        "verify_db_state.py": 0,
+        "security_auth_tests.py": 0,
+        "fake_pass_audit.py": 0
+      }
+    }
+  ]
+}

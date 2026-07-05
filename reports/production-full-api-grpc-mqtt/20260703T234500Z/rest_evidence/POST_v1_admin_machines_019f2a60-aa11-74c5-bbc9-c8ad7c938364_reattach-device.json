@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/reattach-device",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7e7046e1-9510-45dd-b6b3-f2aa5b9bec0b",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"reason_required\",\"details\":{},\"message\":\"reason is required\",\"requestId\":\"7e7046e1-9510-45dd-b6b3-f2aa5b9bec0b\"}}\n"
+  },
+  "duration_ms": 130
+}

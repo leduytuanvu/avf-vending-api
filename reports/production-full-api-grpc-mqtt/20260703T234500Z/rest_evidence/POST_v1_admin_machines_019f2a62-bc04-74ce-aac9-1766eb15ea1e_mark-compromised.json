@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/mark-compromised",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "5714fdec-8280-4903-bee4-557604ee4f3f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"5714fdec-8280-4903-bee4-557604ee4f3f\"}}\n"
+  },
+  "duration_ms": 121
+}

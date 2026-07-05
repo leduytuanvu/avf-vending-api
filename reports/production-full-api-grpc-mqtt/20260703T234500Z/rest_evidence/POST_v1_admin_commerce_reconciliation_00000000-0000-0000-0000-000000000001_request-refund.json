@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/commerce/reconciliation/00000000-0000-0000-0000-000000000001/request-refund",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "e9664e34-7092-4d80-9e91-7060978e2b20",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"reconciliation case or order not found\",\"requestId\":\"e9664e34-7092-4d80-9e91-7060978e2b20\"}}\n"
+  },
+  "duration_ms": 187
+}

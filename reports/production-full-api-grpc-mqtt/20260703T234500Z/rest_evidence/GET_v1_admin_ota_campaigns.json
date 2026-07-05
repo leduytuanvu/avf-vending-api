@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/ota/campaigns",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f58f50e6-6ddc-49cc-a109-c3f4704b9fed",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[{\"campaignId\":\"eeeeeeee-eeee-eeee-eeee-000000000001\",\"name\":\"Pilot rollout\",\"rolloutStrategy\":\"rolling\",\"status\":\"draft\",\"campaignType\":\"app\",\"canaryPercent\":0,\"rolloutNextOffset\":0,\"createdAt\":\"2026-05-19T12:13:50.663897Z\",\"updatedAt\":\"2026-05-19T12:13:50.663897Z\",\"artifactId\":\"dddddddd-dddd-dddd-dddd-000000000001\",\"artifactSemver\":\"1.0.0\",\"artifactStorageKey\":\"dev/firmware/1.0.0.bin\"}],\"meta\":{\"limit\":50,\"offset\":0,\"returned\":1,\"total\":1}}\n"
+  },
+  "duration_ms": 383
+}

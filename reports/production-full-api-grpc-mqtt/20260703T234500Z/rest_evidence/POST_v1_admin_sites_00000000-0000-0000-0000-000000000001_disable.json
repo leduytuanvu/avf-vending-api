@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/sites/00000000-0000-0000-0000-000000000001/disable",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "bd59e857-25f9-4651-8f36-f46e893315cc",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"fleet: not found\",\"requestId\":\"bd59e857-25f9-4651-8f36-f46e893315cc\"}}\n"
+  },
+  "duration_ms": 288
+}

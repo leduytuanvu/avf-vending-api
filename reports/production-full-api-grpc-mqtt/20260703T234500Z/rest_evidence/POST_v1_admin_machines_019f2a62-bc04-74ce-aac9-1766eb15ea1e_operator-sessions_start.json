@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/operator-sessions/start",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ff24aa4e-add0-4549-a863-0698e9c319a2",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"ff24aa4e-add0-4549-a863-0698e9c319a2\"}}\n"
+  },
+  "duration_ms": 399
+}

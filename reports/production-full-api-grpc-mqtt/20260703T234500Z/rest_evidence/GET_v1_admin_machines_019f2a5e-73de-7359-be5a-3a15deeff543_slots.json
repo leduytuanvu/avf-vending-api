@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a5e-73de-7359-be5a-3a15deeff543/slots",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "fbc2954f-c589-4651-b69a-a8469f69044d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[]}\n"
+  },
+  "duration_ms": 670
+}

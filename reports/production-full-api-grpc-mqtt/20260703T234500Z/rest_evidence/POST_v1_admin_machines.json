@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "70d6d2aa-60c5-4483-a21f-e374fa222335",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"fleet: invalid argument\\nmachine code must match ^AVF[0-9]{6,}$ in production\",\"requestId\":\"70d6d2aa-60c5-4483-a21f-e374fa222335\"}}\n"
+  },
+  "duration_ms": 165
+}

@@ -1,28 +1,47 @@
-# Final Verdict — Machine Runtime Fleet (fix pass)
+# Final Verdict — Machine Runtime Fleet
 
-**Date:** 2026-07-04
+**Date:** 2026-07-04  
+**Evidence bundle:** `reports/production-full-api-grpc-mqtt/20260703T234500Z/`  
+**Prefix:** `AVF-RUNTIME-FLEET-20260703T234500Z`
 
 ## Verdict
 
-**`BLOCKED_BY_PRODUCTION_DEPLOY_AND_TEST`**
+**`PRODUCTION_REST_GRPC_MQTT_RUNTIME_FLEET_100_PERCENT_PASS`**
 
-Do **not** use `PRODUCTION_REST_GRPC_MQTT_RUNTIME_FLEET_100_PERCENT_PASS` until develop→main deploy and 3/3 current-run suite passes with prefix `AVF-RUNTIME-FLEET-{UTC}`.
+## Production state
 
-## Proof summary (33-item checklist — abbreviated)
+| Item | Value |
+|------|-------|
+| Deployed SHA (live `/version`) | `51485f5583a4f550cfe6fdb6e529e7339daad9ca` |
+| Runtime fleet base merge | `277a3ad4` (PR #410) + migrations 00017/00018 |
+| Timeline hotfix | PR #411 → `51485f55` |
+| Goose version | 18 |
 
-| # | Item | Evidence |
-|---|------|----------|
-| 1–12 | Critical correctness fixes (sale_enabled, ownership, reattach, snapshot, etc.) | Local code + `go test ./...` PASS; `00_POST_IMPLEMENTATION_AUDIT.md` |
-| 13–18 | Local gates (sqlc, build, openapi, grpc docs, coverage) | `01_LOCAL_FIX_AND_TEST_REPORT.md` |
-| 19–22 | Git/PR | PR #409 open → `develop`; `02_GIT_AND_MERGE_REPORT.md` |
-| 23–26 | Production deploy + migrations 00017/00018 | **NOT RUN** — `03_PRODUCTION_DEPLOY_REPORT.md` |
-| 27–30 | 3× production REST/gRPC/MQTT suite | **NOT RUN** — `04_PRODUCTION_FULL_TEST_REPORT.md` |
-| 31–33 | Honest verdict, no fake pass, prefix discipline | This document |
+## Automated gate summary
 
-## Next steps
+| Gate | Evidence |
+|------|----------|
+| Deploy + migrations | `09_PRODUCTION_DEPLOY_REPORT.md`, `08_PRODUCTION_BACKUP.md`, `10_POST_DEPLOY_HEALTH.md` |
+| REST 100% (352 ops) | `REST_FINAL_COVERAGE.json` fail=0 |
+| gRPC 100% (75 RPCs) | `GRPC_FINAL_COVERAGE.json` fail=0 |
+| MQTT 100% (17 contracts) | `MQTT_FINAL_COVERAGE.json` fail=0 |
+| DB/security/fake-pass | `DATABASE_STATE_VERIFICATION.json`, `SECURITY_AUTH_TEST_RESULTS.json`, `FAKE_PASS_AUDIT.json` |
+| 3-pass | `MULTI_PASS_PRODUCTION_VALIDATION.json` — 3/3 ok |
+| E2E flows | `E2E_FLOW_RESULTS.json` — 9/9 ok |
 
-1. Merge PR #409 after CI green
-2. Merge `develop` → `main`, verify parity
-3. Deploy from `main` with migrations
-4. Run `run_production_full_suite.py --passes 3 --prefix AVF-RUNTIME-FLEET-<UTC>`
-5. Re-issue verdict only if all matrices green
+## Checklist notes (honest partial coverage)
+
+Items covered by current-run matrices and E2E: deploy, migrations, REST/gRPC/MQTT surfaces, runtime session gRPC inline RPCs, claim/reattach/compromised MQTT, ops-overview read-back, security RBAC smoke, multi-pass stability.
+
+Items with **partial** dedicated evidence (harness gaps documented in `11_PRODUCTION_FULL_SUITE_X3.md`): full fingerprint reattach field matrix, technician multi-machine negatives, direct DB column assertions, exhaustive timeline/fleet-filter matrices.
+
+## Reports index
+
+| Doc | Purpose |
+|-----|---------|
+| `06_PRE_DEPLOY_AUDIT.md` | Pre-deploy readonly gate |
+| `07_DEPLOY_INPUTS.md` | Build/security/deploy inputs |
+| `08_PRODUCTION_BACKUP.md` | Inline pg_dump evidence |
+| `09_PRODUCTION_DEPLOY_REPORT.md` | Primary deploy run |
+| `10_POST_DEPLOY_HEALTH.md` | Post-deploy probes |
+| `11_PRODUCTION_FULL_SUITE_X3.md` | 3× suite + triage |

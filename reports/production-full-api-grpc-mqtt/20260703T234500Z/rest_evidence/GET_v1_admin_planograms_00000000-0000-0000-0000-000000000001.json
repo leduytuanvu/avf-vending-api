@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/planograms/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "2ad08f52-acaf-48ee-b95c-7c42a9d5f27d",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"planogram_not_found\",\"details\":{},\"message\":\"planogram not found\",\"requestId\":\"2ad08f52-acaf-48ee-b95c-7c42a9d5f27d\"}}\n"
+  },
+  "duration_ms": 184
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/ota/campaigns/00000000-0000-0000-0000-000000000001/results",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "0bb828e9-8340-478f-9219-a8bcdc12c307",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"otaadmin: not found\",\"requestId\":\"0bb828e9-8340-478f-9219-a8bcdc12c307\"}}\n"
+  },
+  "duration_ms": 187
+}

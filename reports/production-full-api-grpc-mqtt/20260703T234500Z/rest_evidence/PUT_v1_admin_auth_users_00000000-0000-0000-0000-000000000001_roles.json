@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://api.ldtv.dev/v1/admin/auth/users/00000000-0000-0000-0000-000000000001/roles",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "fe27891e-ec7d-4ac4-8466-b4caeeacba54",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"account not found\",\"requestId\":\"fe27891e-ec7d-4ac4-8466-b4caeeacba54\"}}\n"
+  },
+  "duration_ms": 189
+}

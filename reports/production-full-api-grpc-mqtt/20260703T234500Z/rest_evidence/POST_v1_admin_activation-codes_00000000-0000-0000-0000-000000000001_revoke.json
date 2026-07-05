@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/activation-codes/00000000-0000-0000-0000-000000000001/revoke",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "ec0f4d2c-2dfd-4263-9e37-03c7840a77fa",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"not found\",\"requestId\":\"ec0f4d2c-2dfd-4263-9e37-03c7840a77fa\"}}\n"
+  },
+  "duration_ms": 224
+}

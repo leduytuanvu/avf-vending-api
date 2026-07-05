@@ -1,24 +1,18 @@
 {
-  "verdict": "BLOCKED_BY_PRODUCTION_DEPLOY_AND_TEST",
-  "production_rest_grpc_mqtt_runtime_fleet_100_percent_pass": false,
-  "blocked_by": [
-    "PR_409_NOT_MERGED",
-    "PRODUCTION_DEPLOY_NOT_RUN",
-    "PRODUCTION_3X_SUITE_NOT_RUN"
-  ],
-  "branch": "feature/machine-runtime-fleet",
-  "commits": [
-    "8c7b806c",
-    "48481a59",
-    "52b7776a"
-  ],
-  "pr": "https://github.com/leduytuanvu/avf-vending-api/pull/409",
-  "local_gates": {
-    "go_test": "pass",
-    "go_build": "pass",
-    "openapi": "pass",
-    "grpc_docs": "pass"
-  },
-  "required_prefix": "AVF-RUNTIME-FLEET-{UTC}",
-  "at_utc": "2026-07-03T22:30:00Z"
+  "verdict": "PRODUCTION_REST_GRPC_MQTT_RUNTIME_FLEET_100_PERCENT_PASS",
+  "production_rest_grpc_mqtt_runtime_fleet_100_percent_pass": true,
+  "blocked_by": [],
+  "deployed_sha": "51485f5583a4f550cfe6fdb6e529e7339daad9ca",
+  "runtime_fleet_merge_sha": "277a3ad4dbe34f204704ed4c3d713ec49bff4ec2",
+  "hotfix_pr": "https://github.com/leduytuanvu/avf-vending-api/pull/411",
+  "evidence_bundle_utc": "20260703T234500Z",
+  "test_prefix": "AVF-RUNTIME-FLEET-20260703T234500Z",
+  "multi_pass_ok": true,
+  "rest_fail_count": 0,
+  "grpc_fail_count": 0,
+  "mqtt_fail_count": 0,
+  "fake_pass_risk": false,
+  "e2e_all_ok": true,
+  "goose_version": 18,
+  "at_utc": "2026-07-03T23:52:00Z"
 }

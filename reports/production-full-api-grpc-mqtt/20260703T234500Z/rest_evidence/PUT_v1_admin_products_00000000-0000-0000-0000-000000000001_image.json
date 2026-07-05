@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://api.ldtv.dev/v1/admin/products/00000000-0000-0000-0000-000000000001/image",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "d92f638c-2d10-4fa3-a2d3-4ce2c3590a88",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"missing_idempotency_key\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"d92f638c-2d10-4fa3-a2d3-4ce2c3590a88\"}}\n"
+  },
+  "duration_ms": 131
+}

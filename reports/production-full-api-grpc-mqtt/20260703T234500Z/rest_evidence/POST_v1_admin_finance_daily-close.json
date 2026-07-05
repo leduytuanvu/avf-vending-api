@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/finance/daily-close",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "478dd607-6691-465e-b3c4-c29bfe38255a",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"idempotency_required\",\"details\":{},\"message\":\"missing idempotency key header (Idempotency-Key or X-Idempotency-Key)\",\"requestId\":\"478dd607-6691-465e-b3c4-c29bfe38255a\"}}\n"
+  },
+  "duration_ms": 141
+}

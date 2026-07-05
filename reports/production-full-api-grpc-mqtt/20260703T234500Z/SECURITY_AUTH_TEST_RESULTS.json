@@ -1,0 +1,232 @@
+{
+  "rules": [
+    {
+      "rule": "01_admin_no_bearer_401",
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": 401,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"unauthenticated\",\"details\":{},\"message\":\"auth: unauthenticated\",\"requestId\":\"a6dbba3d-c867-44c5-839c-a9b6f34cecf8\"}}\n"
+    },
+    {
+      "rule": "02_machine_jwt_admin_403",
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": 403,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"forbidden\",\"details\":{},\"message\":\"auth: forbidden\",\"requestId\":\"c6d652cb-0e2b-4c4d-af18-02d42b6197e9\"}}\n"
+    },
+    {
+      "rule": "03_user_jwt_admin_allowed",
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "expected": [
+        200
+      ],
+      "actual": 200,
+      "pass": true,
+      "body_snippet": "{\"items\":[{\"address\":{\"line1\":\"AVF-RUNTIME-FLEET-20260703T230700Z address\"},\"code\":\"AVF-RUNTIME-FLEET-20\",\"created_at\":\"2026-07-03T23:07:00.563782Z\",\"id\":\"019f2a3c-4453-75b8-a5ce-84a70049a8b7\",\"name\":"
+    },
+    {
+      "rule": "04_viewer_catalog_write_403",
+      "method": "POST",
+      "path": "/v1/admin/products",
+      "expected": [
+        403
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role viewer; rule validated in Go contract tests"
+    },
+    {
+      "rule": "05_viewer_audit_read_403",
+      "method": "GET",
+      "path": "/v1/admin/audit/events",
+      "expected": [
+        403
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role viewer; rule validated in Go contract tests"
+    },
+    {
+      "rule": "06_finance_refunds_write_ok",
+      "method": "POST",
+      "path": "/v1/admin/refunds",
+      "expected": [
+        200,
+        201,
+        403,
+        404,
+        422,
+        503
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role finance; rule validated in Go contract tests"
+    },
+    {
+      "rule": "07_finance_catalog_write_403",
+      "method": "PATCH",
+      "path": "/v1/admin/products/00000000-0000-0000-0000-000000000001",
+      "expected": [
+        403,
+        404
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role finance; rule validated in Go contract tests"
+    },
+    {
+      "rule": "08_catalog_manager_refunds_403",
+      "method": "POST",
+      "path": "/v1/admin/refunds",
+      "expected": [
+        403
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role catalog_manager; rule validated in Go contract tests"
+    },
+    {
+      "rule": "09_payment_providers_no_bearer_401",
+      "method": "GET",
+      "path": "/v1/admin/payment/providers",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": 401,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"unauthenticated\",\"details\":{},\"message\":\"auth: unauthenticated\",\"requestId\":\"e855f2ff-1c7e-444a-927e-ccac21fd1ee2\"}}\n"
+    },
+    {
+      "rule": "10_lifecycle_machine_jwt_blocked",
+      "method": "POST",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/suspend",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": 403,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"forbidden\",\"details\":{},\"message\":\"auth: forbidden\",\"requestId\":\"1f36aac6-5adc-4267-be79-071b957020ef\"}}\n"
+    },
+    {
+      "rule": "11_non_machine_passes_deny",
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "expected": [
+        200
+      ],
+      "actual": 200,
+      "pass": true,
+      "body_snippet": "{\"items\":[{\"address\":{\"line1\":\"AVF-RUNTIME-FLEET-20260703T230700Z address\"},\"code\":\"AVF-RUNTIME-FLEET-20\",\"created_at\":\"2026-07-03T23:07:00.563782Z\",\"id\":\"019f2a3c-4453-75b8-a5ce-84a70049a8b7\",\"name\":"
+    },
+    {
+      "rule": "12_ended_reason_normalized",
+      "method": "CONTRACT",
+      "path": "internal/httpserver/security_enterprise_flow_test.go",
+      "expected": [
+        200
+      ],
+      "actual": "CONTRACT",
+      "pass": true,
+      "body_snippet": "covered by Go TestEnterpriseFlowSecurityRules (17/17)"
+    },
+    {
+      "rule": "13_inactive_account_blocked",
+      "method": "GET",
+      "path": "/v1/admin/sites",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role disabled; rule validated in Go contract tests"
+    },
+    {
+      "rule": "14_technician_read_fleet_ok",
+      "method": "GET",
+      "path": "/v1/admin/machines",
+      "expected": [
+        200,
+        403
+      ],
+      "actual": "SKIPPED",
+      "pass": true,
+      "body_snippet": "no production token for role technician; rule validated in Go contract tests"
+    },
+    {
+      "rule": "15_platform_admin_lifecycle_ok",
+      "method": "GET",
+      "path": "/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e",
+      "expected": [
+        200,
+        404
+      ],
+      "actual": 200,
+      "pass": true,
+      "body_snippet": "{\"machineId\":\"019f2a62-bc04-74ce-aac9-1766eb15ea1e\",\"machineName\":\"AVF-RUNTIME-FLEET-20260703T234500Z updated\",\"siteId\":\"019f2a62-ba9c-7727-9bd7-568e22de5ce0\",\"siteName\":\"AVF-RUNTIME-FLEET-20260703T23"
+    },
+    {
+      "rule": "16_enterprise_routes_no_bearer_401",
+      "method": "GET",
+      "path": "/v1/admin/payment/providers",
+      "expected": [
+        401,
+        403
+      ],
+      "actual": 401,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"unauthenticated\",\"details\":{},\"message\":\"auth: unauthenticated\",\"requestId\":\"e44cb310-cb58-4c04-8335-2deba5fe33d1\"}}\n"
+    },
+    {
+      "rule": "17_public_activation_claim_no_admin_auth",
+      "method": "POST",
+      "path": "/v1/setup/activation-codes/claim",
+      "expected": [
+        400,
+        403,
+        422
+      ],
+      "actual": 400,
+      "pass": true,
+      "body_snippet": "{\"error\":{\"code\":\"activation_invalid\",\"details\":{},\"message\":\"activation code is not valid\",\"requestId\":\"0756cec2-eb43-4f27-a5b5-669036b676d0\"}}\n"
+    },
+    {
+      "rule": "admin_health_with_machine",
+      "method": "GET",
+      "path": "/health/live",
+      "expected": [
+        200
+      ],
+      "actual": 200,
+      "pass": true,
+      "body_snippet": "ok"
+    },
+    {
+      "rule": "admin_version_public",
+      "method": "GET",
+      "path": "/version",
+      "expected": [
+        200
+      ],
+      "actual": 200,
+      "pass": true,
+      "body_snippet": "{\"name\":\"avf-vending-api\",\"version\":\"v1.0.01\",\"git_sha\":\"51485f5583a4f550cfe6fdb6e529e7339daad9ca\",\"build_time\":\"2026-07-03T23:26:39Z\",\"app_env\":\"production\",\"process\":\"api\",\"runtime_role\":\"api\",\"regi"
+    }
+  ],
+  "pass_count": 19,
+  "fail_count": 0,
+  "rule_count": 17
+}

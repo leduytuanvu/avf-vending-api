@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/rollouts/00000000-0000-0000-0000-000000000001/start",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6b15e55c-d317-45cb-b955-19c0a9ad37f0",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"rollout: not found\",\"requestId\":\"6b15e55c-d317-45cb-b955-19c0a9ad37f0\"}}\n"
+  },
+  "duration_ms": 190
+}

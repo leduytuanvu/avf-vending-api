@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/rollouts",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "d5186da3-f56f-4933-8184-323a4355f432",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_argument\",\"details\":{},\"message\":\"rollout: invalid argument\",\"requestId\":\"d5186da3-f56f-4933-8184-323a4355f432\"}}\n"
+  },
+  "duration_ms": 116
+}

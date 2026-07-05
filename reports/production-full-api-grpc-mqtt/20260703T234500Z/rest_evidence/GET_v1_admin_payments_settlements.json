@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/payments/settlements",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "36d7d284-0e96-4b2a-b7a5-93a8ea9c0658",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"total\":0}\n"
+  },
+  "duration_ms": 290
+}

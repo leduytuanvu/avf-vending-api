@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/audit/events/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "644f7019-adf4-49c6-95e8-0e709442f2e4",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "{\"error\":{\"code\":\"not_found\",\"details\":{},\"message\":\"audit event not found\",\"requestId\":\"644f7019-adf4-49c6-95e8-0e709442f2e4\"}}\n"
+  },
+  "duration_ms": 190
+}

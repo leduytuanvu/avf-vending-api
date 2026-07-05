@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/reports/fleet-health?from=2026-01-01T00:00:00Z&to=2026-12-31T23:59:59Z",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "acb0b469-d25e-4c0b-aa31-76e8b1ec30be",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"from\":\"2026-01-01T00:00:00Z\",\"to\":\"2026-12-31T23:59:59Z\",\"machineSummary\":{\"total\":161,\"online\":36,\"offline\":0,\"fault\":125,\"warn\":0,\"retired\":0},\"machinesByStatus\":[{\"status\":\"active\",\"count\":89},{\"status\":\"online\",\"count\":36},{\"status\":\"draft\",\"count\":29},{\"status\":\"compromised\",\"count\":6},{\"status\":\"suspended\",\"count\":1}],\"incidentsByStatus\":[],\"machineIncidentsBySeverity\":[]}\n"
+  },
+  "duration_ms": 324
+}

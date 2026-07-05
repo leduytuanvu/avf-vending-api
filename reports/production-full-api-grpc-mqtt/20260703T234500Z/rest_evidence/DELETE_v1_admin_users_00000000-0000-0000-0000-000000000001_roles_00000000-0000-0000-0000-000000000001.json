@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/admin/users/00000000-0000-0000-0000-000000000001/roles/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "356ec869-9361-49e5-bd38-7dd5434290ed",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_role\",\"details\":{},\"message\":\"invalid role: 00000000-0000-0000-0000-000000000001\",\"requestId\":\"356ec869-9361-49e5-bd38-7dd5434290ed\"}}\n"
+  },
+  "duration_ms": 123
+}

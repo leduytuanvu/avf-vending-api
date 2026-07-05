@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/auth/sessions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "dbd51c92-17c0-4bb6-8f06-0ce1dd9011de",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"request body must be JSON\",\"requestId\":\"dbd51c92-17c0-4bb6-8f06-0ce1dd9011de\"}}\n"
+  },
+  "duration_ms": 158
+}

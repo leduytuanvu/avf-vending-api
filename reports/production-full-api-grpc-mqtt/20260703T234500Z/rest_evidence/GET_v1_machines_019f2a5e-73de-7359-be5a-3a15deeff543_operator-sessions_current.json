@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a5e-73de-7359-be5a-3a15deeff543/operator-sessions/current",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "b2671c3c-30f9-4052-8698-1db9d5f0d3ed",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 155
+}

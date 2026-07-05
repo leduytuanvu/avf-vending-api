@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/timeline/unified",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7ce4ec57-e49a-4089-bdc0-36318fe9ab7c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[{\"actor_type\":\"machine\",\"event_type\":\"machine.activation.claimed\",\"id\":\"2026-07-03T23:46:46.967582Z:machine.activation.claimed\",\"machine_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"metadata\":{\"session_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"first_claim\":true},\"occurred_at\":\"2026-07-03T23:46:46.967582Z\",\"resource_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"resource_type\":\"machine\",\"severity\":\"info\",\"summary\":\"machine.activation.claimed\"},{\"actor_type\":\"machine\",\"event_type\":\"activation.claim\",\"id\":\"2026-07-03T23:46:46.967582Z:activation.claim\",\"machine_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"metadata\":{},\"occurred_at\":\"2026-07-03T23:46:46.967582Z\",\"request_id\":\"b683d1bb-6158-4bcd-864b-4ab7f8fd4ee8\",\"resource_id\":\"019f2a60-b04c-7e9f-8271-93b0c45e62c3\",\"resource_type\":\"machine_activation_claim\",\"severity\":\"info\",\"summary\":\"activation_code\"},{\"actor_type\":\"system\",\"event_type\":\"runtime.session.issued\",\"id\":\"2026-07-03T23:46:46.967582Z:runtime.session.issued\",\"machine_id\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"machine_session_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"metadata\":{\"expires_at\":\"2026-08-02T23:46:48.064016+00:00\",\"credential_version\":0},\"occurred_at\":\"2026-07-03T23:46:46.967582Z\",\"resource_id\":\"019f2a60-b2aa-79fb-a8f7-8a7978926722\",\"resource_type\":\"machine_session\",\"severity\":\"info\",\"summary\":\"active\"}]}\n"
+  },
+  "duration_ms": 393
+}

@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/cashbox",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "00e4f51b-a701-4955-8064-b20453daf97f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"machineId\":\"019f2a60-aa11-74c5-bbc9-c8ad7c938364\",\"currency\":\"USD\",\"expectedCashboxMinor\":0,\"expectedCloudCashMinor\":0,\"expectedRecyclerMinor\":0,\"denominations\":[],\"varianceReviewThresholdMinor\":500,\"disclosure\":\"Accounting-only: cloud ledger expectation only; does not sense or command physical cash hardware.\"}\n"
+  },
+  "duration_ms": 692
+}

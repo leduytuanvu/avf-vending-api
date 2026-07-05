@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "DELETE",
+    "url": "https://api.ldtv.dev/v1/auth/sessions/00000000-0000-0000-0000-000000000001",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "7a0ffa2a-e081-43bf-8ea9-9d887bf1a9dc",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_request\",\"details\":{},\"message\":\"invalid request\",\"requestId\":\"7a0ffa2a-e081-43bf-8ea9-9d887bf1a9dc\"}}\n"
+  },
+  "duration_ms": 288
+}

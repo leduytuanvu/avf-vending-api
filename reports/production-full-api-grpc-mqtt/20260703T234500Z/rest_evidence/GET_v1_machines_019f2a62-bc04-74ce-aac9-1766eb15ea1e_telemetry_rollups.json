@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/telemetry/rollups",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "d8184a94-0e08-4e9b-9fff-e8ba23d67cd3",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 404,
+    "body": "404 page not found\n"
+  },
+  "duration_ms": 121
+}

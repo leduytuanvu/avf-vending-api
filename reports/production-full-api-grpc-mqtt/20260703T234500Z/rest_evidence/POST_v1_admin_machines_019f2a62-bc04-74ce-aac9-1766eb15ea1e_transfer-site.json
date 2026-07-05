@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a62-bc04-74ce-aac9-1766eb15ea1e/transfer-site",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "573db3e6-b7ac-4268-abf1-f6fbbd013858",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_site_id\",\"details\":{},\"message\":\"site_id is required\",\"requestId\":\"573db3e6-b7ac-4268-abf1-f6fbbd013858\"}}\n"
+  },
+  "duration_ms": 655
+}

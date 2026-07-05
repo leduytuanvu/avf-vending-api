@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/admin/payments/webhook-events",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "0e8bbc60-9c51-4a74-8f01-69b6f938cd5c",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"total\":0}\n"
+  },
+  "duration_ms": 284
+}

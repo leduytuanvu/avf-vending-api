@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "GET",
+    "url": "https://api.ldtv.dev/v1/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/commands/receipts",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "6878abc8-1b1c-4d54-a972-ec7d32d51361",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"items\":[],\"meta\":{\"limit\":50,\"returned\":0}}\n"
+  },
+  "duration_ms": 286
+}

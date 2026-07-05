@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "PUT",
+    "url": "https://api.ldtv.dev/v1/admin/machines/019f2a60-aa11-74c5-bbc9-c8ad7c938364/planograms/draft",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "8a94bffd-991f-4dbd-b724-fc5a01e560bd",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_json\",\"details\":{},\"message\":\"invalid request body\",\"requestId\":\"8a94bffd-991f-4dbd-b724-fc5a01e560bd\"}}\n"
+  },
+  "duration_ms": 199
+}

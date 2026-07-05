@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/machines/00000000-0000-0000-0000-000000000001/revoke-sessions",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "362a4a1a-8172-4131-8dad-c261c7be5ba8",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_body\",\"details\":{},\"message\":\"json: unknown field \\\"name\\\"\",\"requestId\":\"362a4a1a-8172-4131-8dad-c261c7be5ba8\"}}\n"
+  },
+  "duration_ms": 144
+}

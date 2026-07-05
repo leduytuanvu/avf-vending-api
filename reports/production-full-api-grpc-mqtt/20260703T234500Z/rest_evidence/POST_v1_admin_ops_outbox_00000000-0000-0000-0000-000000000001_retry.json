@@ -1,0 +1,16 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "https://api.ldtv.dev/v1/admin/ops/outbox/00000000-0000-0000-0000-000000000001/retry",
+    "headers": {
+      "Content-Type": "application/json",
+      "X-Request-ID": "f5c6e830-003c-405e-918c-24d4cf5a632f",
+      "Authorization": "Bearer ***REDACTED***"
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": "{\"error\":{\"code\":\"invalid_outbox_id\",\"details\":{},\"message\":\"outboxId must be a positive integer\",\"requestId\":\"f5c6e830-003c-405e-918c-24d4cf5a632f\"}}\n"
+  },
+  "duration_ms": 155
+}
