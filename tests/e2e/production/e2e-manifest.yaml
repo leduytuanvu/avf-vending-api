@@ -432,13 +432,13 @@ flows:
     cleanup: none
 
   - id: REST-MACHINE-003
-    label: POST /v1/admin/machines/{id}/activation-codes
+    label: POST /v1/admin/machine-codes/{machineCode}/activation-codes
     phase: provisioning
     protocol: rest
     evidence_label: rest-activation-code
     auth: bearer_admin
     method: POST
-    path: /v1/admin/machines/{{machineId}}/activation-codes
+    path: /v1/admin/machine-codes/{{machineCode}}/activation-codes
     idempotency: true
     headers:
       Content-Type: application/json
@@ -453,6 +453,8 @@ flows:
     capture:
       activationCodeId: activationCodeId
       activationCode: activationCode
+      machineId: machineId
+      machineCode: machineCode
     cleanup: none
 
   - id: REST-MACHINE-004
