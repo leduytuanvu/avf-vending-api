@@ -1,0 +1,27 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "attempt": {
+          "ack_deadline_at": "2026-04-19T12:00:40Z",
+          "attempt_no": 1,
+          "id": "cccccccc-dddd-eeee-ffff-000000000001",
+          "sent_at": "2026-04-19T12:00:10Z",
+          "status": "sent"
+        },
+        "command_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "command_type": "SET_TEMPERATURE",
+        "dispatch_state": "published",
+        "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "sequence": 42
+      }
+order: 1000

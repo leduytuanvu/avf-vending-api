@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "acceptedAt": null,
+        "eventType": null,
+        "idempotencyKey": "machine-001:boot-20260424:seq-100:events.vend",
+        "processedAt": null,
+        "retryable": true,
+        "status": "not_found"
+      }
+order: 1000

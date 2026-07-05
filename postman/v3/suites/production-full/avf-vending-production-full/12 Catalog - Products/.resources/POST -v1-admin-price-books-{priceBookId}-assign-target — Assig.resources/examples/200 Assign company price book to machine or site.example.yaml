@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "createdAt": "2026-04-24T12:00:00Z",
+        "id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "priceBookId": "11111111-2222-3333-4444-555555555555",
+        "siteId": null
+      }
+order: 1000

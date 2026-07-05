@@ -1,0 +1,45 @@
+$kind: http-request
+name: REST-MACHINE-004 — POST /v1/setup/activation-codes/claim
+url: "{{baseUrl}}/v1/setup/activation-codes/claim"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "activationCode": "{{activationCode}}",
+      "deviceFingerprint": {
+        "serial": "{{runPrefix}}-ANDROID",
+        "androidId": "{{runPrefix}}-aid",
+        "packageName": "dev.avf.vending.e2e"
+      }
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';
+      pm.variables.set('_postman_skip_if_env_key', 'machineAccessToken');
+      const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');
+      const envKey = pm.variables.get('_postman_skip_if_env_key');
+      if (reuse && envKey && pm.environment.get(envKey)) {
+        pm.execution.skipRequest();
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      pm.test('assertion 0: json_path_exists machineToken', function () {
+        const j = pm.response.json();
+        pm.expect(j.machineToken).to.not.be.undefined;
+      });
+      try {
+        const j = pm.response.json();
+        if (j.machineToken !== undefined) pm.environment.set('machineAccessToken', j.machineToken);
+        if (j.refreshToken !== undefined) pm.environment.set('machineRefreshToken', j.refreshToken);
+        if (j.mqtt.topicPrefix !== undefined) pm.environment.set('mqttTopicPrefix', j.mqtt.topicPrefix);
+      } catch (e) {}
+    language: text/javascript
+order: 5000

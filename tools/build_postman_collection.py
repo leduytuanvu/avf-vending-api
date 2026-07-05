@@ -11,6 +11,36 @@ POSTMAN_COLLECTIONS_DIR = ROOT / "postman" / "collections"
 POSTMAN_ENVIRONMENTS_DIR = ROOT / "postman" / "environments"
 POSTMAN_SCRIPTS_DIR = ROOT / "postman" / "scripts"
 
+LOGIN_TEST_SCRIPT = [
+    "let json = {};",
+    "try {",
+    "  json = pm.response.json();",
+    "} catch (e) {",
+    '  throw new Error("Login response is not valid JSON: " + e.message);',
+    "}",
+    "",
+    'pm.test("login returns 200", function () {',
+    "  pm.expect(pm.response.code).to.equal(200);",
+    "});",
+    "",
+    'pm.test("login returns tokens", function () {',
+    "  pm.expect(json).to.have.property('tokens');",
+    "  pm.expect(json.tokens).to.have.property('accessToken');",
+    "  pm.expect(json.tokens).to.have.property('refreshToken');",
+    "  pm.expect(json.tokens.accessToken).to.be.a('string').and.not.empty;",
+    "  pm.expect(json.tokens.refreshToken).to.be.a('string').and.not.empty;",
+    "});",
+    "",
+    "if (pm.response.code === 200 && json.tokens) {",
+    "  pm.environment.set('accessToken', json.tokens.accessToken);",
+    "  pm.environment.set('refreshToken', json.tokens.refreshToken);",
+    "  pm.environment.set('auth_type', 'admin');",
+    "  if (json.accountId) {",
+    "    pm.environment.set('accountId', json.accountId);",
+    "  }",
+    "}",
+]
+
 
 def load_exec(name: str) -> list[str]:
     p = POSTMAN_SCRIPTS_DIR / name
@@ -171,7 +201,7 @@ def integrated_product_media_offline_cache_folder() -> dict[str, Any]:
             "Steps 19–23 use **machine JWT** (`bearer_token_var=machineToken`). "
             "After claim, optionally copy broker hints into `mqttHost` / `mqttPort` / `mqttTopicPrefix`. "
             "For catalog manifest RPCs use `grpcAddr` + `grpcUseReflection` with "
-            "`postman/suites/full-production-suite/grpc/run-grpc-postman-adjacent.sh`. "
+            "`scripts/postman/` gRPC/MQTT adjacent runbooks (see `postman/suites/production-full/`). "
             "For `catalog.refresh` ACK use `mqtt/run-mqtt-postman-adjacent.sh` and matrix payloads.\n\n"
             "1 Login → 2 auth/me → 3–5 category/brand/tag → 6–7 media init/complete → 8–9 product + GET verify → "
             "10 site → 11 machine → 12 activation code → 13 claim (`machineToken`) → 14–16 topology/planogram/publish → "
@@ -186,6 +216,7 @@ def integrated_product_media_offline_cache_folder() -> dict[str, Any]:
                 "Login; tests stash tokens.accessToken into admin_token + accessToken.",
                 '{\n  "email": "{{adminEmail}}",\n  "password": "{{adminPassword}}"\n}',
                 auth_noauth=True,
+                test_exec=LOGIN_TEST_SCRIPT,
             ),
             req_item_json_method(
                 "02 GET /v1/auth/me",

@@ -1,0 +1,32 @@
+$kind: http-request
+name: REST-MACHINE-005 — GET /v1/setup/machines/{id}/bootstrap (legacy HTTP)
+url: "{{baseUrl}}/v1/setup/machines/{{machineId}}/bootstrap"
+method: GET
+headers:
+  Content-Type: application/json
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineAccessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: beforeRequest
+    code: |-
+      const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');
+      pm.variables.set('_postman_skip_if_env_var', 'PROD_E2E_SKIP_LEGACY_MACHINE_HTTP');
+      if (skipIfEnv && pm.environment.get(skipIfEnv)) {
+        pm.execution.skipRequest();
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 6000

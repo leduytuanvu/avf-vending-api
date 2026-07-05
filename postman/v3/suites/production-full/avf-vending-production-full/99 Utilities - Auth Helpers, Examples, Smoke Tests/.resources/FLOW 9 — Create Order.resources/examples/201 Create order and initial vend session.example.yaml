@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 201
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "order_status": "created",
+        "replay": false,
+        "vend_session_id": "8d3e2f10-1111-2222-3333-444455556666",
+        "vend_state": "pending"
+      }
+order: 1000

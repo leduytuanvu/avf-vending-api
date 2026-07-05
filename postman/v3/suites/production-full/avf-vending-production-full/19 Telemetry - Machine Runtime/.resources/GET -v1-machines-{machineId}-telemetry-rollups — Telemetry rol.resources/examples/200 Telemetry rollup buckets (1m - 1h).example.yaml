@@ -1,0 +1,36 @@
+$kind: http-example
+name: 200 Telemetry rollup buckets (1m / 1h)
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "bucketStart": "2026-04-19T12:00:00.000000000Z",
+            "extra": {},
+            "granularity": "1m",
+            "last": 7.1,
+            "max": 8.2,
+            "metricKey": "temperature_c",
+            "min": 6.5,
+            "sampleCount": 60,
+            "sum": 420.5
+          }
+        ],
+        "meta": {
+          "from": "2026-04-18T12:00:00.000000000Z",
+          "granularity": "1m",
+          "note": "Rollup buckets only — not raw MQTT telemetry history.",
+          "returned": 1,
+          "to": "2026-04-19T12:00:00.000000000Z"
+        }
+      }
+order: 1000

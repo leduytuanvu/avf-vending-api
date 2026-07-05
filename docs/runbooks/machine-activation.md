@@ -4,14 +4,23 @@ Machine activation is implemented over REST and issues a machine-scoped JWT plus
 
 ## Routes
 
-- Admin create/list/revoke activation codes:
+- Admin create/list/revoke activation codes (machine UUID **or** machineCode in `{machineId}` path):
   - `POST /v1/admin/machines/{machineId}/activation-codes`
   - `GET /v1/admin/machines/{machineId}/activation-codes`
   - `DELETE /v1/admin/machines/{machineId}/activation-codes/{activationCodeId}`
+- Admin create/list/revoke by canonical machineCode path:
+  - `POST /v1/admin/machine-codes/{machineCode}/activation-codes`
+  - `GET /v1/admin/machine-codes/{machineCode}/activation-codes`
+  - `DELETE /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId}`
+- Catalog create/list (body may use `machineId` / `machine_id` and/or `machineCode` / `machine_code`):
+  - `POST /v1/admin/activation-codes`
+  - `GET /v1/admin/activation-codes`
 - Public device claim:
   - `POST /v1/setup/activation-codes/claim`
 - Authenticated bootstrap:
   - `GET /v1/setup/machines/{machineId}/bootstrap`
+
+`machineCode` format for activation admin: `AVF` + exactly six digits (e.g. `AVF000001`). Runtime claim and JWT still use `machineId` UUID.
 
 ## Operator procedure
 
@@ -29,13 +38,22 @@ Machine activation is implemented over REST and issues a machine-scoped JWT plus
 BASE_URL="http://localhost:8080"
 SCOPE_ID="11111111-1111-1111-1111-111111111111"
 MACHINE_ID="55555555-5555-5555-5555-555555555555"
+MACHINE_CODE="AVF000001"
 TOKEN="<admin bearer token>"
 
+# By machine UUID (legacy path; still supported)
 curl -sS -X POST "$BASE_URL/v1/admin/machines/$MACHINE_ID/activation-codes?company_id=$SCOPE_ID" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: activation-$(date +%s)" \
   -d '{"expiresInMinutes":60,"maxUses":1,"notes":"field activation"}'
+
+# By machineCode (canonical path)
+curl -sS -X POST "$BASE_URL/v1/admin/machine-codes/$MACHINE_CODE/activation-codes?company_id=$SCOPE_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: activation-code-$(date +%s)" \
+  -d '{"expiresInMinutes":60,"maxUses":1,"notes":"field activation by code"}'
 ```
 
 ## PowerShell example

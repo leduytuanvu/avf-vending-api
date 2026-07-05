@@ -68,13 +68,45 @@ swagger-check: swagger
 	git diff --exit-code -- docs/swagger/
 
 # Regenerate Postman v2.1 collection + environment files (native artifacts; not a replacement for /swagger/doc.json).
-postman-generate: swagger
+postman-generate-json: swagger
 	"$(PY)" tools/build_postman_collection.py
 
+# Regenerate YAML v3 assets under postman/v3/ from committed JSON (requires Postman CLI on PATH).
+postman-generate-v3:
+	"$(PY)" tools/build_postman_v3_yaml.py --regen-json-skip
+
+# Production-full JSON for Postman Import (461-request inventory; no OpenAPI shrink).
+postman-generate-production-full-json:
+	"$(PY)" tools/publish_production_full_json.py
+
+# OpenAPI regen (~344 REST ops) — updates suites/production-full only; not the full inventory.
+postman-regen-production-full-openapi: swagger
+	"$(PY)" scripts/postman/generate_production_full_suite.py
+	"$(PY)" tools/postman_v3_script_fixup.py --json-only
+
+# Production-full v3 YAML only from committed JSON (recommended for Postman Local Mode).
+postman-generate-production-full-v3:
+	"$(PY)" tools/build_postman_production_full_v3_only.py
+
+postman-generate-production-full: postman-generate-production-full-v3
+
+# Regenerate JSON (CI + Newman) and v3 YAML (Postman Local Mode).
+postman-generate: postman-generate-json
+	"$(PY)" scripts/postman/generate_production_full_suite.py
+	"$(PY)" postman/production/generate_postman_from_manifest.py
+	"$(PY)" tools/build_postman_v3_yaml.py --regen-json-skip
+
 # Validate committed Postman JSON, production/staging safety flags, no secret-like content, and generator drift (offline).
-postman-check: postman-generate
+postman-check-json: postman-generate-json
 	"$(PY)" tools/check_postman_artifacts.py
 	git diff --exit-code -- postman/collections/ postman/environments/
+
+postman-check-v3:
+	"$(PY)" tools/check_postman_v3_artifacts.py
+	"$(PY)" scripts/postman/validate_v3_yaml.py
+	git diff --exit-code -- postman/v3/
+
+postman-check: postman-check-json postman-check-v3
 
 check-placeholders:
 	bash scripts/ci/check_production_placeholders.sh

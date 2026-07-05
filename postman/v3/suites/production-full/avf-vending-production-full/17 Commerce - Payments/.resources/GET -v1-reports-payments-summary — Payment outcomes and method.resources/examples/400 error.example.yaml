@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 400
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "invalid_request",
+          "details": {},
+          "message": "request could not be validated",
+          "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+order: 2000

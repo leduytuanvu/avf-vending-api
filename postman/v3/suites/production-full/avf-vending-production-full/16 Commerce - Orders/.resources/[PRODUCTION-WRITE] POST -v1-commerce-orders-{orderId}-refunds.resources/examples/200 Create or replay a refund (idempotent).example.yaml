@@ -1,0 +1,22 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "amount_minor": 15000,
+        "currency": "VND",
+        "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "payment_id": "11111111-2222-3333-4444-555555555555",
+        "refund_id": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "refund_state": "pending",
+        "replay": false
+      }
+order: 1000

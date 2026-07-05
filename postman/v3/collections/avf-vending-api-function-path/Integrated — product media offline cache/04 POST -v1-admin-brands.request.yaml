@@ -1,0 +1,14 @@
+$kind: http-request
+name: 04 POST /v1/admin/brands
+description: Create brand.
+url: "{{baseUrl}}/v1/admin/brands"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "name": "Coca {{$timestamp}}",
+      "slug": "coca-{{$timestamp}}",
+      "active": true
+    }
+order: 4000

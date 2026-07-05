@@ -10,8 +10,9 @@
 | [`environments/avf-staging.postman_environment.json`](environments/avf-staging.postman_environment.json) | Staging / pre-prod |
 | [`environments/avf-production.postman_environment.json`](environments/avf-production.postman_environment.json) | Production (mutations locked) |
 
-**Regenerate:** `make postman-generate` (runs after `make swagger`)  
-**Drift gate:** `make postman-check` — diffs only `postman/collections/` and `postman/environments/`
+**Regenerate:** `make postman-generate` (JSON + v3) or `make postman-generate-json` / `make postman-generate-v3`  
+**Drift gate:** `make postman-check-json` — diffs `postman/collections/` and `postman/environments/`  
+**v3 Local Mode:** [`v3/`](v3/) — drift-gated by `make postman-check-v3`
 
 ## Scripts (tracked)
 
@@ -34,7 +35,9 @@ Shell wrappers: `scripts/postman/generate_collection.sh`, `scripts/postman/check
 
 [`suites/production-full/`](suites/production-full/) — consolidated OpenAPI + proto + MQTT production verification collection and environment (`avf-vending-production.full.*`). Not the same as manifest E2E parity under `production/`; use for broad production API coverage and manual/Newman runs.
 
-Regenerate with `python scripts/postman/generate_production_full_suite.py` (writes `postman/suites/production-full/avf-vending-production.full.*`). Legacy output path `postman/production-full-suite/` is gitignored.
+**v3 YAML mirror:** [`v3/suites/production-full/`](v3/suites/production-full/) for Postman Local Mode.
+
+Regenerate JSON with `python scripts/postman/generate_production_full_suite.py`. Legacy output path `postman/production-full-suite/` is gitignored.
 
 ## Reports
 

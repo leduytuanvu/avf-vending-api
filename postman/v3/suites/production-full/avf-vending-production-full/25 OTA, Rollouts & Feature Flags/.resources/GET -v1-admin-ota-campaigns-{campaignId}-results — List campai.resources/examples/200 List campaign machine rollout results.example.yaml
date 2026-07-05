@@ -1,0 +1,25 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+            "createdAt": "2026-04-19T12:00:00.000000000Z",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "status": "dispatched",
+            "updatedAt": "2026-04-19T12:00:00.000000000Z",
+            "wave": "canary"
+          }
+        ]
+      }
+order: 1000

@@ -1,0 +1,40 @@
+$kind: http-request
+name: REST-COMMERCE-001 — POST /v1/commerce/orders
+url: "{{baseUrl}}/v1/commerce/orders"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{runPrefix}}-REST-COMMERCE-001"
+body:
+  type: text
+  content: |-
+    {
+      "machine_id": "{{machineId}}",
+      "product_id": "{{productId}}",
+      "currency": "VND",
+      "cabinet_code": "A",
+      "slot_code": "A1",
+      "slot_index": 1
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineAccessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(201);
+      });
+      try {
+        const j = pm.response.json();
+        if (j.order_id !== undefined) pm.environment.set('orderId', j.order_id);
+      } catch (e) {}
+    language: text/javascript
+order: 1000

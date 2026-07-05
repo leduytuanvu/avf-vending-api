@@ -1,13 +1,25 @@
 # Postman production suite (AVF vending API)
 
-**Canonical collections:** [`postman/collections/`](../../postman/collections/).
+## Dual-output layout
 
-- **Primary REST collection:** `postman/collections/avf-vending-api.postman_collection.json`
-- **Function-path export:** `postman/collections/avf-vending-api-function-path.postman_collection.json`
-- **Domain-grouped YAML suite:** `postman/collections/AVF Vending Backend Production API Suite — Domain Grouped —/`
+| Format | Path | Use |
+|--------|------|-----|
+| **JSON v2.1** | [`postman/collections/`](../../postman/collections/) | Newman, CI, classic Postman import |
+| **YAML v3** | [`postman/v3/`](../../postman/v3/) | Postman v12 Local Mode / Native Git |
+| **Full production suite (JSON)** | [`postman/suites/production-full/`](../../postman/suites/production-full/) | Full OpenAPI + gRPC/MQTT documentation |
+| **Full production suite (v3)** | [`postman/v3/suites/production-full/`](../../postman/v3/suites/production-full/) | Local Mode full suite |
 
-Regenerate from OpenAPI: `make postman-generate` (after `make swagger`).
+## Primary collections (JSON)
 
-Historical generated packs under `postman/suites/full-production-suite/` (for example `AVF_FULL_100.postman_collection.json`) were removed in the 2026 cleanup — use the collections above or import OpenAPI from `https://api.ldtv.dev/swagger/doc.json`.
+- `postman/collections/avf-vending-api.postman_collection.json`
+- `postman/collections/avf-vending-api-function-path.postman_collection.json`
+
+Regenerate: `make postman-generate-json` (after `make swagger`).
+
+## Local Mode import
+
+See [`docs/postman/POSTMAN_V3_LOCAL_MODE_IMPORT_GUIDE.md`](../postman/POSTMAN_V3_LOCAL_MODE_IMPORT_GUIDE.md).
+
+Historical `postman/suites/full-production-suite/` was removed in the 2026 cleanup — use `postman/suites/production-full/` (JSON) or `postman/v3/suites/production-full/` (YAML).
 
 Execution order: [05_PRODUCTION_TEST_EXECUTION_ORDER.md](05_PRODUCTION_TEST_EXECUTION_ORDER.md)

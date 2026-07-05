@@ -1,0 +1,74 @@
+$kind: http-request
+name: gRPC InternalCommerceQueryService/GetOrderPaymentVendState — Get Order Payment Vend State
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState`
+  - **Proto:** `proto/avf/internal/v1/commerce_query.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** internal
+
+  **Metadata:** authorization: Bearer {{accessToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "order_id": "{{orderId}}",
+    "slot_index": 1
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "order": {
+      "id": "{{id}}",
+      "machine_id": "{{machineId}}",
+      "status": "string",
+      "currency": "string",
+      "subtotal_minor": 1,
+      "tax_minor": 1,
+      "total_minor": 1,
+      "idempotency_key": {},
+      "created_at": {},
+      "updated_at": {}
+    },
+    "vend": {
+      "id": "{{id}}",
+      "order_id": "{{orderId}}",
+      "machine_id": "{{machineId}}",
+      "slot_index": 1,
+      "product_id": "{{productId}}",
+      "state": "string",
+      "final_command_attempt_id": {},
+      "created_at": {}
+    },
+    "payment": {
+      "id": "{{id}}",
+      "order_id": "{{orderId}}",
+      "provider": "{{provider}}",
+      "state": "string",
+      "amount_minor": 1,
+      "currency": "string",
+      "idempotency_key": {},
+      "reconciliation_status": "string",
+      "settlement_status": "string",
+      "settlement_batch_id": {},
+      "created_at": {}
+    },
+    "payment_present": false
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 2000

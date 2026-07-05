@@ -1,0 +1,23 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "address": {},
+        "code": "LOBBY",
+        "created_at": "2026-04-29T00:00:00Z",
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "name": "Lobby North",
+        "status": "active",
+        "timezone": "UTC",
+        "updated_at": "2026-04-29T00:05:00Z"
+      }
+order: 1000

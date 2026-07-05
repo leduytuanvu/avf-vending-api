@@ -1,0 +1,27 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "session": {
+          "actor_type": "TECHNICIAN",
+          "client_metadata": {},
+          "created_at": "2026-04-19T12:10:00Z",
+          "id": "dddddddd-eeee-ffff-0000-111111111111",
+          "last_activity_at": "2026-04-19T12:10:05Z",
+          "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "started_at": "2026-04-19T12:10:00Z",
+          "status": "ACTIVE",
+          "technician_id": "eeeeeeee-ffff-0000-1111-222222222222",
+          "updated_at": "2026-04-19T12:10:05Z"
+        }
+      }
+order: 1000

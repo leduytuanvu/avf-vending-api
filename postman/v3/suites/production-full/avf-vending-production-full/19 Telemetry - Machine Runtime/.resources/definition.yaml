@@ -1,0 +1,3 @@
+$kind: collection
+description: "Device telemetry, check-in, shadow. Auth: machine. Vars: machineId."
+order: 19000

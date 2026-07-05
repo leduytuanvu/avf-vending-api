@@ -1,0 +1,30 @@
+$kind: http-example
+name: 200 Technician and fill / restock inventory operations
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "from": "2026-04-01T00:00:00Z",
+        "items": [
+          {
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "status": "open"
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 1
+        },
+        "to": "2026-04-20T00:00:00Z"
+      }
+order: 1000

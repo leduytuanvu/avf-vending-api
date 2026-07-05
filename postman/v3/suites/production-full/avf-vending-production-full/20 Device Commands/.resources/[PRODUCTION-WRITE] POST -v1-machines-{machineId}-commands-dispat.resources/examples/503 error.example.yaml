@@ -1,0 +1,24 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 503
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "capability_not_configured",
+          "details": {
+            "capability": "mqtt_command_dispatch",
+            "implemented": false
+          },
+          "message": "MQTT broker client is not configured for this API process (set MQTT_BROKER_URL and MQTT_CLIENT_ID)",
+          "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+order: 7000

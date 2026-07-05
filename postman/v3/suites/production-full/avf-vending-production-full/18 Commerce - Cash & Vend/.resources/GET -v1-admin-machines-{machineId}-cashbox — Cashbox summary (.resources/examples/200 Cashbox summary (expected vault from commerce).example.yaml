@@ -1,0 +1,25 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "currency": "VND",
+        "denominations": [],
+        "disclosure": "Accounting-only: cloud ledger expectation only; does not sense or command physical cash hardware.",
+        "expectedCashboxMinor": 1000000,
+        "expectedCloudCashMinor": 1000000,
+        "expectedRecyclerMinor": 0,
+        "lastCollectionAt": "2026-04-24T00:00:00Z",
+        "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "openCollectionId": null,
+        "varianceReviewThresholdMinor": 500
+      }
+order: 1000

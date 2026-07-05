@@ -1,0 +1,36 @@
+$kind: http-request
+name: REST-MEDIA-COMPLETE — POST /v1/admin/media/uploads/{mediaId}/complete
+url: "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{runPrefix}}-REST-MEDIA-COMPLETE"
+body:
+  type: text
+  content: |-
+    {
+      "sizeBytes": 70,
+      "contentType": "image/png",
+      "sha256": "{{mediaSha256}}"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      pm.test('assertion 0: body_not_empty', function () {
+        pm.expect(pm.response.text()).to.not.be.empty;
+      });
+    language: text/javascript
+order: 3000

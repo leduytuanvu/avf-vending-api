@@ -1,0 +1,35 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "aggregateId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "aggregateType": "payment",
+        "attempts": 0,
+        "createdAt": "2026-04-19T12:00:00.000000000Z",
+        "deadLetteredAt": null,
+        "eventType": "payment.session_started",
+        "id": 101,
+        "idempotencyKey": "idem-pay-001",
+        "lastPublishAttemptAt": null,
+        "lastPublishError": null,
+        "lockedBy": null,
+        "lockedUntil": null,
+        "maxAttempts": 24,
+        "nextAttemptAt": null,
+        "nextPublishAfter": null,
+        "payload": {},
+        "publishAttemptCount": 0,
+        "status": "pending",
+        "topic": "commerce.payments",
+        "updatedAt": "2026-04-19T12:00:00.000000000Z"
+      }
+order: 1000

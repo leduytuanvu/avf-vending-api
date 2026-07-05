@@ -1,0 +1,24 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 503
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "capability_not_configured",
+          "details": {
+            "capability": "v1.commerce.payment_session.outbox",
+            "implemented": false
+          },
+          "message": "commerce outbox defaults are not configured",
+          "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+order: 7000

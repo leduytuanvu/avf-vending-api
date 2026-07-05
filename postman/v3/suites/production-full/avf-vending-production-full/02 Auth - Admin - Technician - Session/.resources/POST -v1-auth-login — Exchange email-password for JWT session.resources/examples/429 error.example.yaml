@@ -1,0 +1,23 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 429
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "rate_limited",
+          "details": {
+            "retry_after_seconds": 60
+          },
+          "message": "too many requests",
+          "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+order: 4000

@@ -1,0 +1,14 @@
+$kind: http-request
+name: REST-AUTH-004 — GET /v1/auth/me without token
+url: "{{baseUrl}}/v1/auth/me"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(401);
+      });
+    language: text/javascript
+order: 4000

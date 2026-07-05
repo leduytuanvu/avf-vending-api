@@ -1,0 +1,33 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "anomalyType": "machine_offline_too_long",
+            "createdAt": "2026-04-29T12:00:00.000000000Z",
+            "detectedAt": "2026-04-29T12:00:00.000000000Z",
+            "fingerprint": "offline_long|7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "machineName": "Lobby A",
+            "machineSerialNumber": "SN-001",
+            "payload": {
+              "last_seen_at": "2026-04-29T08:00:00Z",
+              "threshold": "2 hours"
+            },
+            "status": "open",
+            "updatedAt": "2026-04-29T12:00:00.000000000Z"
+          }
+        ]
+      }
+order: 1000

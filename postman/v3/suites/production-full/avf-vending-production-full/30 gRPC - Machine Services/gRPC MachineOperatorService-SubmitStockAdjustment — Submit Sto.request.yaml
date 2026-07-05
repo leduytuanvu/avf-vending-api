@@ -1,0 +1,59 @@
+$kind: http-request
+name: gRPC MachineOperatorService/SubmitStockAdjustment — Submit Stock Adjustment
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineOperatorService/SubmitStockAdjustment`
+  - **Proto:** `proto/avf/machine/v1/operator_grpc.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** machine
+
+  **Metadata:** authorization: Bearer {{machineToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "adjustment": {
+      "context": {
+        "idempotency_key": "{{idempotencyKey}}",
+        "client_event_id": "{{clientEventId}}",
+        "client_created_at": {},
+        "operator_session_id": "{{operatorSessionId}}"
+      },
+      "reason": "string",
+      "lines": {
+        "planogram_id": "{{planogramId}}",
+        "slot_index": 1,
+        "quantity_before": 1,
+        "quantity_after": 1,
+        "reason_code": "string",
+        "cabinet_code": "string",
+        "slot_code": "string",
+        "product_id": "{{productId}}"
+      }
+    }
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "adjustment": {
+      "replay": false,
+      "event_ids": 1
+    }
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 58000

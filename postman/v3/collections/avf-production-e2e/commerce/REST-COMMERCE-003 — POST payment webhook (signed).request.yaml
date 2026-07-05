@@ -1,0 +1,36 @@
+$kind: http-request
+url: "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payments/{{paymentId}}/webhooks"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |
+    {
+      "webhook_event_id": "{{webhookEventId}}",
+      "provider": "stripe",
+      "provider_reference": "pi_e2e_prod_{{runId}}",
+      "status": "succeeded",
+      "amount_minor": 15000,
+      "currency": "VND",
+      "metadata": {
+        "source": "e2e_prod_manifest"
+      }
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const secret = pm.environment.get('webhookSecret') || '';
+      const body = pm.request.body ? (pm.request.body.raw || '') : '';
+      const ts = Math.floor(Date.now() / 1000).toString();
+      const sig = CryptoJS.HmacSHA256(ts + '.' + body, secret).toString(CryptoJS.enc.Hex);
+      pm.request.headers.upsert({ key: 'X-AVF-Webhook-Timestamp', value: ts });
+      pm.request.headers.upsert({ key: 'X-AVF-Webhook-Signature', value: sig });
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 3000
