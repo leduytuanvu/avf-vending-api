@@ -82,13 +82,22 @@ def main() -> int:
     record("GET /v1/auth/me", st == 200, http_status=st)
 
     # Resolve test machine from bootstrap entity registry if present
-    reg_path = report_dir() / "ENTITY_REGISTRY.json"
+    reg_path = report_dir() / "PRODUCTION_TEST_ENTITY_REGISTRY.json"
     machine_id = os.environ.get("TEST_MACHINE_ID", "")
     machine_code = os.environ.get("TEST_MACHINE_CODE", "")
     if reg_path.is_file():
         reg = json.loads(reg_path.read_text(encoding="utf-8"))
-        machine_id = machine_id or str(reg.get("machine_id", ""))
-        machine_code = machine_code or str(reg.get("machine_code", ""))
+        machine_id = machine_id or str((reg.get("entities") or {}).get("machineId", {}).get("id", ""))
+
+    if machine_id and not machine_code:
+        st_m, machine_raw, _ = http_request(
+            "GET",
+            f"{base_url}/v1/admin/machines/{machine_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        if st_m == 200:
+            machine_doc = json.loads(machine_raw)
+            machine_code = str(machine_doc.get("code") or machine_doc.get("machineCode") or "")
 
     if not machine_code:
         print("No TEST_MACHINE_CODE or bootstrap registry — run bootstrap first", file=sys.stderr)
