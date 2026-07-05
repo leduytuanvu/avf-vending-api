@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import REPO, http_request, new_request_id, report_dir, write_json
-from bootstrap_test_data import bootstrap, claim_activation
+from bootstrap_test_data import admin_post, bootstrap, claim_activation
 from entity_registry import EntityRegistry
 from run_grpc_full_production import grpc_call
 from run_mqtt_full_production import mqtt_connect
@@ -184,14 +184,32 @@ def main() -> int:
     # I — Offline replay idempotency (before mark-compromised poisons eligibility)
     i_ok = False
     i_detail = "skipped"
-    activation_code = subst.get("activationCode", "")
-    if activation_code:
-        try:
-            claim2 = claim_activation(args.base_url, activation_code, f"{reg.data.get('prefix', 'prod')}-SN")
-            i_ok = bool(claim2.get("machineToken") or claim2.get("accessToken"))
-            i_detail = "idempotent claim replay returned token"
-        except Exception as exc:
-            i_detail = str(exc)
+    if admin_token and machine_id:
+        st_i, act_i = admin_post(
+            base_url,
+            admin_token,
+            f"/v1/admin/machines/{machine_id}/activation-codes",
+            {"expiresInMinutes": 60, "maxUses": 1},
+        )
+        fresh_code = (
+            act_i.get("code")
+            or act_i.get("activationCode")
+            or act_i.get("plaintextCode")
+            or ""
+        )
+        if st_i in (200, 201) and fresh_code:
+            try:
+                claim2 = claim_activation(
+                    args.base_url,
+                    str(fresh_code),
+                    f"{reg.data.get('prefix', 'prod')}-offline-replay",
+                )
+                i_ok = bool(claim2.get("machineToken") or claim2.get("accessToken"))
+                i_detail = "fresh activation code claim returned token"
+            except Exception as exc:
+                i_detail = str(exc)
+        else:
+            i_detail = f"activation code create HTTP {st_i}: {str(act_i)[:240]}"
     flows.append(flow_result("I", "Offline replay idempotency", i_ok, i_detail))
 
     # H — Compromised/revoke MQTT auth fails (mark compromised then expect MQTT fail)

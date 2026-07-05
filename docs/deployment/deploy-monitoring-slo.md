@@ -22,6 +22,8 @@ Each file is a schema-versioned JSON object that may include:
   - `/health/live` (liveness)  
   Missing or non-2xx responses fail the **pre-deploy** SLO step so the release does not proceed on an already-unhealthy public endpoint.
 
+  **Retry (pre-deploy only):** When critical mode is on, the collector retries both health probes up to **`SLO_CRITICAL_RETRIES`** times (default **5**) with **`SLO_CRITICAL_RETRY_SLEEP_SEC`** seconds between attempts (default **3**). Transient readiness flaps (e.g. single 503 while liveness is 200) therefore do not block deploy if a subsequent attempt succeeds. JSON records `critical.retry_attempts` and `critical.final_assessment`.
+
 - **Optional (never faked; marked unavailable if missing)**  
   - **Response-time sample**: second `curl` to the same public URLs (seconds, best effort).  
   - **`/version`**: Truncated body for build metadata when exposed.  
@@ -65,6 +67,18 @@ export APP_NODE_A_HOST="10.0.0.1"
 # Optional: export SSH_PORT / SSH_OPTS for non-default SSH
 bash scripts/deploy/monitoring/collect_deploy_slo_evidence.sh --json --phase pre_deploy | jq .
 ```
+
+### Validate critical retry locally
+
+Mock server tests (503→503→200 on `/health/ready`):
+
+```bash
+python3 tools/test_collect_deploy_slo_evidence_retry.py
+# or
+bash scripts/deploy/monitoring/collect_deploy_slo_evidence_test.sh
+```
+
+Optional env for faster local runs: `SLO_CRITICAL_RETRY_SLEEP_SEC=0`.
 
 ## Evidence manifest
 

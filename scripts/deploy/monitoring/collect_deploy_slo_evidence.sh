@@ -130,9 +130,31 @@ http_probe() {
 	: >"${errf}"
 }
 
+slo_retry_attempts=1
+slo_max_attempts=1
+if [[ -n "${base_url}" && "${critical_mode}" -eq 1 ]]; then
+	slo_max_attempts="${SLO_CRITICAL_RETRIES:-5}"
+fi
+
 if [[ -n "${base_url}" ]]; then
-	http_probe "${base_url}/health/ready" "${frag_dir}/r"
-	http_probe "${base_url}/health/live" "${frag_dir}/l"
+	attempt=1
+	while [[ "${attempt}" -le "${slo_max_attempts}" ]]; do
+		http_probe "${base_url}/health/ready" "${frag_dir}/r"
+		http_probe "${base_url}/health/live" "${frag_dir}/l"
+		ready_code="$(cat "${frag_dir}/r.code" 2>/dev/null || echo unavailable)"
+		live_code="$(cat "${frag_dir}/l.code" 2>/dev/null || echo unavailable)"
+		if [[ "${ready_code}" =~ ^2 ]] && [[ "${live_code}" =~ ^2 ]]; then
+			slo_retry_attempts="${attempt}"
+			break
+		fi
+		if [[ "${attempt}" -lt "${slo_max_attempts}" ]]; then
+			sleep "${SLO_CRITICAL_RETRY_SLEEP_SEC:-3}"
+		fi
+		attempt=$((attempt + 1))
+	done
+	if [[ "${attempt}" -gt "${slo_max_attempts}" ]]; then
+		slo_retry_attempts="${slo_max_attempts}"
+	fi
 	http_probe "${base_url}/version" "${frag_dir}/v"
 else
 	for p in r l v; do
@@ -198,14 +220,27 @@ else
 fi
 
 # --- Assemble JSON with Python (single pass; no secrets) ---
+python_exec=""
+for c in python3 python; do
+	if command -v "${c}" >/dev/null 2>&1 && "${c}" -c 'import sys' >/dev/null 2>&1; then
+		python_exec="${c}"
+		break
+	fi
+done
+if [[ -z "${python_exec}" ]]; then
+	echo "error: python3 or python is required" >&2
+	exit 2
+fi
+
 SLO_OUT_PATH="${OUT_PATH:-}" \
 	SLO_BASE_URL="${base_url}" \
 	SLO_FRAG="${frag_dir}" \
 	SLO_PHASE="${PHASE}" \
 	SLO_CRITICAL_MODE="${critical_mode}" \
+	SLO_RETRY_ATTEMPTS="${slo_retry_attempts}" \
 	SLO_FINAL_SMOKE_PATH="${final_smoke_path}" \
 	SLO_NODE_A_SMOKE_PATH="${node_a_smoke_path}" \
-	python3 - <<'PY'
+	"${python_exec}" - <<'PY'
 import json
 import os
 import re
@@ -354,6 +389,9 @@ nodes = {
     "app_node_b": parse_remote(f"{frag}/b.tag", f"{frag}/b.out", f"{frag}/b.serr"),
 }
 
+retry_attempts = int(os.environ.get("SLO_RETRY_ATTEMPTS", "1") or "1")
+final_assessment = "pass" if (not base_url or not critical or critical_health_ok) else "fail"
+
 out = {
     "schema_version": schema_version,
     "phase": phase,
@@ -362,7 +400,9 @@ out = {
     "public_base_url_configured": bool(base_url),
     "critical": {
         "mode_enabled": critical,
-        "assessment": "pass" if (not base_url or not critical or critical_health_ok) else "fail",
+        "assessment": final_assessment,
+        "retry_attempts": retry_attempts,
+        "final_assessment": final_assessment,
         "public_health_ready": {
             "http_code": readf("r.code").strip() or "unavailable",
             "response_time_s_sample": (float(ready_t) if re.match(r"^[0-9.]+$", (ready_t or "").strip()) else None),

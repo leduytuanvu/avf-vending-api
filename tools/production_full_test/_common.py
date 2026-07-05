@@ -74,14 +74,13 @@ def test_prefix() -> str:
     return f"ENTERPRISE_PROD_TEST_{utc_stamp()}_{suffix}"
 
 
-PRODUCTION_MACHINE_CODE_RE = re.compile(r"^AVF[0-9]{6,}$")
+PRODUCTION_MACHINE_CODE_RE = re.compile(r"^AVF[0-9]{6}$")
 
 
 def production_machine_code() -> str:
-    """Machine code required in production: ^AVF[0-9]{6,}$."""
-    digits = "".join(c for c in utc_stamp() if c.isdigit())
+    """Machine code for production test bootstrap: ^AVF[0-9]{6}$."""
     n = uuid.uuid4().int % 1_000_000
-    return f"AVF{digits}{n:06d}"
+    return f"AVF{n:06d}"
 
 
 def redact(text: str) -> str:
