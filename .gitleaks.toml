@@ -44,4 +44,5 @@ paths = [
   '''postman/suites/production-full/avf-vending-production\.full\.postman_environment\.json''',
   '''postman/collections/avf-vending-production-full\.postman_collection\.json''',
   '''postman/environments/avf-production-full\.postman_environment\.json''',
+  '''postman/v3/suites/production-full/''',
 ]
