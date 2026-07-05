@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "eventKind": "command_attempt",
+            "occurredAt": "2026-04-29T12:00:00.000000000Z",
+            "payload": {
+              "status": "sent"
+            },
+            "refId": "cccccccc-dddd-eeee-ffff-000000000001",
+            "title": "Attempt sent"
+          }
+        ]
+      }
+order: 1000

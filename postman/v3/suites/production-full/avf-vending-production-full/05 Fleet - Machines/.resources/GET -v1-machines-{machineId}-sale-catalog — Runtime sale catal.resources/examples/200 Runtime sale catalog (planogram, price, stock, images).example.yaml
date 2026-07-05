@@ -1,0 +1,43 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "configVersion": 7,
+        "currency": "VND",
+        "generatedAt": "2026-04-24T00:00:00Z",
+        "items": [
+          {
+            "availableQuantity": 8,
+            "cabinetCode": "A",
+            "image": {
+              "contentHash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "displayUrl": "https://cdn.example.com/products/coca330-display.webp",
+              "thumbUrl": "https://cdn.example.com/products/coca330-thumb.webp",
+              "updatedAt": "2026-04-24T00:00:00Z"
+            },
+            "isAvailable": true,
+            "maxQuantity": 12,
+            "name": "Coca Cola 330ml",
+            "priceMinor": 15000,
+            "productId": "22222222-3333-4444-5555-666666666666",
+            "shortName": "Coca 330",
+            "sku": "COCA330",
+            "slotCode": "A3",
+            "slotIndex": 3,
+            "sortOrder": 10,
+            "unavailableReason": null
+          }
+        ],
+        "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "siteId": "11111111-2222-3333-4444-555555555555"
+      }
+order: 1000

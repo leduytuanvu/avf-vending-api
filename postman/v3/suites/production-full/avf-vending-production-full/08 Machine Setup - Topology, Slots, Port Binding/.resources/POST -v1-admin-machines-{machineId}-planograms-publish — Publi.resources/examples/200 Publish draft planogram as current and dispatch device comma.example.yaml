@@ -1,0 +1,24 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "command": {
+          "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+          "dispatchState": "published",
+          "replay": false,
+          "sequence": 43
+        },
+        "desiredConfigVersion": 7,
+        "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "planogramRevision": 3
+      }
+order: 1000

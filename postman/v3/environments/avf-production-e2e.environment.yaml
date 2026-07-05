@@ -32,6 +32,10 @@ values:
   value: ''
   enabled: true
   type: default
+- key: machineCode
+  value: ''
+  enabled: true
+  type: default
 - key: activationCode
   value: ''
   enabled: true

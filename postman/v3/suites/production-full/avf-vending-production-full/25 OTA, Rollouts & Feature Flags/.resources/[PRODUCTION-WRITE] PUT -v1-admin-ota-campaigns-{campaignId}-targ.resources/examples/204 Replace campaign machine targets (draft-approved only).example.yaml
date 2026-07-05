@@ -1,0 +1,14 @@
+$kind: http-example
+name: 204 Replace campaign machine targets (draft/approved only)
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 204
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: "{}"
+order: 1000

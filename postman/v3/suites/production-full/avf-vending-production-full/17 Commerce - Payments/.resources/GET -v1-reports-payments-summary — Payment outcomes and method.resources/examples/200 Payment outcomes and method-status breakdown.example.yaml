@@ -1,0 +1,30 @@
+$kind: http-example
+name: 200 Payment outcomes and method/status breakdown
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "breakdown": [],
+        "from": "2026-04-01T00:00:00Z",
+        "groupBy": "day",
+        "summary": {
+          "authorizedAmountMinor": 10200,
+          "authorizedCount": 10,
+          "capturedAmountMinor": 10000,
+          "capturedCount": 48,
+          "failedAmountMinor": 400,
+          "failedCount": 2,
+          "refundedAmountMinor": 0,
+          "refundedCount": 0
+        },
+        "to": "2026-04-20T00:00:00Z"
+      }
+order: 1000

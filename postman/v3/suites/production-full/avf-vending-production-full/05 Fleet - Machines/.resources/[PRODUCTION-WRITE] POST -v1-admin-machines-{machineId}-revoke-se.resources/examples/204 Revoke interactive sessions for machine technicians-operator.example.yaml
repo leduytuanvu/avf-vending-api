@@ -1,0 +1,14 @@
+$kind: http-example
+name: 204 Revoke interactive sessions for machine technicians/operator
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 204
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: "{}"
+order: 1000

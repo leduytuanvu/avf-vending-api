@@ -1,0 +1,28 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 201
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "cashMinor": 60000,
+        "closeDate": "2026-04-27",
+        "createdAt": "2026-04-27T18:00:00.000000000Z",
+        "discountMinor": 0,
+        "failedMinor": 200,
+        "grossSalesMinor": 100000,
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "idempotencyKey": "REPLACE_ME",
+        "netMinor": 99500,
+        "pendingMinor": 300,
+        "qrWalletMinor": 40000,
+        "refundMinor": 500,
+        "timezone": "Asia/Bangkok"
+      }
+order: 1000

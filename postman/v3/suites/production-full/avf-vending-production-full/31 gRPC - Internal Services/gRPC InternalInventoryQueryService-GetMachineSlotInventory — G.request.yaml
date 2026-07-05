@@ -1,0 +1,50 @@
+$kind: http-request
+name: gRPC InternalInventoryQueryService/GetMachineSlotInventory — Get Machine Slot Inventory
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalInventoryQueryService/GetMachineSlotInventory`
+  - **Proto:** `proto/avf/internal/v1/inventory_query.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** internal
+
+  **Metadata:** authorization: Bearer {{accessToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}"
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "legacy_slots": {
+      "planogram_id": "{{planogramId}}",
+      "planogram_name": "string",
+      "slot_index": 1,
+      "current_quantity": 1,
+      "max_quantity": 1,
+      "price_minor": 1,
+      "product_id": {},
+      "product_sku": "string",
+      "product_name": "string",
+      "planogram_revision": 1
+    }
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 4000

@@ -1,0 +1,25 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "exceptionKind": "low_stock",
+        "from": "2026-04-01T00:00:00.000000000Z",
+        "items": [],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 0,
+          "total": 0
+        },
+        "to": "2026-04-20T00:00:00.000000000Z"
+      }
+order: 1000

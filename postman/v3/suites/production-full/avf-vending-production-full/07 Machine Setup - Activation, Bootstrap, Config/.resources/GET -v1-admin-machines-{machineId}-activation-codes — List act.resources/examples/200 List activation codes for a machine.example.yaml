@@ -1,0 +1,28 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "activationCodeId": "11111111-2222-3333-4444-555555555555",
+            "createdAt": "2026-04-23T00:00:00Z",
+            "expiresAt": "2026-04-24T00:00:00Z",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "maxUses": 1,
+            "notes": "Field install",
+            "remainingUses": 1,
+            "status": "active",
+            "uses": 0
+          }
+        ]
+      }
+order: 1000

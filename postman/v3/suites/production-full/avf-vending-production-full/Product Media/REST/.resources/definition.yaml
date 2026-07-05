@@ -1,3 +1,0 @@
-$kind: collection
-description: HTTP requests from OpenAPI (docs/swagger/swagger.json)
-order: 1000

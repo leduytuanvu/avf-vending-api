@@ -1,0 +1,69 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "active": true,
+        "ageRestricted": false,
+        "allergenCodes": [],
+        "attrs": {},
+        "barcode": "8850123456789",
+        "brandId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "categoryId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "description": "Example product",
+        "id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+        "media": {
+          "primary": {
+            "id": "11111111-2222-3333-4444-555555555555",
+            "status": "ready",
+            "variants": [
+              {
+                "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+                "height": 160,
+                "mimeType": "image/webp",
+                "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                "sizeBytes": 8000,
+                "variant": "thumb",
+                "version": 1,
+                "width": 160
+              },
+              {
+                "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+                "height": 512,
+                "mimeType": "image/webp",
+                "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+                "sizeBytes": 24000,
+                "variant": "display",
+                "version": 2,
+                "width": 512
+              }
+            ],
+            "version": 1
+          }
+        },
+        "name": "Cola 12oz",
+        "primaryMediaId": "11111111-2222-3333-4444-555555555555",
+        "sku": "COLA-12",
+        "status": "active",
+        "tags": [
+          {
+            "active": true,
+            "createdAt": "2026-01-01T00:00:00Z",
+            "id": "cccccccc-dddd-eeee-ffff-000000000000",
+            "name": "Cold drink example",
+            "slug": "cold-drink-example",
+            "updatedAt": "2026-04-19T10:00:00Z"
+          }
+        ],
+        "updatedAt": "2026-04-19T10:00:00Z"
+      }
+order: 1000

@@ -1,0 +1,19 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "outbox_event_id": 9001,
+        "payment_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "payment_state": "created",
+        "replay": false
+      }
+order: 1000

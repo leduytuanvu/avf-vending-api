@@ -1,0 +1,3 @@
+$kind: collection
+description: Device subscribe to commands topic.
+order: 32000

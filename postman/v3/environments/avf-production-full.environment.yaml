@@ -1,11 +1,87 @@
-name: AVF Production
+name: AVF Vending Production (Full)
 values:
 - key: baseUrl
   value: https://api.ldtv.dev
   enabled: true
   type: default
+- key: base_url
+  value: https://api.ldtv.dev
+  enabled: true
+  type: default
+- key: publicBaseUrl
+  value: https://api.ldtv.dev
+  enabled: true
+  type: default
+- key: grpcTarget
+  value: machine-api.ldtv.dev:443
+  enabled: true
+  type: default
+- key: machineApiBaseUrl
+  value: https://api.ldtv.dev
+  enabled: true
+  type: default
+- key: machineGrpcTarget
+  value: machine-api.ldtv.dev:443
+  enabled: true
+  type: default
+- key: grpcHost
+  value: machine-api.ldtv.dev
+  enabled: true
+  type: default
+- key: grpcPort
+  value: '443'
+  enabled: true
+  type: default
+- key: mqttBrokerUrl
+  value: tls://mqtt.ldtv.dev:8883
+  enabled: true
+  type: default
+- key: mqttHost
+  value: mqtt.ldtv.dev
+  enabled: true
+  type: default
+- key: mqttPort
+  value: '8883'
+  enabled: true
+  type: default
+- key: mqttTopicPrefix
+  value: avf/devices
+  enabled: true
+  type: default
+- key: mqtt_topic_prefix
+  value: avf/devices
+  enabled: true
+  type: default
+- key: mqttTopicLayout
+  value: enterprise
+  enabled: true
+  type: default
+- key: mqtt_topic_layout
+  value: enterprise
+  enabled: true
+  type: default
+- key: appEnv
+  value: production
+  enabled: true
+  type: default
+- key: app_env
+  value: production
+  enabled: true
+  type: default
+- key: env_name
+  value: production
+  enabled: true
+  type: default
+- key: payment_env
+  value: live
+  enabled: true
+  type: default
+- key: auth_type
+  value: public
+  enabled: true
+  type: default
 - key: adminEmail
-  value: admin@ldtv.dev
+  value: ''
   enabled: true
   type: default
 - key: adminPassword
@@ -20,39 +96,63 @@ values:
   value: ''
   enabled: true
   type: default
-- key: accountId
+- key: tokenExpiresAt
   value: ''
   enabled: true
   type: default
-- key: allowGatedWrites
-  value: 'false'
-  enabled: true
-  type: default
-- key: confirmProductionWrites
+- key: technicianEmail
   value: ''
   enabled: true
   type: default
-- key: allow_destructive
-  value: 'false'
+- key: technicianPassword
+  value: ''
   enabled: true
   type: default
-- key: canaryMode
-  value: 'false'
+- key: technicianToken
+  value: ''
   enabled: true
   type: default
-- key: readiness
-  value: 'true'
+- key: technicianRefreshToken
+  value: ''
+  enabled: true
+  type: default
+- key: machineToken
+  value: ''
+  enabled: true
+  type: default
+- key: machineRefreshToken
+  value: ''
+  enabled: true
+  type: default
+- key: companyId
+  value: ''
+  enabled: true
+  type: default
+- key: siteId
+  value: ''
+  enabled: true
+  type: default
+- key: machineId
+  value: ''
+  enabled: true
+  type: default
+- key: machineCode
+  value: AVF000001
+  enabled: true
+  type: default
+- key: hardwareProfileId
+  value: ''
   enabled: true
   type: default
 - key: categoryId
   value: ''
   enabled: true
   type: default
-- key: brandId
+- key: tagId
   value: ''
   enabled: true
   type: default
-- key: tagId
+- key: brandId
   value: ''
   enabled: true
   type: default
@@ -64,18 +164,6 @@ values:
   value: ''
   enabled: true
   type: default
-- key: machineId
-  value: ''
-  enabled: true
-  type: default
-- key: siteId
-  value: ''
-  enabled: true
-  type: default
-- key: assortmentId
-  value: ''
-  enabled: true
-  type: default
 - key: planogramId
   value: ''
   enabled: true
@@ -84,55 +172,19 @@ values:
   value: ''
   enabled: true
   type: default
-- key: priceBookId
+- key: inventoryEventId
   value: ''
   enabled: true
   type: default
-- key: grpcHost
-  value: api.ldtv.dev
-  enabled: true
-  type: default
-- key: grpcPort
-  value: '443'
-  enabled: true
-  type: default
-- key: mqttHost
-  value: api.ldtv.dev
-  enabled: true
-  type: default
-- key: mqttPort
-  value: '8883'
-  enabled: true
-  type: default
-- key: mqttUsername
+- key: orderId
   value: ''
   enabled: true
   type: default
-- key: mqttPassword
+- key: paymentId
   value: ''
   enabled: true
   type: default
-- key: mqttTopicPrefix
-  value: avf/prod
-  enabled: true
-  type: default
-- key: platformAdminEmail
-  value: ''
-  enabled: true
-  type: default
-- key: platformAdminPassword
-  value: ''
-  enabled: true
-  type: default
-- key: machineCode
-  value: ''
-  enabled: true
-  type: default
-- key: machineSerial
-  value: ''
-  enabled: true
-  type: default
-- key: machineToken
+- key: vendSessionId
   value: ''
   enabled: true
   type: default
@@ -140,39 +192,7 @@ values:
   value: ''
   enabled: true
   type: default
-- key: sku
-  value: ''
-  enabled: true
-  type: default
-- key: slotIndex
-  value: '1'
-  enabled: true
-  type: default
-- key: orderId
-  value: ''
-  enabled: true
-  type: default
-- key: paymentSessionId
-  value: ''
-  enabled: true
-  type: default
-- key: paymentProvider
-  value: ''
-  enabled: true
-  type: default
-- key: paymentWebhookSecret
-  value: ''
-  enabled: true
-  type: default
-- key: commandId
-  value: ''
-  enabled: true
-  type: default
-- key: operatorSessionId
-  value: ''
-  enabled: true
-  type: default
-- key: promotionId
+- key: activationCodeId
   value: ''
   enabled: true
   type: default
@@ -180,19 +200,107 @@ values:
   value: ''
   enabled: true
   type: default
-- key: catalogVersion
+- key: assignmentId
   value: ''
   enabled: true
   type: default
-- key: mediaManifestVersion
+- key: commandId
   value: ''
   enabled: true
   type: default
-- key: reportId
+- key: artifactId
   value: ''
   enabled: true
   type: default
-- key: idempotencyKey
+- key: reportExportId
+  value: ''
+  enabled: true
+  type: default
+- key: rolloutId
+  value: ''
+  enabled: true
+  type: default
+- key: featureFlagId
+  value: ''
+  enabled: true
+  type: default
+- key: providerId
+  value: ''
+  enabled: true
+  type: default
+- key: cabinetCode
+  value: A
+  enabled: true
+  type: default
+- key: slotCode
+  value: A1
+  enabled: true
+  type: default
+- key: slotIndex
+  value: '1'
+  enabled: true
+  type: default
+- key: currency
+  value: VND
+  enabled: true
+  type: default
+- key: testProductName
+  value: Test Product
+  enabled: true
+  type: default
+- key: testProductPrice
+  value: '10000'
+  enabled: true
+  type: default
+- key: testStockQty
+  value: '10'
+  enabled: true
+  type: default
+- key: allowGatedWrites
+  value: 'false'
+  enabled: true
+  type: default
+- key: confirmProductionWrites
+  value: ''
+  enabled: true
+  type: default
+- key: allowDestructiveOps
+  value: 'false'
+  enabled: true
+  type: default
+- key: allow_destructive
+  value: 'false'
+  enabled: true
+  type: default
+- key: allowLiveCash
+  value: 'false'
+  enabled: true
+  type: default
+- key: allowLiveVend
+  value: 'false'
+  enabled: true
+  type: default
+- key: allowWebhookTests
+  value: ''
+  enabled: true
+  type: default
+- key: allowMqttPublish
+  value: 'false'
+  enabled: true
+  type: default
+- key: allowGrpcMutation
+  value: 'false'
+  enabled: true
+  type: default
+- key: allow_mutation
+  value: 'false'
+  enabled: true
+  type: default
+- key: allow_production_mutation
+  value: 'false'
+  enabled: true
+  type: default
+- key: confirm_production_run
   value: ''
   enabled: true
   type: default
@@ -204,39 +312,155 @@ values:
   value: ''
   enabled: true
   type: default
-- key: grpcAddr
+- key: idempotencyKey
   value: ''
   enabled: true
   type: default
-- key: grpcUseReflection
-  value: 'false'
+- key: postmanRunId
+  value: ''
+  enabled: true
+  type: default
+- key: testRunId
+  value: ''
+  enabled: true
+  type: default
+- key: randomSuffix
+  value: ''
+  enabled: true
+  type: default
+- key: defaultTimezone
+  value: Asia/Ho_Chi_Minh
+  enabled: true
+  type: default
+- key: defaultCountry
+  value: VN
   enabled: true
   type: default
 - key: mqttClientId
+  value: avf-machine-{{machineId}}
+  enabled: true
+  type: default
+- key: mqttUsername
   value: ''
   enabled: true
   type: default
-- key: webhookSecret
+- key: mqttPassword
   value: ''
   enabled: true
   type: default
-- key: canary_machine_id
-  value: ''
+- key: mqttTlsEnabled
+  value: 'true'
   enabled: true
   type: default
-- key: canary_operator_id
-  value: ''
-  enabled: true
-  type: default
-- key: canary_product_id
-  value: ''
-  enabled: true
-  type: default
-- key: canary_slot_index
+- key: mqttQos
   value: '1'
   enabled: true
   type: default
-- key: canary_site_id
+- key: mqttRetain
+  value: 'false'
+  enabled: true
+  type: default
+- key: webhookSignature
+  value: ''
+  enabled: true
+  type: default
+- key: webhookTimestamp
+  value: ''
+  enabled: true
+  type: default
+- key: wrongMachineId
+  value: 00000000-0000-4000-8000-000000000001
+  enabled: true
+  type: default
+- key: canaryMode
+  value: 'false'
+  enabled: true
+  type: default
+- key: readiness
+  value: 'true'
+  enabled: true
+  type: default
+- key: campaignId
+  value: ''
+  enabled: true
+  type: default
+- key: caseId
+  value: ''
+  enabled: true
+  type: default
+- key: eventId
+  value: ''
+  enabled: true
+  type: default
+- key: event_id
+  value: ''
+  enabled: true
+  type: default
+- key: event_time
+  value: ''
+  enabled: true
+  type: default
+- key: now_iso
+  value: ''
+  enabled: true
+  type: default
+- key: resource_uuid
+  value: ''
+  enabled: true
+  type: default
+- key: refundId
+  value: ''
+  enabled: true
+  type: default
+- key: priceBookId
+  value: ''
+  enabled: true
+  type: default
+- key: promotionId
+  value: ''
+  enabled: true
+  type: default
+- key: batchId
+  value: ''
+  enabled: true
+  type: default
+- key: operatorSessionId
+  value: ''
+  enabled: true
+  type: default
+- key: outboxId
+  value: ''
+  enabled: true
+  type: default
+- key: resourceId
+  value: ''
+  enabled: true
+  type: default
+- key: catalogVersion
+  value: ''
+  enabled: true
+  type: default
+- key: mediaManifestVersion
+  value: ''
+  enabled: true
+  type: default
+- key: sessionId
+  value: ''
+  enabled: true
+  type: default
+- key: receiptId
+  value: ''
+  enabled: true
+  type: default
+- key: configId
+  value: ''
+  enabled: true
+  type: default
+- key: assortmentId
+  value: ''
+  enabled: true
+  type: default
+- key: anomalyId
   value: ''
   enabled: true
   type: default
@@ -244,23 +468,63 @@ values:
   value: ''
   enabled: true
   type: default
-- key: cloudinaryEnabled
-  value: 'true'
-  enabled: true
-  type: default
-- key: productImageFileNote
-  value: Select file manually in Postman form-data
-  enabled: true
-  type: default
-- key: _runtimeRequestId
+- key: clientEventId
   value: ''
   enabled: true
   type: default
-- key: _runtimeCorrelationId
+- key: simulationRunId
   value: ''
   enabled: true
   type: default
-- key: _runtimeIdempotencyKey
+- key: collectionId
+  value: ''
+  enabled: true
+  type: default
+- key: machineSlotLayoutId
+  value: ''
+  enabled: true
+  type: default
+- key: mediaAssetId
+  value: ''
+  enabled: true
+  type: default
+- key: publishedPlanogramVersionId
+  value: ''
+  enabled: true
+  type: default
+- key: acknowledgedPlanogramVersionId
+  value: ''
+  enabled: true
+  type: default
+- key: accountId
+  value: ''
+  enabled: true
+  type: default
+- key: actorId
+  value: ''
+  enabled: true
+  type: default
+- key: targetId
+  value: ''
+  enabled: true
+  type: default
+- key: flagId
+  value: ''
+  enabled: true
+  type: default
+- key: codeId
+  value: ''
+  enabled: true
+  type: default
+- key: closeId
+  value: ''
+  enabled: true
+  type: default
+- key: bootId
+  value: ''
+  enabled: true
+  type: default
+- key: bundleId
   value: ''
   enabled: true
   type: default

@@ -1,0 +1,32 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "at": "2026-04-24T12:00:00.000000000Z",
+        "lines": [
+          {
+            "appliedPromotionIds": [
+              "10101010-1010-1010-1010-101010101010"
+            ],
+            "appliedRuleIds": [
+              "promotion_rule:20202020-2020-2020-2020-202020202020"
+            ],
+            "basePriceMinor": 150,
+            "currency": "USD",
+            "discountMinor": 15,
+            "finalPriceMinor": 135,
+            "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+            "skippedRules": []
+          }
+        ]
+      }
+order: 1000

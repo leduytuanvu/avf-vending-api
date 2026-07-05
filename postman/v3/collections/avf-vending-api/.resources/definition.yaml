@@ -390,7 +390,7 @@ scripts:
       }
     language: text/javascript
 auth:
-  - id: ad18f8a6-5370-4048-ad6a-f7a239493a95
+  - id: a737ec7f-c5c8-4f9a-9d6c-212449d1bc10
     type: bearer
     name: bearer auth
     credentials:

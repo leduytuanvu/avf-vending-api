@@ -1,0 +1,130 @@
+$kind: http-request
+name: GET /v1/admin/audit/events — List enterprise audit events
+description: |-
+  ## Purpose
+  List enterprise audit events
+
+  ## Auth mode
+  `admin` — required: accessToken (set via 02 Auth login)
+
+  ## Required variables
+  accessToken (set via 02 Auth login)
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Authorization: Bearer {{accessToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  - `action` (optional, string)
+  - `actorId` (optional, string)
+  - `actorType` (optional, string)
+  - `outcome` (optional, string)
+  - `resourceType` (optional, string)
+  - `resourceId` (optional, string)
+  - `machineId` (optional, string)
+  - `from` (optional, string)
+  - `to` (optional, string)
+  - `limit` (optional, integer)
+  - `offset` (optional, integer)
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `500`
+
+  ## Safety note
+  Read-only.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1AdminAuditEventsList`
+  - openapiKey: `GET /v1/admin/audit/events`
+  - production_write: no
+  - idempotency: no
+url: "{{baseUrl}}/v1/admin/audit/events"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+queryParams:
+  - key: action
+    value: string
+    disabled: true
+    description: Canonical action identifier filter
+  - key: actorId
+    value: "{{actorId}}"
+    disabled: true
+    description: Actor id substring filter
+  - key: actorType
+    value: string
+    disabled: true
+    description: Actor type filter (user, machine, system, payment_provider, webhook, service)
+  - key: outcome
+    value: string
+    disabled: true
+    description: Outcome filter (success, failure)
+  - key: resourceType
+    value: string
+    disabled: true
+    description: Resource type filter
+  - key: resourceId
+    value: "{{resourceId}}"
+    disabled: true
+    description: Resource id substring filter
+  - key: machineId
+    value: "{{machineId}}"
+    disabled: true
+    description: Machine UUID filter
+  - key: from
+    value: string
+    disabled: true
+    description: Include rows created at or after this time (RFC3339/RFC3339Nano)
+  - key: to
+    value: string
+    disabled: true
+    description: Include rows created before this time (RFC3339/RFC3339Nano)
+  - key: limit
+    value: "1"
+    disabled: true
+    description: Page size (default 50, max 500)
+  - key: offset
+    value: "1"
+    disabled: true
+    description: Row offset
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'admin');
+      pm.collectionVariables.set('requires_idempotency', 'false');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/GET -v1-admin-audit-events — List enterprise audit events.resources/examples
+order: 3000

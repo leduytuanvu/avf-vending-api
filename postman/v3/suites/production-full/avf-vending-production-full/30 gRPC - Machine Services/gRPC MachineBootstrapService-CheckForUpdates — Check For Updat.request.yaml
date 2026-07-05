@@ -1,0 +1,49 @@
+$kind: http-request
+name: gRPC MachineBootstrapService/CheckForUpdates — Check For Updates
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineBootstrapService/CheckForUpdates`
+  - **Proto:** `proto/avf/machine/v1/bootstrap.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** machine
+
+  **Metadata:** authorization: Bearer {{machineToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "catalog_fingerprint": "string",
+    "pricing_fingerprint": "string",
+    "planogram_fingerprint": "string",
+    "media_fingerprint": "string"
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "catalog_changed": false,
+    "pricing_changed": false,
+    "planogram_changed": false,
+    "media_changed": false,
+    "firmware_or_app_update_available": false,
+    "server_catalog_fingerprint": "string",
+    "server_pricing_fingerprint": "string",
+    "server_planogram_fingerprint": "string",
+    "server_media_fingerprint": "string"
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 7000

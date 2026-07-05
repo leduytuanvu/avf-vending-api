@@ -1,0 +1,34 @@
+$kind: http-request
+name: MQTT PUB {{mqttTopicPrefix}}/machines/{{machineId}}/presence — Device presence
+description: |
+  **MQTT manual test** (Postman Desktop → New → MQTT)
+
+  - **Broker:** `{{mqttBrokerUrl}}`
+  - **Client ID:** `{{mqttClientId}}`
+  - **Topic:** `{{mqttTopicPrefix}}/machines/{{machineId}}/presence`
+  - **Direction:** machine_publishes
+  - **QoS:** {{mqttQos}} | **Retain:** {{mqttRetain}}
+
+  **Payload (accepted):**
+  ```json
+  {
+    "schema_version": 1,
+    "machine_id": "{{machineId}}",
+    "event_type": "presence.online",
+    "occurred_at": "{{now_iso}}",
+    "dedupe_key": "presence:{{machineId}}"
+  }
+  ```
+
+  **Payload (rejected example):** invalid schema_version or wrong machine_id
+url: "{{mqttBrokerUrl}}"
+method: MQTT
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 7000

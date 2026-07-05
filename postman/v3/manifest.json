@@ -1,7 +1,7 @@
 {
   "schemaVersion": "postman-v3-yaml-generation-v1",
-  "generatedAt": "2026-07-05T15:51:13Z",
-  "sourceCommit": "d8c7a053b5bf36686dfdfdab07965fd26aed1b4b",
+  "generatedAt": "2026-07-05T20:00:26Z",
+  "sourceCommit": "68cc9a3f01f8a186aa57e1f489455a02976e8395",
   "sourceJsonCollections": [
     "postman/collections/avf-vending-api.postman_collection.json",
     "postman/collections/avf-vending-api-function-path.postman_collection.json",
@@ -30,16 +30,13 @@
   ],
   "counts": {
     "jsonRequests": 574,
-    "yamlRequests": 575,
-    "jsonVariables": 328,
-    "yamlVariables": 328
+    "yamlRequests": 574,
+    "jsonVariables": 330,
+    "yamlVariables": 330
   },
   "validation": {
-    "parityOk": false,
-    "parityErrors": [
-      "avf-vending-production.full.postman_collection.json: request count mismatch json=460 yaml=461",
-      "avf-vending-production.full.postman_collection.json: extra in v3: ['README \u2014 Import and Safety']"
-    ],
+    "parityOk": true,
+    "parityErrors": [],
     "postmanCliLint": {
       "postman/v3/collections/avf-vending-api": "pass",
       "postman/v3/collections/avf-vending-api-function-path": "pass",
