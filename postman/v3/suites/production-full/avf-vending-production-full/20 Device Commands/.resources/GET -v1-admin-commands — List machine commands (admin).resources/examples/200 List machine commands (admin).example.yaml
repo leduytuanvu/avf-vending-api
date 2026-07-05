@@ -1,0 +1,34 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "attemptCount": 1,
+            "commandId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+            "commandType": "SET_TEMPERATURE",
+            "createdAt": "2026-04-19T12:00:00Z",
+            "latestAttemptStatus": "sent",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "machineName": "Lobby A",
+            "machineSerialNumber": "SN-001",
+            "sequence": 42
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 42
+        }
+      }
+order: 1000

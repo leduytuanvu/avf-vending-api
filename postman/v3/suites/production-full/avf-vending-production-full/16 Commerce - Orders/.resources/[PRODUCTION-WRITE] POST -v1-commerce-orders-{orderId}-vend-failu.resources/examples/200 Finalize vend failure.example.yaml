@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "local_cash_refund_required": false,
+        "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "order_status": "failed",
+        "refund_required": true,
+        "vend_state": "failed"
+      }
+order: 1000

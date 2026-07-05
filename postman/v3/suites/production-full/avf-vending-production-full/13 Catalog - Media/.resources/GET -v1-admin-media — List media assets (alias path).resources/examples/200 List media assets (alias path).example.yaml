@@ -1,0 +1,35 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "created_at": "2026-01-01T00:00:00Z",
+            "etag": "W/\"etag1\"",
+            "id": "11111111-2222-3333-4444-555555555555",
+            "kind": "product_image",
+            "mime_type": "image/webp",
+            "object_version": 1,
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size_bytes": 12000,
+            "status": "ready",
+            "updated_at": "2026-04-19T10:00:00Z"
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "totalCount": 1
+        }
+      }
+order: 1000

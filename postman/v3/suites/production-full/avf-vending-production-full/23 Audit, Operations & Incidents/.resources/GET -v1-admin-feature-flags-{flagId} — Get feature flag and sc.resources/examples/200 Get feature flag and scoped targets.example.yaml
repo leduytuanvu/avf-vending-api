@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "flag": {
+          "createdAt": "2026-04-01T00:00:00Z",
+          "description": "Experimental UI",
+          "displayName": "Beta UI",
+          "enabled": false,
+          "flagKey": "kiosk.beta_ui",
+          "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+          "metadata": {},
+          "updatedAt": "2026-04-19T10:00:00Z"
+        },
+        "targets": []
+      }
+order: 1000

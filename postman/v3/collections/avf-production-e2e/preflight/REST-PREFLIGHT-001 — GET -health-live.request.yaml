@@ -1,0 +1,17 @@
+$kind: http-request
+name: REST-PREFLIGHT-001 — GET /health/live
+url: "{{baseUrl}}/health/live"
+method: GET
+headers:
+  Content-Type: application/json
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      pm.test('assertion 0: body_not_empty', function () {
+        pm.expect(pm.response.text()).to.not.be.empty;
+      });
+    language: text/javascript
+order: 1000

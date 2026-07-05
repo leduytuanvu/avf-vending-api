@@ -1,0 +1,94 @@
+$kind: http-request
+name: gRPC MachineCommerceService/CreateQuote — Create Quote
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateQuote`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** machine
+
+  **Metadata:** authorization: Bearer {{machineToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {
+      "idempotency_key": "{{idempotencyKey}}",
+      "client_event_id": "{{clientEventId}}",
+      "client_created_at": {},
+      "operator_session_id": "{{operatorSessionId}}"
+    },
+    "machine_id": "{{machineId}}",
+    "currency": "string",
+    "payment_method": "string",
+    "lines": {
+      "product_id": "{{productId}}",
+      "slot": {
+        "slot_id": "{{slotId}}",
+        "cabinet_code": "string",
+        "slot_code": "string",
+        "slot_index": 1
+      },
+      "quantity": 1
+    },
+    "meta": {
+      "machine_id": "{{machineId}}",
+      "request_id": "{{requestId}}",
+      "idempotency_key": "{{idempotencyKey}}",
+      "occurred_at": {},
+      "client_sequence": 1,
+      "offline_sequence": 1,
+      "app_version": "string",
+      "config_version": 1,
+      "catalog_version": "string",
+      "client_event_id": "{{clientEventId}}"
+    }
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "replay": false,
+    "quote_id": "{{quoteId}}",
+    "currency": "string",
+    "payment_method": "string",
+    "subtotal_minor": 1,
+    "discount_minor": 1,
+    "payable_minor": 1,
+    "expires_at": {},
+    "lines": {
+      "line_sequence": 1,
+      "product_id": "{{productId}}",
+      "cabinet_code": "string",
+      "slot_code": "string",
+      "slot_index": 1,
+      "quantity": 1,
+      "unit_price_minor": 1,
+      "line_subtotal_minor": 1,
+      "pricing_fingerprint": "string"
+    },
+    "meta": {
+      "server_time": {},
+      "trace_id": "{{traceId}}",
+      "request_id": "{{requestId}}",
+      "status": {},
+      "retryable": false,
+      "error_code": "string"
+    }
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 31000

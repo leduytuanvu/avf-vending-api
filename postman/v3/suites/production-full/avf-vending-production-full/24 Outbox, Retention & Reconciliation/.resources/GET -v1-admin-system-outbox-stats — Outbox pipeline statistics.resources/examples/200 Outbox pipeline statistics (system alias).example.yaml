@@ -1,0 +1,23 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "stats": {
+          "deadLetteredTotal": 1,
+          "maxPendingAttempts": 5,
+          "oldestPendingCreatedAt": "2026-04-19T12:00:00.000000000Z",
+          "pendingDueNow": 2,
+          "pendingTotal": 3,
+          "publishingLeasedTotal": 0
+        }
+      }
+order: 1000

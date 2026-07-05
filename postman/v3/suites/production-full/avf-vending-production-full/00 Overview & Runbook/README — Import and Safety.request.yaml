@@ -1,0 +1,21 @@
+$kind: http-request
+description: |
+  # AVF Production Postman Runbook
+
+  1. Import environment, then collection.
+  2. Set adminEmail/adminPassword locally (never commit).
+  3. Run 02 Auth login; tokens captured automatically.
+  4. Production writes require allowGatedWrites=true AND confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.
+  5. gRPC folders 30–31 and MQTT 32–35 are manual Postman Desktop items (v2.1 limitation).
+  6. Numeric folder prefixes sort domains: REST 01–29, gRPC 30–31, MQTT 32–35, utilities 99.
+url: "{{baseUrl}}/health/live"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 1000

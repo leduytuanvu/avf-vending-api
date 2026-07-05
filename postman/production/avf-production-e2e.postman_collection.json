@@ -2614,7 +2614,7 @@
           "_manifest_flow_id": "REST-MACHINE-002"
         },
         {
-          "name": "REST-MACHINE-003 \u2014 POST /v1/admin/machines/{id}/activation-codes",
+          "name": "REST-MACHINE-003 \u2014 POST /v1/admin/machine-codes/{machineCode}/activation-codes",
           "request": {
             "method": "POST",
             "header": [
@@ -2628,15 +2628,15 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/activation-codes",
+              "raw": "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "v1",
                 "admin",
-                "machines",
-                "{{machineId}}",
+                "machine-codes",
+                "{{machineCode}}",
                 "activation-codes"
               ]
             },
@@ -2683,6 +2683,8 @@
                   "  const j = pm.response.json();",
                   "  if (j.activationCodeId !== undefined) pm.environment.set('activationCodeId', j.activationCodeId);",
                   "  if (j.activationCode !== undefined) pm.environment.set('activationCode', j.activationCode);",
+                  "  if (j.machineId !== undefined) pm.environment.set('machineId', j.machineId);",
+                  "  if (j.machineCode !== undefined) pm.environment.set('machineCode', j.machineCode);",
                   "} catch (e) {}"
                 ]
               }

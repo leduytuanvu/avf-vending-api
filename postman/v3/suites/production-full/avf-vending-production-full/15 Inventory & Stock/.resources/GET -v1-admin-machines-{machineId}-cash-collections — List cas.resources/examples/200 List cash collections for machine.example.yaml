@@ -1,0 +1,63 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "close_request_hash_hex": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "closed_at": "2026-04-19T15:00:00.000000000Z",
+            "collected_at": "2026-04-19T14:00:00.000000000Z",
+            "countedPhysicalCashMinor": 1200,
+            "counted_amount_minor": 1200,
+            "currency": "USD",
+            "disclosure": "Accounting-only: cloud ledger vs operator physical count; does not sense or command hardware.",
+            "expectedCloudCashMinor": 1200,
+            "expected_amount_minor": 1200,
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "lifecycle_status": "closed",
+            "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "opened_at": "2026-04-19T14:00:00.000000000Z",
+            "reconciliation_status": "matched",
+            "requires_review": false,
+            "reviewState": "matched",
+            "varianceMinor": 0,
+            "variance_amount_minor": 0
+          },
+          {
+            "close_request_hash_hex": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "closed_at": "2026-04-19T15:30:00.000000000Z",
+            "collected_at": "2026-04-19T14:00:00.000000000Z",
+            "countedPhysicalCashMinor": 2000,
+            "counted_amount_minor": 2000,
+            "currency": "USD",
+            "disclosure": "Accounting-only: cloud ledger vs operator physical count; does not sense or command hardware.",
+            "expectedCloudCashMinor": 1200,
+            "expected_amount_minor": 1200,
+            "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "lifecycle_status": "closed",
+            "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "opened_at": "2026-04-19T14:00:00.000000000Z",
+            "reconciliation_status": "pending",
+            "requires_review": true,
+            "reviewState": "pending_review",
+            "varianceMinor": 800,
+            "variance_amount_minor": 800
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 42
+        }
+      }
+order: 1000

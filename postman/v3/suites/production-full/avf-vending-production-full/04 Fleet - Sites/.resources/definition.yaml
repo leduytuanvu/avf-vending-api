@@ -1,0 +1,3 @@
+$kind: collection
+description: "Site CRUD and configuration. Auth: admin. Vars: siteId."
+order: 5000

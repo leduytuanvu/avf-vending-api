@@ -1,0 +1,6 @@
+$kind: http-request
+name: 02 GET /v1/auth/me
+description: Bearer admin session sanity check.
+url: "{{baseUrl}}/v1/auth/me"
+method: GET
+order: 2000

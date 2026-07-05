@@ -1,0 +1,90 @@
+$kind: http-request
+description: |-
+  ## Purpose
+  Create order and initial vend session
+
+  ## Auth mode
+  `machine` — required: machineToken
+
+  ## Required variables
+  machineToken
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Idempotency-Key: {{idempotencyKey}}
+  - Authorization: Bearer {{machineToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+  - Idempotency-Key: (from OpenAPI)
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **201**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `429`, `500`, `503`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. **HIGH RISK** — item disabled by default.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1CommerceCreateOrder`
+  - openapiKey: `POST /v1/commerce/orders`
+  - production_write: yes
+  - idempotency: yes
+url: "{{baseUrl}}/v1/commerce/orders"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Idempotency-Key: "{{idempotencyKey}}"
+  Authorization: Bearer {{machineToken}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "currency": "USD",
+      "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "product_id": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+      "slot_index": 3,
+      "subtotal_minor": 125,
+      "tax_minor": 10,
+      "total_minor": 135
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'machine');
+      pm.collectionVariables.set('requires_idempotency', 'true');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/FLOW 9 — Create Order.resources/examples
+order: 7000

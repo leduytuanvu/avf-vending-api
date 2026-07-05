@@ -1,0 +1,28 @@
+$kind: http-request
+name: 15 PUT /v1/admin/machines/{machineId}/planograms/draft
+description: Draft planogram binding slot A3 to productId.
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/planograms/draft"
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+      "planogramId": "11111111-1111-1111-1111-111111111111",
+      "planogramRevision": 1,
+      "syncLegacyReadModel": true,
+      "items": [
+        {
+          "cabinetCode": "A",
+          "layoutKey": "grid-4x6",
+          "layoutRevision": 1,
+          "slotCode": "A3",
+          "legacySlotIndex": 3,
+          "productId": "{{productId}}",
+          "maxQuantity": 12,
+          "priceMinor": 150,
+          "metadata": {}
+        }
+      ]
+    }
+order: 15000

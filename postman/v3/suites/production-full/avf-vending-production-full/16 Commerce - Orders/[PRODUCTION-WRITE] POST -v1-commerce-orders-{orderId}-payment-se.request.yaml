@@ -1,0 +1,91 @@
+$kind: http-request
+name: "[PRODUCTION-WRITE] POST /v1/commerce/orders/{orderId}/payment-session — Start payment with outbox row"
+description: |-
+  ## Purpose
+  Start payment with outbox row
+
+  ## Auth mode
+  `machine` — required: machineToken
+
+  ## Required variables
+  machineToken
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Idempotency-Key: {{idempotencyKey}}
+  - Authorization: Bearer {{machineToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+  - Idempotency-Key: (from OpenAPI)
+
+  ## Path parameters
+  - `orderId` (string)
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `404`, `429`, `500`, `503`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. **HIGH RISK** — item disabled by default.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1CommercePaymentSession`
+  - openapiKey: `POST /v1/commerce/orders/{orderId}/payment-session`
+  - production_write: yes
+  - idempotency: yes
+url: "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Idempotency-Key: "{{idempotencyKey}}"
+  Authorization: Bearer {{machineToken}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "amount_minor": 135,
+      "currency": "USD",
+      "outbox_payload_json": {
+        "source": "http_api"
+      },
+      "payment_state": "created",
+      "provider": "stripe"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'machine');
+      pm.collectionVariables.set('requires_idempotency', 'true');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/[PRODUCTION-WRITE] POST -v1-commerce-orders-{orderId}-payment-se.resources/examples
+order: 11000

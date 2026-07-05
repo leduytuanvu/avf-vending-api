@@ -1,0 +1,87 @@
+$kind: http-request
+name: "[PRODUCTION-WRITE] POST /v1/setup/activation-codes/claim — Claim an activation code (public pre-auth)"
+description: |-
+  ## Purpose
+  Claim an activation code (public pre-auth)
+
+  ## Auth mode
+  `public` — required: none
+
+  ## Required variables
+  none
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `500`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. **HIGH RISK** — item disabled by default.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1SetupActivationClaimPost`
+  - openapiKey: `POST /v1/setup/activation-codes/claim`
+  - production_write: yes
+  - idempotency: no
+url: "{{baseUrl}}/v1/setup/activation-codes/claim"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "activationCode": "AVF-123456-ABCDEF",
+      "deviceFingerprint": {
+        "androidId": "android-123",
+        "manufacturer": "SUNMI",
+        "model": "K2",
+        "packageName": "com.avf.vending",
+        "serialNumber": "SN-001",
+        "versionCode": 100,
+        "versionName": "1.0.0"
+      }
+    }
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'public');
+      pm.collectionVariables.set('requires_idempotency', 'false');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/[PRODUCTION-WRITE] POST -v1-setup-activation-codes-claim — Cla.resources/examples
+order: 10000

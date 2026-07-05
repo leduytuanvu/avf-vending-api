@@ -1,0 +1,6 @@
+$kind: http-request
+name: 25 GET /v1/admin/reports/vends
+description: Reporting spot-check (admin bearer).
+url: "{{baseUrl}}/v1/admin/reports/vends?limit=5"
+method: GET
+order: 25000

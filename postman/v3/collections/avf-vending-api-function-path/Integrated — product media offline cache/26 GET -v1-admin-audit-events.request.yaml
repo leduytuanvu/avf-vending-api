@@ -1,0 +1,6 @@
+$kind: http-request
+name: 26 GET /v1/admin/audit/events
+description: Audit trail spot-check.
+url: "{{baseUrl}}/v1/admin/audit/events?limit=5"
+method: GET
+order: 26000

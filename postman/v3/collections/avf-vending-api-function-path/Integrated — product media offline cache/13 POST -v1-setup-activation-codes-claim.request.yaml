@@ -1,0 +1,23 @@
+$kind: http-request
+name: 13 POST /v1/setup/activation-codes/claim
+description: Claim code → machine JWT + MQTT hints.
+url: "{{baseUrl}}/v1/setup/activation-codes/claim"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "activationCode": "{{activationCode}}",
+      "deviceFingerprint": {
+      "androidId": "android-postman-1",
+      "serialNumber": "SN-POSTMAN-INTEGRATED",
+      "manufacturer": "AVF",
+      "model": "Lab",
+      "packageName": "com.avf.vending",
+      "versionName": "1.0.0",
+      "versionCode": 100
+    }
+    }
+auth:
+  type: noauth
+order: 13000

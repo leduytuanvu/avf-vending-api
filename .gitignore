@@ -160,7 +160,10 @@ reports/newman/
 .go-tmp/
 .cache/
 
-# Local Postman desktop exports / token-bearing env (canonical JSON under postman/production/ stays tracked)
+# Local Postman migrate temp (same-drive TEMP for Windows EXDEV)
+.tmp-postman-migrate/
+.tmp-v3-test/
+.tmp-postman-openapi-lib-source.py
 postman/environments/*.yaml
 postman/environments/*.local.json
 *.postman_environment.local.json

@@ -7272,6 +7272,7 @@
         ]
       },
       "post": {
+        "description": "Body accepts **machineId** / **machine_id** and/or **machineCode** / **machine_code**. When both are present they must resolve to the same machine or **400 machine_identifier_conflict**.",
         "operationId": "DocOpV1AdminActivationCodesCatalogCreate",
         "parameters": [
           {
@@ -7307,7 +7308,7 @@
               }
             }
           },
-          "description": "machineId, expiry, maxUses",
+          "description": "machineId or machineCode, expiry, maxUses",
           "required": true
         },
         "responses": {
@@ -14936,6 +14937,465 @@
         ]
       }
     },
+    "/v1/admin/machine-codes/{machineCode}/activation-codes": {
+      "get": {
+        "description": "Canonical machineCode path for activation code list. Returns metadata only (no plaintext code).",
+        "operationId": "DocOpV1AdminMachineCodeActivationCodesList",
+        "parameters": [
+          {
+            "description": "Human machine code (AVF000001)",
+            "in": "path",
+            "name": "machineCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "List activation codes by machineCode"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "List activation codes by machineCode",
+        "tags": [
+          "Machine Admin"
+        ]
+      },
+      "post": {
+        "description": "Canonical machineCode path for activation code create. Returns the raw **activationCode** once.",
+        "operationId": "DocOpV1AdminMachineCodeActivationCodesPost",
+        "parameters": [
+          {
+            "description": "Human machine code (AVF000001)",
+            "in": "path",
+            "name": "machineCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "status": "ok"
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "expiresInMinutes, maxUses, optional notes",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Create machine activation code by machineCode"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "details": {
+                      "retry_after_seconds": 60
+                    },
+                    "message": "too many requests",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Create machine activation code by machineCode",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
+    "/v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId}": {
+      "delete": {
+        "description": "Canonical machineCode path for activation code revoke.",
+        "operationId": "DocOpV1AdminMachineCodeActivationCodeDelete",
+        "parameters": [
+          {
+            "description": "Human machine code (AVF000001)",
+            "in": "path",
+            "name": "machineCode",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Activation code row UUID",
+            "in": "path",
+            "name": "activationCodeId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "example": "example",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Revoke an activation code by machineCode"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Revoke an activation code by machineCode",
+        "tags": [
+          "Machine Admin"
+        ]
+      }
+    },
     "/v1/admin/machine-config/rollouts": {
       "get": {
         "description": "Paginates staged rollouts for the company. Requires **fleet.read**.",
@@ -16004,11 +16464,11 @@
     },
     "/v1/admin/machines/{machineId}/activation-codes": {
       "get": {
-        "description": "Returns metadata only; **never** returns the raw activation code. **403** when the machine is outside caller scope.",
+        "description": "Returns metadata only; **never** returns the raw activation code. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001). List items include **machineCode**. **403** when the machine is outside caller scope.",
         "operationId": "DocOpV1AdminMachineActivationCodesList",
         "parameters": [
           {
-            "description": "Machine UUID",
+            "description": "Machine UUID or machineCode (AVF000001)",
             "in": "path",
             "name": "machineId",
             "required": true,
@@ -16154,11 +16614,11 @@
         ]
       },
       "post": {
-        "description": "Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled.",
+        "description": "Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).",
         "operationId": "DocOpV1AdminMachineActivationCodesPost",
         "parameters": [
           {
-            "description": "Machine UUID",
+            "description": "Machine UUID or machineCode (AVF000001)",
             "in": "path",
             "name": "machineId",
             "required": true,
@@ -16266,6 +16726,24 @@
             },
             "description": "error"
           },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
           "429": {
             "content": {
               "application/json": {
@@ -16318,10 +16796,11 @@
     },
     "/v1/admin/machines/{machineId}/activation-codes/{activationCodeId}": {
       "delete": {
+        "description": "Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).",
         "operationId": "DocOpV1AdminMachineActivationCodeDelete",
         "parameters": [
           {
-            "description": "Machine UUID",
+            "description": "Machine UUID or machineCode (AVF000001)",
             "in": "path",
             "name": "machineId",
             "required": true,

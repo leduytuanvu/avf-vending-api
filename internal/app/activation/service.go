@@ -83,6 +83,7 @@ type CreateResult struct {
 	PlaintextCode string
 	ID            uuid.UUID
 	MachineID     uuid.UUID
+	MachineCode   string
 	ExpiresAt     time.Time
 	MaxUses       int32
 	RemainingUses int32
@@ -122,10 +123,15 @@ func (s *Service) CreateCode(ctx context.Context, in CreateInput) (CreateResult,
 	if err != nil {
 		return CreateResult{}, err
 	}
+	machineCode := ""
+	if m, merr := db.New(s.pool).GetMachineByID(ctx, row.MachineID); merr == nil {
+		machineCode = strings.TrimSpace(m.Code)
+	}
 	return CreateResult{
 		PlaintextCode: plain,
 		ID:            row.ID,
 		MachineID:     row.MachineID,
+		MachineCode:   machineCode,
 		ExpiresAt:     row.ExpiresAt.UTC(),
 		MaxUses:       row.MaxUses,
 		RemainingUses: row.MaxUses - row.Uses,
@@ -137,6 +143,7 @@ func (s *Service) CreateCode(ctx context.Context, in CreateInput) (CreateResult,
 type ListRow struct {
 	ID            uuid.UUID
 	MachineID     uuid.UUID
+	MachineCode   string
 	ExpiresAt     time.Time
 	MaxUses       int32
 	Uses          int32
@@ -176,6 +183,7 @@ func (s *Service) ListCodes(ctx context.Context, machineID uuid.UUID) ([]ListRow
 		out = append(out, ListRow{
 			ID:            r.ID,
 			MachineID:     r.MachineID,
+			MachineCode:   strings.TrimSpace(r.MachineCode),
 			ExpiresAt:     r.ExpiresAt.UTC(),
 			MaxUses:       r.MaxUses,
 			Uses:          r.Uses,
@@ -243,6 +251,7 @@ func (s *Service) ListAllCodes(ctx context.Context, limit, offset int32) ([]List
 		out = append(out, ListRow{
 			ID:            r.ID,
 			MachineID:     r.MachineID,
+			MachineCode:   strings.TrimSpace(r.MachineCode),
 			ExpiresAt:     r.ExpiresAt.UTC(),
 			MaxUses:       r.MaxUses,
 			Uses:          r.Uses,
@@ -309,6 +318,7 @@ type ClaimInput struct {
 // ClaimResult is returned on successful claim (and idempotent replay).
 type ClaimResult struct {
 	MachineID          uuid.UUID
+	MachineCode        string
 	SiteID             uuid.UUID
 	MachineName        string
 	MachineToken       string
@@ -636,6 +646,7 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 	}
 	return ClaimResult{
 		MachineID:          row.MachineID,
+		MachineCode:        strings.TrimSpace(m.Code),
 		SiteID:             m.SiteID,
 		MachineName:        m.Name,
 		MachineToken:       tok,
@@ -916,6 +927,7 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	}
 	return ClaimResult{
 		MachineID:         m.ID,
+		MachineCode:       strings.TrimSpace(m.Code),
 		SiteID:            m.SiteID,
 		MachineName:       m.Name,
 		MachineToken:      tok,

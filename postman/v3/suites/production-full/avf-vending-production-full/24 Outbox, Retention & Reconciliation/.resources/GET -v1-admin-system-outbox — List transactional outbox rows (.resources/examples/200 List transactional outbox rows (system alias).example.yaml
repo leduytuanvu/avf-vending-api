@@ -1,0 +1,42 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 42
+        },
+        "rows": [
+          {
+            "aggregateId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "aggregateType": "payment",
+            "createdAt": "2026-04-19T12:00:00.000000000Z",
+            "eventType": "payment.session_started",
+            "id": 101,
+            "payload": {},
+            "publishAttemptCount": 0,
+            "status": "pending",
+            "topic": "commerce.payments"
+          }
+        ],
+        "stats": {
+          "deadLetteredTotal": 1,
+          "maxPendingAttempts": 5,
+          "oldestPendingCreatedAt": "2026-04-19T12:00:00.000000000Z",
+          "pendingDueNow": 2,
+          "pendingTotal": 3,
+          "publishingLeasedTotal": 0
+        }
+      }
+order: 1000

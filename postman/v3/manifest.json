@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "postman-v3-yaml-generation-v1",
+  "generatedAt": "2026-07-05T20:00:26Z",
+  "sourceCommit": "68cc9a3f01f8a186aa57e1f489455a02976e8395",
+  "sourceJsonCollections": [
+    "postman/collections/avf-vending-api.postman_collection.json",
+    "postman/collections/avf-vending-api-function-path.postman_collection.json",
+    "postman/production/avf-production-e2e.postman_collection.json",
+    "postman/suites/production-full/avf-vending-production.full.postman_collection.json"
+  ],
+  "sourceJsonEnvironments": [
+    "postman/environments/avf-local.postman_environment.json",
+    "postman/environments/avf-staging.postman_environment.json",
+    "postman/environments/avf-production.postman_environment.json",
+    "postman/suites/production-full/avf-vending-production.full.postman_environment.json",
+    "postman/production/avf-production-e2e.postman_environment.json"
+  ],
+  "v3Collections": [
+    "postman/v3/collections/avf-vending-api",
+    "postman/v3/collections/avf-vending-api-function-path",
+    "postman/v3/collections/avf-production-e2e",
+    "postman/v3/suites/production-full/avf-vending-production-full"
+  ],
+  "v3Environments": [
+    "postman/v3/environments/avf-local.environment.yaml",
+    "postman/v3/environments/avf-staging.environment.yaml",
+    "postman/v3/environments/avf-production.environment.yaml",
+    "postman/v3/environments/avf-production-full.environment.yaml",
+    "postman/v3/environments/avf-production-e2e.environment.yaml"
+  ],
+  "counts": {
+    "jsonRequests": 574,
+    "yamlRequests": 574,
+    "jsonVariables": 330,
+    "yamlVariables": 330
+  },
+  "validation": {
+    "parityOk": true,
+    "parityErrors": [],
+    "postmanCliLint": {
+      "postman/v3/collections/avf-vending-api": "pass",
+      "postman/v3/collections/avf-vending-api-function-path": "pass",
+      "postman/v3/collections/avf-production-e2e": "pass",
+      "postman/v3/suites/production-full/avf-vending-production-full": "pass"
+    }
+  }
+}

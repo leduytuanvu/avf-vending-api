@@ -1,0 +1,3 @@
+$kind: collection
+description: "Payments and refunds. Auth: admin. Vars: paymentId."
+order: 17000

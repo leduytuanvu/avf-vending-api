@@ -1,0 +1,38 @@
+$kind: http-request
+name: REST-AUTH-001 — POST /v1/auth/login
+url: "{{baseUrl}}/v1/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "{{adminEmail}}",
+      "password": "{{adminPassword}}"
+    }
+scripts:
+  - type: beforeRequest
+    code: |-
+      const skipIfEnv = pm.variables.get('_postman_skip_if_env_var');
+      pm.variables.set('_postman_skip_if_env_var', 'ADMIN_TOKEN');
+      if (skipIfEnv && pm.environment.get(skipIfEnv)) {
+        pm.execution.skipRequest();
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      pm.test('assertion 0: json_path_exists tokens.accessToken', function () {
+        const j = pm.response.json();
+        pm.expect(j.tokens.accessToken).to.not.be.undefined;
+      });
+      try {
+        const j = pm.response.json();
+        if (j.tokens.accessToken !== undefined) pm.environment.set('accessToken', j.tokens.accessToken);
+        if (j.tokens.refreshToken !== undefined) pm.environment.set('refreshToken', j.tokens.refreshToken);
+      } catch (e) {}
+    language: text/javascript
+order: 1000

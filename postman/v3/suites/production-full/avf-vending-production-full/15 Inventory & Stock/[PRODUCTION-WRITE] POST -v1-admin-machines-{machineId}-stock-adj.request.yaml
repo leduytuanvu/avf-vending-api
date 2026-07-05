@@ -1,0 +1,100 @@
+$kind: http-request
+name: "[PRODUCTION-WRITE] POST /v1/admin/machines/{machineId}/stock-adjustments — Apply stock adjustments (restock, cycle count, manual, reconcile)"
+description: |-
+  ## Purpose
+  Apply stock adjustments (restock, cycle count, manual, reconcile)
+
+  ## Auth mode
+  `admin` — required: accessToken (set via 02 Auth login)
+
+  ## Required variables
+  accessToken (set via 02 Auth login)
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Idempotency-Key: {{idempotencyKey}}
+  - Authorization: Bearer {{accessToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+  - Idempotency-Key: (from OpenAPI)
+
+  ## Path parameters
+  - `machineId` (string)
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  - `items` (array)
+  - `operator_session_id` (string (uuid))
+  - `reason` (string)
+
+  ## Optional body fields
+  - `occurredAt` (string (date-time)) — RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).
+
+  ## Enum / options
+  - `reason`: `restock`, `cycle_count`, `manual_adjustment`, `machine_reconcile`
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `404`, `409`, `429`, `500`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION. **HIGH RISK** — item disabled by default.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1AdminMachineStockAdjustmentsPost`
+  - openapiKey: `POST /v1/admin/machines/{machineId}/stock-adjustments`
+  - production_write: yes
+  - idempotency: yes
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/stock-adjustments"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Idempotency-Key: "{{idempotencyKey}}"
+  Authorization: Bearer {{accessToken}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "items": [
+        {
+          "cabinetCode": "A",
+          "planogramId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+          "productId": "9f1e2d3c-aaaa-bbbb-cccc-ddddeeeeffff",
+          "quantityAfter": 10,
+          "quantityBefore": 2,
+          "slotCode": "A3",
+          "slotIndex": 3
+        }
+      ],
+      "occurredAt": "2026-04-19T12:00:00.000000000Z",
+      "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+      "reason": "restock"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'admin');
+      pm.collectionVariables.set('requires_idempotency', 'true');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/[PRODUCTION-WRITE] POST -v1-admin-machines-{machineId}-stock-adj.resources/examples
+order: 20000

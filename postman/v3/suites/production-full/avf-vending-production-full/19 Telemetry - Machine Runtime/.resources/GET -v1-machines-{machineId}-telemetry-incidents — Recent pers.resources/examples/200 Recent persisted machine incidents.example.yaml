@@ -1,0 +1,33 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "code": "TEMP_HIGH",
+            "dedupeKey": "TEMP_HIGH:slot3",
+            "detail": {
+              "threshold_c": 8
+            },
+            "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            "openedAt": "2026-04-19T12:00:00.000000000Z",
+            "severity": "warning",
+            "title": "Cabinet warm",
+            "updatedAt": "2026-04-19T12:05:00.000000000Z"
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "returned": 1
+        }
+      }
+order: 1000

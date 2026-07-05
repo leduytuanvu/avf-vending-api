@@ -1,0 +1,78 @@
+$kind: http-request
+name: POST /v1/auth/refresh — Rotate access token using a refresh token
+description: |-
+  ## Purpose
+  Rotate access token using a refresh token
+
+  ## Auth mode
+  `public` — required: none
+
+  ## Required variables
+  none
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  - `refreshToken` (string)
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `500`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1AuthRefresh`
+  - openapiKey: `POST /v1/auth/refresh`
+  - production_write: yes
+  - idempotency: no
+url: "{{baseUrl}}/v1/auth/refresh"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "refreshToken": "stub-refresh-token"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'public');
+      pm.collectionVariables.set('requires_idempotency', 'false');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/POST -v1-auth-refresh — Rotate access token using a refresh to.resources/examples
+order: 14000

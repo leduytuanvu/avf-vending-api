@@ -677,6 +677,49 @@ func (q *Queries) BumpMachineCredentialVersion(ctx context.Context, id uuid.UUID
 	return credential_version, err
 }
 
+const GetMachineByCode = `-- name: GetMachineByCode :one
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+FROM machines
+WHERE lower(btrim(code)) = lower(btrim($1::text))
+  AND btrim(code) <> ''
+LIMIT 1
+`
+
+func (q *Queries) GetMachineByCode(ctx context.Context, dollar_1 string) (Machine, error) {
+	row := q.db.QueryRow(ctx, GetMachineByCode, dollar_1)
+	var i Machine
+	err := row.Scan(
+		&i.ID,
+		&i.SiteID,
+		&i.HardwareProfileID,
+		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
+		&i.CabinetType,
+		&i.CredentialVersion,
+		&i.LastSeenAt,
+		&i.TimezoneOverride,
+		&i.Name,
+		&i.Status,
+		&i.CommandSequence,
+		&i.CredentialRevokedAt,
+		&i.CredentialRotatedAt,
+		&i.CredentialLastUsedAt,
+		&i.ActivatedAt,
+		&i.RevokedAt,
+		&i.RotatedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.PublishedPlanogramVersionID,
+		&i.CurrentDeviceAttachmentID,
+		&i.CurrentRuntimeAppSessionID,
+		&i.OnlineStatus,
+		&i.SaleEnabled,
+		&i.MachineType,
+	)
+	return i, err
+}
+
 const GetMachineByID = `-- name: GetMachineByID :one
 SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
 FROM machines

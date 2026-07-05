@@ -1,0 +1,4 @@
+$kind: collection
+name: 02 Auth - Admin / Technician / Session
+description: "Login, refresh, logout, password reset. Auth: public then bearer. Vars: adminEmail, adminPassword, accessToken."
+order: 3000

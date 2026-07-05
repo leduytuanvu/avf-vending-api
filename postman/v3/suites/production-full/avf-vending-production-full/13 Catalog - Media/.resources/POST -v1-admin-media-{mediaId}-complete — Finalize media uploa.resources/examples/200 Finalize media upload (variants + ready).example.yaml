@@ -1,0 +1,39 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "id": "11111111-2222-3333-4444-555555555555",
+        "status": "ready",
+        "variants": [
+          {
+            "downloadUrl": "https://cdn.example.com/products/cola-thumb.webp",
+            "height": 160,
+            "mimeType": "image/webp",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "sizeBytes": 8000,
+            "variant": "thumb",
+            "version": 1,
+            "width": 160
+          },
+          {
+            "downloadUrl": "https://cdn.example.com/products/cola-display.webp",
+            "height": 512,
+            "mimeType": "image/webp",
+            "sha256": "deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+            "sizeBytes": 24000,
+            "variant": "display",
+            "version": 2,
+            "width": 512
+          }
+        ]
+      }
+order: 1000

@@ -35,12 +35,15 @@ func mountAdminActivationRoutes(r chi.Router, app *api.HTTPApplication, writeRL 
 	}
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermFleetRead))
-		r.Get("/machines/{machineId}/activation-codes", getAdminListActivationCodes(app))
+		r.Get("/machines/{machineId}/activation-codes", getAdminListActivationCodes(app, "machineId"))
+		r.Get("/machine-codes/{machineCode}/activation-codes", getAdminListActivationCodes(app, "machineCode"))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermSetupWrite))
-		r.With(writeRL).Post("/machines/{machineId}/activation-codes", postAdminCreateActivationCode(app))
-		r.Delete("/machines/{machineId}/activation-codes/{activationCodeId}", deleteAdminActivationCode(app))
+		r.With(writeRL).Post("/machines/{machineId}/activation-codes", postAdminCreateActivationCode(app, "machineId"))
+		r.With(writeRL).Post("/machine-codes/{machineCode}/activation-codes", postAdminCreateActivationCode(app, "machineCode"))
+		r.Delete("/machines/{machineId}/activation-codes/{activationCodeId}", deleteAdminActivationCode(app, "machineId"))
+		r.Delete("/machine-codes/{machineCode}/activation-codes/{activationCodeId}", deleteAdminActivationCode(app, "machineCode"))
 	})
 }
 
@@ -50,7 +53,54 @@ type adminCreateActivationBody struct {
 	Notes            string `json:"notes"`
 }
 
-func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
+func resolveAdminMachineRef(w http.ResponseWriter, r *http.Request, app *api.HTTPApplication, paramName string) (uuid.UUID, string, bool) {
+	ref := strings.TrimSpace(chi.URLParam(r, paramName))
+	machineID, machineCode, err := app.Activation.ResolveMachineRef(r.Context(), ref)
+	if err != nil {
+		switch {
+		case errors.Is(err, activation.ErrMachineIdentifierRequired):
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "machine_identifier_required", "machine identifier required")
+		case errors.Is(err, activation.ErrInvalidMachineIdentifier):
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_identifier", "invalid machine identifier")
+		case errors.Is(err, activation.ErrMachineNotFound):
+			writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
+		default:
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+		}
+		return uuid.Nil, "", false
+	}
+	return machineID, machineCode, true
+}
+
+func writeAdminActivationCreateResponse(w http.ResponseWriter, out activation.CreateResult) {
+	writeJSON(w, http.StatusCreated, map[string]any{
+		"activationCode":   out.PlaintextCode,
+		"activationCodeId": out.ID.String(),
+		"machineId":        out.MachineID.String(),
+		"machineCode":      out.MachineCode,
+		"expiresAt":        out.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
+		"maxUses":          out.MaxUses,
+		"remainingUses":    out.RemainingUses,
+		"status":           out.Status,
+	})
+}
+
+func writeAdminActivationListItem(row activation.ListRow) map[string]any {
+	return map[string]any{
+		"activationCodeId": row.ID.String(),
+		"machineId":        row.MachineID.String(),
+		"machineCode":      row.MachineCode,
+		"expiresAt":        row.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
+		"maxUses":          row.MaxUses,
+		"uses":             row.Uses,
+		"remainingUses":    row.RemainingUses,
+		"status":           row.Status,
+		"notes":            row.Notes,
+		"createdAt":        row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+}
+
+func postAdminCreateActivationCode(app *api.HTTPApplication, paramName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := parseAdminFleetCompanyScope(r)
 		_ = scopeID
@@ -58,9 +108,8 @@ func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
-		if err != nil || machineID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		if !ok {
 			return
 		}
 		var body adminCreateActivationBody
@@ -78,19 +127,11 @@ func postAdminCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{
-			"activationCode":   out.PlaintextCode,
-			"activationCodeId": out.ID.String(),
-			"machineId":        out.MachineID.String(),
-			"expiresAt":        out.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
-			"maxUses":          out.MaxUses,
-			"remainingUses":    out.RemainingUses,
-			"status":           out.Status,
-		})
+		writeAdminActivationCreateResponse(w, out)
 	}
 }
 
-func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
+func getAdminListActivationCodes(app *api.HTTPApplication, paramName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := parseAdminFleetCompanyScope(r)
 		_ = scopeID
@@ -98,9 +139,8 @@ func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
-		if err != nil || machineID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		if !ok {
 			return
 		}
 		rows, err := app.Activation.ListCodes(r.Context(), machineID)
@@ -118,23 +158,13 @@ func getAdminListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		items := make([]map[string]any, 0, len(rows))
 		for _, row := range rows {
-			items = append(items, map[string]any{
-				"activationCodeId": row.ID.String(),
-				"machineId":        row.MachineID.String(),
-				"expiresAt":        row.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
-				"maxUses":          row.MaxUses,
-				"uses":             row.Uses,
-				"remainingUses":    row.RemainingUses,
-				"status":           row.Status,
-				"notes":            row.Notes,
-				"createdAt":        row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			})
+			items = append(items, writeAdminActivationListItem(row))
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 	}
 }
 
-func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
+func deleteAdminActivationCode(app *api.HTTPApplication, paramName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := parseAdminFleetCompanyScope(r)
 		_ = scopeID
@@ -142,9 +172,8 @@ func deleteAdminActivationCode(app *api.HTTPApplication) http.HandlerFunc {
 			writeV1ListError(w, r.Context(), err)
 			return
 		}
-		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
-		if err != nil || machineID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+		machineID, _, ok := resolveAdminMachineRef(w, r, app, paramName)
+		if !ok {
 			return
 		}
 		codeID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "activationCodeId")))
@@ -261,6 +290,9 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 			},
 			"bootstrapUrl": out.BootstrapPath,
 		}
+		if out.MachineCode != "" {
+			resp["machineCode"] = out.MachineCode
+		}
 		if out.RefreshToken != "" {
 			resp["refreshToken"] = out.RefreshToken
 			resp["refreshTokenExpiresAt"] = out.RefreshExpiresAt.Format("2006-01-02T15:04:05Z07:00")
@@ -299,6 +331,8 @@ func mountAdminCompanyScopedActivationRoutes(r chi.Router, app *api.HTTPApplicat
 type adminOrgCreateActivationBody struct {
 	MachineID        string `json:"machineId"`
 	MachineIDSnake   string `json:"machine_id"`
+	MachineCode      string `json:"machineCode"`
+	MachineCodeSnake string `json:"machine_code"`
 	ExpiresInMinutes int32  `json:"expiresInMinutes"`
 	MaxUses          int32  `json:"maxUses"`
 	Notes            string `json:"notes"`
@@ -324,17 +358,7 @@ func getAdminOrgListActivationCodes(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		items := make([]map[string]any, 0, len(rows))
 		for _, row := range rows {
-			items = append(items, map[string]any{
-				"activationCodeId": row.ID.String(),
-				"machineId":        row.MachineID.String(),
-				"expiresAt":        row.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
-				"maxUses":          row.MaxUses,
-				"uses":             row.Uses,
-				"remainingUses":    row.RemainingUses,
-				"status":           row.Status,
-				"notes":            row.Notes,
-				"createdAt":        row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			})
+			items = append(items, writeAdminActivationListItem(row))
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"items": items,
@@ -361,13 +385,20 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be JSON")
 			return
 		}
-		rawMid := strings.TrimSpace(body.MachineID)
-		if rawMid == "" {
-			rawMid = strings.TrimSpace(body.MachineIDSnake)
-		}
-		machineID, err := uuid.Parse(rawMid)
-		if err != nil || machineID == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "machineId is required")
+		machineID, _, err := app.Activation.ResolveMachineBody(r.Context(), body.MachineID, body.MachineIDSnake, body.MachineCode, body.MachineCodeSnake)
+		if err != nil {
+			switch {
+			case errors.Is(err, activation.ErrMachineIdentifierRequired):
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "machine_identifier_required", "machine identifier required")
+			case errors.Is(err, activation.ErrInvalidMachineIdentifier):
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_identifier", "invalid machine identifier")
+			case errors.Is(err, activation.ErrMachineNotFound):
+				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
+			case errors.Is(err, activation.ErrMachineIdentifierConflict):
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "machine_identifier_conflict", "machine identifier conflict")
+			default:
+				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			}
 			return
 		}
 		out, err := app.Activation.CreateCode(r.Context(), activation.CreateInput{
@@ -380,15 +411,7 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
 		}
-		writeJSON(w, http.StatusCreated, map[string]any{
-			"activationCode":   out.PlaintextCode,
-			"activationCodeId": out.ID.String(),
-			"machineId":        out.MachineID.String(),
-			"expiresAt":        out.ExpiresAt.Format("2006-01-02T15:04:05Z07:00"),
-			"maxUses":          out.MaxUses,
-			"remainingUses":    out.RemainingUses,
-			"status":           out.Status,
-		})
+		writeAdminActivationCreateResponse(w, out)
 	}
 }
 

@@ -8,6 +8,13 @@ SELECT *
 FROM machines
 WHERE id = $1;
 
+-- name: GetMachineByCode :one
+SELECT *
+FROM machines
+WHERE lower(btrim(code)) = lower(btrim($1::text))
+  AND btrim(code) <> ''
+LIMIT 1;
+
 -- name: GetMachineByIDForUpdate :one
 SELECT *
 FROM machines

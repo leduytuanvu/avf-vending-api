@@ -1,0 +1,52 @@
+$kind: http-request
+name: gRPC InternalTelemetryQueryService/GetMachineIncidentSummary — Get Machine Incident Summary
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`
+  - **Proto:** `proto/avf/internal/v1/machine_query.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** internal
+
+  **Metadata:** authorization: Bearer {{accessToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "limit": 1
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "limit": 1,
+    "returned": 1,
+    "items": {
+      "id": "{{id}}",
+      "machine_id": "{{machineId}}",
+      "severity": "string",
+      "code": "string",
+      "title": {},
+      "detail": {},
+      "dedupe_key": {},
+      "opened_at": {},
+      "updated_at": {}
+    }
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 16000

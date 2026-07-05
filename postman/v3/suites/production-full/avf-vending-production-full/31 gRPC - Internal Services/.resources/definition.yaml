@@ -1,0 +1,3 @@
+$kind: collection
+description: "Internal gRPC RPCs. Auth: accessToken. Document-only unless internal listener exposed."
+order: 30000

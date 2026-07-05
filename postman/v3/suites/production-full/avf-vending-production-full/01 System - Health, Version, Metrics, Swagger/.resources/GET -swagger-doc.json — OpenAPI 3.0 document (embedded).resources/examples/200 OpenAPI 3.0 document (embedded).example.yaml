@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "info": {
+          "title": "AVF Vending HTTP API",
+          "version": "1.0"
+        },
+        "openapi": "3.0.3"
+      }
+order: 1000

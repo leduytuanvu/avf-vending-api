@@ -1,0 +1,19 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 201
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "applied_at": "2026-04-19T12:05:00.000000000Z",
+        "config_revision": 7,
+        "id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+      }
+order: 1000

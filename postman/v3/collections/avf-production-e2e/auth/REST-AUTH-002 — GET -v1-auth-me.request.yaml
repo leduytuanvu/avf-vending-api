@@ -1,0 +1,32 @@
+$kind: http-request
+name: REST-AUTH-002 — GET /v1/auth/me
+url: "{{baseUrl}}/v1/auth/me"
+method: GET
+headers:
+  Content-Type: application/json
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      pm.test('assertion 0: json_path_exists accountId', function () {
+        const j = pm.response.json();
+        pm.expect(j.accountId).to.not.be.undefined;
+      });
+      try {
+        const j = pm.response.json();
+        if (j.accountId !== undefined) pm.environment.set('adminUserId', j.accountId);
+      } catch (e) {}
+    language: text/javascript
+order: 2000

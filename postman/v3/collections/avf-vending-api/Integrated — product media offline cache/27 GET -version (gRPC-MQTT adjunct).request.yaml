@@ -1,0 +1,8 @@
+$kind: http-request
+name: 27 GET /version (gRPC/MQTT adjunct)
+description: Stub step — run FULL100 grpc/mqtt scripts for MachineCatalogService/MachineMediaService + catalog.refresh ACK.
+url: "{{baseUrl}}/version"
+method: GET
+auth:
+  type: noauth
+order: 27000

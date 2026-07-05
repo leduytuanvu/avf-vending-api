@@ -1,0 +1,14 @@
+$kind: http-request
+name: 07 POST /v1/admin/media/uploads/{mediaId}/complete
+description: Complete upload (SHA-256 of staged bytes).
+url: "{{baseUrl}}/v1/admin/media/uploads/{{mediaId}}/complete"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "sizeBytes": 2048,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "contentType": "image/png"
+    }
+order: 7000

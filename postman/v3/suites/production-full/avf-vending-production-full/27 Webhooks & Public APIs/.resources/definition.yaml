@@ -1,0 +1,3 @@
+$kind: collection
+description: "Inbound webhooks. Auth: webhook_hmac. Vars: webhookSignature."
+order: 27000
