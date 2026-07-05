@@ -1,0 +1,19 @@
+$kind: collection
+name: /avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalCatalogQueryService/GetSaleCatalogSnapshot`
+  - **Proto:** `proto/avf/internal/v1/catalog_query.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "include_unavailable": false,
+    "include_images": false,
+    "if_none_match_config_version": 0
+  }
+  ```
+order: 1000

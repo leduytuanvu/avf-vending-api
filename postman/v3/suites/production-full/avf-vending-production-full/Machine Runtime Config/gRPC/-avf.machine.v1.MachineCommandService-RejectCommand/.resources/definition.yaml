@@ -1,0 +1,19 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommandService/RejectCommand
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommandService/RejectCommand`
+  - **Proto:** `proto/avf/machine/v1/command.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {},
+    "command_id": "{{$guid}}",
+    "command_sequence": 0,
+    "reason": ""
+  }
+  ```
+order: 19000

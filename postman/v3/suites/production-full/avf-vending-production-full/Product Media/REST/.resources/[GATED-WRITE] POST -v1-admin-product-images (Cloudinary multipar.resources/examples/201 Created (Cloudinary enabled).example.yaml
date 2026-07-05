@@ -1,0 +1,27 @@
+$kind: http-example
+request:
+  url: ""
+  method: GET
+response:
+  statusCode: 201
+  statusText: Created
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "mediaId": "11111111-1111-1111-1111-111111111111",
+        "provider": "cloudinary",
+        "sourceType": "uploaded_file",
+        "status": "ready",
+        "filename": "product.png",
+        "contentType": "image/png",
+        "sizeBytes": 183421,
+        "checksum": "sha256:abc123",
+        "displayUrl": "https://res.cloudinary.com/demo/image/upload/v1/sample.png",
+        "thumbnailUrl": "https://res.cloudinary.com/demo/image/upload/c_fill,w_300,h_300/sample.png",
+        "version": 1,
+        "createdAt": "2026-01-01T00:00:00Z"
+      }
+order: 1000

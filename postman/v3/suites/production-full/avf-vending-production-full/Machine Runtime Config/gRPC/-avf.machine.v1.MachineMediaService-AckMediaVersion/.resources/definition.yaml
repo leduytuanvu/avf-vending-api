@@ -1,0 +1,17 @@
+$kind: collection
+name: /avf.machine.v1.MachineMediaService/AckMediaVersion
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineMediaService/AckMediaVersion`
+  - **Proto:** `proto/avf/machine/v1/media.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {},
+    "acknowledged_media_fingerprint": ""
+  }
+  ```
+order: 46000

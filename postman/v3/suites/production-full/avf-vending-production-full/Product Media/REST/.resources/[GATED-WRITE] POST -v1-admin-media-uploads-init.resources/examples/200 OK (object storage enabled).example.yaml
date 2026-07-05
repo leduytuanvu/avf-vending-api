@@ -1,0 +1,22 @@
+$kind: http-example
+request:
+  url: ""
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "mediaId": "11111111-1111-1111-1111-111111111111",
+        "uploadUrl": "https://storage.example/upload",
+        "uploadMethod": "PUT",
+        "uploadHeaders": {},
+        "expiresAt": "2026-01-01T00:00:00Z",
+        "completePath": "/v1/admin/media/uploads/{mediaId}/complete",
+        "status": "pending_upload"
+      }
+order: 1000

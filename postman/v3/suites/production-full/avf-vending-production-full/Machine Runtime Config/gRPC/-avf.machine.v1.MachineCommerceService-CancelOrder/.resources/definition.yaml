@@ -1,0 +1,18 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommerceService/CancelOrder
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommerceService/CancelOrder`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "order_id": "{{$guid}}",
+    "reason": ""
+  }
+  ```
+order: 23000

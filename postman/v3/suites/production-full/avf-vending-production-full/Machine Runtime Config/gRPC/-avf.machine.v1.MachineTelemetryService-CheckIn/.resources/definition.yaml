@@ -1,0 +1,29 @@
+$kind: collection
+name: /avf.machine.v1.MachineTelemetryService/CheckIn
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineTelemetryService/CheckIn`
+  - **Proto:** `proto/avf/machine/v1/telemetry.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "machine_id": "{{machineId}}",
+    "android_id": "{{$guid}}",
+    "sim_serial": "",
+    "package_name": "",
+    "version_name": "",
+    "version_code": 0,
+    "android_release": "",
+    "sdk_int": 0,
+    "manufacturer": "",
+    "model": "",
+    "timezone": "",
+    "network_state": "",
+    "boot_id": "{{$guid}}"
+  }
+  ```
+order: 69000

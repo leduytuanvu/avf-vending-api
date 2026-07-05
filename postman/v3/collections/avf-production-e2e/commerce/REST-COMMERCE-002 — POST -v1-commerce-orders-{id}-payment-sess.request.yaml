@@ -1,0 +1,43 @@
+$kind: http-request
+name: REST-COMMERCE-002 — POST /v1/commerce/orders/{id}/payment-session
+url: "{{baseUrl}}/v1/commerce/orders/{{orderId}}/payment-session?slot_index=1"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{runPrefix}}-REST-COMMERCE-002"
+queryParams:
+  slot_index: "1"
+body:
+  type: text
+  content: |-
+    {
+      "provider": "stripe",
+      "payment_state": "created",
+      "amount_minor": 15000,
+      "currency": "VND",
+      "outbox_payload_json": {
+        "source": "e2e_prod_manifest"
+      }
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineAccessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+      try {
+        const j = pm.response.json();
+        if (j.payment_id !== undefined) pm.environment.set('paymentId', j.payment_id);
+      } catch (e) {}
+    language: text/javascript
+order: 2000

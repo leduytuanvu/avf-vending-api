@@ -1,0 +1,26 @@
+$kind: collection
+name: /avf.machine.v1.MachineRuntimeSessionService/HeartbeatRuntimeSession
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineRuntimeSessionService/HeartbeatRuntimeSession`
+  - **Proto:** `proto/avf/machine/v1/runtime_session.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {},
+    "session_id": "{{$guid}}",
+    "network_state": "",
+    "mqtt_state": "",
+    "storefront_state": "",
+    "sell_ready": false,
+    "blockers": [],
+    "hardware_status": {},
+    "catalog_status": {},
+    "outbox_status": {},
+    "recovery_status": {}
+  }
+  ```
+order: 60000

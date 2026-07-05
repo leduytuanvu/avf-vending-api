@@ -363,7 +363,7 @@ def build_mqtt_inventory_items(mq_rows: list[dict]) -> list[dict]:
                 "expectedAckPayloadExample": {"status": "ack", "command_id": "{{commandId}}"} if ack else {},
                 "dependsOn": ["machine provisioning"] if producer == "machine" else ["command dispatch API"],
                 "sourceEvidence": [
-                    "postman/suites/full-production-suite/generate_full_postman_suite.py:fix_mqtt_rows",
+                    "scripts/postman/ (MQTT matrix, gRPC templates)",
                     "docs/api/mqtt-contract.md",
                 ],
             }

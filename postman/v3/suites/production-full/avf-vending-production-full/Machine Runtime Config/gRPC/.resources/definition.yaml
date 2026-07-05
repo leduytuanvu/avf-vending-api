@@ -1,0 +1,3 @@
+$kind: collection
+description: Manual gRPC test items ΓÇö import protos from proto/avf
+order: 2000

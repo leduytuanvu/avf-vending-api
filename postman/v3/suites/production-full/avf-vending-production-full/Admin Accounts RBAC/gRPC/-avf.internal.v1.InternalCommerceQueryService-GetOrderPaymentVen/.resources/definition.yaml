@@ -1,0 +1,17 @@
+$kind: collection
+name: /avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalCommerceQueryService/GetOrderPaymentVendState`
+  - **Proto:** `proto/avf/internal/v1/commerce_query.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "order_id": "{{$guid}}",
+    "slot_index": 0
+  }
+  ```
+order: 2000

@@ -1,0 +1,18 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommandService/GetPendingCommands
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommandService/GetPendingCommands`
+  - **Proto:** `proto/avf/machine/v1/command.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {},
+    "after_command_sequence": 0,
+    "limit": 0
+  }
+  ```
+order: 18000

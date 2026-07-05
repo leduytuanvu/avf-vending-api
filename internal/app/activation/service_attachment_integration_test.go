@@ -42,8 +42,8 @@ func insertActivationTestMachine(t *testing.T, pool *pgxpool.Pool) (siteID, mach
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-attach-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, code, status, credential_version)
+VALUES ($1, $2, $3, 'AVF000001', 'online', 0)`, machineID, siteID, "sn-attach-"+uuid.NewString()[:8])
 	require.NoError(t, err)
 	return siteID, machineID
 }
@@ -153,6 +153,13 @@ func TestClaim_WithRuntime_DifferentBoardReplacesAttachmentAndClosesSession(t *t
 	require.Equal(t, "REPLACED", closed.Status)
 	require.True(t, closed.EndReason.Valid)
 	require.Equal(t, "BOARD_REPLACED", closed.EndReason.String)
+
+	var machineCode string
+	err = pool.QueryRow(ctx, `SELECT code FROM machines WHERE id = $1`, machineID).Scan(&machineCode)
+	require.NoError(t, err)
+	require.Equal(t, "AVF000001", machineCode)
+	require.Equal(t, machineID, out2.MachineID)
+	require.Equal(t, "AVF000001", out2.MachineCode)
 }
 
 func TestClaim_WithRuntime_NoOperatorSessionRequired(t *testing.T) {

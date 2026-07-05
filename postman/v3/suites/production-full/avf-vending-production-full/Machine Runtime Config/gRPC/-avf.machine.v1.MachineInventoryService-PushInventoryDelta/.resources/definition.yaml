@@ -1,0 +1,19 @@
+$kind: collection
+name: /avf.machine.v1.MachineInventoryService/PushInventoryDelta
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineInventoryService/PushInventoryDelta`
+  - **Proto:** `proto/avf/machine/v1/inventory.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "meta": {},
+    "reason": "",
+    "lines": []
+  }
+  ```
+order: 39000

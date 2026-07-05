@@ -1,0 +1,17 @@
+$kind: collection
+name: /avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.v1.InternalTelemetryQueryService/GetMachineIncidentSummary`
+  - **Proto:** `proto/avf/v1/internal_queries.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "limit": 0
+  }
+  ```
+order: 78000

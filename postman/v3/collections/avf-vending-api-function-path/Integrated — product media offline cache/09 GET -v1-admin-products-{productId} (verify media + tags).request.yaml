@@ -1,0 +1,26 @@
+$kind: http-request
+name: 09 GET /v1/admin/products/{productId} (verify media + tags)
+description: Assert primary media variants + tags for offline cache contracts.
+url: "{{baseUrl}}/v1/admin/products/{{productId}}"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test('product media + tags', function () {
+        pm.response.to.have.status(200);
+        const j = pm.response.json();
+        pm.expect(j.primaryMediaId).to.be.a('string');
+        pm.expect(j.media && j.media.primary).to.be.an('object');
+        pm.expect(j.media.primary.variants).to.be.an('array');
+        pm.expect(j.media.primary.variants.length).to.be.above(0);
+        const v0 = j.media.primary.variants[0];
+        pm.expect(v0.sha256).to.match(/^[a-f0-9]{64}$/);
+        pm.expect(v0).to.have.property('version');
+        pm.expect(v0.downloadUrl).to.be.a('string');
+        pm.expect(j.tags).to.be.an('array');
+        const tagWant = pm.environment.get('tagId') || pm.collectionVariables.get('tag_id');
+        const ids = (j.tags || []).map(function (t) { return t.id; });
+        pm.expect(ids).to.include(tagWant);
+      });
+    language: text/javascript
+order: 9000

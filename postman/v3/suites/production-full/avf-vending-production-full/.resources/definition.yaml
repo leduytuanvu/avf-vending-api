@@ -1,0 +1,33 @@
+$kind: collection
+id: 47eaaeda-2099-6125-e9af-b673355fbecb
+name: AVF Production Full API Suite
+description: |-
+  Production Postman suite grouped by module/domain.
+  REST from OpenAPI; gRPC/MQTT are manual documentation folders.
+variables:
+  baseUrl: https://api.ldtv.dev
+  readiness: "true"
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      /* collection prerequest: resource UUID v7 + request/correlation ids ΓÇö kh├┤ng log secret */
+      function uuid7() {
+        let t = Date.now();
+        const b = new Uint8Array(16);
+        for (let i = 5; i >= 0; i--) { b[i] = t & 0xff; t = Math.floor(t / 256); }
+        for (let i = 6; i < 16; i++) { b[i] = (Math.random() * 256) | 0; }
+        b[6] = (b[6] & 0x0f) | 0x70;
+        b[8] = (b[8] & 0x3f) | 0x80;
+        const hex = Array.from(b, (n) => n.toString(16).padStart(2, '0')).join('');
+        return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
+      }
+      pm.collectionVariables.set('resource_uuid', uuid7());
+      (function () {
+        const er = pm.environment.get('requestId');
+        const rid = (er && String(er).trim()) ? String(er).trim() : pm.variables.replaceIn('{{$guid}}');
+        pm.collectionVariables.set('_runtimeRequestId', rid);
+        const ec = pm.environment.get('correlationId');
+        const cid = (ec && String(ec).trim()) ? String(ec).trim() : pm.variables.replaceIn('{{$guid}}');
+        pm.collectionVariables.set('_runtimeCorrelationId', cid);
+      })();
+    language: text/javascript

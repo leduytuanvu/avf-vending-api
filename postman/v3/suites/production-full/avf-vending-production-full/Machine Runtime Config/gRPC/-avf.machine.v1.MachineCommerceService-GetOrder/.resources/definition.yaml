@@ -1,0 +1,17 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommerceService/GetOrder
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommerceService/GetOrder`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "order_id": "{{$guid}}",
+    "slot_index": 0
+  }
+  ```
+order: 31000

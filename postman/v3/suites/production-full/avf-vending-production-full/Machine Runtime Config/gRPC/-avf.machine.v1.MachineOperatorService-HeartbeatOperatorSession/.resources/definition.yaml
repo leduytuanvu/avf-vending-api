@@ -1,0 +1,17 @@
+$kind: collection
+name: /avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineOperatorService/HeartbeatOperatorSession`
+  - **Proto:** `proto/avf/machine/v1/operator_grpc.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "session_id": "{{$guid}}"
+  }
+  ```
+order: 52000

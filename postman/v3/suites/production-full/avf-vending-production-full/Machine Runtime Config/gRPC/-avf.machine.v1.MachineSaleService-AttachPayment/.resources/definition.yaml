@@ -1,0 +1,16 @@
+$kind: collection
+name: /avf.machine.v1.MachineSaleService/AttachPayment
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineSaleService/AttachPayment`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "payment_session": {}
+  }
+  ```
+order: 62000

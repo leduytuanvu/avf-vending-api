@@ -1,0 +1,19 @@
+$kind: collection
+name: /avf.machine.v1.MachineBootstrapService/AckConfigVersion
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineBootstrapService/AckConfigVersion`
+  - **Proto:** `proto/avf/machine/v1/bootstrap.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {},
+    "acknowledged_config_version": 0,
+    "acknowledged_planogram_version_id": "{{$guid}}",
+    "effective_device_config": {}
+  }
+  ```
+order: 5000

@@ -1,0 +1,32 @@
+$kind: http-request
+name: REST-COMMERCE-006 — POST /v1/commerce/orders/{id}/vend/success
+url: "{{baseUrl}}/v1/commerce/orders/{{orderId}}/vend/success"
+method: POST
+headers:
+  Content-Type: application/json
+  Idempotency-Key: "{{runPrefix}}-REST-COMMERCE-006"
+body:
+  type: text
+  content: |-
+    {
+      "cabinet_code": "A",
+      "slot_code": "A1"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineAccessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(200);
+      });
+    language: text/javascript
+order: 7000

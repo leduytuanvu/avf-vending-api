@@ -1,0 +1,157 @@
+$kind: http-request
+name: GET /v1/admin/machines/{machineId}/inventory
+description: |
+  ### operationId (─æß╗æi chiß║┐u OpenAPI)
+  `DocOpV1AdminMachineInventory`
+
+  ### Mß╗Ñc ─æ├¡ch / API d├╣ng ─æß╗â l├ám g├¼
+  Aggregate inventory by product for a machine
+
+  ### Khi n├áo gß╗ìi / gß╗ìi sau b╞░ß╗¢c n├áo
+  Theo tag **Inventory** v├á thß╗⌐ tß╗▒ trong `docs/testing/05_PRODUCTION_TEST_EXECUTION_ORDER.md` v├á `postman/suites/production-full/05_PRODUCTION_TEST_EXECUTION_ORDER.md`. Nß║┐u cß║ºn auth: gß╗ìi `POST /v1/auth/login` tr╞░ß╗¢c, sau ─æ├│ `GET /v1/auth/me` ─æß╗â x├íc nhß║¡n principal.
+  ### Request truyß╗ün g├¼
+  Biß║┐n Postman tr├¬n path/query/header; body mß║½u sinh tß╗½ OpenAPI v├á chuß║⌐n ho├í **canary** (tr├ính 409).
+
+  ### Response nhß║¡n g├¼
+  HTTP + body theo schema 2xx trong `docs/swagger/swagger.json`; lß╗ùi chuß║⌐n envelope JSON (`error.code`, `requestId`).
+
+  ### Evidence cß║ºn l╞░u
+  HTTP status, `requestId`/`X-Request-ID`, `X-Correlation-ID`, `error` nß║┐u c├│ ΓÇö **kh├┤ng** l╞░u/jwt/raw password.
+
+  ### Lß╗ùi th╞░ß╗¥ng gß║╖p
+  - **401** unauthenticated ΓÇö thiß║┐u/sai JWT.
+  - **403** forbidden ΓÇö RBAC.
+  - **404** kh├┤ng t├¼m thß║Ñy resource hoß║╖c route tß║»t (metrics/swagger t├╣y cß║Ñu h├¼nh).
+  - **409** conflict / idempotency replay.
+  - **500** lß╗ùi m├íy chß╗º.
+
+  ### Auth
+  C├│ ΓÇö Bearer JWT (`{{accessToken}}`). Vß╗¢i machine JWT: ─æß║╖t `accessToken` = gi├í trß╗ï machine token (hoß║╖c d├╣ng biß║┐n `machineToken` v├á copy thß╗º c├┤ng v├áo header nß║┐u bß║ín t├ích biß║┐n).
+
+  ### C├│ destructive kh├┤ng?
+  Mß╗⌐c: **READ_ONLY**. Request ghi mß║╖c ─æß╗ïnh **disabled** trong Postman; pre-request **throw** nß║┐u ch╞░a ─æß║╖t `allow_destructive` / `canaryMode` / `readiness`.
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/inventory"
+method: GET
+headers:
+  X-Request-ID: "{{$guid}}"
+  X-Correlation-ID: "{{$guid}}"
+  Accept: application/json
+  Authorization: Bearer {{accessToken}}
+scripts:
+  - type: beforeRequest
+    code: /* readonly prerequest - no gated-write */
+    language: text/javascript
+  - type: afterResponse
+    code: |
+      
+      /* global pm */
+      const reqPath = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join("/") : "";
+      if (reqPath.indexOf("metrics") >= 0) {
+        pm.test("/metrics: chß║Ñp nhß║¡n 200 / 401 / 404 (public prod c├│ thß╗â 404)", function () {
+          pm.expect([200, 401, 404]).to.include(pm.response.code);
+        });
+      } else {
+        pm.test("Status code is not 500 (mß║╖c ─æß╗ïnh)", function () {
+          pm.expect(pm.response.code).to.not.equal(500);
+        });
+      }
+
+      if (pm.request.url && pm.request.url.path && pm.request.url.path.join("/").indexOf("v1/auth/login") >= 0 && pm.response.code === 200) {
+        try {
+          const j = pm.response.json();
+          const at = j.access_token || j.accessToken;
+          const rt = j.refresh_token || j.refreshToken;
+          const u = j.user || {};
+          if (at) { pm.environment.set("accessToken", at); }
+          if (rt) { pm.environment.set("refreshToken", rt); }
+        } catch (e) { /* ignore */ }
+      }
+      if (pm.request.url && pm.request.url.path && pm.request.url.path.join("/").indexOf("v1/auth/me") >= 0 && pm.response.code === 200) {
+        try {
+          const j = pm.response.json();
+          const u = j.user || j;
+        } catch (e) { /* ignore */ }
+      }
+
+      const gateCapture =
+        pm.environment.get("allow_destructive") === "true" ||
+        pm.environment.get("canaryMode") === "true" ||
+        pm.environment.get("readiness") === "true";
+      const reqPath2 = (pm.request.url && pm.request.url.path) ? pm.request.url.path.join("/") : "";
+      const method2 = (pm.request.method || "").toUpperCase();
+      const setNonEmpty = (k, v) => {
+        if (v === undefined || v === null) return;
+        const s = String(v).trim();
+        if (!s.length) return;
+        pm.environment.set(k, s);
+      };
+      if (gateCapture && pm.response.code >= 200 && pm.response.code < 300) {
+        try {
+          const j = pm.response.json();
+          setNonEmpty("orderId", j.order_id || j.orderId);
+          setNonEmpty("machineId", j.machine_id || j.machineId);
+          setNonEmpty("siteId", j.site_id || j.siteId);
+          setNonEmpty("productId", j.product_id || j.productId);
+          setNonEmpty("paymentSessionId", j.payment_session_id || j.paymentSessionId);
+          setNonEmpty("planogramId", j.planogram_id || j.planogramId);
+          setNonEmpty("slotId", j.slot_id || j.slotId);
+          setNonEmpty("mediaId", j.media_id || j.mediaId);
+          setNonEmpty("priceBookId", j.price_book_id || j.priceBookId);
+          setNonEmpty("promotionId", j.promotion_id || j.promotionId);
+          setNonEmpty("technicianId", j.technician_id || j.technicianId);
+          setNonEmpty("tagId", j.tag_id || j.tagId);
+          setNonEmpty("reportId", j.report_id || j.reportId);
+          setNonEmpty("commandId", j.command_id || j.commandId);
+          setNonEmpty("machineToken", j.machine_token || j.machineToken);
+          setNonEmpty("activationCode", j.activation_code || j.activationCode);
+          const actPath =
+            reqPath2.indexOf("activation") >= 0 ||
+            reqPath2.indexOf("activate") >= 0 ||
+            reqPath2.indexOf("claim") >= 0;
+          if (
+            actPath &&
+            !(j.activation_code || j.activationCode) &&
+            typeof j.code === "string" &&
+            String(j.code).trim().length
+          ) {
+            setNonEmpty("activationCode", j.code);
+          }
+          setNonEmpty("operatorSessionId", j.operator_session_id || j.operatorSessionId);
+          const topId = j.id;
+          if (topId) {
+            if (method2 === "POST" && reqPath2.indexOf("v1/admin/sites") >= 0 && !j.site_id && !j.siteId) {
+              setNonEmpty("siteId", topId);
+            } else if (method2 === "POST" && reqPath2.indexOf("v1/admin/products") >= 0 && !j.product_id && !j.productId) {
+              setNonEmpty("productId", topId);
+            } else if (method2 === "POST" && (reqPath2.indexOf("v1/admin/machines") >= 0 || reqPath2.indexOf("v1/machines") >= 0) && !j.machine_id && !j.machineId) {
+              setNonEmpty("machineId", topId);
+            } else if ((reqPath2.indexOf("v1/commerce") >= 0 || reqPath2.indexOf("/orders") >= 0) && !j.order_id && !j.orderId) {
+              setNonEmpty("orderId", topId);
+            } else if (reqPath2.indexOf("payment") >= 0 && !j.payment_session_id && !j.paymentSessionId) {
+              setNonEmpty("paymentSessionId", topId);
+            } else if (reqPath2.indexOf("command") >= 0 && !j.command_id && !j.commandId) {
+              setNonEmpty("commandId", topId);
+            } else if (reqPath2.indexOf("operator") >= 0 && !j.operator_session_id && !j.operatorSessionId) {
+              setNonEmpty("operatorSessionId", topId);
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+
+      if (pm.response.code >= 400) {
+        pm.test("JSON error envelope (when body parses)", function () {
+          try {
+            const j = pm.response.json();
+            if (j && j.error && typeof j.error === "object") {
+              pm.expect(j.error).to.have.property("code");
+              pm.expect(j.error).to.have.property("message");
+              const rid = j.error.requestId || j.error.request_id;
+              if (rid !== undefined && rid !== null && String(rid).trim().length) {
+                pm.expect(String(rid).trim().length).to.be.above(0);
+              }
+            }
+          } catch (e) { /* non-JSON body */ }
+        });
+      }
+    language: text/javascript
+order: 8000

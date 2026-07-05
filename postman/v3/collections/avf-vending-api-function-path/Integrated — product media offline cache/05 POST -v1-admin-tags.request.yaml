@@ -1,0 +1,14 @@
+$kind: http-request
+name: 05 POST /v1/admin/tags
+description: Create tag.
+url: "{{baseUrl}}/v1/admin/tags"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "name": "Cold Drink {{$timestamp}}",
+      "slug": "cold-drink-{{$timestamp}}",
+      "active": true
+    }
+order: 5000

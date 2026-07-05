@@ -1,0 +1,56 @@
+$kind: http-request
+name: REST-PLANO-003 — PUT /v1/admin/machines/{id}/planograms/draft
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/planograms/draft"
+method: PUT
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "operator_session_id": "{{operatorSessionId}}",
+      "planogramId": "{{planogramId}}",
+      "planogramRevision": "{{planogramRevision}}",
+      "syncLegacyReadModel": true,
+      "items": [
+        {
+          "cabinetCode": "A",
+          "slotCode": "A1",
+          "productId": "{{productId}}",
+          "maxQuantity": 8,
+          "priceMinor": 15000,
+          "layoutKey": "grid-4x6",
+          "layoutRevision": 1,
+          "legacySlotIndex": 1,
+          "metadata": {}
+        }
+      ]
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: beforeRequest
+    code: |-
+      const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';
+      pm.variables.set('_postman_skip_if_env_key', 'planogramRevision');
+      const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');
+      const envKey = pm.variables.get('_postman_skip_if_env_key');
+      if (reuse && envKey && pm.environment.get(envKey)) {
+        pm.execution.skipRequest();
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(204);
+      });
+    language: text/javascript
+order: 4000

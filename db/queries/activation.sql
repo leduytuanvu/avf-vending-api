@@ -21,21 +21,45 @@ RETURNING *;
 
 -- name: ListMachineActivationCodesForMachine :many
 SELECT
-    *
+    mac.id,
+    mac.machine_id,
+    mac.code_hash,
+    mac.max_uses,
+    mac.uses,
+    mac.expires_at,
+    mac.notes,
+    mac.status,
+    mac.claimed_fingerprint_hash,
+    mac.created_at,
+    mac.updated_at,
+    m.code AS machine_code
 FROM
-    machine_activation_codes
+    machine_activation_codes mac
+    INNER JOIN machines m ON m.id = mac.machine_id
 WHERE
-    machine_id = $1
+    mac.machine_id = $1
 ORDER BY
-    created_at DESC;
+    mac.created_at DESC;
 
 -- name: ListMachineActivationCodesPaged :many
 SELECT
-    *
+    mac.id,
+    mac.machine_id,
+    mac.code_hash,
+    mac.max_uses,
+    mac.uses,
+    mac.expires_at,
+    mac.notes,
+    mac.status,
+    mac.claimed_fingerprint_hash,
+    mac.created_at,
+    mac.updated_at,
+    m.code AS machine_code
 FROM
-    machine_activation_codes
+    machine_activation_codes mac
+    INNER JOIN machines m ON m.id = mac.machine_id
 ORDER BY
-    created_at DESC
+    mac.created_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: CountMachineActivationCodesAll :one

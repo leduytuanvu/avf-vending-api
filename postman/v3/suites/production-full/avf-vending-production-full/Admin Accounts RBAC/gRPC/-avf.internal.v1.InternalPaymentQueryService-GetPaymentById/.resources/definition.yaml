@@ -1,0 +1,16 @@
+$kind: collection
+name: /avf.internal.v1.InternalPaymentQueryService/GetPaymentById
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalPaymentQueryService/GetPaymentById`
+  - **Proto:** `proto/avf/internal/v1/payment_query.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "payment_id": "{{$guid}}"
+  }
+  ```
+order: 8000

@@ -1,0 +1,18 @@
+$kind: collection
+name: /avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineInventoryService/SubmitInventoryAdjustment`
+  - **Proto:** `proto/avf/machine/v1/inventory.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "reason": "",
+    "lines": []
+  }
+  ```
+order: 42000

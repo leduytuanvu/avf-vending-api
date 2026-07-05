@@ -1,0 +1,16 @@
+$kind: collection
+name: /avf.machine.v1.MachineAuthService/RefreshMachineToken
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineAuthService/RefreshMachineToken`
+  - **Proto:** `proto/avf/machine/v1/auth.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "refresh": {}
+  }
+  ```
+order: 4000

@@ -1,0 +1,20 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommerceService/ReportVendSuccess
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommerceService/ReportVendSuccess`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "order_id": "{{$guid}}",
+    "slot_index": 0,
+    "correlation_id": "{{$guid}}",
+    "evidence": {}
+  }
+  ```
+order: 34000

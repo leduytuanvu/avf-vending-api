@@ -1,0 +1,19 @@
+$kind: collection
+name: /avf.machine.v1.MachineMediaService/GetMediaDelta
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineMediaService/GetMediaDelta`
+  - **Proto:** `proto/avf/machine/v1/media.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "basis_media_fingerprint": "",
+    "meta": {},
+    "include_unavailable": false
+  }
+  ```
+order: 47000

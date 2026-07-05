@@ -3337,17 +3337,18 @@ func DocOpV1AdminTechnicianAssignmentDelete() {}
 
 // DocOpV1AdminMachineActivationCodesPost godoc
 // @Summary Create machine activation code
-// @Description Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled.
+// @Description Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param machineId path string true "Machine UUID"
+// @Param machineId path string true "Machine UUID or machineCode (AVF000001)"
 // @Param body body object true "expiresInMinutes, maxUses, optional notes"
-// @Success 201 {object} object
+// @Success 201 {object} object "activationCode, activationCodeId, machineId, machineCode, expiresAt, maxUses, remainingUses, status"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError "machine_not_found"
 // @Failure 429 {object} V1StandardError
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines/{machineId}/activation-codes [post]
@@ -3355,12 +3356,12 @@ func DocOpV1AdminMachineActivationCodesPost() {}
 
 // DocOpV1AdminMachineActivationCodesList godoc
 // @Summary List activation codes for a machine
-// @Description Returns metadata only; **never** returns the raw activation code. **403** when the machine is outside caller scope.
+// @Description Returns metadata only; **never** returns the raw activation code. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001). List items include **machineCode**. **403** when the machine is outside caller scope.
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Produce json
-// @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
+// @Param machineId path string true "Machine UUID or machineCode (AVF000001)"
+// @Success 200 {object} object "items with activationCodeId, machineId, machineCode, expiresAt, maxUses, uses, remainingUses, status, notes, createdAt"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
 // @Failure 403 {object} V1StandardError
@@ -3371,9 +3372,10 @@ func DocOpV1AdminMachineActivationCodesList() {}
 
 // DocOpV1AdminMachineActivationCodeDelete godoc
 // @Summary Revoke an activation code
+// @Description Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).
 // @Tags Machine Admin
 // @Security BearerAuth
-// @Param machineId path string true "Machine UUID"
+// @Param machineId path string true "Machine UUID or machineCode (AVF000001)"
 // @Param activationCodeId path string true "Activation code row UUID"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
@@ -3383,6 +3385,57 @@ func DocOpV1AdminMachineActivationCodesList() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/machines/{machineId}/activation-codes/{activationCodeId} [delete]
 func DocOpV1AdminMachineActivationCodeDelete() {}
+
+// DocOpV1AdminMachineCodeActivationCodesPost godoc
+// @Summary Create machine activation code by machineCode
+// @Description Canonical machineCode path for activation code create. Returns the raw **activationCode** once.
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineCode path string true "Human machine code (AVF000001)"
+// @Param body body object true "expiresInMinutes, maxUses, optional notes"
+// @Success 201 {object} object "activationCode, activationCodeId, machineId, machineCode, expiresAt, maxUses, remainingUses, status"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError
+// @Failure 429 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machine-codes/{machineCode}/activation-codes [post]
+func DocOpV1AdminMachineCodeActivationCodesPost() {}
+
+// DocOpV1AdminMachineCodeActivationCodesList godoc
+// @Summary List activation codes by machineCode
+// @Description Canonical machineCode path for activation code list. Returns metadata only (no plaintext code).
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Produce json
+// @Param machineCode path string true "Human machine code (AVF000001)"
+// @Success 200 {object} object "items with activationCodeId, machineId, machineCode, expiresAt, maxUses, uses, remainingUses, status, notes, createdAt"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machine-codes/{machineCode}/activation-codes [get]
+func DocOpV1AdminMachineCodeActivationCodesList() {}
+
+// DocOpV1AdminMachineCodeActivationCodeDelete godoc
+// @Summary Revoke an activation code by machineCode
+// @Description Canonical machineCode path for activation code revoke.
+// @Tags Machine Admin
+// @Security BearerAuth
+// @Param machineCode path string true "Human machine code (AVF000001)"
+// @Param activationCodeId path string true "Activation code row UUID"
+// @Success 204 {string} string "No Content"
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1StandardError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId} [delete]
+func DocOpV1AdminMachineCodeActivationCodeDelete() {}
 
 // DocOpV1AdminTechniciansList godoc
 // @Summary List technicians (admin)
@@ -3762,13 +3815,14 @@ func DocOpV1AdminActivationCodesCatalogList() {}
 
 // DocOpV1AdminActivationCodesCatalogCreate godoc
 // @Summary Create activation code (catalog path; targets machine in body)
+// @Description Body accepts **machineId** / **machine_id** and/or **machineCode** / **machine_code**. When both are present they must resolve to the same machine or **400 machine_identifier_conflict**.
 // @Tags Activation
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param Idempotency-Key header string true "Write idempotency key"
-// @Param body body object true "machineId, expiry, maxUses"
-// @Success 201 {object} object
+// @Param body body object true "machineId or machineCode, expiry, maxUses"
+// @Success 201 {object} object "activationCode, activationCodeId, machineId, machineCode, expiresAt, maxUses, remainingUses, status"
 // @Router /v1/admin/activation-codes [post]
 func DocOpV1AdminActivationCodesCatalogCreate() {}
 

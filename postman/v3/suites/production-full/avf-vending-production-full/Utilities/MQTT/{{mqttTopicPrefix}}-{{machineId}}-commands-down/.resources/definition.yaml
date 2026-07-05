@@ -1,0 +1,22 @@
+$kind: collection
+name: "{{mqttTopicPrefix}}/{{machineId}}/commands/down"
+description: |
+  **MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)
+
+  - **Topic:** `{{mqttTopicPrefix}}/{{machineId}}/commands/down`
+  - **Direction:** backend_publishes_machine_subscribes
+  - **Host:** `{{mqttHost}}:{{mqttPort}}`
+
+  **Payload:**
+  ```json
+  {
+    "command_id": "{{commandId}}",
+    "machine_id": "{{machineId}}",
+    "sequence": 1,
+    "command_type": "NOOP_POSTMAN",
+    "payload": {},
+    "idempotency_key": "avf-postman-{{$guid}}",
+    "correlation_id": "{{$guid}}"
+  }
+  ```
+order: 7000

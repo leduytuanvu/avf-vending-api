@@ -1,0 +1,16 @@
+$kind: collection
+name: /avf.v1.InternalMachineQueryService/GetMachineState
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.v1.InternalMachineQueryService/GetMachineState`
+  - **Proto:** `proto/avf/v1/internal_queries.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}"
+  }
+  ```
+order: 76000

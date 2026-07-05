@@ -1,0 +1,18 @@
+$kind: collection
+name: /avf.machine.v1.MachineTelemetryService/PushTelemetryBatch
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch`
+  - **Proto:** `proto/avf/machine/v1/telemetry.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "meta": {},
+    "events": []
+  }
+  ```
+order: 2000

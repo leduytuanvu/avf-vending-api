@@ -1,0 +1,21 @@
+$kind: collection
+name: "{{mqttTopicPrefix}}/+/telemetry/snapshot"
+description: |
+  **MQTT manual test item** (Postman Desktop ΓåÆ New ΓåÆ MQTT)
+
+  - **Topic:** `{{mqttTopicPrefix}}/+/telemetry/snapshot`
+  - **Direction:** machine_publishes_backend_subscribes
+  - **Host:** `{{mqttHost}}:{{mqttPort}}`
+
+  **Payload:**
+  ```json
+  {
+    "schema_version": 1,
+    "event_id": "{{$guid}}",
+    "machine_id": "{{machineId}}",
+    "dedupe_key": "avf-postman-{{$guid}}",
+    "event_type": "telemetry",
+    "payload": {}
+  }
+  ```
+order: 10000

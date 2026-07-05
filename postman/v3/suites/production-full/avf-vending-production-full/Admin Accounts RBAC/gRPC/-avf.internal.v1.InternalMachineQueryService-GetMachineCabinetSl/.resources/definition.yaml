@@ -1,0 +1,16 @@
+$kind: collection
+name: /avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.internal.v1.InternalMachineQueryService/GetMachineCabinetSlotSummary`
+  - **Proto:** `proto/avf/internal/v1/machine_query.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}"
+  }
+  ```
+order: 4000

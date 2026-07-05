@@ -1,0 +1,21 @@
+$kind: collection
+name: /avf.machine.v1.MachineCommerceService/CreateQuote
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCommerceService/CreateQuote`
+  - **Proto:** `proto/avf/machine/v1/commerce.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "context": {},
+    "machine_id": "{{machineId}}",
+    "currency": "",
+    "payment_method": "",
+    "lines": [],
+    "meta": {}
+  }
+  ```
+order: 30000

@@ -1,0 +1,18 @@
+$kind: collection
+name: /avf.machine.v1.MachineCatalogService/GetCatalogDelta
+description: |
+  **gRPC manual test item** (Postman Desktop ΓåÆ New ΓåÆ gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineCatalogService/GetCatalogDelta`
+  - **Proto:** `proto/avf/machine/v1/catalog.proto`
+  - **Host:** `{{grpcHost}}:{{grpcPort}}`
+
+  **Request JSON:**
+  ```json
+  {
+    "machine_id": "{{machineId}}",
+    "basis_catalog_version": "",
+    "meta": {}
+  }
+  ```
+order: 10000
