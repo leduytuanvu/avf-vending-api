@@ -135,14 +135,23 @@ def main() -> int:
     st, me, _ = http_request("GET", f"{base_url}/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     record("GET /v1/auth/me", st == 200, http_status=st)
 
-    # Resolve test machine from bootstrap entity registry if present
-    reg_path = report_dir() / "PRODUCTION_TEST_ENTITY_REGISTRY.json"
-    machine_id = os.environ.get("TEST_MACHINE_ID", "")
-    machine_code = os.environ.get("TEST_MACHINE_CODE", "")
-    if reg_path.is_file():
-        reg = json.loads(reg_path.read_text(encoding="utf-8"))
-        machine_id = machine_id or str((reg.get("entities") or {}).get("machineId", {}).get("id", ""))
-        if machine_id and not machine_code:
+    # Resolve test machine: explicit env only, or create an isolated machine (avoid E2E-compromised registry rows).
+    machine_id = os.environ.get("TEST_MACHINE_ID", "").strip()
+    machine_code = os.environ.get("TEST_MACHINE_CODE", "").strip()
+    if not machine_id:
+        try:
+            machine_id, machine_code = ensure_activation_test_machine(base_url, token, run_prefix)
+            record("ensure_activation_test_machine", True, machine_id=machine_id, machine_code=machine_code)
+        except RuntimeError as exc:
+            record("ensure_activation_test_machine", False, error=str(exc))
+            evidence = REPO / "docs" / "reports" / "machine-code-activation-production" / "evidence"
+            evidence.mkdir(parents=True, exist_ok=True)
+            write_json(evidence / "activation_smoke_results.json", {"results": results, "blocked": "machine_setup_failed"})
+            return 2
+    elif not machine_code:
+        reg_path = report_dir() / "PRODUCTION_TEST_ENTITY_REGISTRY.json"
+        if reg_path.is_file():
+            reg = json.loads(reg_path.read_text(encoding="utf-8"))
             machine_code = machine_code_from_registry(reg, machine_id)
 
     if not machine_code or not ACTIVATION_CODE_RE.match(machine_code.upper()):
