@@ -322,8 +322,11 @@ type ClaimActivationResponse struct {
 	MqttPassword string `protobuf:"bytes,15,opt,name=mqtt_password,json=mqttPassword,proto3" json:"mqtt_password,omitempty"`
 	// Active machine_device_attachments row created or reused during claim.
 	DeviceAttachmentId string `protobuf:"bytes,16,opt,name=device_attachment_id,json=deviceAttachmentId,proto3" json:"device_attachment_id,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Human-facing machine code printed on the physical machine, e.g. AVF000000.
+	// Runtime authorization still uses machine_id UUID.
+	MachineCode   string `protobuf:"bytes,17,opt,name=machine_code,json=machineCode,proto3" json:"machine_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ClaimActivationResponse) Reset() {
@@ -461,6 +464,13 @@ func (x *ClaimActivationResponse) GetDeviceAttachmentId() string {
 	return ""
 }
 
+func (x *ClaimActivationResponse) GetMachineCode() string {
+	if x != nil {
+		return x.MachineCode
+	}
+	return ""
+}
+
 var File_avf_machine_v1_machine_activation_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
@@ -496,7 +506,7 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\rnetwork_state\x18\x18 \x01(\tR\fnetworkState\"\x93\x01\n" +
 	"\x16ClaimActivationRequest\x12'\n" +
 	"\x0factivation_code\x18\x01 \x01(\tR\x0eactivationCode\x12P\n" +
-	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xbf\x05\n" +
+	"\x12device_fingerprint\x18\x02 \x01(\v2!.avf.machine.v1.DeviceFingerprintR\x11deviceFingerprint\"\xe2\x05\n" +
 	"\x17ClaimActivationResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -514,7 +524,8 @@ const file_avf_machine_v1_machine_activation_proto_rawDesc = "" +
 	"\x12bootstrap_required\x18\f \x01(\bR\x11bootstrapRequired\x12#\n" +
 	"\rmqtt_username\x18\x0e \x01(\tR\fmqttUsername\x12#\n" +
 	"\rmqtt_password\x18\x0f \x01(\tR\fmqttPassword\x120\n" +
-	"\x14device_attachment_id\x18\x10 \x01(\tR\x12deviceAttachmentId2~\n" +
+	"\x14device_attachment_id\x18\x10 \x01(\tR\x12deviceAttachmentId\x12!\n" +
+	"\fmachine_code\x18\x11 \x01(\tR\vmachineCode2~\n" +
 	"\x18MachineActivationService\x12b\n" +
 	"\x0fClaimActivation\x12&.avf.machine.v1.ClaimActivationRequest\x1a'.avf.machine.v1.ClaimActivationResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 

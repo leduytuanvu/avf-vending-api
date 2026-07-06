@@ -17,6 +17,7 @@ This document is the **single production source of truth** for the Android vendi
 | **Primary transport** | `grpcs://` Machine gRPC (`MACHINE_GRPC_ENABLED=true`, required when `APP_ENV=production`) |
 | **Primary commands** | MQTT TLS subscribe + `commands/ack` publish ([`mqtt-contract.md`](mqtt-contract.md)) |
 | **Auth for runtime** | Machine access JWT in metadata: `authorization: Bearer <machine_access_jwt>` |
+| **Display identity** | `machine_code` (e.g. `AVF000001`) may appear in claim/refresh/bootstrap responses for UI labels only. **Never** use `machine_code` for JWT, MQTT ACL, or request authorization — always the UUID `machine_id`. |
 | **Legacy REST** | Registered only when `ENABLE_LEGACY_MACHINE_HTTP=true`; production default **false**; requires `MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION=true` to enable in prod |
 | **Admin JWT** | **Rejected** on all machine runtime RPCs (`Unauthenticated`) |
 | **PSP webhooks** | REST only (`POST /v1/commerce/orders/{orderId}/payments/{paymentId}/webhooks`) — not gRPC |
@@ -143,7 +144,7 @@ Legend — **Legacy REST fallback:** `legacy-only` = not mounted in production d
 |------|-------|
 | **Primary RPC** | `MachineActivationService.ClaimActivation` (preferred) or `MachineAuthService.ClaimActivation` |
 | **Request** | `activation_code`, `device_fingerprint` (`android_id`, `serial_number`, `manufacturer`, `model`, `package_name`, `version_name`, `version_code`) |
-| **Response** | `machine_id`, `site_id`, `access_token`, `refresh_token`, expiries, `mqtt_broker_url`, `mqtt_topic_prefix`, `bootstrap_required` |
+| **Response** | `machine_id`, `machine_code` (display-only AVF code), `site_id`, `access_token`, `refresh_token`, expiries, `mqtt_broker_url`, `mqtt_topic_prefix`, `bootstrap_required` |
 | **Auth** | None |
 | **Idempotency** | No ledger — use fresh activation code per install |
 | **Persistence** | Secure storage: refresh token, machine_id, MQTT config |
@@ -156,7 +157,7 @@ Legend — **Legacy REST fallback:** `legacy-only` = not mounted in production d
 |------|-------|
 | **Primary RPC** | `MachineTokenService.RefreshMachineToken` |
 | **Request** | `refresh_token` |
-| **Response** | New `access_token`, rotated `refresh_token`, expiries, MQTT hints |
+| **Response** | New `access_token`, rotated `refresh_token`, expiries, MQTT hints, `machine_code` (display-only) |
 | **Auth** | None (opaque refresh in body) |
 | **Idempotency** | No — each call may rotate refresh token |
 | **Persistence** | Replace stored tokens atomically |
@@ -169,7 +170,7 @@ Legend — **Legacy REST fallback:** `legacy-only` = not mounted in production d
 |------|-------|
 | **Primary RPC** | `MachineBootstrapService.GetBootstrap` |
 | **Request** | `MachineRequestMeta` (optional) |
-| **Response** | `BootstrapMachine`, topology/planogram slots, catalog product list, fingerprints, `MqttConfigMetadata`, `RuntimeHints.sell_readiness`, `published_planogram_version_*` |
+| **Response** | `BootstrapMachine` (includes `machine_id` UUID + `machine_code` display-only), topology/planogram slots, catalog product list, fingerprints, `MqttConfigMetadata`, `RuntimeHints.sell_readiness`, `published_planogram_version_*` |
 | **Auth** | Machine JWT + credential gate |
 | **Idempotency** | Read-only |
 | **Persistence** | Cache bootstrap blob + fingerprints locally |
@@ -438,15 +439,15 @@ Per-RPC contract for `avf.machine.v1`. **Auth** = Machine JWT unless noted. **Id
 
 | RPC | Purpose | Request (key fields) | Response (key fields) | Auth | Idempotency | Retry | Local persistence | Errors | REST fallback | Fallback prod |
 |-----|---------|----------------------|------------------------|------|-------------|-------|-------------------|--------|---------------|-----------------|
-| `ClaimActivation` | Bind device to machine | `activation_code`, `device_fingerprint` | tokens, `machine_id`, MQTT hints | None | No | New code per install | Secure token store | Invalid code, rate limit | `POST /v1/setup/activation-codes/claim` | legacy-allowed |
-| `RefreshMachineToken` | Rotate access token | `refresh_token` | new access + refresh | None | No | Once on network fail | Atomic token replace | Revoked refresh | None | — |
+| `ClaimActivation` | Bind device to machine | `activation_code`, `device_fingerprint` | tokens, `machine_id` (UUID), `machine_code` (display-only), MQTT hints | None | No | New code per install | Secure token store | Invalid code, rate limit | `POST /v1/setup/activation-codes/claim` | legacy-allowed |
+| `RefreshMachineToken` | Rotate access token | `refresh_token` | new access + refresh, `machine_code` (display-only) | None | No | Once on network fail | Atomic token replace | Revoked refresh | None | — |
 | `ActivateMachine`, auth `ClaimActivation`/`RefreshMachineToken` | Compatibility aliases | Same as above | Same | None | No | Same | Same | Same | Same | legacy-allowed |
 
 ### MachineBootstrapService
 
 | RPC | Purpose | Request | Response | Auth | Idempotency | Retry | Persistence | Errors | REST | Fallback |
 |-----|---------|---------|----------|------|-------------|-------|-------------|--------|------|----------|
-| `GetBootstrap` | Full runtime config | optional meta | machine, catalog, MQTT, sell readiness | JWT | Read | Safe | Cache blob + fingerprints | disabled/suspended | `GET .../bootstrap` | legacy-only |
+| `GetBootstrap` | Full runtime config | optional meta | machine (`machine_id` UUID + `machine_code` display-only), catalog, MQTT, sell readiness | JWT | Read | Safe | Cache blob + fingerprints | disabled/suspended | `GET .../bootstrap` | legacy-only |
 | `CheckIn` | Boot / connectivity | `boot_id`, meta, idempotency | replay, snapshot | JWT | **Yes** | Same key | Last check-in key | invalid meta | `POST .../check-ins` | legacy-only |
 | `AckConfigVersion` | Confirm config apply | version ids, idempotency | replay | JWT | **Yes** | Same key | Last acked versions | version mismatch | `POST .../config-applies` | legacy-only |
 | `CheckForUpdates` | Lightweight change probe | local fingerprints | changed flags + server fingerprints | JWT | Read | Safe | Fingerprints | credential gate | None | — |

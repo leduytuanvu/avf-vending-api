@@ -165,6 +165,7 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 	}
 	resp := &machinev1.ClaimActivationResponse{
 		MachineId:            out.MachineID.String(),
+		MachineCode:          strings.TrimSpace(out.MachineCode),
 		SiteId:               out.SiteID.String(),
 		MachineName:          out.MachineName,
 		AccessToken:          out.MachineToken,
@@ -226,6 +227,7 @@ func (s *machineTokenServer) RefreshMachineToken(ctx context.Context, req *machi
 	}
 	return &machinev1.RefreshMachineTokenResponse{
 		MachineId:             out.MachineID.String(),
+		MachineCode:           strings.TrimSpace(out.MachineCode),
 		SiteId:                out.SiteID.String(),
 		MachineName:           out.MachineName,
 		AccessToken:           out.MachineToken,
@@ -478,6 +480,7 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	resp := &machinev1.GetBootstrapResponse{
 		Machine: &machinev1.BootstrapMachine{
 			MachineId:         m.ID.String(),
+			MachineCode:       strings.TrimSpace(m.Code),
 			SiteId:            m.SiteID.String(),
 			HardwareProfileId: hw,
 			SerialNumber:      m.SerialNumber,

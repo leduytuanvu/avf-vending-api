@@ -129,6 +129,8 @@ Machine access JWTs are issued separately from admin session semantics. Required
 
 Runtime gRPC auth validates signature, issuer, audience, `token_use`, role, token version, revocation, and machine lifecycle state. Machine refresh tokens remain opaque random values stored only as SHA-256 hashes in `machine_runtime_refresh_tokens`; refresh rotates the opaque refresh token and bumps `machines.credential_version`, invalidating old machine access JWTs.
 
+**Android gRPC display field (2026-07):** `ClaimActivationResponse`, `RefreshMachineTokenResponse`, and `BootstrapMachine` now include **`machine_code`** (human-facing `AVF` code from `machines.code`). **`machine_id` remains the UUID** for JWT claims, MQTT username/topics, and all authorization. Old clients ignore the new proto field; no request field accepts `machine_code` for auth.
+
 Config aliases:
 
 - `AUTH_ISSUER`
