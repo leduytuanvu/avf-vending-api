@@ -54,6 +54,8 @@ def main() -> int:
         steps.append(("security_auth_tests.py", run_py("security_auth_tests.py")))
         steps.append(("fake_pass_audit.py", run_py("fake_pass_audit.py")))
 
+        steps.append(("run_machine_code_activation_prod.py", run_py("run_machine_code_activation_prod.py")))
+        steps.append(("run_grpc_machine_code_prod.py", run_py("run_grpc_machine_code_prod.py")))
         pass_ok = all(code == 0 for _, code in steps)
         pass_results.append({"pass": i, "ok": pass_ok, "steps": {name: code for name, code in steps}})
         if not pass_ok:

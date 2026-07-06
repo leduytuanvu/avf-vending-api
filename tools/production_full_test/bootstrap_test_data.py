@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import sys
 import uuid
@@ -207,7 +208,10 @@ def bootstrap(base_url: str) -> EntityRegistry:
     activation_code = act.get("code") or act.get("activationCode") or act.get("plaintextCode")
     if not activation_code:
         raise RuntimeError(f"no activation code in response: {act}")
-    reg.set("activationCode", str(activation_code), entity_type="activation_code")
+    activation_code = str(activation_code)
+    if not re.fullmatch(r"[0-9]{6}", activation_code):
+        raise RuntimeError(f"activation code must be 6 digits, got: {activation_code!r}")
+    reg.set("activationCode", activation_code, entity_type="activation_code")
 
     claim = claim_activation(base_url, str(activation_code), machine_payload["serialNumber"])
     machine_token = claim.get("accessToken") or claim.get("machineAccessToken") or claim.get("machineToken")

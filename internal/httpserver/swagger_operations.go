@@ -2145,7 +2145,7 @@ func DocOpV1SetupMachineBootstrap() {}
 
 // DocOpV1SetupActivationClaimPost godoc
 // @Summary Claim an activation code (public pre-auth)
-// @Description Exchanges a valid **activationCode** and **deviceFingerprint** for a **machine-scoped JWT**, MQTT hints, and **bootstrapUrl**. Invalid, expired, exhausted, or revoked codes return **400** `activation_invalid` without revealing whether a machine exists. Same code + fingerprint replay returns the same token shape safely; distinct fingerprints consume additional **max_uses** slots when configured, otherwise exhausted codes reject further distinct fingerprints.
+// @Description Exchanges a valid **activationCode** (exactly six digits, e.g. `342209`) and **deviceFingerprint** for a **machine-scoped JWT**, MQTT hints, and **bootstrapUrl**. Invalid, expired, exhausted, or revoked codes return **400** `activation_invalid` without revealing whether a machine exists. Same code + fingerprint replay returns the same token shape safely; distinct fingerprints consume additional **max_uses** slots when configured, otherwise exhausted codes reject further distinct fingerprints.
 // @Tags Activation
 // @Accept json
 // @Produce json
@@ -3337,7 +3337,7 @@ func DocOpV1AdminTechnicianAssignmentDelete() {}
 
 // DocOpV1AdminMachineActivationCodesPost godoc
 // @Summary Create machine activation code
-// @Description Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).
+// @Description Returns the raw **activationCode** once (exactly six digits, e.g. `342209`; server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).
 // @Tags Machine Admin
 // @Security BearerAuth
 // @Accept json

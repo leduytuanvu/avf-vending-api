@@ -45,6 +45,7 @@ Machine JWT only. Methods: `StartRuntimeSession`, `HeartbeatRuntimeSession`, `En
 |-------|--------|------------------------------|
 | `machine_id` | UUID | **Yes** — JWT `machine_id` claim, MQTT username/topics, `MachineRequestMeta.machine_id` |
 | `machine_code` | `AVF` + 6 digits (from `machines.code`) | **No** — display/UI only; returned on `ClaimActivation`, `RefreshMachineToken`, and `BootstrapMachine` |
+| `activation_code` | Exactly 6 digits (e.g. `342209`) | **No** — one-time provisioning secret; hashed at rest; returned once on admin create |
 
 REST claim already returns `machineCode`; gRPC now mirrors the same display field without changing runtime identity.
 

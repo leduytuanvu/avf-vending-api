@@ -46,5 +46,9 @@ http_code="$(curl -sS -o "$act_body" -w '%{http_code}' -X POST \
 [[ "$http_code" == "201" || "$http_code" == "200" ]] || { echo "FATAL: activation code http=${http_code}" >&2; exit 2; }
 act_code="$(jq -r '.activationCode // empty' "$act_body")"
 [[ -n "$act_code" ]] || { echo "FATAL: activationCode missing" >&2; exit 2; }
+if ! jq -e --arg c "$act_code" '$c | test("^[0-9]{6}$")' >/dev/null 2>&1 <<<"$act_code"; then
+  echo "FATAL: activationCode must be exactly 6 digits, got: $act_code" >&2
+  exit 2
+fi
 
 printf 'ACTIVATION_CODE=%s\n' "$act_code"

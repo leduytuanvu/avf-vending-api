@@ -8,7 +8,7 @@
   "siteId": "11111111-2222-4333-8444-555555555502",
   "machineId": "11111111-2222-4333-8444-555555555503",
   "activationCodeId": "11111111-2222-4333-8444-555555555504",
-  "activationCode": "E2E-REPLACE-ME",
+  "activationCode": "342209",
   "machineToken": "<redacted \u2014 store outside git>",
   "adminToken": "<redacted \u2014 store outside git>",
   "categoryIds": [
