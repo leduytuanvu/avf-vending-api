@@ -65,7 +65,7 @@ func TestFingerprintDTO_UnmarshalJSON_snakeCase(t *testing.T) {
 func TestPublicClaimBody_acceptsSnakeCaseFingerprint(t *testing.T) {
 	var body publicClaimBody
 	err := json.Unmarshal([]byte(`{
-		"activationCode": "AVF-000001-000002",
+		"activationCode": "342209",
 		"deviceFingerprint": {
 			"android_id": "aid-snake",
 			"board_serial": "board-snake"

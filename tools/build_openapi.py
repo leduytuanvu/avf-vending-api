@@ -5280,7 +5280,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("get", "/v1/machines/{machineId}/telemetry/rollups"): ex(resp={"200": (telemetry_rollups_ex, None)}),
         ("get", "/v1/setup/machines/{machineId}/bootstrap"): ex(resp={"200": (bootstrap_resp, None)}),
         ("post", "/v1/setup/activation-codes/claim"): ex(
-            req_body={"activationCode": "AVF-123456-ABCDEF", "deviceFingerprint": fingerprint_ex},
+            req_body={"activationCode": "342209", "deviceFingerprint": fingerprint_ex},
             resp={
                 "200": (
                     {
@@ -5308,7 +5308,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             resp={
                 "201": (
                     {
-                        "activationCode": "AVF-123456-ABCDEF",
+                        "activationCode": "342209",
                         "activationCodeId": "11111111-2222-3333-4444-555555555555",
                         "machineId": _U3,
                         "expiresAt": "2026-04-24T00:00:00Z",
@@ -5658,7 +5658,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
             resp={
                 "201": (
                     {
-                        "activationCode": "AVF-123456",
+                        "activationCode": "000001",
                         "activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                         "machineId": _U3,
                         "expiresAt": "2026-04-30T00:00:00Z",

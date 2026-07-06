@@ -77,6 +77,8 @@ VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-act-"+uuid.Ne
 	})
 	require.NoError(t, err)
 
+	require.Regexp(t, `^[0-9]{6}$`, create.PlaintextCode)
+
 	store := postgres.NewStore(pool)
 	auditSvc := appaudit.NewService(pool)
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
@@ -179,6 +181,8 @@ VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-alias-"+uuid.
 	})
 	require.NoError(t, err)
 
+	require.Regexp(t, `^[0-9]{6}$`, create.PlaintextCode)
+
 	store := postgres.NewStore(pool)
 	auditSvc := appaudit.NewService(pool)
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
@@ -223,4 +227,67 @@ VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-alias-"+uuid.
 	require.NoError(t, err)
 	require.NotEmpty(t, aliasResp.GetClaim().GetDeviceAttachmentId())
 	require.Equal(t, "AVF000001", aliasResp.GetClaim().GetMachineCode())
+}
+
+func TestMachineGRPC_ClaimActivation_rejectsAVFStyleCode(t *testing.T) {
+	t.Parallel()
+
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, site_id, serial_number, code, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-bad-"+uuid.NewString()[:8], "AVF000001")
+	require.NoError(t, err)
+
+	cfg := testMachineGRPCConfig()
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg.HTTPAuth)
+	require.NoError(t, err)
+	pepper := plauth.TrimSecret(cfg.HTTPAuth.JWTSecret)
+	act := activation.NewService(pool, issuer, pepper, nil)
+
+	store := postgres.NewStore(pool)
+	auditSvc := appaudit.NewService(pool)
+	commerceSvc := appcommerce.NewService(appcommerce.Deps{
+		OrderVend:              store,
+		PaymentOutbox:          store,
+		Lifecycle:              store,
+		WebhookPersist:         store,
+		SaleLines:              store,
+		WorkflowOrchestration:  workfloworch.NewDisabled(),
+		EnterpriseAudit:        auditSvc,
+		PaymentSessionRegistry: platformpayments.NewRegistry(cfg),
+	})
+	machineQueries := api.NewInternalMachineQueryService(store, api.NewSQLMachineShadow(pool))
+	replayLedger := NewMachineReplayLedger(pool, auditSvc)
+	srv, err := NewServer(cfg, zap.NewNop(), nil, nil, nil, replayLedger, nil, nil, RegisterMachineGRPCServices(MachineGRPCServicesDeps{
+		Activation:      act,
+		MachineQueries:  machineQueries,
+		FeatureFlags:    nil,
+		SaleCatalog:     salecatalog.NewService(pool),
+		Pool:            pool,
+		MQTTBrokerURL:   "tcp://mqtt.example.invalid:1883",
+		MQTTTopicPrefix: "avf/devices",
+		Config:          cfg,
+		InventoryLedger: postgres.NewInventoryRepository(pool),
+		Commerce:        commerceSvc,
+		TelemetryStore:  store,
+		EnterpriseAudit: auditSvc,
+	}))
+	require.NoError(t, err)
+
+	conn := dialMachineCommerceServer(t, srv)
+	client := machinev1.NewMachineActivationServiceClient(conn)
+	_, err = client.ClaimActivation(ctx, &machinev1.ClaimActivationRequest{
+		ActivationCode: "AVF-12ABCD-34EF56",
+		DeviceFingerprint: &machinev1.DeviceFingerprint{
+			SerialNumber: "bad-code",
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "activation_invalid")
 }

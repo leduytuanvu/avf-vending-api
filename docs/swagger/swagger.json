@@ -7316,7 +7316,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "activationCode": "AVF-123456",
+                  "activationCode": "000001",
                   "activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
                   "expiresAt": "2026-04-30T00:00:00Z",
                   "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -16614,7 +16614,7 @@
         ]
       },
       "post": {
-        "description": "Returns the raw **activationCode** once (server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).",
+        "description": "Returns the raw **activationCode** once (exactly six digits, e.g. `342209`; server stores a hash only). Requires org admin or platform admin with company scope. Subject to sensitive-write rate limiting when enabled. Path **machineId** accepts a machine UUID or human **machineCode** (e.g. AVF000001).",
         "operationId": "DocOpV1AdminMachineActivationCodesPost",
         "parameters": [
           {
@@ -16657,7 +16657,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "activationCode": "AVF-123456-ABCDEF",
+                  "activationCode": "342209",
                   "activationCodeId": "11111111-2222-3333-4444-555555555555",
                   "expiresAt": "2026-04-24T00:00:00Z",
                   "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
@@ -50998,7 +50998,7 @@
     },
     "/v1/setup/activation-codes/claim": {
       "post": {
-        "description": "Exchanges a valid **activationCode** and **deviceFingerprint** for a **machine-scoped JWT**, MQTT hints, and **bootstrapUrl**. Invalid, expired, exhausted, or revoked codes return **400** `activation_invalid` without revealing whether a machine exists. Same code + fingerprint replay returns the same token shape safely; distinct fingerprints consume additional **max_uses** slots when configured, otherwise exhausted codes reject further distinct fingerprints.",
+        "description": "Exchanges a valid **activationCode** (exactly six digits, e.g. `342209`) and **deviceFingerprint** for a **machine-scoped JWT**, MQTT hints, and **bootstrapUrl**. Invalid, expired, exhausted, or revoked codes return **400** `activation_invalid` without revealing whether a machine exists. Same code + fingerprint replay returns the same token shape safely; distinct fingerprints consume additional **max_uses** slots when configured, otherwise exhausted codes reject further distinct fingerprints.",
         "operationId": "DocOpV1SetupActivationClaimPost",
         "parameters": [
           {
@@ -51012,7 +51012,7 @@
           "content": {
             "application/json": {
               "example": {
-                "activationCode": "AVF-123456-ABCDEF",
+                "activationCode": "342209",
                 "deviceFingerprint": {
                   "androidId": "android-123",
                   "manufacturer": "SUNMI",

@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -72,6 +73,14 @@ func resolveAdminMachineRef(w http.ResponseWriter, r *http.Request, app *api.HTT
 	return identity, true
 }
 
+func writeAdminActivationCreateError(w http.ResponseWriter, ctx context.Context, err error) {
+	if errors.Is(err, activation.ErrCodeGenerationExhausted) {
+		writeAPIError(w, ctx, http.StatusInternalServerError, "activation_code_generation_exhausted", "activation code generation exhausted")
+		return
+	}
+	writeAPIError(w, ctx, http.StatusInternalServerError, "internal", err.Error())
+}
+
 func writeAdminActivationCreateResponse(w http.ResponseWriter, out activation.CreateResult) {
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"activationCode":   out.PlaintextCode,
@@ -124,7 +133,7 @@ func postAdminCreateActivationCode(app *api.HTTPApplication, paramName string) h
 			Notes:            body.Notes,
 		})
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			writeAdminActivationCreateError(w, r.Context(), err)
 			return
 		}
 		writeAdminActivationCreateResponse(w, out)
@@ -408,7 +417,7 @@ func postAdminOrgCreateActivationCode(app *api.HTTPApplication) http.HandlerFunc
 			Notes:            body.Notes,
 		})
 		if err != nil {
-			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			writeAdminActivationCreateError(w, r.Context(), err)
 			return
 		}
 		writeAdminActivationCreateResponse(w, out)

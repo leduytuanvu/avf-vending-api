@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,9 +18,12 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+const maxActivationCodeInsertAttempts = 20
 
 var (
 	// ErrInvalid is returned for all public claim failures (constant time messaging at HTTP layer).
@@ -34,6 +36,8 @@ var (
 	ErrMachineNotEligible = errors.New("activation: machine not eligible")
 	// ErrMQTTProvisioning is returned when EMQX is configured but per-machine MQTT provisioning fails.
 	ErrMQTTProvisioning = errors.New("activation: mqtt provisioning failed")
+	// ErrCodeGenerationExhausted is returned when unique activation code generation retries are exhausted.
+	ErrCodeGenerationExhausted = errors.New("activation: code generation exhausted")
 )
 
 // Service manages kiosk activation codes.
@@ -101,27 +105,42 @@ func (s *Service) CreateCode(ctx context.Context, in CreateInput) (CreateResult,
 	if in.MaxUses <= 0 {
 		in.MaxUses = 1
 	}
-	plain, err := randomActivationCode()
-	if err != nil {
-		return CreateResult{}, err
-	}
-	hash := hashActivationCode(s.pepper, plain)
 	exp := time.Now().UTC().Add(time.Duration(in.ExpiresInMinutes) * time.Minute)
 	var notes pgtype.Text
 	if strings.TrimSpace(in.Notes) != "" {
 		notes = pgtype.Text{String: strings.TrimSpace(in.Notes), Valid: true}
 	}
-	row, err := db.New(s.pool).InsertMachineActivationCode(ctx, db.InsertMachineActivationCodeParams{
-		MachineID: in.MachineID,
-		CodeHash:  hash,
-		MaxUses:   in.MaxUses,
-		Uses:      0,
-		ExpiresAt: exp,
-		Notes:     notes,
-		Status:    "active",
-	})
-	if err != nil {
+	q := db.New(s.pool)
+	var (
+		plain string
+		row   db.MachineActivationCode
+	)
+	for attempt := 0; attempt < maxActivationCodeInsertAttempts; attempt++ {
+		var err error
+		plain, err = randomActivationCode()
+		if err != nil {
+			return CreateResult{}, err
+		}
+		hash := hashActivationCode(s.pepper, plain)
+		row, err = q.InsertMachineActivationCode(ctx, db.InsertMachineActivationCodeParams{
+			MachineID: in.MachineID,
+			CodeHash:  hash,
+			MaxUses:   in.MaxUses,
+			Uses:      0,
+			ExpiresAt: exp,
+			Notes:     notes,
+			Status:    "active",
+		})
+		if err == nil {
+			break
+		}
+		if isActivationCodeHashUniqueViolation(err) {
+			continue
+		}
 		return CreateResult{}, err
+	}
+	if row.ID == uuid.Nil {
+		return CreateResult{}, ErrCodeGenerationExhausted
 	}
 	machineCode := ""
 	if m, merr := db.New(s.pool).GetMachineByID(ctx, row.MachineID); merr == nil {
@@ -667,7 +686,7 @@ func (s *Service) deliverActivationClaim(ctx context.Context, tx pgx.Tx, row db.
 // Claim exchanges a valid activation code for a machine token.
 func (s *Service) Claim(ctx context.Context, in ClaimInput, mqttBrokerURL, mqttTopicPrefix, mqttTopicLayout string) (ClaimResult, error) {
 	code := normalizeActivationCode(in.ActivationCode)
-	if code == "" {
+	if !validActivationCode(code) {
 		return ClaimResult{}, ErrInvalid
 	}
 	fpJSON, err := json.Marshal(in.DeviceFingerprint)
@@ -942,10 +961,6 @@ func (s *Service) RefreshMachineSession(ctx context.Context, in RefreshInput, mq
 	}, nil
 }
 
-func normalizeActivationCode(s string) string {
-	return strings.ToUpper(strings.TrimSpace(s))
-}
-
 func randomMQTTPassword() (string, error) {
 	buf := make([]byte, 24)
 	if _, err := rand.Read(buf); err != nil {
@@ -1012,12 +1027,7 @@ func hashActivationCode(pepper []byte, code string) []byte {
 	return mac.Sum(nil)
 }
 
-func randomActivationCode() (string, error) {
-	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", err
-	}
-	a := binary.BigEndian.Uint32(b[0:4]) % 0xffffff
-	c := binary.BigEndian.Uint32(b[4:8]) % 0xffffff
-	return fmt.Sprintf("AVF-%06X-%06X", a, c), nil
+func isActivationCodeHashUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

@@ -16,7 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import http_request, new_request_id, redact, report_dir, write_json
 
 REPO = Path(__file__).resolve().parents[2]
-ACTIVATION_CODE_RE = re.compile(r"^AVF[0-9]{6}$")
+MACHINE_CODE_RE = re.compile(r"^AVF[0-9]{6}$")
+NUMERIC_ACTIVATION_CODE_RE = re.compile(r"^[0-9]{6}$")
 
 
 def machine_code_from_registry(reg: dict, machine_id: str) -> str:
@@ -30,7 +31,7 @@ def machine_code_from_registry(reg: dict, machine_id: str) -> str:
         except json.JSONDecodeError:
             continue
         code = str(req.get("code") or "").strip().upper()
-        if ACTIVATION_CODE_RE.match(code):
+        if MACHINE_CODE_RE.match(code):
             return code
     return ""
 
@@ -182,12 +183,17 @@ def main() -> int:
     )
     act_id = str(created.get("activationCodeId", ""))
     act_plain = str(created.get("activationCode", ""))
+    act_format_ok = bool(NUMERIC_ACTIVATION_CODE_RE.match(act_plain)) and isinstance(created.get("activationCode"), str)
     record(
         "POST /machine-codes/{code}/activation-codes",
-        st in (200, 201) and created.get("machineCode") == machine_code and bool(act_id),
+        st in (200, 201)
+        and created.get("machineCode") == machine_code
+        and bool(act_id)
+        and act_format_ok,
         http_status=st,
         machine_id=created.get("machineId"),
         machine_code=created.get("machineCode"),
+        activation_code_len=len(act_plain),
     )
     if machine_id and created.get("machineId"):
         machine_id = str(created.get("machineId"))
@@ -278,6 +284,31 @@ def main() -> int:
             st8 in (200, 201) and str(claim_data.get("machineId", "")) == machine_id,
             http_status=st8,
             has_device_attachment=bool(claim_data.get("deviceAttachmentId")),
+        )
+
+    # Negative format claims must return activation_invalid
+    fp_neg = {
+        "androidId": f"{run_prefix}-neg",
+        "boardSerial": f"{run_prefix}-neg-board",
+        "serialNumber": f"{run_prefix}-neg-serial",
+    }
+    for label, bad_code in (
+        ("reject_avf_style", "AVF-12ABCD-34EF56"),
+        ("reject_5_digit", "12345"),
+        ("reject_7_digit", "1234567"),
+    ):
+        neg_body = json.dumps({"activationCode": bad_code, "deviceFingerprint": fp_neg}).encode()
+        st_neg, neg_raw, _ = http_request(
+            "POST",
+            f"{base_url}/v1/setup/activation-codes/claim",
+            headers={"Content-Type": "application/json", "X-Request-ID": new_request_id()},
+            body=neg_body,
+        )
+        neg_data = json.loads(neg_raw) if neg_raw.strip() else {}
+        record(
+            f"POST /setup/activation-codes/claim {label}",
+            st_neg == 400 and neg_data.get("code") == "activation_invalid",
+            http_status=st_neg,
         )
 
     evidence = REPO / "docs" / "reports" / "machine-code-activation-production" / "evidence"

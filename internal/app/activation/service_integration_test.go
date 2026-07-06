@@ -402,3 +402,60 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-reclaim-"+uuid.NewStri
 	require.NoError(t, err)
 	require.NotEmpty(t, out2.RefreshToken)
 }
+
+func TestCreateCode_returnsSixDigitNumericActivationCode(t *testing.T) {
+	t.Parallel()
+
+	pool := activationTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-fmt-"+uuid.NewString()[:8])
+	require.NoError(t, err)
+
+	svc := newActivationTestServiceFromPool(t, pool)
+	create, err := svc.CreateCode(ctx, CreateInput{MachineID: machineID, ExpiresInMinutes: 60, MaxUses: 1})
+	require.NoError(t, err)
+	require.Regexp(t, `^[0-9]{6}$`, create.PlaintextCode)
+	require.Len(t, create.PlaintextCode, 6)
+}
+
+func TestClaim_rejectsInvalidActivationCodeFormat(t *testing.T) {
+	t.Parallel()
+
+	pool := activationTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+INSERT INTO machines (id, site_id, serial_number, status, credential_version)
+VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-rej-"+uuid.NewString()[:8])
+	require.NoError(t, err)
+
+	svc := newActivationTestServiceFromPool(t, pool)
+	fp := DeviceFingerprint{SerialNumber: "rej-fp"}
+	for _, bad := range []string{"AVF-123456", "12345", "1234567", "123 456", "abcdef"} {
+		_, err := svc.Claim(ctx, ClaimInput{ActivationCode: bad, DeviceFingerprint: fp}, "mqtt://x", "pfx", "legacy")
+		require.ErrorIs(t, err, ErrInvalid, "code %q should be rejected", bad)
+	}
+}
+
+func newActivationTestServiceFromPool(t *testing.T, pool *pgxpool.Pool) *Service {
+	t.Helper()
+	cfg := config.HTTPAuthConfig{
+		Mode:            plauth.HTTPAuthModeHS256,
+		JWTSecret:       bytes.Repeat([]byte("z"), 32),
+		JWTLeeway:       30 * time.Second,
+		AccessTokenTTL:  15 * time.Minute,
+		RefreshTokenTTL: 720 * time.Hour,
+	}
+	issuer, err := plauth.NewSessionIssuerFromHTTPAuth(cfg)
+	require.NoError(t, err)
+	return NewService(pool, issuer, plauth.TrimSecret(cfg.JWTSecret), nil)
+}

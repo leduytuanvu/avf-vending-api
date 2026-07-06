@@ -140,6 +140,9 @@ func TestAdminCreateActivationCode_byMachineCodePath(t *testing.T) {
 	require.Equal(t, code, resp["machineCode"])
 	require.Equal(t, machineID.String(), resp["machineId"])
 	require.NotEmpty(t, resp["activationCode"])
+	require.Regexp(t, `^[0-9]{6}$`, resp["activationCode"])
+	_, ok := resp["activationCode"].(string)
+	require.True(t, ok, "activationCode must be JSON string")
 }
 
 func TestAdminCreateActivationCode_byMachineUUIDPath(t *testing.T) {
