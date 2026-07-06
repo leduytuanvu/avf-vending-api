@@ -62,4 +62,7 @@ message ClaimActivationResponse {
   string mqtt_password = 15;
   // Active machine_device_attachments row created or reused during claim.
   string device_attachment_id = 16;
+  // Human-facing machine code printed on the physical machine, e.g. AVF000000.
+  // Runtime authorization still uses machine_id UUID.
+  string machine_code = 17;
 }

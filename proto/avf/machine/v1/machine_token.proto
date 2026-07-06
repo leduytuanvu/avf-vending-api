@@ -28,4 +28,7 @@ message RefreshMachineTokenResponse {
   // "enterprise" or "legacy"; must match server MQTT_TOPIC_LAYOUT.
   string mqtt_topic_layout = 12;
   string bootstrap_http_path = 11;
+  // Human-facing machine code printed on the physical machine, e.g. AVF000000.
+  // Runtime authorization still uses machine_id UUID.
+  string machine_code = 13;
 }

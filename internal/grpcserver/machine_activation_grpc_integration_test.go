@@ -56,8 +56,8 @@ func TestMachineGRPC_ClaimActivation_ReturnsDeviceAttachmentAndMqttCredentials(t
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-grpc-act-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, code, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-act-"+uuid.NewString()[:8], "AVF000001")
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()
@@ -141,6 +141,7 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-grpc-act-"+uuid.NewStr
 	_, parseErr := uuid.Parse(resp.GetDeviceAttachmentId())
 	require.NoError(t, parseErr)
 	require.Equal(t, machineID.String(), resp.GetMachineId())
+	require.Equal(t, "AVF000001", resp.GetMachineCode())
 	require.NotEmpty(t, resp.GetAccessToken())
 	require.NotEmpty(t, resp.GetMqttUsername())
 	require.NotEmpty(t, resp.GetMqttPassword())
@@ -158,8 +159,8 @@ func TestMachineGRPC_ActivateMachineAlias_ReturnsDeviceAttachmentId(t *testing.T
 	_, err := pool.Exec(ctx, `INSERT INTO sites (id, name, code, status) VALUES ($1, 's', '', 'active')`, siteID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO machines (id, site_id, serial_number, status, credential_version)
-VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-grpc-alias-"+uuid.NewString()[:8])
+INSERT INTO machines (id, site_id, serial_number, code, status, credential_version)
+VALUES ($1, $2, $3, $4, 'online', 0)`, machineID, siteID, "sn-grpc-alias-"+uuid.NewString()[:8], "AVF000001")
 	require.NoError(t, err)
 
 	cfg := testMachineGRPCConfig()
@@ -221,4 +222,5 @@ VALUES ($1, $2, $3, 'online', 0)`, machineID, siteID, "sn-grpc-alias-"+uuid.NewS
 	})
 	require.NoError(t, err)
 	require.NotEmpty(t, aliasResp.GetClaim().GetDeviceAttachmentId())
+	require.Equal(t, "AVF000001", aliasResp.GetClaim().GetMachineCode())
 }
