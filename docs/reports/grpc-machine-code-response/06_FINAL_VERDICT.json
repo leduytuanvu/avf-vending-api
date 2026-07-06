@@ -1,8 +1,10 @@
 {
   "verdict": "GO",
-  "deploy_sha": "98169070b234d2940d8aab767d2dd25e52a85d11",
-  "deploy_run_id": 28760850147,
-  "production_test_utc": "20260706T005447Z",
+  "deploy_sha": "2cc5569e1beebbff218848ab6ac42da952a489e5",
+  "deploy_run_id": 28762275156,
+  "build_run_id": 28762078596,
+  "security_release_run_id": 28762213877,
+  "production_test_utc": "20260706T013826Z",
   "claim_activation_machine_code": true,
   "refresh_machine_token_machine_code": true,
   "bootstrap_machine_code": true,
@@ -20,6 +22,6 @@
   "activation_smoke_pass": true,
   "blocked": 0,
   "not_run": 0,
-  "pr_implementation": 432,
-  "pr_promote_main": 433
+  "pr_promote_main": 435,
+  "full_suite_verdict": "PRODUCTION_REST_GRPC_MQTT_100_PERCENT_PASS"
 }
