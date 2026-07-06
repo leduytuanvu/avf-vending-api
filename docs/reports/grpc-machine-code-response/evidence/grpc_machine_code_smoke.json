@@ -1,0 +1,43 @@
+{
+  "run_prefix": "GRPC-MCODE-SMOKE3-20260706T005400Z",
+  "base_url": "https://api.ldtv.dev",
+  "grpc_host": "machine-api.ldtv.dev:443",
+  "machine_id": "019f34eb-27e9-7771-bae4-d8ac166fd555",
+  "machine_code": "AVF482212",
+  "results": [
+    {
+      "name": "ensure_activation_test_machine",
+      "status": "pass",
+      "machine_id": "019f34eb-27e9-7771-bae4-d8ac166fd555",
+      "machine_code": "AVF482212"
+    },
+    {
+      "name": "POST activation code",
+      "status": "pass",
+      "http_status": 201
+    },
+    {
+      "name": "gRPC ClaimActivation machine_code",
+      "status": "pass",
+      "machine_id": "019f34eb-27e9-7771-bae4-d8ac166fd555",
+      "machine_code": "AVF482212",
+      "mqtt_username": "019f34eb-27e9-7771-bae4-d8ac166fd555"
+    },
+    {
+      "name": "gRPC RefreshMachineToken machine_code",
+      "status": "pass",
+      "machine_id": "019f34eb-27e9-7771-bae4-d8ac166fd555",
+      "machine_code": "AVF482212"
+    },
+    {
+      "name": "gRPC GetBootstrap machine.machine_code",
+      "status": "pass",
+      "machine_id": "019f34eb-27e9-7771-bae4-d8ac166fd555",
+      "machine_code": "AVF482212",
+      "mqtt_username": "019f34eb-27e9-7771-bae4-d8ac166fd555"
+    }
+  ],
+  "pass_count": 5,
+  "fail_count": 0,
+  "timestamp": "2026-07-06T00:54:06.339980+00:00"
+}
