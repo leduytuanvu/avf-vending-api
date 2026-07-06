@@ -17,7 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _common import http_request, new_request_id, report_dir, write_json
 from run_grpc_full_production import grpc_call, proto_args
 from run_machine_code_activation_prod import (
-    ACTIVATION_CODE_RE,
+    MACHINE_CODE_RE,
+    NUMERIC_ACTIVATION_CODE_RE,
     admin_json,
     ensure_activation_test_machine,
     login,
@@ -123,9 +124,10 @@ def main() -> int:
         {"expiresInMinutes": 60, "maxUses": 1, "notes": run_prefix},
     )
     act_plain = str(created.get("activationCode", ""))
+    numeric_ok = bool(NUMERIC_ACTIVATION_CODE_RE.match(act_plain))
     record(
         "POST activation code",
-        st in (200, 201) and bool(act_plain),
+        st in (200, 201) and bool(act_plain) and numeric_ok,
         http_status=st,
     )
     if not act_plain:

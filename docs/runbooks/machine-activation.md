@@ -20,7 +20,7 @@ Machine activation is implemented over REST and issues a machine-scoped JWT plus
 - Authenticated bootstrap:
   - `GET /v1/setup/machines/{machineId}/bootstrap`
 
-`machineCode` format for activation admin: `AVF` + exactly six digits (e.g. `AVF000001`). Runtime claim and JWT still use `machineId` UUID.
+`machineCode` format for activation admin: `AVF` + exactly six digits (e.g. `AVF000001`). **Activation codes** are separate one-time values: exactly six digits (e.g. `342209`, `000001`). Runtime claim and JWT still use `machineId` UUID.
 
 ## Operator procedure
 

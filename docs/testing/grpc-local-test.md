@@ -52,7 +52,7 @@ grpcurl -plaintext localhost:9090 grpc.health.v1.Health/Check
 **Claim activation** (public — no Bearer; body carries the code and device fingerprint):
 
 ```bash
-grpcurl -plaintext -d "{\"activation_code\":\"AVF-XXXXXX-XXXXXX\",\"device_fingerprint\":{\"serial_number\":\"SN-1\",\"android_id\":\"dev-1\"}}" \
+grpcurl -plaintext -d "{\"activation_code\":\"342209\",\"device_fingerprint\":{\"serial_number\":\"SN-1\",\"android_id\":\"dev-1\"}}" \
   localhost:9090 avf.machine.v1.MachineActivationService/ClaimActivation
 ```
 
