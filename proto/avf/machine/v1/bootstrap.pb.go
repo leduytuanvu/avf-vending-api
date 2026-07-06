@@ -157,8 +157,11 @@ type BootstrapMachine struct {
 	CommandSequence   int64                  `protobuf:"varint,8,opt,name=command_sequence,json=commandSequence,proto3" json:"command_sequence,omitempty"`
 	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	UpdatedAt         *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Human-facing machine code printed on the physical machine, e.g. AVF000000.
+	// Runtime authorization still uses machine_id UUID.
+	MachineCode   string `protobuf:"bytes,11,opt,name=machine_code,json=machineCode,proto3" json:"machine_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *BootstrapMachine) Reset() {
@@ -252,6 +255,13 @@ func (x *BootstrapMachine) GetUpdatedAt() *timestamppb.Timestamp {
 		return x.UpdatedAt
 	}
 	return nil
+}
+
+func (x *BootstrapMachine) GetMachineCode() string {
+	if x != nil {
+		return x.MachineCode
+	}
+	return ""
 }
 
 type BootstrapSlot struct {
@@ -1516,7 +1526,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\ftopic_prefix\x18\x02 \x01(\tR\vtopicPrefix\x12!\n" +
 	"\ftopic_layout\x18\x03 \x01(\tR\vtopicLayout\x12!\n" +
 	"\ftls_required\x18\x04 \x01(\bR\vtlsRequired\x12(\n" +
-	"\x10client_id_policy\x18\x05 \x01(\tR\x0eclientIdPolicy\"\xec\x02\n" +
+	"\x10client_id_policy\x18\x05 \x01(\tR\x0eclientIdPolicy\"\x8f\x03\n" +
 	"\x10BootstrapMachine\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -1530,7 +1540,8 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x99\x03\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12!\n" +
+	"\fmachine_code\x18\v \x01(\tR\vmachineCode\"\x99\x03\n" +
 	"\rBootstrapSlot\x12\x1b\n" +
 	"\tconfig_id\x18\x01 \x01(\tR\bconfigId\x12\x1b\n" +
 	"\tslot_code\x18\x02 \x01(\tR\bslotCode\x12\x1d\n" +

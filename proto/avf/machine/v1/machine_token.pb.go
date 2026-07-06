@@ -80,8 +80,11 @@ type RefreshMachineTokenResponse struct {
 	// "enterprise" or "legacy"; must match server MQTT_TOPIC_LAYOUT.
 	MqttTopicLayout   string `protobuf:"bytes,12,opt,name=mqtt_topic_layout,json=mqttTopicLayout,proto3" json:"mqtt_topic_layout,omitempty"`
 	BootstrapHttpPath string `protobuf:"bytes,11,opt,name=bootstrap_http_path,json=bootstrapHttpPath,proto3" json:"bootstrap_http_path,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Human-facing machine code printed on the physical machine, e.g. AVF000000.
+	// Runtime authorization still uses machine_id UUID.
+	MachineCode   string `protobuf:"bytes,13,opt,name=machine_code,json=machineCode,proto3" json:"machine_code,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RefreshMachineTokenResponse) Reset() {
@@ -191,13 +194,20 @@ func (x *RefreshMachineTokenResponse) GetBootstrapHttpPath() string {
 	return ""
 }
 
+func (x *RefreshMachineTokenResponse) GetMachineCode() string {
+	if x != nil {
+		return x.MachineCode
+	}
+	return ""
+}
+
 var File_avf_machine_v1_machine_token_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_machine_token_proto_rawDesc = "" +
 	"\n" +
 	"\"avf/machine/v1/machine_token.proto\x12\x0eavf.machine.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"A\n" +
 	"\x1aRefreshMachineTokenRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\x98\x04\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\xbb\x04\n" +
 	"\x1bRefreshMachineTokenResponse\x12\x1d\n" +
 	"\n" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x17\n" +
@@ -211,7 +221,8 @@ const file_avf_machine_v1_machine_token_proto_rawDesc = "" +
 	"\x11mqtt_topic_prefix\x18\n" +
 	" \x01(\tR\x0fmqttTopicPrefix\x12*\n" +
 	"\x11mqtt_topic_layout\x18\f \x01(\tR\x0fmqttTopicLayout\x12.\n" +
-	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath2\x85\x01\n" +
+	"\x13bootstrap_http_path\x18\v \x01(\tR\x11bootstrapHttpPath\x12!\n" +
+	"\fmachine_code\x18\r \x01(\tR\vmachineCode2\x85\x01\n" +
 	"\x13MachineTokenService\x12n\n" +
 	"\x13RefreshMachineToken\x12*.avf.machine.v1.RefreshMachineTokenRequest\x1a+.avf.machine.v1.RefreshMachineTokenResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 

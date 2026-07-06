@@ -39,6 +39,15 @@ sequenceDiagram
 
 Machine JWT only. Methods: `StartRuntimeSession`, `HeartbeatRuntimeSession`, `EndRuntimeSession`, `GetRuntimeSessionState`.
 
+## gRPC identity contract (claim / refresh / bootstrap)
+
+| Field | Format | Used for auth / MQTT / DB FK |
+|-------|--------|------------------------------|
+| `machine_id` | UUID | **Yes** — JWT `machine_id` claim, MQTT username/topics, `MachineRequestMeta.machine_id` |
+| `machine_code` | `AVF` + 6 digits (from `machines.code`) | **No** — display/UI only; returned on `ClaimActivation`, `RefreshMachineToken`, and `BootstrapMachine` |
+
+REST claim already returns `machineCode`; gRPC now mirrors the same display field without changing runtime identity.
+
 ## Online status
 
 Config: `MACHINE_ONLINE_THRESHOLD_SECONDS` (60), `MACHINE_STALE_THRESHOLD_SECONDS` (300). Derived from runtime heartbeat, check-in, and MQTT heartbeat ingest.
