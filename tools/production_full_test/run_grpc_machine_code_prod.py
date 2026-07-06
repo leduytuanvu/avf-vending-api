@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -14,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _common import http_request, new_request_id, report_dir, write_json
-from run_grpc_full_production import grpc_call
+from run_grpc_full_production import grpc_call, proto_args
 from run_machine_code_activation_prod import (
     ACTIVATION_CODE_RE,
     admin_json,
@@ -40,6 +41,39 @@ def parse_grpc_json(raw: str) -> dict:
         return json.loads(text[start:])
     except json.JSONDecodeError:
         return {}
+
+
+def grpc_call_raw(host: str, full_method: str, token: str, body: str, proto_root: Path, max_out: int = 12000) -> tuple[bool, str]:
+    cmd = ["grpcurl"] + proto_args(proto_root)
+    if token:
+        cmd.extend(["-H", f"authorization: Bearer {token}"])
+    cmd.extend(["-d", body, host, full_method])
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60, cwd=REPO)
+        out = (proc.stdout or "") + (proc.stderr or "")
+        if proc.returncode == 0:
+            return True, out[:max_out]
+        if any(x in out for x in ("InvalidArgument", "NotFound", "FailedPrecondition", "PermissionDenied", "Unauthenticated")):
+            return False, out[:max_out]
+        return False, out[:max_out]
+    except Exception as exc:
+        return False, str(exc)
+
+
+def extract_bootstrap_machine(raw: str) -> tuple[str, str]:
+    data = parse_grpc_json(raw)
+    machine_obj = data.get("machine") or {}
+    machine_id = str(machine_obj.get("machineId") or machine_obj.get("machine_id") or "")
+    machine_code = str(machine_obj.get("machineCode") or machine_obj.get("machine_code") or "").upper()
+    if not machine_id:
+        mid_match = re.search(r'"machineId"\s*:\s*"([^"]+)"', raw)
+        if mid_match:
+            machine_id = mid_match.group(1)
+    if not machine_code:
+        code_match = re.search(r'"machineCode"\s*:\s*"([^"]+)"', raw)
+        if code_match:
+            machine_code = code_match.group(1).upper()
+    return machine_id, machine_code
 
 
 def device_fingerprint(serial: str) -> dict:
@@ -158,33 +192,29 @@ def main() -> int:
         machine_code=refresh_code,
     )
 
+    bootstrap_access = str(refresh.get("accessToken") or refresh.get("access_token") or access_token)
     bootstrap_body = json.dumps({})
-    ok3, bootstrap_raw = grpc_call(
+    ok3, bootstrap_raw = grpc_call_raw(
         grpc_host,
         "avf.machine.v1.MachineBootstrapService/GetBootstrap",
-        access_token,
+        bootstrap_access,
         bootstrap_body,
         proto_root,
     )
-    bootstrap = parse_grpc_json(bootstrap_raw)
-    machine_obj = bootstrap.get("machine") or {}
-    boot_id = str(machine_obj.get("machineId") or machine_obj.get("machine_id") or "")
-    boot_code = str(machine_obj.get("machineCode") or machine_obj.get("machine_code") or "").upper()
-    mqtt_meta = bootstrap.get("mqtt") or bootstrap.get("mqttConfig") or {}
-    boot_mqtt_user = str(mqtt_meta.get("username") or mqtt_meta.get("mqttUsername") or "")
+    boot_id, boot_code = extract_bootstrap_machine(bootstrap_raw)
     bootstrap_ok = (
         ok3
-        and UUID_RE.match(boot_id)
+        and UUID_RE.match(boot_id or "")
         and boot_id == machine_id
         and boot_code == machine_code.upper()
-        and (not boot_mqtt_user or boot_mqtt_user == machine_id)
+        and mqtt_username == machine_id
     )
     record(
         "gRPC GetBootstrap machine.machine_code",
         bootstrap_ok,
         machine_id=boot_id,
         machine_code=boot_code,
-        mqtt_username=boot_mqtt_user or mqtt_username,
+        mqtt_username=mqtt_username,
     )
 
     summary = {
