@@ -1,0 +1,14 @@
+{
+  "verdict": "GO",
+  "production_sha": "999b9e93e4acc63dacb2c8087bc0a8ea47316a00",
+  "implementation_commit": "95d93cd1",
+  "develop_merge_sha": "11c229f6",
+  "main_merge_sha": "999b9e93e4acc63dacb2c8087bc0a8ea47316a00",
+  "deploy_run_url": "https://github.com/leduytuanvu/avf-vending-api/actions/runs/28784499441",
+  "rest": {"total": 363, "passed": 363, "failed": 0},
+  "grpc": {"total": 75, "passed": 75, "failed": 0},
+  "mqtt": {"total": 17, "passed": 17, "failed": 0},
+  "numeric_activation_smoke": {"total": 16, "passed": 16, "failed": 0, "exit_code": 0},
+  "evidence_folder": "docs/reports/numeric-activation-code/",
+  "generated_at_utc": "20260706T103900Z"
+}

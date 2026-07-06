@@ -155,7 +155,7 @@ def main() -> int:
             reg = json.loads(reg_path.read_text(encoding="utf-8"))
             machine_code = machine_code_from_registry(reg, machine_id)
 
-    if not machine_code or not ACTIVATION_CODE_RE.match(machine_code.upper()):
+    if not machine_code or not MACHINE_CODE_RE.match(machine_code.upper()):
         try:
             machine_id, machine_code = ensure_activation_test_machine(base_url, token, run_prefix)
             record("ensure_activation_test_machine", True, machine_id=machine_id, machine_code=machine_code)
@@ -305,9 +305,10 @@ def main() -> int:
             body=neg_body,
         )
         neg_data = json.loads(neg_raw) if neg_raw.strip() else {}
+        err_code = neg_data.get("code") or (neg_data.get("error") or {}).get("code")
         record(
             f"POST /setup/activation-codes/claim {label}",
-            st_neg == 400 and neg_data.get("code") == "activation_invalid",
+            st_neg == 400 and err_code == "activation_invalid",
             http_status=st_neg,
         )
 
