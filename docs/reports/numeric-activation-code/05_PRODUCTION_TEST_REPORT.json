@@ -1,0 +1,26 @@
+{
+  "report_utc": "20260706T103900Z",
+  "production_sha": "999b9e93e4acc63dacb2c8087bc0a8ea47316a00",
+  "deploy_run_id": "28784499441",
+  "full_suite_utc": "20260706T103058Z",
+  "rest": {"total": 363, "passed": 363, "failed": 0, "skipped": 0, "blocked": 0, "not_run": 0, "passes": 3},
+  "grpc": {"total": 75, "passed": 75, "failed": 0, "skipped": 0, "blocked": 0, "not_run": 0, "passes": 3},
+  "mqtt": {"total": 17, "passed": 17, "failed": 0, "skipped": 0, "blocked": 0, "not_run": 0, "passes": 3},
+  "numeric_activation_smoke": {
+    "runner": "run_machine_code_activation_prod.py",
+    "total": 16,
+    "passed": 16,
+    "failed": 0,
+    "exit_code": 0,
+    "retest_utc": "20260706T103900Z",
+    "notes": "Initial full-suite run failed on runner bugs (ACTIVATION_CODE_RE rename, error envelope parsing); API behavior verified correct; smoke re-run exit 0"
+  },
+  "grpc_machine_code_smoke": {"total": 5, "passed": 5, "failed": 0, "exit_code": 0},
+  "security_fake_pass_audit": {"fakePassRisk": false, "fail_count": 0},
+  "e2e_flows": {"total": 9, "passed": 9, "failed": 0, "blocked": 0},
+  "evidence_paths": [
+    "reports/production-full-api-grpc-mqtt/20260706T103058Z/",
+    "docs/reports/machine-code-activation-production/evidence/activation_smoke_results.json",
+    "docs/reports/numeric-activation-code/evidence/"
+  ]
+}
