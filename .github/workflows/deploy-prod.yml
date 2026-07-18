@@ -2072,8 +2072,12 @@ jobs:
           ssh-keyscan -H 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
           ssh-keyscan -H "[127.0.0.1]:${SSH_PORT}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
           if ! ssh-keygen -F "127.0.0.1" -f "${HOME}/.ssh/known_hosts" >/dev/null 2>&1; then
-            grep -F "${public_host}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${HOME}/.ssh/known_hosts" || true
-            grep -F "[${public_host}]:${SSH_PORT}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${HOME}/.ssh/known_hosts" || true
+            loopback_keys="${HOME}/.ssh/known_hosts.loopback"
+            : > "${loopback_keys}"
+            grep -F "${public_host}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
+            grep -F "[${public_host}]:${SSH_PORT}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
+            cat "${loopback_keys}" >> "${HOME}/.ssh/known_hosts"
+            rm -f "${loopback_keys}"
           fi
           echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
           echo "Using loopback SSH target \`127.0.0.1\` for app-node A (public host \`${public_host}\`, self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
