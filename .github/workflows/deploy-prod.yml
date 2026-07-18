@@ -2062,6 +2062,16 @@ jobs:
             echo "SCP_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
           } >> "$GITHUB_ENV"
 
+      - name: Use loopback SSH for co-located app-node A runner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # Deploy job runs on app-node A; SSH to the public IP often resets (ufw/fail2ban/hairpin).
+          ssh-keyscan -H 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+          ssh-keyscan -H "[127.0.0.1]:${SSH_PORT}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+          echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
+          echo "Using loopback SSH target \`127.0.0.1\` for app-node A (self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
+
       - name: Validate pinned SSH host identities
         shell: bash
         env:
