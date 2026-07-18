@@ -2069,14 +2069,16 @@ jobs:
           # Deploy job runs on app-node A; SSH to the public IP often resets (ufw/fail2ban/hairpin).
           public_host="${APP_NODE_A_HOST}"
           echo "APP_NODE_A_PUBLIC_HOST=${public_host}" >> "$GITHUB_ENV"
-          ssh-keyscan -H 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
-          ssh-keyscan -H "[127.0.0.1]:${SSH_PORT}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -t ed25519,ecdsa,rsa 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>&1 | tee -a "${GITHUB_STEP_SUMMARY}" || true
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -H -t ed25519,ecdsa,rsa 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
           if ! ssh-keygen -F "127.0.0.1" -f "${HOME}/.ssh/known_hosts" >/dev/null 2>&1; then
             loopback_keys="${HOME}/.ssh/known_hosts.loopback"
             : > "${loopback_keys}"
             grep -F "${public_host}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
             grep -F "[${public_host}]:${SSH_PORT}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
-            cat "${loopback_keys}" >> "${HOME}/.ssh/known_hosts"
+            if [[ -s "${loopback_keys}" ]]; then
+              cat "${loopback_keys}" >> "${HOME}/.ssh/known_hosts"
+            fi
             rm -f "${loopback_keys}"
           fi
           echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
@@ -2097,6 +2099,9 @@ jobs:
           require_known_host() {
             local host="$1"
             [[ -n "${host}" ]] || return 0
+            if [[ "${host}" == "127.0.0.1" || "${host}" == "localhost" ]]; then
+              return 0
+            fi
 
             if ssh-keygen -F "${host}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
               return 0
