@@ -2,12 +2,12 @@
 # Build from repository root: docker build -f deployments/prod/Dockerfile .
 # Base image digests: multi-arch index (library/golang, library/alpine on Docker Hub). Bump digests when changing GO_VERSION / Alpine tag.
 
-ARG GO_VERSION=1.25.12
+ARG GO_VERSION=1.26.5
 # Injected by CI (Build and Push) so /version git_sha and build_time match the built commit.
 ARG GIT_SHA=
 ARG BUILD_TIME=
 
-FROM golang:1.26.4-bookworm@sha256:5f68ec6805843bd3981a951ffada82a26a0bd2631045c8f7dba483fa868f5ec5 AS build
+FROM golang:1.26.5-bookworm@sha256:1ecb7edf62a0408027bd5729dfd6b1b8766e578e8df93995b225dfd0944eb651 AS build
 WORKDIR /src
 
 ARG GIT_SHA=
