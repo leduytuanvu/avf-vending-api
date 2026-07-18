@@ -2067,10 +2067,16 @@ jobs:
         run: |
           set -Eeuo pipefail
           # Deploy job runs on app-node A; SSH to the public IP often resets (ufw/fail2ban/hairpin).
+          public_host="${APP_NODE_A_HOST}"
+          echo "APP_NODE_A_PUBLIC_HOST=${public_host}" >> "$GITHUB_ENV"
           ssh-keyscan -H 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
           ssh-keyscan -H "[127.0.0.1]:${SSH_PORT}" >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+          if ! ssh-keygen -F "127.0.0.1" -f "${HOME}/.ssh/known_hosts" >/dev/null 2>&1; then
+            grep -F "${public_host}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${HOME}/.ssh/known_hosts" || true
+            grep -F "[${public_host}]:${SSH_PORT}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${HOME}/.ssh/known_hosts" || true
+          fi
           echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
-          echo "Using loopback SSH target \`127.0.0.1\` for app-node A (self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Using loopback SSH target \`127.0.0.1\` for app-node A (public host \`${public_host}\`, self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate pinned SSH host identities
         shell: bash
