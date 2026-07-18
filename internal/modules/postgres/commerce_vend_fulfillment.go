@@ -497,10 +497,10 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 }
 
 type lockedVendSession struct {
-	id        uuid.UUID
-	machineID uuid.UUID
-	slotIndex int32
-	state     string
+	id         uuid.UUID
+	machineID  uuid.UUID
+	slotIndex  int32
+	state      string
 	replayVend domaincommerce.VendSession
 }
 
