@@ -474,6 +474,7 @@ type Querier interface {
 	ListVendSessionsStuckForReconciliation(ctx context.Context, arg ListVendSessionsStuckForReconciliationParams) ([]ListVendSessionsStuckForReconciliationRow, error)
 	LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID) (Order, error)
+	LockVendSessionByOrderAndLineSequenceForUpdate(ctx context.Context, arg LockVendSessionByOrderAndLineSequenceForUpdateParams) (LockVendSessionByOrderAndLineSequenceForUpdateRow, error)
 	LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error)
 	MachineAppliedConfigRevision(ctx context.Context, machineID uuid.UUID) (int32, error)
 	MachineConfigRolloutsCountAll(ctx context.Context) (int64, error)

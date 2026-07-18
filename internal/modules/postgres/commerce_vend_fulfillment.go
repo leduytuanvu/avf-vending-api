@@ -307,35 +307,30 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
-	vendRow, err := q.LockVendSessionByOrderAndSlotForUpdate(ctx, db.LockVendSessionByOrderAndSlotForUpdateParams{
-		OrderID:   in.OrderID,
-		SlotIndex: in.SlotIndex,
-	})
+	vendLocked, err := lockFailedVendSessionForUpdate(ctx, q, in)
 	if err != nil {
-		if isNoRows(err) {
-			return appcommerce.FulfillFailedVendResult{}, appcommerce.ErrNotFound
-		}
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
-	if vendRow.MachineID != ordRow.MachineID {
+	if vendLocked.machineID != ordRow.MachineID {
 		return appcommerce.FulfillFailedVendResult{}, fmt.Errorf("postgres: vend row machine mismatch order")
 	}
+	slotIndex := vendLocked.slotIndex
 
-	if vendRow.State == "failed" && ordRow.Status == "failed" {
+	if vendLocked.state == "failed" {
 		if err := tx.Commit(ctx); err != nil {
 			return appcommerce.FulfillFailedVendResult{}, err
 		}
 		return appcommerce.FulfillFailedVendResult{
 			Order:  mapOrder(ordRow),
-			Vend:   mapVendLockRow(vendRow),
+			Vend:   vendLocked.replayVend,
 			Replay: true,
 		}, nil
 	}
 
-	if vendRow.State == "success" || vendRow.State == "pending" {
+	if vendLocked.state == "success" || vendLocked.state == "pending" {
 		return appcommerce.FulfillFailedVendResult{}, appcommerce.ErrIllegalTransition
 	}
-	if vendRow.State != "in_progress" {
+	if vendLocked.state != "in_progress" {
 		return appcommerce.FulfillFailedVendResult{}, appcommerce.ErrIllegalTransition
 	}
 
@@ -344,20 +339,32 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		fr = pgtype.Text{String: strings.TrimSpace(*in.FailureReason), Valid: true}
 	}
 
-	finalV, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "failed",
-		FailureReason: fr,
+	var finalV domaincommerce.VendSession
+	if in.LineSequence > 0 {
+		nv, err := q.UpdateVendSessionStateByOrderLineSequence(ctx, db.UpdateVendSessionStateByOrderLineSequenceParams{
+			State:         "failed",
+			FailureReason: fr,
+			OrderID:       in.OrderID,
+			LineSequence:  in.LineSequence,
+		})
+		if err != nil {
+			return appcommerce.FulfillFailedVendResult{}, err
+		}
+		finalV = mapVendLineSequenceUpdateRow(nv)
+	} else {
+		nv, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "failed",
+			FailureReason: fr,
 
-		OrderID:   in.OrderID,
-		SlotIndex: in.SlotIndex,
-	})
-	if err != nil {
-		return appcommerce.FulfillFailedVendResult{}, err
+			OrderID:   in.OrderID,
+			SlotIndex: slotIndex,
+		})
+		if err != nil {
+			return appcommerce.FulfillFailedVendResult{}, err
+		}
+		finalV = mapVendUpdateRow(nv)
 	}
 
-	finalOrd, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "failed",
-
-		ID: in.OrderID,
-	})
+	finalOrd, err := resolveOrderStatusAfterFailedVend(ctx, q, ordRow, in.OrderID)
 	if err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
@@ -371,20 +378,20 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 	if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
 		VerificationStatus: verificationStatus,
 		OrderID:            in.OrderID,
-		SlotIndex:          in.SlotIndex,
+		SlotIndex:          slotIndex,
 	}); err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 	evidenceDedupe := strings.TrimSpace(in.OutboxIdempotencyKey)
 	if evidenceDedupe == "" {
-		evidenceDedupe = fmt.Sprintf("commerce_vend_failed:%s|%d", in.OrderID.String(), in.SlotIndex)
+		evidenceDedupe = fmt.Sprintf("commerce_vend_failed:%s|%d", in.OrderID.String(), slotIndex)
 	}
 	evidenceDedupe += ":hardware_evidence"
 	if _, err := persistVendHardwareEvidenceTx(ctx, q, persistEvidenceInput{
 		OrderID:       in.OrderID,
-		VendSessionID: vendRow.ID,
+		VendSessionID: vendLocked.id,
 		MachineID:     ordRow.MachineID,
-		SlotIndex:     in.SlotIndex,
+		SlotIndex:     slotIndex,
 		Evidence:      in.Evidence,
 		DedupeKey:     evidenceDedupe,
 	}); err != nil {
@@ -484,7 +491,120 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 
 	return appcommerce.FulfillFailedVendResult{
 		Order:  mapOrder(finalOrd),
-		Vend:   mapVendUpdateRow(finalV),
+		Vend:   finalV,
 		Replay: false,
 	}, nil
+}
+
+type lockedVendSession struct {
+	id        uuid.UUID
+	machineID uuid.UUID
+	slotIndex int32
+	state     string
+	replayVend domaincommerce.VendSession
+}
+
+func lockFailedVendSessionForUpdate(
+	ctx context.Context,
+	q *db.Queries,
+	in appcommerce.FulfillFailedVendInput,
+) (lockedVendSession, error) {
+	if in.LineSequence > 0 {
+		row, err := q.LockVendSessionByOrderAndLineSequenceForUpdate(ctx, db.LockVendSessionByOrderAndLineSequenceForUpdateParams{
+			OrderID:      in.OrderID,
+			LineSequence: in.LineSequence,
+		})
+		if err != nil {
+			if isNoRows(err) {
+				return lockedVendSession{}, appcommerce.ErrNotFound
+			}
+			return lockedVendSession{}, err
+		}
+		return lockedVendSession{
+			id:         row.ID,
+			machineID:  row.MachineID,
+			slotIndex:  row.SlotIndex,
+			state:      row.State,
+			replayVend: mapVendLineSequenceLockRow(row),
+		}, nil
+	}
+	row, err := q.LockVendSessionByOrderAndSlotForUpdate(ctx, db.LockVendSessionByOrderAndSlotForUpdateParams{
+		OrderID:   in.OrderID,
+		SlotIndex: in.SlotIndex,
+	})
+	if err != nil {
+		if isNoRows(err) {
+			return lockedVendSession{}, appcommerce.ErrNotFound
+		}
+		return lockedVendSession{}, err
+	}
+	return lockedVendSession{
+		id:         row.ID,
+		machineID:  row.MachineID,
+		slotIndex:  row.SlotIndex,
+		state:      row.State,
+		replayVend: mapVendLockRow(row),
+	}, nil
+}
+
+func resolveOrderStatusAfterFailedVend(
+	ctx context.Context,
+	q *db.Queries,
+	ordRow db.Order,
+	orderID uuid.UUID,
+) (db.Order, error) {
+	sessions, err := q.ListVendSessionsByOrder(ctx, orderID)
+	if err != nil {
+		return db.Order{}, err
+	}
+	if len(sessions) <= 1 {
+		return q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
+			Status: "failed",
+			ID:     orderID,
+		})
+	}
+	if multiLineOrderHasOpenVendLines(sessions) {
+		return ordRow, nil
+	}
+	nextStatus := resolveMultiLineTerminalOrderStatus(sessions)
+	if nextStatus == ordRow.Status {
+		return ordRow, nil
+	}
+	return q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{
+		Status: nextStatus,
+		ID:     orderID,
+	})
+}
+
+func multiLineOrderHasOpenVendLines(sessions []db.ListVendSessionsByOrderRow) bool {
+	for _, s := range sessions {
+		switch strings.ToLower(strings.TrimSpace(s.State)) {
+		case "pending", "in_progress":
+			return true
+		}
+	}
+	return false
+}
+
+func resolveMultiLineTerminalOrderStatus(sessions []db.ListVendSessionsByOrderRow) string {
+	anySuccess := false
+	allFailed := true
+	for _, s := range sessions {
+		switch strings.ToLower(strings.TrimSpace(s.State)) {
+		case "success":
+			anySuccess = true
+			allFailed = false
+		case "failed":
+			// keep allFailed true only if every line failed
+		default:
+			allFailed = false
+		}
+	}
+	if anySuccess {
+		return "completed"
+	}
+	if allFailed {
+		return "failed"
+	}
+	return "vending"
 }
