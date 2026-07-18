@@ -2686,6 +2686,8 @@ type ReportVendFailureRequest struct {
 	FailureReason string                 `protobuf:"bytes,4,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"`
 	CorrelationId *string                `protobuf:"bytes,5,opt,name=correlation_id,json=correlationId,proto3,oneof" json:"correlation_id,omitempty"`
 	Evidence      *VendHardwareEvidence  `protobuf:"bytes,6,opt,name=evidence,proto3,oneof" json:"evidence,omitempty"`
+	// When set, targets vend session by line_sequence (multi-cart). Falls back to slot_index when zero.
+	LineSequence  int32 `protobuf:"varint,7,opt,name=line_sequence,json=lineSequence,proto3" json:"line_sequence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2760,6 +2762,13 @@ func (x *ReportVendFailureRequest) GetEvidence() *VendHardwareEvidence {
 		return x.Evidence
 	}
 	return nil
+}
+
+func (x *ReportVendFailureRequest) GetLineSequence() int32 {
+	if x != nil {
+		return x.LineSequence
+	}
+	return 0
 }
 
 type ReportVendFailureResponse struct {
@@ -3245,7 +3254,7 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\border_id\x18\x03 \x01(\tR\aorderId\x12!\n" +
 	"\forder_status\x18\x04 \x01(\tR\vorderStatus\x12\x1d\n" +
 	"\n" +
-	"vend_state\x18\x05 \x01(\tR\tvendState\"\xcc\x02\n" +
+	"vend_state\x18\x05 \x01(\tR\tvendState\"\xf1\x02\n" +
 	"\x18ReportVendFailureRequest\x12<\n" +
 	"\acontext\x18\x01 \x01(\v2\".avf.machine.v1.IdempotencyContextR\acontext\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1d\n" +
@@ -3253,7 +3262,8 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"slot_index\x18\x03 \x01(\x05R\tslotIndex\x12%\n" +
 	"\x0efailure_reason\x18\x04 \x01(\tR\rfailureReason\x12*\n" +
 	"\x0ecorrelation_id\x18\x05 \x01(\tH\x00R\rcorrelationId\x88\x01\x01\x12E\n" +
-	"\bevidence\x18\x06 \x01(\v2$.avf.machine.v1.VendHardwareEvidenceH\x01R\bevidence\x88\x01\x01B\x11\n" +
+	"\bevidence\x18\x06 \x01(\v2$.avf.machine.v1.VendHardwareEvidenceH\x01R\bevidence\x88\x01\x01\x12#\n" +
+	"\rline_sequence\x18\a \x01(\x05R\flineSequenceB\x11\n" +
 	"\x0f_correlation_idB\v\n" +
 	"\t_evidence\"\xf6\x01\n" +
 	"\x19ReportVendFailureResponse\x12\x16\n" +

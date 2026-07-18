@@ -1,7 +1,7 @@
 # One-shot migrations: goose CLI on Alpine (matches prod migrate service).
 # Base image digests: multi-arch index (library/golang, library/alpine on Docker Hub). Bump digests when changing GO_VERSION / Alpine tag.
 # XNET_VERSION / XCRYPTO_VERSION pin patched golang.org/x deps so the goose binary clears Trivy HIGH/CRITICAL policy; bump when newer CVEs are flagged.
-ARG GO_VERSION=1.25.11
+ARG GO_VERSION=1.25.12
 ARG GOOSE_VERSION=v3.27.1
 ARG PGX_VERSION=v5.9.2
 ARG GRPC_VERSION=v1.80.0

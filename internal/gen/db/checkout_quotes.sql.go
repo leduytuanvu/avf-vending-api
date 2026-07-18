@@ -562,6 +562,82 @@ func (q *Queries) ListVendSessionsByOrder(ctx context.Context, orderID uuid.UUID
 	return items, nil
 }
 
+const LockVendSessionByOrderAndLineSequenceForUpdate = `-- name: LockVendSessionByOrderAndLineSequenceForUpdate :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
+    created_at,
+    line_sequence
+FROM vend_sessions
+WHERE
+    order_id = $1
+    AND line_sequence = $2
+FOR UPDATE
+`
+
+type LockVendSessionByOrderAndLineSequenceForUpdateParams struct {
+	OrderID      uuid.UUID
+	LineSequence int32
+}
+
+type LockVendSessionByOrderAndLineSequenceForUpdateRow struct {
+	ID                    uuid.UUID
+	OrderID               uuid.UUID
+	MachineID             uuid.UUID
+	SlotIndex             int32
+	ProductID             uuid.UUID
+	State                 string
+	FailureReason         pgtype.Text
+	CorrelationID         pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	CompletedAt           pgtype.Timestamptz
+	FinalCommandAttemptID pgtype.UUID
+	Simulated             bool
+	SimulationRunID       pgtype.Text
+	SimulationScenario    pgtype.Text
+	SimulationMetadata    []byte
+	CreatedAt             time.Time
+	LineSequence          int32
+}
+
+func (q *Queries) LockVendSessionByOrderAndLineSequenceForUpdate(ctx context.Context, arg LockVendSessionByOrderAndLineSequenceForUpdateParams) (LockVendSessionByOrderAndLineSequenceForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, LockVendSessionByOrderAndLineSequenceForUpdate, arg.OrderID, arg.LineSequence)
+	var i LockVendSessionByOrderAndLineSequenceForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.MachineID,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.State,
+		&i.FailureReason,
+		&i.CorrelationID,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.FinalCommandAttemptID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
+		&i.CreatedAt,
+		&i.LineSequence,
+	)
+	return i, err
+}
+
 const MarkCheckoutQuoteConsumed = `-- name: MarkCheckoutQuoteConsumed :one
 UPDATE checkout_quotes
 SET

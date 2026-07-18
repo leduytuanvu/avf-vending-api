@@ -290,7 +290,7 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	if err != nil {
 		return FinalizeOutcome{}, err
 	}
-	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, in.OrderID, in.SlotIndex)
+	v, err := s.lookupVendSession(ctx, in.OrderID, in.SlotIndex, in.LineSequence)
 	if err != nil {
 		return FinalizeOutcome{}, err
 	}
@@ -345,6 +345,7 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 	fr, err := s.life.FulfillFailedVendAtomically(ctx, FulfillFailedVendInput{
 		OrderID:                 in.OrderID,
 		SlotIndex:               in.SlotIndex,
+		LineSequence:            in.LineSequence,
 		FailureReason:           in.FailureReason,
 		Evidence:                in.Evidence,
 		VerificationStatus:      in.VerificationStatus,

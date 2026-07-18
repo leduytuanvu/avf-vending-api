@@ -65,6 +65,7 @@ type AdvanceVendInput struct {
 type FinalizeAfterVendInput struct {
 	OrderID           uuid.UUID
 	SlotIndex         int32
+	LineSequence      int32
 	TerminalVendState string
 	FailureReason     *string
 	// InventoryDedupeKey optionally overrides computed inventory suppression for successful dispense.
@@ -115,6 +116,7 @@ type FulfillSuccessfulVendResult struct {
 type FulfillFailedVendInput struct {
 	OrderID                 uuid.UUID
 	SlotIndex               int32
+	LineSequence            int32
 	FailureReason           *string
 	Evidence                *domaincommerce.VendHardwareEvidence
 	VerificationStatus      string
