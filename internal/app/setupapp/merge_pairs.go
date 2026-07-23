@@ -65,7 +65,7 @@ func mapMergePairRow(row db.MachineLaneMergePair) LaneMergePair {
 		LayoutKey:      strings.TrimSpace(row.LayoutKey),
 		LayoutRevision: row.LayoutRevision,
 		Revision:       row.Revision,
-		MergedAt:        row.MergedAt,
+		MergedAt:       row.MergedAt,
 	}
 	if row.OperatorSessionID.Valid {
 		sid := uuid.UUID(row.OperatorSessionID.Bytes)
