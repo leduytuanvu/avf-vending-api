@@ -351,6 +351,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					r.Use(machineLegacyRESTGuard(cfg))
 					mountSetupBootstrapRoutes(r, app)
 					mountSaleCatalogRoute(r, app)
+					mountMachinePlanogramMergePairRoute(r, app)
 					r.With(RequireMachineCompanyAccess(app, "machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
 					mountMachineTelemetryRoutes(r, app, abuse)
 				})

@@ -91,6 +91,7 @@ type MachineBootstrap struct {
 	Cabinets                    []CabinetView
 	AssortmentProducts          []AssortmentProductView
 	CurrentCabinetSlots         []CabinetSlotConfigView
+	MergePairs                  []LaneMergePair
 	PublishedPlanogramVersionID *uuid.UUID
 	PublishedPlanogramVersionNo int32
 }

@@ -63,6 +63,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 		r.With(writeRL).Post("/machines/{machineId}/planograms/publish", postAdminMachinePlanogramPublish(app))
 		r.With(writeRL).Post("/machines/{machineId}/sync", postAdminMachineSetupSync(app))
 	})
+	mountPlanogramMergePairRoutes(r, app, writeRL)
 }
 
 func parseInventoryRefillForecastQuery(r *http.Request, scopeID uuid.UUID, machineFromPath *uuid.UUID, lowStockOnly bool) (appinventoryadmin.RefillForecastParams, error) {

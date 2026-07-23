@@ -827,6 +827,24 @@ type MachineIncident struct {
 	UpdatedAt time.Time
 }
 
+// Active TCN lane merge pairs (double-wide slots); split sets is_active=false.
+type MachineLaneMergePair struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	LeftSlotCode      string
+	RightSlotCode     string
+	CabinetCode       string
+	LayoutKey         string
+	LayoutRevision    int32
+	Revision          int32
+	OperatorSessionID pgtype.UUID
+	MergedAt          time.Time
+	SplitAt           pgtype.Timestamptz
+	IsActive          bool
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
 type MachineLineage struct {
 	ID                 uuid.UUID
 	PriorMachineID     uuid.UUID
