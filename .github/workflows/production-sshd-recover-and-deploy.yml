@@ -61,7 +61,7 @@ jobs:
             fi
             exit 0
           fi
-          local cmd="$*"
+          cmd="$*"
           if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
             bash -lc "${cmd}"
           elif sudo -n true 2>/dev/null; then
