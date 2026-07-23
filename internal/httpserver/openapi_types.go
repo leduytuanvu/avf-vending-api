@@ -1214,7 +1214,18 @@ type V1SetupMachineBootstrapResponse struct {
 	MediaFingerprint            string                      `json:"mediaFingerprint,omitempty"`
 	PublishedPlanogramVersionID string                      `json:"publishedPlanogramVersionId,omitempty"`
 	PublishedPlanogramVersionNo int32                       `json:"publishedPlanogramVersionNo,omitempty"`
+	MergePairs                  []V1PlanogramMergePair      `json:"mergePairs,omitempty"`
 	RuntimeHints                *V1SetupMachineRuntimeHints `json:"runtimeHints,omitempty"`
+}
+
+// V1PlanogramMergePair is an active double-wide lane merge on a machine.
+type V1PlanogramMergePair struct {
+	LeftSlotCode   string `json:"leftSlotCode"`
+	RightSlotCode  string `json:"rightSlotCode"`
+	CabinetCode    string `json:"cabinetCode,omitempty"`
+	LayoutKey      string `json:"layoutKey,omitempty"`
+	LayoutRevision int32  `json:"layoutRevision,omitempty"`
+	Revision       int32  `json:"revision,omitempty"`
 }
 
 // V1SetupMachineRuntimeHints is optional machine-local rollout context (forward-compatible).

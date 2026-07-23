@@ -64,6 +64,13 @@ func mapVendLineSequenceRow(row db.GetVendSessionByOrderAndLineSequenceRow) comm
 	)
 }
 
+func mapVendLineSequenceLockRow(row db.LockVendSessionByOrderAndLineSequenceForUpdateRow) commerce.VendSession {
+	return mapVendFields(
+		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,
+		row.FinalCommandAttemptID, row.Simulated, row.SimulationRunID, row.SimulationScenario, row.CreatedAt,
+	)
+}
+
 func mapVendLineSequenceUpdateRow(row db.UpdateVendSessionStateByOrderLineSequenceRow) commerce.VendSession {
 	return mapVendFields(
 		row.ID, row.OrderID, row.MachineID, row.ProductID, row.SlotIndex, row.State,

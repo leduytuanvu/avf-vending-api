@@ -894,6 +894,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
 	slotIndex := req.GetSlotIndex()
+	lineSequence := req.GetLineSequence()
 	reason := strings.TrimSpace(req.GetFailureReason())
 	var corr *uuid.UUID
 	if cid := strings.TrimSpace(req.GetCorrelationId()); cid != "" {
@@ -920,11 +921,27 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	}
 
 	if corr != nil {
-		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
+		if lineSequence > 0 {
+			stByLine, lineErr := svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+			if lineErr == nil {
+				_ = store.TouchVendSessionCorrelation(ctx, orderID, stByLine.Vend.SlotIndex, *corr)
+			}
+		} else {
+			_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
+		}
 	}
-	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	var st appcommerce.CheckoutStatusView
+	if lineSequence > 0 {
+		st, err = svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+	} else {
+		st, err = svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	}
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
+	}
+	resolvedSlotIndex := st.Vend.SlotIndex
+	if lineSequence > 0 {
+		slotIndex = resolvedSlotIndex
 	}
 	if st.Vend.State != "in_progress" {
 		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
@@ -950,7 +967,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	if evidence != nil && corr == nil {
 		c := evidence.CorrelationID
 		corr = &c
-		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, evidence.CorrelationID)
+		_ = store.TouchVendSessionCorrelation(ctx, orderID, resolvedSlotIndex, evidence.CorrelationID)
 	}
 
 	outboxTopic, _, outboxFailed, outboxRecon, outboxAgg := machineCommerceVendOutboxConfig(s.deps)
@@ -964,7 +981,8 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 	}
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 		OrderID:                   orderID,
-		SlotIndex:                 slotIndex,
+		SlotIndex:                 resolvedSlotIndex,
+		LineSequence:              lineSequence,
 		TerminalVendState:         "failed",
 		FailureReason:             reasonPtr,
 		ClientWriteIdempotencyKey: idemKey,

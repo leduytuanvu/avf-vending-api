@@ -337,6 +337,8 @@ message ReportVendFailureRequest {
   string failure_reason = 4;
   optional string correlation_id = 5;
   optional VendHardwareEvidence evidence = 6;
+  // When set, targets vend session by line_sequence (multi-cart). Falls back to slot_index when zero.
+  int32 line_sequence = 7;
 }
 
 message ReportVendFailureResponse {

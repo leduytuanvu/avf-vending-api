@@ -474,6 +474,7 @@ type Querier interface {
 	ListVendSessionsStuckForReconciliation(ctx context.Context, arg ListVendSessionsStuckForReconciliationParams) ([]ListVendSessionsStuckForReconciliationRow, error)
 	LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID) (Order, error)
+	LockVendSessionByOrderAndLineSequenceForUpdate(ctx context.Context, arg LockVendSessionByOrderAndLineSequenceForUpdateParams) (LockVendSessionByOrderAndLineSequenceForUpdateRow, error)
 	LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error)
 	MachineAppliedConfigRevision(ctx context.Context, machineID uuid.UUID) (int32, error)
 	MachineConfigRolloutsCountAll(ctx context.Context) (int64, error)
@@ -539,20 +540,26 @@ type Querier interface {
 	OtaAdminUpdateCampaignStatusFields(ctx context.Context, arg OtaAdminUpdateCampaignStatusFieldsParams) (OtaCampaign, error)
 	OtaAdminUpsertMachineResult(ctx context.Context, arg OtaAdminUpsertMachineResultParams) (OtaMachineResult, error)
 	OtaAdminValidateMachinesBelongToOrg(ctx context.Context, dollar_1 []uuid.UUID) ([]uuid.UUID, error)
+	PlanogramDeactivateAllMergePairsForMachine(ctx context.Context, machineID uuid.UUID) error
 	PlanogramGetMachineDraftByID(ctx context.Context, arg PlanogramGetMachineDraftByIDParams) (MachinePlanogramDraft, error)
 	PlanogramGetPublishedMetaForMachine(ctx context.Context, id uuid.UUID) (PlanogramGetPublishedMetaForMachineRow, error)
 	PlanogramGetVersionByIDForMachine(ctx context.Context, arg PlanogramGetVersionByIDForMachineParams) (MachinePlanogramVersion, error)
+	PlanogramInsertActiveMergePair(ctx context.Context, arg PlanogramInsertActiveMergePairParams) (MachineLaneMergePair, error)
 	PlanogramInsertDraft(ctx context.Context, arg PlanogramInsertDraftParams) (MachinePlanogramDraft, error)
 	PlanogramInsertTemplate(ctx context.Context, arg PlanogramInsertTemplateParams) (PlanogramTemplate, error)
 	PlanogramInsertVersion(ctx context.Context, arg PlanogramInsertVersionParams) (MachinePlanogramVersion, error)
 	PlanogramInsertVersionSlot(ctx context.Context, arg PlanogramInsertVersionSlotParams) error
+	PlanogramListActiveMergePairsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineLaneMergePair, error)
 	PlanogramListDraftsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachinePlanogramDraft, error)
 	PlanogramListVersionsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachinePlanogramVersion, error)
+	PlanogramMirrorSlotConfigMetadata(ctx context.Context, arg PlanogramMirrorSlotConfigMetadataParams) error
 	PlanogramNextMachineVersionNo(ctx context.Context, machineID uuid.UUID) (int32, error)
+	PlanogramNextMergePairRevision(ctx context.Context, machineID uuid.UUID) (int32, error)
 	PlanogramPatchDraftSnapshot(ctx context.Context, arg PlanogramPatchDraftSnapshotParams) (MachinePlanogramDraft, error)
 	PlanogramSetMachinePublishedVersion(ctx context.Context, arg PlanogramSetMachinePublishedVersionParams) error
 	PlanogramSnapshotUpdateMachineAckConfigRevision(ctx context.Context, arg PlanogramSnapshotUpdateMachineAckConfigRevisionParams) error
 	PlanogramSnapshotUpdateMachineAckPlanogram(ctx context.Context, arg PlanogramSnapshotUpdateMachineAckPlanogramParams) error
+	PlanogramSplitActiveMergePair(ctx context.Context, arg PlanogramSplitActiveMergePairParams) (int64, error)
 	// Latest active per-machine price override per product at evaluation time.
 	PricingRuntimeListMachineOverridesAt(ctx context.Context, arg PricingRuntimeListMachineOverridesAtParams) ([]PricingRuntimeListMachineOverridesAtRow, error)
 	PromotionAdminCountPromotions(ctx context.Context, dollar_1 bool) (int64, error)

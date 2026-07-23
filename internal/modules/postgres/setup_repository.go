@@ -386,6 +386,21 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		PublishedPlanogramVersionID: pvID,
 		PublishedPlanogramVersionNo: pvNo,
 	}
+	mergeRows, merr := q.PlanogramListActiveMergePairsForMachine(ctx, machineID)
+	if merr == nil {
+		out.MergePairs = make([]setupapp.LaneMergePair, 0, len(mergeRows))
+		for _, row := range mergeRows {
+			out.MergePairs = append(out.MergePairs, setupapp.LaneMergePair{
+				LeftSlotCode:   row.LeftSlotCode,
+				RightSlotCode:  row.RightSlotCode,
+				CabinetCode:    row.CabinetCode,
+				LayoutKey:      row.LayoutKey,
+				LayoutRevision: row.LayoutRevision,
+				Revision:       row.Revision,
+				MergedAt:       row.MergedAt,
+			})
+		}
+	}
 	return out, nil
 }
 

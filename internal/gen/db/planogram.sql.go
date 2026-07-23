@@ -12,6 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const PlanogramDeactivateAllMergePairsForMachine = `-- name: PlanogramDeactivateAllMergePairsForMachine :exec
+UPDATE machine_lane_merge_pairs
+SET
+    is_active = false,
+    split_at = now(),
+    updated_at = now()
+WHERE
+    machine_id = $1
+    AND is_active = true
+`
+
+func (q *Queries) PlanogramDeactivateAllMergePairsForMachine(ctx context.Context, machineID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, PlanogramDeactivateAllMergePairsForMachine, machineID)
+	return err
+}
+
 const PlanogramGetMachineDraftByID = `-- name: PlanogramGetMachineDraftByID :one
 SELECT
     id,
@@ -100,6 +116,90 @@ func (q *Queries) PlanogramGetVersionByIDForMachine(ctx context.Context, arg Pla
 		&i.SourceDraftID,
 		&i.PublishedAt,
 		&i.PublishedBy,
+	)
+	return i, err
+}
+
+const PlanogramInsertActiveMergePair = `-- name: PlanogramInsertActiveMergePair :one
+INSERT INTO machine_lane_merge_pairs (
+    machine_id,
+    left_slot_code,
+    right_slot_code,
+    cabinet_code,
+    layout_key,
+    layout_revision,
+    revision,
+    operator_session_id,
+    merged_at,
+    is_active
+)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    now(),
+    true
+)
+RETURNING
+    id,
+    machine_id,
+    left_slot_code,
+    right_slot_code,
+    cabinet_code,
+    layout_key,
+    layout_revision,
+    revision,
+    operator_session_id,
+    merged_at,
+    split_at,
+    is_active,
+    created_at,
+    updated_at
+`
+
+type PlanogramInsertActiveMergePairParams struct {
+	MachineID         uuid.UUID
+	LeftSlotCode      string
+	RightSlotCode     string
+	CabinetCode       string
+	LayoutKey         string
+	LayoutRevision    int32
+	Revision          int32
+	OperatorSessionID pgtype.UUID
+}
+
+func (q *Queries) PlanogramInsertActiveMergePair(ctx context.Context, arg PlanogramInsertActiveMergePairParams) (MachineLaneMergePair, error) {
+	row := q.db.QueryRow(ctx, PlanogramInsertActiveMergePair,
+		arg.MachineID,
+		arg.LeftSlotCode,
+		arg.RightSlotCode,
+		arg.CabinetCode,
+		arg.LayoutKey,
+		arg.LayoutRevision,
+		arg.Revision,
+		arg.OperatorSessionID,
+	)
+	var i MachineLaneMergePair
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.LeftSlotCode,
+		&i.RightSlotCode,
+		&i.CabinetCode,
+		&i.LayoutKey,
+		&i.LayoutRevision,
+		&i.Revision,
+		&i.OperatorSessionID,
+		&i.MergedAt,
+		&i.SplitAt,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -290,6 +390,65 @@ func (q *Queries) PlanogramInsertVersionSlot(ctx context.Context, arg PlanogramI
 	return err
 }
 
+const PlanogramListActiveMergePairsForMachine = `-- name: PlanogramListActiveMergePairsForMachine :many
+SELECT
+    id,
+    machine_id,
+    left_slot_code,
+    right_slot_code,
+    cabinet_code,
+    layout_key,
+    layout_revision,
+    revision,
+    operator_session_id,
+    merged_at,
+    split_at,
+    is_active,
+    created_at,
+    updated_at
+FROM machine_lane_merge_pairs
+WHERE
+    machine_id = $1
+    AND is_active = true
+ORDER BY
+    left_slot_code ASC
+`
+
+func (q *Queries) PlanogramListActiveMergePairsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineLaneMergePair, error) {
+	rows, err := q.db.Query(ctx, PlanogramListActiveMergePairsForMachine, machineID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []MachineLaneMergePair{}
+	for rows.Next() {
+		var i MachineLaneMergePair
+		if err := rows.Scan(
+			&i.ID,
+			&i.MachineID,
+			&i.LeftSlotCode,
+			&i.RightSlotCode,
+			&i.CabinetCode,
+			&i.LayoutKey,
+			&i.LayoutRevision,
+			&i.Revision,
+			&i.OperatorSessionID,
+			&i.MergedAt,
+			&i.SplitAt,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const PlanogramListDraftsForMachine = `-- name: PlanogramListDraftsForMachine :many
 SELECT
     id,
@@ -376,6 +535,28 @@ func (q *Queries) PlanogramListVersionsForMachine(ctx context.Context, machineID
 	return items, nil
 }
 
+const PlanogramMirrorSlotConfigMetadata = `-- name: PlanogramMirrorSlotConfigMetadata :exec
+UPDATE machine_slot_configs
+SET
+    metadata = $3,
+    updated_at = now()
+WHERE
+    machine_id = $1
+    AND slot_code = $2
+    AND is_current = true
+`
+
+type PlanogramMirrorSlotConfigMetadataParams struct {
+	MachineID uuid.UUID
+	SlotCode  string
+	Metadata  []byte
+}
+
+func (q *Queries) PlanogramMirrorSlotConfigMetadata(ctx context.Context, arg PlanogramMirrorSlotConfigMetadataParams) error {
+	_, err := q.db.Exec(ctx, PlanogramMirrorSlotConfigMetadata, arg.MachineID, arg.SlotCode, arg.Metadata)
+	return err
+}
+
 const PlanogramNextMachineVersionNo = `-- name: PlanogramNextMachineVersionNo :one
 SELECT
     COALESCE(MAX(version_no), 0)::int AS next_seq
@@ -389,6 +570,21 @@ func (q *Queries) PlanogramNextMachineVersionNo(ctx context.Context, machineID u
 	var next_seq int32
 	err := row.Scan(&next_seq)
 	return next_seq, err
+}
+
+const PlanogramNextMergePairRevision = `-- name: PlanogramNextMergePairRevision :one
+SELECT
+    COALESCE(MAX(revision), 0)::int + 1 AS next_revision
+FROM machine_lane_merge_pairs
+WHERE
+    machine_id = $1
+`
+
+func (q *Queries) PlanogramNextMergePairRevision(ctx context.Context, machineID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, PlanogramNextMergePairRevision, machineID)
+	var next_revision int32
+	err := row.Scan(&next_revision)
+	return next_revision, err
 }
 
 const PlanogramPatchDraftSnapshot = `-- name: PlanogramPatchDraftSnapshot :one
@@ -492,4 +688,29 @@ type PlanogramSnapshotUpdateMachineAckPlanogramParams struct {
 func (q *Queries) PlanogramSnapshotUpdateMachineAckPlanogram(ctx context.Context, arg PlanogramSnapshotUpdateMachineAckPlanogramParams) error {
 	_, err := q.db.Exec(ctx, PlanogramSnapshotUpdateMachineAckPlanogram, arg.LastAcknowledgedPlanogramVersionID, arg.MachineID)
 	return err
+}
+
+const PlanogramSplitActiveMergePair = `-- name: PlanogramSplitActiveMergePair :execrows
+UPDATE machine_lane_merge_pairs
+SET
+    is_active = false,
+    split_at = now(),
+    updated_at = now()
+WHERE
+    machine_id = $1
+    AND left_slot_code = $2
+    AND is_active = true
+`
+
+type PlanogramSplitActiveMergePairParams struct {
+	MachineID    uuid.UUID
+	LeftSlotCode string
+}
+
+func (q *Queries) PlanogramSplitActiveMergePair(ctx context.Context, arg PlanogramSplitActiveMergePairParams) (int64, error) {
+	result, err := q.db.Exec(ctx, PlanogramSplitActiveMergePair, arg.MachineID, arg.LeftSlotCode)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

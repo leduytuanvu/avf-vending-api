@@ -194,6 +194,31 @@ WHERE
     order_id = $1
     AND line_sequence = $2;
 
+-- name: LockVendSessionByOrderAndLineSequenceForUpdate :one
+SELECT
+    id,
+    order_id,
+    machine_id,
+    slot_index,
+    product_id,
+    state,
+    failure_reason,
+    correlation_id,
+    started_at,
+    completed_at,
+    final_command_attempt_id,
+    simulated,
+    simulation_run_id,
+    simulation_scenario,
+    simulation_metadata,
+    created_at,
+    line_sequence
+FROM vend_sessions
+WHERE
+    order_id = $1
+    AND line_sequence = $2
+FOR UPDATE;
+
 -- name: UpdateVendSessionStateByOrderLineSequence :one
 UPDATE vend_sessions
 SET
