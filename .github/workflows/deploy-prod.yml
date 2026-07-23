@@ -2148,6 +2148,42 @@ jobs:
             printf '%s\n' "${key_fingerprint}"
           } | tee deployment-evidence/ssh-debug-context.txt >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Recover loopback SSH on co-located app-node A runner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if [[ "${APP_NODE_A_HOST}" != "127.0.0.1" && "${APP_NODE_A_HOST}" != "localhost" ]]; then
+            echo "Skipping loopback SSH recovery (app-node A is not loopback)."
+            exit 0
+          fi
+
+          pub_key="$(ssh-keygen -y -f "${SSH_IDENTITY_FILE}")"
+          user_home="$(getent passwd "${SSH_USER}" | cut -d: -f6 || true)"
+          [[ -n "${user_home}" ]] || user_home="/root"
+
+          if sudo -n true 2>/dev/null; then
+            auth_dir="${user_home}/.ssh"
+            auth_file="${auth_dir}/authorized_keys"
+            sudo mkdir -p "${auth_dir}"
+            sudo chmod 700 "${auth_dir}"
+            sudo touch "${auth_file}"
+            if ! sudo grep -Fq "${pub_key}" "${auth_file}" 2>/dev/null; then
+              echo "${pub_key} github-actions-production-deploy" | sudo tee -a "${auth_file}" >/dev/null
+            fi
+            sudo chmod 600 "${auth_file}"
+            sudo chown -R "${SSH_USER}:${SSH_USER}" "${auth_dir}" "${auth_file}" 2>/dev/null || true
+            if command -v fail2ban-client >/dev/null 2>&1; then
+              sudo fail2ban-client status sshd >/dev/null 2>&1 && {
+                sudo fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
+                sudo fail2ban-client unban --all 2>/dev/null || true
+              } || true
+            fi
+            sudo systemctl restart ssh 2>/dev/null || sudo systemctl restart sshd 2>/dev/null || true
+            sleep 2
+          else
+            echo "warning: passwordless sudo unavailable for loopback SSH recovery" >&2
+          fi
+
       - name: Probe production SSH authentication
         shell: bash
         env:

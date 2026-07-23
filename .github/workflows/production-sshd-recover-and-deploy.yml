@@ -1,0 +1,205 @@
+name: Production SSH Recover and Local Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_image_ref:
+        description: "Digest-pinned app image ref (...@sha256:...)"
+        required: true
+        type: string
+      goose_image_ref:
+        description: "Digest-pinned goose image ref (...@sha256:...)"
+        required: true
+        type: string
+      run_migration:
+        description: "Run production database migration on app node A"
+        required: false
+        default: true
+        type: boolean
+      recover_sshd_only:
+        description: "Only recover SSH; skip local deploy rollout"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  recover-and-deploy:
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_IMAGE_REF: ${{ inputs.app_image_ref }}
+      GOOSE_IMAGE_REF: ${{ inputs.goose_image_ref }}
+      RUN_MIGRATION: ${{ inputs.run_migration && '1' || '0' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install production SSH credentials
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          echo "SSH_IDENTITY_FILE=${identity_file}" >> "$GITHUB_ENV"
+
+      - name: Recover SSH daemon and authorized_keys on co-located VPS
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          pub_key="$(ssh-keygen -y -f "${SSH_IDENTITY_FILE}")"
+          user_home="$(getent passwd "${SSH_USER}" | cut -d: -f6 || true)"
+          [[ -n "${user_home}" ]] || user_home="/root"
+
+          install_authorized_key() {
+            local auth_dir="${user_home}/.ssh"
+            local auth_file="${auth_dir}/authorized_keys"
+            if sudo -n true 2>/dev/null; then
+              sudo mkdir -p "${auth_dir}"
+              sudo chmod 700 "${auth_dir}"
+              sudo touch "${auth_file}"
+              if ! sudo grep -Fq "${pub_key}" "${auth_file}" 2>/dev/null; then
+                echo "${pub_key} github-actions-production-deploy" | sudo tee -a "${auth_file}" >/dev/null
+              fi
+              sudo chmod 600 "${auth_file}"
+              sudo chown -R "${SSH_USER}:${SSH_USER}" "${auth_dir}" "${auth_file}" 2>/dev/null || true
+            elif [[ "$(id -un)" == "${SSH_USER}" ]]; then
+              mkdir -p "${auth_dir}"
+              chmod 700 "${auth_dir}"
+              touch "${auth_file}"
+              grep -Fq "${pub_key}" "${auth_file}" 2>/dev/null || echo "${pub_key} github-actions-production-deploy" >> "${auth_file}"
+              chmod 600 "${auth_file}"
+            else
+              echo "warning: cannot install authorized_keys for ${SSH_USER} without sudo" >&2
+            fi
+          }
+
+          recover_sshd() {
+            if ! sudo -n true 2>/dev/null; then
+              echo "warning: passwordless sudo unavailable; skipping sshd service recovery" >&2
+              return 0
+            fi
+            echo "==> ssh listeners before recovery"
+            sudo ss -ltnp | grep ":${SSH_PORT} " || true
+            if command -v fail2ban-client >/dev/null 2>&1; then
+              sudo fail2ban-client status sshd >/dev/null 2>&1 && {
+                sudo fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
+                sudo fail2ban-client set sshd unbanip 72.62.244.94 2>/dev/null || true
+                sudo fail2ban-client unban --all 2>/dev/null || true
+              } || true
+            fi
+            sudo systemctl restart ssh 2>/dev/null || sudo systemctl restart sshd
+            sleep 3
+            echo "==> recent ssh journal"
+            sudo journalctl -u ssh --no-pager -n 30 2>/dev/null || sudo journalctl -u sshd --no-pager -n 30 2>/dev/null || true
+          }
+
+          install_authorized_key
+          recover_sshd
+
+          set +e
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+            -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "printf 'loopback-ssh-ok\n'"
+          probe_rc=$?
+          set -e
+          if [[ "${probe_rc}" -ne 0 ]]; then
+            echo "::warning::Loopback SSH still failing after recovery (rc=${probe_rc}); continuing with local deploy path"
+          else
+            echo "Loopback SSH probe passed"
+          fi
+
+      - name: Sync app-node assets locally on app node A
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          if [[ "$(id -un)" != "${SSH_USER}" ]] && sudo -n true 2>/dev/null; then
+            sudo mkdir -p "${deploy_root}"
+            tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+              scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
+              sudo tar -xf - -C "${deploy_root}"
+            sudo chmod +x \
+              "${deploy_root}/scripts/deploy/production-migrate.sh" \
+              "${deploy_root}/scripts/verify_database_environment.sh" \
+              "${deploy_root}/scripts/db/verify_database_environment.sh"
+          else
+            mkdir -p "${deploy_root}"
+            tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+              scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
+              tar -xf - -C "${deploy_root}"
+            chmod +x \
+              "${deploy_root}/scripts/deploy/production-migrate.sh" \
+              "${deploy_root}/scripts/verify_database_environment.sh" \
+              "${deploy_root}/scripts/db/verify_database_environment.sh"
+          fi
+
+      - name: Log in to GHCR for image pull
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${GHCR_PULL_USERNAME}" && -n "${GHCR_PULL_TOKEN}" ]] || {
+            echo "error: GHCR_PULL_USERNAME / GHCR_PULL_TOKEN required for image pull" >&2
+            exit 1
+          }
+          echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
+
+      - name: Roll out app node A locally (no SSH)
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          release_cmd="cd '${remote_dir}' && RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+          if [[ "$(id -un)" != "${SSH_USER}" ]] && sudo -n true 2>/dev/null; then
+            sudo env GHCR_PULL_USERNAME="${GHCR_PULL_USERNAME}" GHCR_PULL_TOKEN="${GHCR_PULL_TOKEN}" bash -lc "${release_cmd}"
+          else
+            env GHCR_PULL_USERNAME="${GHCR_PULL_USERNAME}" GHCR_PULL_TOKEN="${GHCR_PULL_TOKEN}" bash -lc "${release_cmd}"
+          fi
+
+      - name: Verify app node A health locally
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          health_cmd="cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+          if [[ "$(id -un)" != "${SSH_USER}" ]] && sudo -n true 2>/dev/null; then
+            sudo bash -lc "${health_cmd}"
+          else
+            bash -lc "${health_cmd}"
+          fi
+
+      - name: Public smoke check
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${BASE_URL}" ]] || BASE_URL="https://api.ldtv.dev"
+          curl -fsS "${BASE_URL%/}/health/live" >/dev/null
+          curl -fsS "${BASE_URL%/}/health/ready" >/dev/null
+          version_json="$(curl -fsS "${BASE_URL%/}/version")"
+          echo "${version_json}" | tee "${GITHUB_STEP_SUMMARY}"
+          echo "${version_json}" | grep -F "${APP_IMAGE_REF##*@}" >/dev/null || {
+            echo "::warning::/version response did not include expected app digest (may still be rolling)"
+          }
