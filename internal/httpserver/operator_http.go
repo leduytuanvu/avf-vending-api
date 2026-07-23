@@ -957,6 +957,7 @@ func buildSetupBootstrapV1(b setupapp.MachineBootstrap) V1SetupMachineBootstrapR
 		PlanogramFingerprint:        setupapp.PlanogramFingerprint(b),
 		MediaFingerprint:            setupapp.MediaFingerprint(b),
 		PublishedPlanogramVersionNo: b.PublishedPlanogramVersionNo,
+		MergePairs:                  mapMergePairsToV1(b.MergePairs),
 	}
 	if b.PublishedPlanogramVersionID != nil && *b.PublishedPlanogramVersionID != uuid.Nil {
 		out.PublishedPlanogramVersionID = b.PublishedPlanogramVersionID.String()

@@ -51,6 +51,9 @@ func PlanogramFingerprint(b MachineBootstrap) string {
 		}
 		parts = append(parts, s.CabinetCode+":"+s.SlotCode+":"+strconv.Itoa(int(idx))+":"+pid+":"+strconv.FormatInt(int64(s.MaxQuantity), 10))
 	}
+	for _, mp := range b.MergePairs {
+		parts = append(parts, "merge:"+mp.LeftSlotCode+"-"+mp.RightSlotCode)
+	}
 	sort.Strings(parts)
 	return hashStringsFingerprint("planogram", parts)
 }
