@@ -1,3 +1,0 @@
-$kind: collection
-description: "Remote command dispatch. Auth: admin. Vars: commandId. Guard: allowGatedWrites."
-order: 20000

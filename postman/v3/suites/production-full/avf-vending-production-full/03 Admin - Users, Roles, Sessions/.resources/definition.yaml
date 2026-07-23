@@ -1,3 +1,0 @@
-$kind: collection
-description: "Admin user and RBAC management. Auth: admin Bearer (accessToken)."
-order: 4000

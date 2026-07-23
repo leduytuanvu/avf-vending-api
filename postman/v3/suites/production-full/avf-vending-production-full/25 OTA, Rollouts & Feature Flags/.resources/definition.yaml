@@ -1,3 +1,0 @@
-$kind: collection
-description: "OTA firmware and rollouts. Auth: admin. Vars: rolloutId, featureFlagId."
-order: 25000

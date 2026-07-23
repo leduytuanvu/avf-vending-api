@@ -1,3 +1,0 @@
-$kind: collection
-description: "Stock adjustments, restock, fill. Auth: admin. Production writes guarded."
-order: 15000

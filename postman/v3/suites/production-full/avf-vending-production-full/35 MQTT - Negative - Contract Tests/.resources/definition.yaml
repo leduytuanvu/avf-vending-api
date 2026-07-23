@@ -1,4 +1,0 @@
-$kind: collection
-name: 35 MQTT - Negative / Contract Tests
-description: Disabled MQTT negative contract cases.
-order: 34000

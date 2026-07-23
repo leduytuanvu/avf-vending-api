@@ -1,3 +1,0 @@
-$kind: collection
-description: "Manual Postman Desktop gRPC. Target {{grpcTarget}} TLS. Auth: machineToken. Not executable in v2.1 JSON."
-order: 29000

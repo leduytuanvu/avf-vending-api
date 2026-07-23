@@ -1,6 +1,0 @@
-$kind: http-request
-name: 24 GET /v1/admin/machines/{machineId}/inventory (after commerce)
-description: Compare against step 18 for decrement (manual or scripted diff).
-url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/inventory"
-method: GET
-order: 24000

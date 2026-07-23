@@ -1,3 +1,0 @@
-$kind: collection
-description: "Cash checkout and vend sessions. Auth: machine/admin. Guards: allowLiveCash, allowLiveVend."
-order: 18000

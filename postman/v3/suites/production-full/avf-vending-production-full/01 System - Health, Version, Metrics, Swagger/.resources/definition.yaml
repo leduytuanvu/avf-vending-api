@@ -1,3 +1,0 @@
-$kind: collection
-description: "Public health/version/metrics/swagger probes. Auth: none. Safety: read-only."
-order: 2000

@@ -1,6 +1,0 @@
-$kind: collection
-description: |-
-  **Execution order (REST in-folder; gRPC/MQTT adjacent scripts).** Set `adminEmail` / `adminPassword`, `auth_type=admin`, and run top-to-bottom. Native tests capture `accessToken`, IDs, `mediaId`, `machineToken`, `order_id`. Steps 19–23 use **machine JWT** (`bearer_token_var=machineToken`). After claim, optionally copy broker hints into `mqttHost` / `mqttPort` / `mqttTopicPrefix`. For catalog manifest RPCs use `grpcAddr` + `grpcUseReflection` with `scripts/postman/` gRPC/MQTT adjacent runbooks (see `postman/suites/production-full/`). For `catalog.refresh` ACK use `mqtt/run-mqtt-postman-adjacent.sh` and matrix payloads.
-
-  1 Login → 2 auth/me → 3–5 category/brand/tag → 6–7 media init/complete → 8–9 product + GET verify → 10 site → 11 machine → 12 activation code → 13 claim (`machineToken`) → 14–16 topology/planogram/publish → 17 sync → 18 inventory snapshot → 19–23 commerce + vend → 24 inventory verify → 25–26 reporting/audit → 27 version stub (see FULL100 README for gRPC/MQTT).
-order: 4000

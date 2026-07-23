@@ -1,3 +1,0 @@
-$kind: collection
-description: "Technician roster and assignments. Auth: admin. Vars: technicianId, assignmentId."
-order: 7000

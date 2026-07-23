@@ -1,3 +1,0 @@
-$kind: collection
-description: "Order lifecycle. Auth: admin/machine. Vars: orderId."
-order: 16000

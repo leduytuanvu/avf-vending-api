@@ -1,3 +1,0 @@
-$kind: collection
-description: "Ordered onboarding flow: login → site → machine → activation → telemetry → order. Start here after import."
-order: 35000

@@ -1,3 +1,0 @@
-$kind: collection
-description: "Activation codes, claim, provisioning. Auth: admin/public. High-risk writes guarded."
-order: 8000

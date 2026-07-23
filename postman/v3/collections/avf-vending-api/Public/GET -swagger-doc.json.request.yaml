@@ -1,6 +1,0 @@
-$kind: http-request
-name: GET /swagger/doc.json
-description: OpenAPI 3.0 JSON
-url: "{{baseUrl}}/swagger/doc.json"
-method: GET
-order: 4000

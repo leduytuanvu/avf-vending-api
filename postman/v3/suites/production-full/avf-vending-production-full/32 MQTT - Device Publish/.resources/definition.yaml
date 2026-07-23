@@ -1,3 +1,0 @@
-$kind: collection
-description: "Enterprise device publish topics. Guard: allowMqttPublish. Manual MQTT in Desktop."
-order: 31000

@@ -1,3 +1,0 @@
-$kind: collection
-description: "Machine fleet management. Auth: admin. Vars: siteId, machineId."
-order: 6000

@@ -1,4 +1,0 @@
-$kind: collection
-name: 29 Admin Utilities / Negative Tests
-description: Intentional failure cases. Disabled by default.
-order: 28000

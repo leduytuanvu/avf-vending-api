@@ -1,3 +1,0 @@
-$kind: collection
-description: "Outbox, retention jobs. Auth: admin. Destructive ops guarded."
-order: 24000
