@@ -2173,10 +2173,10 @@ jobs:
             sudo chmod 600 "${auth_file}"
             sudo chown -R "${SSH_USER}:${SSH_USER}" "${auth_dir}" "${auth_file}" 2>/dev/null || true
             if command -v fail2ban-client >/dev/null 2>&1; then
-              sudo fail2ban-client status sshd >/dev/null 2>&1 && {
+              if sudo fail2ban-client status sshd >/dev/null 2>&1; then
                 sudo fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
                 sudo fail2ban-client unban --all 2>/dev/null || true
-              } || true
+              fi
             fi
             sudo systemctl restart ssh 2>/dev/null || sudo systemctl restart sshd 2>/dev/null || true
             sleep 2
