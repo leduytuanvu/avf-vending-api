@@ -129,7 +129,7 @@ jobs:
             sudo mkdir -p "${deploy_root}"
             tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
               scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-              sudo tar -xf - -C "${deploy_root}"
+              sudo tar -xf - -C "${deploy_root}" --overwrite
             sudo chmod +x \
               "${deploy_root}/scripts/deploy/production-migrate.sh" \
               "${deploy_root}/scripts/verify_database_environment.sh" \
@@ -138,7 +138,7 @@ jobs:
             mkdir -p "${deploy_root}"
             tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
               scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-              tar -xf - -C "${deploy_root}"
+              tar -xf - -C "${deploy_root}" --overwrite
             chmod +x \
               "${deploy_root}/scripts/deploy/production-migrate.sh" \
               "${deploy_root}/scripts/verify_database_environment.sh" \
