@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 502
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "example-code",
+          "details": {},
+          "message": "string",
+          "requestId": "{{requestId}}"
+        }
+      }
+order: 7000

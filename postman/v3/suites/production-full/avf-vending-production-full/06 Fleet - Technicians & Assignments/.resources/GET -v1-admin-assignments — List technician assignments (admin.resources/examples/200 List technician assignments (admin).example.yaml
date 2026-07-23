@@ -1,0 +1,34 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "assignmentId": "dddddddd-eeee-ffff-0000-111111111111",
+            "createdAt": "2026-04-01T00:00:00Z",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "machineName": "Lobby A",
+            "machineSerialNumber": "SN-001",
+            "role": "maintainer",
+            "technicianDisplayName": "Alex Tech",
+            "technicianId": "eeeeeeee-ffff-0000-1111-222222222222",
+            "validFrom": "2026-04-01T00:00:00Z"
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 42
+        }
+      }
+order: 1000

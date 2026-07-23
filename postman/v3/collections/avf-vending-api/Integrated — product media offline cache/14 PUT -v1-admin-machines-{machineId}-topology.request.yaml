@@ -1,0 +1,22 @@
+$kind: http-request
+name: 14 PUT /v1/admin/machines/{machineId}/topology
+description: Cabinet + layout topology.
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/topology"
+method: PUT
+body:
+  type: json
+  content: |-
+    {
+      "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111",
+      "cabinets": [{"code": "A", "title": "Main cabinet", "sortOrder": 1, "metadata": {}}],
+      "layouts": [
+        {
+          "cabinetCode": "A",
+          "layoutKey": "grid-4x6",
+          "revision": 1,
+          "layoutSpec": {"rows": 4, "cols": 6},
+          "status": "active"
+        }
+      ]
+    }
+order: 14000

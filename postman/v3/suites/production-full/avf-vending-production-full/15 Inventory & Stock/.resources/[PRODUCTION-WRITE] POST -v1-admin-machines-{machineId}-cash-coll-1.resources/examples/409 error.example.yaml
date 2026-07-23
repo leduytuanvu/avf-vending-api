@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 409
+  statusText: Error
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "error": {
+          "code": "close_payload_conflict",
+          "details": {},
+          "message": "close payload does not match stored close",
+          "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        }
+      }
+order: 6000

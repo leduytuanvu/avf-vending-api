@@ -1,0 +1,38 @@
+$kind: http-request
+name: REST-MEDIA-INIT — POST /v1/admin/product-images
+url: "{{baseUrl}}/v1/admin/product-images"
+method: POST
+headers:
+  Content-Type: application/json
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allow = String(pm.environment.get('allowGatedWrites')||'').toLowerCase()==='true';
+      const confirm = pm.environment.get('confirmProductionWrites')==='I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (!allow || !confirm) { throw new Error('Gated write blocked'); }
+    language: text/javascript
+  - type: beforeRequest
+    code: |-
+      const reuse = String(pm.environment.get('newmanReuseShellState')||'').toLowerCase()==='true';
+      pm.variables.set('_postman_skip_if_env_key', 'mediaId');
+      const skipKey = pm.variables.get('_postman_skip_if_env') || pm.request?.headers?.get?.('_postman_skip_if_env');
+      const envKey = pm.variables.get('_postman_skip_if_env_key');
+      if (reuse && envKey && pm.environment.get(envKey)) {
+        pm.execution.skipRequest();
+      }
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test('expected HTTP status (manifest)', function () {
+        pm.response.to.have.status(201);
+      });
+      pm.test('assertion 0: json_path_exists mediaId', function () {
+        const j = pm.response.json();
+        pm.expect(j.mediaId).to.not.be.undefined;
+      });
+    language: text/javascript
+order: 1000

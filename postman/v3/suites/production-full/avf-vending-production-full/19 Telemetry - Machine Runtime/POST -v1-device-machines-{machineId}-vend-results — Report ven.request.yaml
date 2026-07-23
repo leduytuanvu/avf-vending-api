@@ -1,0 +1,88 @@
+$kind: http-request
+name: POST /v1/device/machines/{machineId}/vend-results — Report vend outcome for an order (HTTP bridge)
+description: |-
+  ## Purpose
+  Report vend outcome for an order (HTTP bridge)
+
+  ## Auth mode
+  `machine` — required: machineToken
+
+  ## Required variables
+  machineToken
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Idempotency-Key: {{idempotencyKey}}
+  - Authorization: Bearer {{machineToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+  - Idempotency-Key: (from OpenAPI)
+
+  ## Path parameters
+  - `machineId` (string)
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `404`, `429`, `500`
+
+  ## Safety note
+  Mutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1DeviceMachineVendResults`
+  - openapiKey: `POST /v1/device/machines/{machineId}/vend-results`
+  - production_write: yes
+  - idempotency: yes
+url: "{{baseUrl}}/v1/device/machines/{{machineId}}/vend-results"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Idempotency-Key: "{{idempotencyKey}}"
+  Authorization: Bearer {{machineToken}}
+  Content-Type: application/json
+body:
+  type: json
+  content: |-
+    {
+      "correlation_id": "11111111-2222-3333-4444-555555555555",
+      "order_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "outcome": "success",
+      "slot_index": 3
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{machineToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'machine');
+      pm.collectionVariables.set('requires_idempotency', 'true');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/POST -v1-device-machines-{machineId}-vend-results — Report ven.resources/examples
+order: 6000

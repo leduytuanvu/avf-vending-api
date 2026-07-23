@@ -1,0 +1,137 @@
+$kind: http-request
+name: gRPC MachineBootstrapService/GetBootstrap — Get Bootstrap
+description: |
+  **gRPC manual test** (Postman Desktop → New → gRPC Request)
+
+  - **fullMethod:** `/avf.machine.v1.MachineBootstrapService/GetBootstrap`
+  - **Proto:** `proto/avf/machine/v1/bootstrap.proto`
+  - **Target:** `{{grpcTarget}}` (TLS)
+  - **Registered:** machine
+
+  **Metadata:** authorization: Bearer {{machineToken}}; x-request-id: {{requestId}}; x-correlation-id: {{correlationId}}
+
+  **Request JSON:**
+  ```json
+  {
+    "meta": {
+      "machine_id": "{{machineId}}",
+      "request_id": "{{requestId}}",
+      "idempotency_key": "{{idempotencyKey}}",
+      "occurred_at": {},
+      "client_sequence": 1,
+      "offline_sequence": 1,
+      "app_version": "string",
+      "config_version": 1,
+      "catalog_version": "string",
+      "client_event_id": "{{clientEventId}}"
+    }
+  }
+  ```
+
+  **Response shape:**
+  ```json
+  {
+    "machine": {
+      "machine_id": "{{machineId}}",
+      "site_id": "{{siteId}}",
+      "hardware_profile_id": "{{hardwareProfileId}}",
+      "serial_number": "string",
+      "name": "string",
+      "status": "string",
+      "command_sequence": 1,
+      "created_at": {},
+      "updated_at": {}
+    },
+    "topology": {
+      "cabinets": {
+        "id": "{{id}}",
+        "code": "string",
+        "title": "string",
+        "sort_order": 1,
+        "metadata": {},
+        "slots": {
+          "config_id": "{{configId}}",
+          "slot_code": "string",
+          "slot_index": 1,
+          "product_id": "{{productId}}",
+          "product_sku": "string",
+          "product_name": "string",
+          "max_quantity": 1,
+          "price_minor": 1,
+          "effective_from_rfc3339": "string",
+          "is_current": false,
+          "machine_slot_layout_id": "{{machineSlotLayoutId}}"
+        }
+      }
+    },
+    "catalog": {
+      "products": {
+        "product_id": "{{productId}}",
+        "sku": "string",
+        "name": "string",
+        "sort_order": 1,
+        "assortment_id": "{{assortmentId}}",
+        "assortment_name": "string",
+        "primary_media_ready": false
+      }
+    },
+    "catalog_fingerprint": "string",
+    "pricing_fingerprint": "string",
+    "planogram_fingerprint": "string",
+    "media_fingerprint": "string",
+    "server_time": {},
+    "mqtt": {
+      "broker_url": "string",
+      "topic_prefix": "string",
+      "topic_layout": "string",
+      "tls_required": false
+    },
+    "runtime_hints": {
+      "applied_machine_config_revision": 1,
+      "pending_machine_config_rollouts": {
+        "rollout_id": "{{rolloutId}}",
+        "target_version_id": "{{targetVersionId}}",
+        "target_version_label": "string",
+        "status": "string"
+      },
+      "sell_readiness": {
+        "catalog_synced": false,
+        "media_synced": false,
+        "inventory_synced": false,
+        "ready_for_sale": false,
+        "readiness_issues": "string"
+      }
+    },
+    "meta": {
+      "server_time": {},
+      "trace_id": "{{traceId}}",
+      "request_id": "{{requestId}}",
+      "status": {},
+      "retryable": false,
+      "error_code": "string"
+    },
+    "published_planogram_version_id": "{{publishedPlanogramVersionId}}",
+    "published_planogram_version_no": 1,
+    "payment_methods": {
+      "cash_enabled": false,
+      "qr_card_enabled": false,
+      "payment_mode": "string",
+      "card_qr_provider_key": "{{cardQrProviderKey}}",
+      "card_qr_provider_status": "{{cardQrProviderStatus}}",
+      "qr_card_unavailable_reason": "string"
+    }
+  }
+  ```
+
+  **gRPC error statuses:** UNAUTHENTICATED, PERMISSION_DENIED, INVALID_ARGUMENT, NOT_FOUND, FAILED_PRECONDITION, INTERNAL
+url: grpcs://{{grpcTarget}}
+method: GRPC
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+order: 9000

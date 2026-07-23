@@ -1,0 +1,33 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "from": "2026-04-01T00:00:00Z",
+        "incidentsByStatus": [],
+        "machineIncidentsBySeverity": [],
+        "machineSummary": {
+          "fault": 1,
+          "offline": 2,
+          "online": 22,
+          "retired": 0,
+          "total": 25,
+          "warn": 0
+        },
+        "machinesByStatus": [
+          {
+            "count": 22,
+            "status": "online"
+          }
+        ],
+        "to": "2026-04-20T00:00:00Z"
+      }
+order: 1000

@@ -1,0 +1,33 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "close_request_hash_hex": null,
+        "closed_at": null,
+        "collected_at": "2026-04-19T14:00:00.000000000Z",
+        "countedPhysicalCashMinor": 0,
+        "counted_amount_minor": 0,
+        "currency": "USD",
+        "disclosure": "Accounting-only: cloud ledger vs operator physical count; does not sense or command hardware.",
+        "expectedCloudCashMinor": 0,
+        "expected_amount_minor": 0,
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "lifecycle_status": "open",
+        "machine_id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+        "opened_at": "2026-04-19T14:00:00.000000000Z",
+        "reconciliation_status": "pending",
+        "requires_review": false,
+        "reviewState": "open",
+        "varianceMinor": 0,
+        "variance_amount_minor": 0
+      }
+order: 1000

@@ -1,0 +1,30 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "createdAt": "2026-04-19T12:00:00.000000000Z",
+            "id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
+            "scopeType": "company",
+            "status": "pending",
+            "targetVersionId": "11111111-2222-3333-4444-555555555555"
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "total": 42
+        }
+      }
+order: 1000

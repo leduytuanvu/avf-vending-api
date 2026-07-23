@@ -1,0 +1,25 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "approvalStatus": "approved",
+        "createdAt": "2026-04-01T00:00:00Z",
+        "endsAt": "2026-09-01T00:00:00Z",
+        "id": "10101010-1010-1010-1010-101010101010",
+        "lifecycleStatus": "draft",
+        "name": "Summer 10%",
+        "priority": 10,
+        "stackable": false,
+        "startsAt": "2026-06-01T00:00:00Z",
+        "updatedAt": "2026-04-01T00:00:00Z"
+      }
+order: 1000

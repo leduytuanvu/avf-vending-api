@@ -1,0 +1,23 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 201
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "accountId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "email": "operator@example.com",
+        "roles": [
+          "admin"
+        ],
+        "status": "active",
+        "updatedAt": "2026-04-19T10:00:00Z"
+      }
+order: 1000

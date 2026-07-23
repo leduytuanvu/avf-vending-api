@@ -1,0 +1,69 @@
+$kind: http-request
+name: GET /swagger/index.html — Swagger UI (HTML)
+description: |-
+  ## Purpose
+  Swagger UI (HTML)
+
+  ## Auth mode
+  `public` — required: none
+
+  ## Required variables
+  none
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `400`, `401`, `403`, `404`, `409`, `500`
+
+  ## Safety note
+  Read-only.
+
+  ## Metadata
+  - openapiOperationId: `DocOpSwaggerIndex`
+  - openapiKey: `GET /swagger/index.html`
+  - production_write: no
+  - idempotency: no
+url: "{{baseUrl}}/swagger/index.html"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+auth:
+  type: noauth
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'public');
+      pm.collectionVariables.set('requires_idempotency', 'false');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("expected HTTP success unless negative test", function () {
+        if (pm.collectionVariables.get('negative_test') === 'true') { return; }
+        pm.expect(pm.response.code).to.be.within(200, 299);
+      });
+    language: text/javascript
+examples: ./.resources/GET -swagger-index.html — Swagger UI (HTML).resources/examples
+order: 5000

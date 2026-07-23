@@ -1,0 +1,34 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "items": [
+          {
+            "activationCodeId": "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+            "createdAt": "2026-04-29T00:00:00Z",
+            "expiresAt": "2026-04-30T00:00:00Z",
+            "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+            "maxUses": 1,
+            "notes": "",
+            "remainingUses": 1,
+            "status": "active",
+            "uses": 0
+          }
+        ],
+        "meta": {
+          "limit": 50,
+          "offset": 0,
+          "returned": 1,
+          "totalCount": 1
+        }
+      }
+order: 1000

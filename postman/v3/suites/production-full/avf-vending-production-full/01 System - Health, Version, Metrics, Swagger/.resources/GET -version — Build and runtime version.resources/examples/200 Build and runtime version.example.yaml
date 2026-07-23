@@ -1,0 +1,21 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "app_env": "development",
+        "build_time": "2026-04-19T12:00:00Z",
+        "git_sha": "abc123",
+        "name": "avf-vending-api",
+        "process": "api",
+        "version": "0.0.0-dev"
+      }
+order: 1000

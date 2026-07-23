@@ -1,0 +1,6 @@
+$kind: http-request
+name: GET /v1/admin/sites
+description: List company sites. Set auth_type=admin and a valid admin_token on the environment.
+url: "{{baseUrl}}/v1/admin/sites"
+method: GET
+order: 1000

@@ -1,0 +1,6 @@
+$kind: http-request
+name: GET /health/live
+description: Liveness
+url: "{{baseUrl}}/health/live"
+method: GET
+order: 1000

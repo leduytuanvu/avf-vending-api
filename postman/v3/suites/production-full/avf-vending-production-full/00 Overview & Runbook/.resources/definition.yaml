@@ -1,0 +1,3 @@
+$kind: collection
+description: "Import order, numeric prefix meaning, safety guards, gRPC/MQTT manual setup. Auth: none."
+order: 1000

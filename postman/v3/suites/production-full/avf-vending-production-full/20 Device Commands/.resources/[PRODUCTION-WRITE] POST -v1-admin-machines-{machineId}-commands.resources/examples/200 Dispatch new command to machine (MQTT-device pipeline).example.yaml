@@ -1,0 +1,17 @@
+$kind: http-example
+name: 200 Dispatch new command to machine (MQTT/device pipeline)
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "status": "ok"
+      }
+order: 1000

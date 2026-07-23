@@ -1,0 +1,6 @@
+$kind: collection
+id: ed644dcc-b5d4-4bff-293e-6b9d4a7590e0
+name: AVF Production E2E (manifest)
+description: "Generated from tests/e2e/production/e2e-manifest.yaml only — do not edit by hand. Regenerate: python postman/production/generate_postman_from_manifest.py"
+variables:
+  baseUrl: https://api.ldtv.dev

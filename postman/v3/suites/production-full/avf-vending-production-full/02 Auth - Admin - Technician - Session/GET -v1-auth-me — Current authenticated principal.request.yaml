@@ -1,0 +1,87 @@
+$kind: http-request
+name: GET /v1/auth/me — Current authenticated principal
+description: |-
+  ## Purpose
+  Current authenticated principal
+
+  ## Auth mode
+  `admin` — required: accessToken (set via 02 Auth login)
+
+  ## Required variables
+  accessToken (set via 02 Auth login)
+
+  ## Headers
+  - Accept: application/json
+  - X-Request-ID: {{requestId}}
+  - X-Correlation-ID: {{correlationId}}
+  - Authorization: Bearer {{accessToken}}
+  - X-Request-ID: (from OpenAPI)
+  - X-Correlation-ID: (from OpenAPI)
+
+  ## Path parameters
+  _None_
+
+  ## Query parameters
+  _None_
+
+  ## Required body fields
+  _None_
+
+  ## Optional body fields
+  _None_
+
+  ## Enum / options
+  _None documented in schema_
+
+  ## Success response
+  HTTP **200**
+
+  ## Common failure statuses
+  `401`, `500`
+
+  ## Safety note
+  Read-only.
+
+  ## Metadata
+  - openapiOperationId: `DocOpV1AuthMe`
+  - openapiKey: `GET /v1/auth/me`
+  - production_write: no
+  - idempotency: no
+url: "{{baseUrl}}/v1/auth/me"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      pm.environment.set('auth_type', 'admin');
+      pm.collectionVariables.set('requires_idempotency', 'false');
+    language: text/javascript
+  - type: afterResponse
+    code: |-
+      pm.test("auth me returns 200", function () {
+        pm.expect(pm.response.code).to.equal(200);
+      });
+
+      try {
+        const json = pm.response.json();
+        pm.test("auth me returns account identity", function () {
+          pm.expect(json).to.have.property('accountId');
+          pm.expect(json).to.have.property('email');
+        });
+        if (json.accountId) {
+          pm.environment.set('accountId', json.accountId);
+        }
+      } catch (e) {
+        throw new Error("Auth me response is not valid JSON: " + e.message);
+      }
+    language: text/javascript
+examples: ./.resources/GET -v1-auth-me — Current authenticated principal.resources/examples
+order: 3000

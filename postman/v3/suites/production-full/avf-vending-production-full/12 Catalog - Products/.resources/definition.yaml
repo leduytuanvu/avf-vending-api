@@ -1,0 +1,3 @@
+$kind: collection
+description: "Product CRUD and pricing. Auth: admin. Vars: productId, brandId, categoryId."
+order: 13000

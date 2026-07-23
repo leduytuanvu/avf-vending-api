@@ -1,0 +1,46 @@
+$kind: http-request
+name: 01 POST /v1/auth/login
+description: Login; tests stash tokens.accessToken into admin_token + accessToken.
+url: "{{baseUrl}}/v1/auth/login"
+method: POST
+body:
+  type: json
+  content: |-
+    {
+      "email": "{{adminEmail}}",
+      "password": "{{adminPassword}}"
+    }
+auth:
+  type: noauth
+scripts:
+  - type: afterResponse
+    code: |-
+      let json = {};
+      try {
+        json = pm.response.json();
+      } catch (e) {
+        throw new Error("Login response is not valid JSON: " + e.message);
+      }
+
+      pm.test("login returns 200", function () {
+        pm.expect(pm.response.code).to.equal(200);
+      });
+
+      pm.test("login returns tokens", function () {
+        pm.expect(json).to.have.property('tokens');
+        pm.expect(json.tokens).to.have.property('accessToken');
+        pm.expect(json.tokens).to.have.property('refreshToken');
+        pm.expect(json.tokens.accessToken).to.be.a('string').and.not.empty;
+        pm.expect(json.tokens.refreshToken).to.be.a('string').and.not.empty;
+      });
+
+      if (pm.response.code === 200 && json.tokens) {
+        pm.environment.set('accessToken', json.tokens.accessToken);
+        pm.environment.set('refreshToken', json.tokens.refreshToken);
+        pm.environment.set('auth_type', 'admin');
+        if (json.accountId) {
+          pm.environment.set('accountId', json.accountId);
+        }
+      }
+    language: text/javascript
+order: 1000

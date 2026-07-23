@@ -1,0 +1,26 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/"
+  method: GET
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "campaign": {
+          "cancelledAt": "2026-04-29T12:01:00.000000000Z",
+          "createdAt": "2026-04-29T12:00:00.000000000Z",
+          "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+          "rolloutType": "config_version",
+          "status": "cancelled",
+          "strategy": {},
+          "targetVersion": "2026-04-29T00:00:00Z",
+          "updatedAt": "2026-04-29T12:00:00.000000000Z"
+        },
+        "targets": []
+      }
+order: 1000
