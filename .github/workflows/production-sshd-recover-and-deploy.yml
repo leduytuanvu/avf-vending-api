@@ -46,30 +46,35 @@ jobs:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          cat > /tmp/avf-prod-sudo.sh <<'EOF'
+          cat > /tmp/avf-prod-root.sh <<'EOF'
           #!/usr/bin/env bash
           set -Eeuo pipefail
           if [[ "${1:-}" == "--setup" ]]; then
-            if sudo -n true 2>/dev/null; then
-              echo "SUDO_MODE=passwordless"
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
             elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
-              echo "SUDO_MODE=password"
+              echo "PRIV_MODE=su-root"
             else
-              echo "SUDO_MODE=none"
+              echo "PRIV_MODE=none"
             fi
             exit 0
           fi
-          if sudo -n true 2>/dev/null; then
-            sudo "$@"
+          local cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
           elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
-            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | sudo -S "$@"
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
           else
-            echo "error: privileged command required but neither passwordless sudo nor PRODUCTION_ROOT_PASSWORD is available" >&2
+            echo "error: privileged command required but no root credentials are available" >&2
             exit 1
           fi
           EOF
-          chmod +x /tmp/avf-prod-sudo.sh
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh --setup >> "$GITHUB_ENV"
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
 
       - name: Install production SSH credentials
         shell: bash
@@ -88,6 +93,7 @@ jobs:
         shell: bash
         env:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        continue-on-error: true
         run: |
           set -Eeuo pipefail
 
@@ -95,39 +101,22 @@ jobs:
           user_home="$(getent passwd "${SSH_USER}" | cut -d: -f6 || true)"
           [[ -n "${user_home}" ]] || user_home="/root"
 
-          install_authorized_key() {
-            local auth_dir="${user_home}/.ssh"
-            local auth_file="${auth_dir}/authorized_keys"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh mkdir -p "${auth_dir}"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh chmod 700 "${auth_dir}"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh touch "${auth_file}"
-            if ! PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh grep -Fq "${pub_key}" "${auth_file}" 2>/dev/null; then
-              echo "${pub_key} github-actions-production-deploy" | PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh tee -a "${auth_file}" >/dev/null
-            fi
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh chmod 600 "${auth_file}"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh chown -R "${SSH_USER}:${SSH_USER}" "${auth_dir}" "${auth_file}" 2>/dev/null || true
-          }
-
-          recover_sshd() {
-            echo "==> ssh listeners before recovery"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh ss -ltnp | grep ":${SSH_PORT} " || true
-            if command -v fail2ban-client >/dev/null 2>&1; then
-              if PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh fail2ban-client status sshd >/dev/null 2>&1; then
-                PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
-                PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh fail2ban-client set sshd unbanip 72.62.244.94 2>/dev/null || true
-                PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh fail2ban-client unban --all 2>/dev/null || true
-              fi
-            fi
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh systemctl restart ssh 2>/dev/null || \
-              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh systemctl restart sshd
-            sleep 3
-            echo "==> recent ssh journal"
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh journalctl -u ssh --no-pager -n 30 2>/dev/null || \
-              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh journalctl -u sshd --no-pager -n 30 2>/dev/null || true
-          }
-
-          install_authorized_key
-          recover_sshd
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "set -Eeuo pipefail
+             auth_dir='${user_home}/.ssh'
+             auth_file=\"\${auth_dir}/authorized_keys\"
+             mkdir -p \"\${auth_dir}\"
+             chmod 700 \"\${auth_dir}\"
+             touch \"\${auth_file}\"
+             grep -Fq '${pub_key}' \"\${auth_file}\" 2>/dev/null || echo '${pub_key} github-actions-production-deploy' >> \"\${auth_file}\"
+             chmod 600 \"\${auth_file}\"
+             command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client status sshd >/dev/null 2>&1 && {
+               fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
+               fail2ban-client set sshd unbanip 72.62.244.94 2>/dev/null || true
+               fail2ban-client unban --all 2>/dev/null || true
+             } || true
+             systemctl restart ssh 2>/dev/null || systemctl restart sshd
+             sleep 2"
 
           set +e
           ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
@@ -148,14 +137,15 @@ jobs:
         run: |
           set -Eeuo pipefail
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh mkdir -p "${deploy_root}"
-          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
-            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh tar -xf - -C "${deploy_root}" --overwrite
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh chmod +x \
-            "${deploy_root}/scripts/deploy/production-migrate.sh" \
-            "${deploy_root}/scripts/verify_database_environment.sh" \
-            "${deploy_root}/scripts/db/verify_database_environment.sh"
+          sync_tar="$(mktemp)"
+          tar -cf "${sync_tar}" deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+              '${deploy_root}/scripts/deploy/production-migrate.sh' \
+              '${deploy_root}/scripts/verify_database_environment.sh' \
+              '${deploy_root}/scripts/db/verify_database_environment.sh'"
+          rm -f "${sync_tar}"
 
       - name: Log in to GHCR for image pull
         if: inputs.recover_sshd_only != true
@@ -170,7 +160,8 @@ jobs:
             echo "error: GHCR_PULL_USERNAME / GHCR_PULL_TOKEN required for image pull" >&2
             exit 1
           }
-          echo "${GHCR_PULL_TOKEN}" | PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "echo '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
 
       - name: Roll out app node A locally (no SSH)
         if: inputs.recover_sshd_only != true
@@ -182,11 +173,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-          release_cmd="cd '${remote_dir}' && RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh env \
-            GHCR_PULL_USERNAME="${GHCR_PULL_USERNAME}" \
-            GHCR_PULL_TOKEN="${GHCR_PULL_TOKEN}" \
-            bash -lc "${release_cmd}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
 
       - name: Verify app node A health locally
         if: inputs.recover_sshd_only != true
@@ -196,8 +184,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-          health_cmd="cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-sudo.sh bash -lc "${health_cmd}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
 
       - name: Public smoke check
         if: inputs.recover_sshd_only != true
