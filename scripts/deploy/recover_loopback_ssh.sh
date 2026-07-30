@@ -56,7 +56,12 @@ run_privileged "set -Eeuo pipefail
   systemctl enable ssh.service 2>/dev/null || systemctl enable sshd 2>/dev/null || true
   systemctl start ssh.service 2>/dev/null || systemctl start sshd 2>/dev/null || true
   sleep 2
-  systemctl is-active ssh.service 2>/dev/null || systemctl is-active sshd 2>/dev/null || systemctl is-active ssh 2>/dev/null"
+  if systemctl is-active ssh.service 2>/dev/null || systemctl is-active sshd 2>/dev/null || systemctl is-active ssh 2>/dev/null; then
+    echo 'ssh daemon active after recovery'
+  else
+    echo 'warning: ssh daemon not active after recovery start attempt' >&2
+    systemctl status ssh.service 2>/dev/null || systemctl status sshd 2>/dev/null || true
+  fi"
 
 mkdir -p "${HOME}/.ssh"
 chmod 700 "${HOME}/.ssh"
