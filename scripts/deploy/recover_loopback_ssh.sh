@@ -58,6 +58,11 @@ run_privileged "set -Eeuo pipefail
   sleep 2
   systemctl is-active ssh.service 2>/dev/null || systemctl is-active sshd 2>/dev/null || systemctl is-active ssh 2>/dev/null"
 
+mkdir -p "${HOME}/.ssh"
+chmod 700 "${HOME}/.ssh"
+touch "${HOME}/.ssh/known_hosts"
+ssh-keyscan -T 10 -p "${SSH_PORT}" -H 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+
 set +e
 ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=yes \
   -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "printf 'loopback-ssh-ok\n'"
