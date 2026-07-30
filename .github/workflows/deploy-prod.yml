@@ -1682,6 +1682,42 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
       - name: Validate production deploy inputs
         id: validate_deploy_inputs
         shell: bash
@@ -2158,37 +2194,9 @@ jobs:
             echo "Skipping loopback SSH recovery (app-node A is not loopback)."
             exit 0
           fi
-
-          pub_key="$(ssh-keygen -y -f "${SSH_IDENTITY_FILE}")"
-          user_home="$(getent passwd "${SSH_USER}" | cut -d: -f6 || true)"
-          [[ -n "${user_home}" ]] || user_home="/root"
-
-          run_as_ssh_user() {
-            local cmd="$1"
-            if [[ "$(id -un)" == "${SSH_USER}" ]]; then
-              bash -lc "${cmd}"
-            elif sudo -n true 2>/dev/null; then
-              sudo bash -lc "${cmd}"
-            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
-              printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER}" -c "${cmd}"
-            else
-              echo "warning: cannot run privileged loopback SSH recovery command" >&2
-              return 1
-            fi
-          }
-
-          auth_dir="${user_home}/.ssh"
-          auth_file="${auth_dir}/authorized_keys"
-          run_as_ssh_user "mkdir -p '${auth_dir}' && chmod 700 '${auth_dir}' && touch '${auth_file}'"
-          if ! run_as_ssh_user "grep -Fq '${pub_key}' '${auth_file}'"; then
-            run_as_ssh_user "echo '${pub_key} github-actions-production-deploy' >> '${auth_file}'"
-          fi
-          run_as_ssh_user "chmod 600 '${auth_file}'"
-          if command -v fail2ban-client >/dev/null 2>&1; then
-            run_as_ssh_user "fail2ban-client status sshd >/dev/null 2>&1 && fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true; fail2ban-client unban --all 2>/dev/null || true" || true
-          fi
-          run_as_ssh_user "systemctl restart ssh 2>/dev/null || systemctl restart sshd" || true
-          sleep 2
+          chmod +x scripts/deploy/recover_loopback_ssh.sh
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" PRIV_HELPER=/tmp/avf-prod-root.sh \
+            bash scripts/deploy/recover_loopback_ssh.sh
 
       - name: Probe production SSH authentication
         shell: bash
