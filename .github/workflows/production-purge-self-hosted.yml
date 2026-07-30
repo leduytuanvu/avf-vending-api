@@ -81,7 +81,6 @@ jobs:
   purge-emqx-on-data-node:
     name: Purge EMQX on data-node B
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
-    needs: purge-on-app-node
     if: ${{ github.event.inputs.phase == 'emqx' }}
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
