@@ -48,6 +48,7 @@ run_privileged "set -Eeuo pipefail
     fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
     fail2ban-client unban --all 2>/dev/null || true
   } || true
+  install -d -m 755 /run/sshd
   sshd -t
   systemctl reset-failed ssh ssh.socket sshd 2>/dev/null || true
   systemctl stop ssh.socket 2>/dev/null || true
