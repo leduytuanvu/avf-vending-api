@@ -106,6 +106,7 @@ type FleetWorkflows interface {
 	UpdateSite(ctx context.Context, in UpdateSiteInput) (domainfleet.Site, error)
 	GetSite(ctx context.Context, companyID, siteID uuid.UUID) (domainfleet.Site, error)
 	ListSites(ctx context.Context, in ListSitesInput) ([]domainfleet.Site, int64, error)
+	CountNonRetiredMachinesForSite(ctx context.Context, companyID, siteID uuid.UUID) (int64, error)
 	DeactivateSite(ctx context.Context, companyID, siteID uuid.UUID) (domainfleet.Site, error)
 
 	CreateTechnician(ctx context.Context, in CreateTechnicianInput) (domainfleet.Technician, error)

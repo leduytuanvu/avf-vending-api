@@ -403,6 +403,8 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.code,
+    COALESCE(NULLIF(btrim(m.model), ''), NULLIF(btrim(m.cabinet_type), ''), '') AS model,
     m.name,
     m.status,
     m.command_sequence,
@@ -434,6 +436,8 @@ type FleetAdminGetMachineDetailRow struct {
 	SiteID                uuid.UUID
 	HardwareProfileID     pgtype.UUID
 	SerialNumber          string
+	Code                  string
+	Model                 interface{}
 	Name                  string
 	Status                string
 	CommandSequence       int64
@@ -459,6 +463,8 @@ func (q *Queries) FleetAdminGetMachineDetail(ctx context.Context, id uuid.UUID) 
 		&i.SiteID,
 		&i.HardwareProfileID,
 		&i.SerialNumber,
+		&i.Code,
+		&i.Model,
 		&i.Name,
 		&i.Status,
 		&i.CommandSequence,
@@ -1143,6 +1149,8 @@ SELECT
     m.site_id,
     m.hardware_profile_id,
     m.serial_number,
+    m.code,
+    COALESCE(NULLIF(btrim(m.model), ''), NULLIF(btrim(m.cabinet_type), ''), '') AS model,
     m.name,
     m.status,
     m.command_sequence,
@@ -1193,6 +1201,8 @@ type FleetAdminListMachinesRow struct {
 	SiteID            uuid.UUID
 	HardwareProfileID pgtype.UUID
 	SerialNumber      string
+	Code              string
+	Model             interface{}
 	Name              string
 	Status            string
 	CommandSequence   int64
@@ -1233,6 +1243,8 @@ func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminList
 			&i.SiteID,
 			&i.HardwareProfileID,
 			&i.SerialNumber,
+			&i.Code,
+			&i.Model,
 			&i.Name,
 			&i.Status,
 			&i.CommandSequence,
