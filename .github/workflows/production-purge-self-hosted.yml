@@ -51,23 +51,13 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Sync scripts to deploy root
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          mkdir -p "${deploy_root}/scripts/ops"
-          cp scripts/ops/production-purge-dry-run.sql "${deploy_root}/scripts/ops/"
-          cp scripts/ops/production-purge-keep-admin.sql "${deploy_root}/scripts/ops/"
-          cp scripts/ops/run-production-purge.sh "${deploy_root}/scripts/ops/"
-          cp scripts/ops/emqx-purge-machine-users.sh "${deploy_root}/scripts/ops/"
-          chmod +x "${deploy_root}/scripts/ops/"*.sh
-
       - name: Run purge phase
         shell: bash
+        env:
+          AVF_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
         run: |
           set -Eeuo pipefail
-          cd "${PRODUCTION_DEPLOY_ROOT}"
+          export AVF_DEPLOY_ROOT="${AVF_DEPLOY_ROOT}"
           CONFIRM_PRODUCTION_PURGE="${CONFIRM_PRODUCTION_PURGE}" \
             bash scripts/ops/run-production-purge.sh "${PURGE_PHASE}"
 
@@ -119,16 +109,20 @@ jobs:
 
       - name: Run EMQX purge on data-node
         shell: bash
+        env:
+          AVF_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
         run: |
           set -Eeuo pipefail
           [[ -n "${DATA_NODE_HOST}" ]] || { echo "error: DATA_NODE_HOST missing"; exit 1; }
           target="${SSH_USER}@${DATA_NODE_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_ops="${PRODUCTION_DEPLOY_ROOT}/scripts/ops"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p ${remote_ops}"
           scp "${ssh_opts[@]}" -P "${SSH_PORT}" \
             scripts/ops/emqx-purge-machine-users.sh \
-            "${target}:${PRODUCTION_DEPLOY_ROOT}/scripts/ops/"
+            "${target}:${remote_ops}/"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "chmod +x ${PRODUCTION_DEPLOY_ROOT}/scripts/ops/emqx-purge-machine-users.sh && \
-             cd ${PRODUCTION_DEPLOY_ROOT} && \
+            "chmod +x ${remote_ops}/emqx-purge-machine-users.sh && \
+             AVF_DEPLOY_ROOT=${PRODUCTION_DEPLOY_ROOT} \
              CONFIRM_PRODUCTION_PURGE=${CONFIRM_PRODUCTION_PURGE} \
-             bash scripts/ops/emqx-purge-machine-users.sh"
+             bash ${remote_ops}/emqx-purge-machine-users.sh"

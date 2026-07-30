@@ -4,7 +4,8 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-ENVF="${ROOT}/deployments/prod/.env.production"
+DEPLOY_ROOT="${AVF_DEPLOY_ROOT:-${ROOT}}"
+ENVF="${DEPLOY_ROOT}/deployments/prod/.env.production"
 
 fail() {
 	echo "emqx-purge-machine-users: error: $*" >&2
