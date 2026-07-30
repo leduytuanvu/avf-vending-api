@@ -1,0 +1,152 @@
+name: Production Purge Direct DB
+
+# Purge via PRODUCTION_DATABASE_URL from GitHub secrets (no VPS SSH/docker required).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_purge:
+        description: "Must be exactly I_UNDERSTAND_THIS_WIPES_PRODUCTION"
+        required: true
+        type: string
+      phase:
+        description: "Phase (postgres, redis, media, emqx, verify, all)"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - postgres
+          - redis
+          - media
+          - emqx
+          - verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-purge-direct-db
+  cancel-in-progress: false
+
+jobs:
+  purge-direct:
+    name: Direct production purge
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
+      PURGE_PHASE: ${{ github.event.inputs.phase }}
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
+      CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      CLOUDINARY_FOLDER: avf-vending/products
+      EMQX_MANAGEMENT_URL: ${{ vars.EMQX_MANAGEMENT_URL || 'http://187.127.99.153:18083' }}
+      EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
+      EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
+      POSTGRES_TOOLS_IMAGE: postgres:17-alpine
+      REDIS_TOOLS_IMAGE: redis:7-alpine
+
+    steps:
+      - name: Validate purge confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${CONFIRM_PRODUCTION_PURGE}" == "I_UNDERSTAND_THIS_WIPES_PRODUCTION" ]] \
+            || { echo "error: invalid confirm_purge"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run direct purge
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${DATABASE_URL}" ]] || { echo "error: PRODUCTION_DATABASE_URL secret missing"; exit 1; }
+
+          psql_file() {
+            docker run --rm \
+              -e "DATABASE_URL=${DATABASE_URL}" \
+              -v "${GITHUB_WORKSPACE}/scripts/ops:/ops:ro" \
+              "${POSTGRES_TOOLS_IMAGE}" \
+              psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -f "/ops/$1"
+          }
+
+          psql_query() {
+            docker run --rm \
+              -e "DATABASE_URL=${DATABASE_URL}" \
+              "${POSTGRES_TOOLS_IMAGE}" \
+              psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc "$1"
+          }
+
+          run_postgres() {
+            echo "=== dry-run ==="
+            psql_file production-purge-dry-run.sql
+            echo "=== purge ==="
+            docker run --rm \
+              -e "DATABASE_URL=${DATABASE_URL}" \
+              -v "${GITHUB_WORKSPACE}/scripts/ops:/ops:ro" \
+              "${POSTGRES_TOOLS_IMAGE}" \
+              psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 \
+              -c "SET avf.confirm_production_purge='I_UNDERSTAND_THIS_WIPES_PRODUCTION';" \
+              -f /ops/production-purge-keep-admin.sql
+            machines="$(psql_query 'SELECT count(*) FROM machines;')"
+            products="$(psql_query 'SELECT count(*) FROM products;')"
+            accounts="$(psql_query 'SELECT count(*) FROM platform_auth_accounts;')"
+            echo "machines=${machines} products=${products} accounts=${accounts}"
+            [[ "${machines}" == "0" && "${products}" == "0" && "${accounts}" == "1" ]] \
+              || { echo "error: post-purge verification failed"; exit 1; }
+          }
+
+          run_redis() {
+            [[ -n "${REDIS_URL}" ]] || { echo "warning: PRODUCTION_REDIS_URL missing — skip redis"; return 0; }
+            docker run --rm "${REDIS_TOOLS_IMAGE}" redis-cli -u "${REDIS_URL}" FLUSHDB
+          }
+
+          run_media() {
+            if [[ -n "${CLOUDINARY_CLOUD_NAME}" && -n "${CLOUDINARY_API_KEY}" && -n "${CLOUDINARY_API_SECRET}" ]]; then
+              curl -fsS -X DELETE \
+                "https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/folders/${CLOUDINARY_FOLDER}" \
+                -u "${CLOUDINARY_API_KEY}:${CLOUDINARY_API_SECRET}" || true
+            else
+              echo "warning: cloudinary secrets incomplete — skip media"
+            fi
+          }
+
+          run_emqx() {
+            if [[ -z "${EMQX_API_KEY}" || -z "${EMQX_API_SECRET}" ]]; then
+              echo "warning: EMQX credentials missing — skip emqx"
+              return 0
+            fi
+            base="${EMQX_MANAGEMENT_URL%/}/api/v5"
+            auth_path="authentication/password_based%3Abuilt_in_database/users"
+            sudo apt-get update -qq && sudo apt-get install -y -qq jq
+            list_json="$(curl -fsS -u "${EMQX_API_KEY}:${EMQX_API_SECRET}" "${base}/${auth_path}?limit=1000")"
+            while IFS= read -r user_id; do
+              [[ -n "${user_id}" ]] || continue
+              curl -sS -o /dev/null -u "${EMQX_API_KEY}:${EMQX_API_SECRET}" \
+                -X DELETE "${base}/${auth_path}/${user_id}" || true
+            done < <(jq -r '.data[].user_id // empty' <<<"${list_json}")
+          }
+
+          run_verify() {
+            curl -fsS https://api.ldtv.dev/health/live
+            psql_file production-purge-dry-run.sql
+          }
+
+          case "${PURGE_PHASE}" in
+            postgres) run_postgres ;;
+            redis) run_redis ;;
+            media) run_media ;;
+            emqx) run_emqx ;;
+            verify) run_verify ;;
+            all)
+              run_postgres
+              run_redis
+              run_media
+              run_emqx
+              run_verify
+              ;;
+            *) echo "error: unknown phase ${PURGE_PHASE}"; exit 1 ;;
+          esac

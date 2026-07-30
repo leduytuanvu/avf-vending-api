@@ -40,6 +40,8 @@ jobs:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
       PURGE_PHASE: ${{ github.event.inputs.phase }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
     steps:
       - name: Validate purge confirmation
         shell: bash
@@ -51,25 +53,22 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Sync scripts to deploy root
+      - name: Run purge via docker runtime
         shell: bash
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+          CLOUDINARY_FOLDER: avf-vending/products
+          EMQX_MANAGEMENT_URL: ${{ vars.EMQX_MANAGEMENT_URL || 'http://187.127.99.153:18083' }}
+          EMQX_API_KEY: ${{ secrets.EMQX_API_KEY }}
+          EMQX_API_SECRET: ${{ secrets.EMQX_API_SECRET }}
+          MQTT_USERNAME: ${{ secrets.MQTT_USERNAME || vars.MQTT_USERNAME }}
         run: |
           set -Eeuo pipefail
-          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          mkdir -p "${deploy_root}/scripts/ops"
-          cp scripts/ops/production-purge-dry-run.sql "${deploy_root}/scripts/ops/"
-          cp scripts/ops/production-purge-keep-admin.sql "${deploy_root}/scripts/ops/"
-          cp scripts/ops/run-production-purge.sh "${deploy_root}/scripts/ops/"
-          cp scripts/ops/emqx-purge-machine-users.sh "${deploy_root}/scripts/ops/"
-          chmod +x "${deploy_root}/scripts/ops/"*.sh
-
-      - name: Run purge phase
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          cd "${PRODUCTION_DEPLOY_ROOT}"
+          chmod +x scripts/ops/run-production-purge-docker.sh
           CONFIRM_PRODUCTION_PURGE="${CONFIRM_PRODUCTION_PURGE}" \
-            bash scripts/ops/run-production-purge.sh "${PURGE_PHASE}"
+            bash scripts/ops/run-production-purge-docker.sh "${PURGE_PHASE}"
 
       - name: API health check
         if: ${{ github.event.inputs.phase == 'verify' || github.event.inputs.phase == 'all' || github.event.inputs.phase == 'restart' }}
@@ -82,8 +81,7 @@ jobs:
   purge-emqx-on-data-node:
     name: Purge EMQX on data-node B
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
-    needs: purge-on-app-node
-    if: ${{ always() && (github.event.inputs.phase == 'emqx' || (github.event.inputs.phase == 'all' && (needs.purge-on-app-node.result == 'success' || needs.purge-on-app-node.result == 'skipped'))) }}
+    if: ${{ github.event.inputs.phase == 'emqx' }}
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       DATA_NODE_HOST: ${{ secrets.PRODUCTION_DATA_NODE_HOST || secrets.PROD_DATA_NODE_HOST || secrets.DATA_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
@@ -119,16 +117,20 @@ jobs:
 
       - name: Run EMQX purge on data-node
         shell: bash
+        env:
+          AVF_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
         run: |
           set -Eeuo pipefail
           [[ -n "${DATA_NODE_HOST}" ]] || { echo "error: DATA_NODE_HOST missing"; exit 1; }
           target="${SSH_USER}@${DATA_NODE_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_ops="${PRODUCTION_DEPLOY_ROOT}/scripts/ops"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p ${remote_ops}"
           scp "${ssh_opts[@]}" -P "${SSH_PORT}" \
             scripts/ops/emqx-purge-machine-users.sh \
-            "${target}:${PRODUCTION_DEPLOY_ROOT}/scripts/ops/"
+            "${target}:${remote_ops}/"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "chmod +x ${PRODUCTION_DEPLOY_ROOT}/scripts/ops/emqx-purge-machine-users.sh && \
-             cd ${PRODUCTION_DEPLOY_ROOT} && \
+            "chmod +x ${remote_ops}/emqx-purge-machine-users.sh && \
+             AVF_DEPLOY_ROOT=${PRODUCTION_DEPLOY_ROOT} \
              CONFIRM_PRODUCTION_PURGE=${CONFIRM_PRODUCTION_PURGE} \
-             bash scripts/ops/emqx-purge-machine-users.sh"
+             bash ${remote_ops}/emqx-purge-machine-users.sh"
