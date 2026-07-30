@@ -38,6 +38,10 @@ load_app_env() {
 	# shellcheck disable=SC1090
 	source "${APP_ENV}"
 	set +a
+	if [[ -z "${DATABASE_URL:-}" ]]; then
+		DATABASE_URL="$(grep -E '^DATABASE_URL=' "${APP_ENV}" | tail -n1 | cut -d= -f2- | tr -d '\r' | sed -e 's/^"//' -e 's/"$//')"
+		export DATABASE_URL
+	fi
 	[[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is empty"
 }
 
