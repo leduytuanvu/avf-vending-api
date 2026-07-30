@@ -10,11 +10,12 @@
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+DEPLOY_ROOT="${AVF_DEPLOY_ROOT:-${ROOT}}"
 OPS="${ROOT}/scripts/ops"
-SHARED_SCRIPTS="${ROOT}/deployments/prod/shared/scripts"
-APP_COMPOSE="${ROOT}/deployments/prod/app-node/docker-compose.app-node.yml"
-APP_ENV="${ROOT}/deployments/prod/app-node/.env.app-node"
-DATA_ENV="${ROOT}/deployments/prod/.env.production"
+SHARED_SCRIPTS="${DEPLOY_ROOT}/deployments/prod/shared/scripts"
+APP_COMPOSE="${DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml"
+APP_ENV="${DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+DATA_ENV="${DEPLOY_ROOT}/deployments/prod/.env.production"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
 
 fail() {
