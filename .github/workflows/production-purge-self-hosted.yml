@@ -40,6 +40,7 @@ jobs:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
       PURGE_PHASE: ${{ github.event.inputs.phase }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
     steps:
       - name: Validate purge confirmation
@@ -49,55 +50,54 @@ jobs:
           [[ "${CONFIRM_PRODUCTION_PURGE}" == "I_UNDERSTAND_THIS_WIPES_PRODUCTION" ]] \
             || { echo "error: invalid confirm_purge"; exit 1; }
 
-      - name: Configure privileged command helper
-        shell: bash
-        env:
-          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
-        run: |
-          set -Eeuo pipefail
-          cat > /tmp/avf-prod-root.sh <<'EOF'
-          #!/usr/bin/env bash
-          set -Eeuo pipefail
-          if [[ "${1:-}" == "--setup" ]]; then
-            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
-              echo "PRIV_MODE=direct"
-            elif sudo -n true 2>/dev/null; then
-              echo "PRIV_MODE=sudo-nopass"
-            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
-              echo "PRIV_MODE=su-root"
-            else
-              echo "PRIV_MODE=none"
-            fi
-            exit 0
-          fi
-          cmd="$*"
-          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
-            bash -lc "${cmd}"
-          elif sudo -n true 2>/dev/null; then
-            sudo bash -lc "${cmd}"
-          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
-            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
-          else
-            echo "error: privileged command required but no root credentials are available" >&2
-            exit 1
-          fi
-          EOF
-          chmod +x /tmp/avf-prod-root.sh
-          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
-
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Run purge phase
+      - name: Install loopback SSH credentials
         shell: bash
         env:
-          AVF_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
-          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY }}
         run: |
           set -Eeuo pipefail
-          workdir="${GITHUB_WORKSPACE}"
-          cmd="cd '${workdir}' && export AVF_DEPLOY_ROOT='${AVF_DEPLOY_ROOT}' && export CONFIRM_PRODUCTION_PURGE='${CONFIRM_PRODUCTION_PURGE}' && bash scripts/ops/run-production-purge.sh '${PURGE_PHASE}'"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "${cmd}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_purge_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -t ed25519,ecdsa,rsa 127.0.0.1 >> ~/.ssh/known_hosts 2>/dev/null || true
+          {
+            echo 'Host 127.0.0.1'
+            echo '  BatchMode yes'
+            echo '  IdentitiesOnly yes'
+            echo "  IdentityFile ${identity_file}"
+            echo '  StrictHostKeyChecking accept-new'
+            echo '  UserKnownHostsFile ~/.ssh/known_hosts'
+          } >> ~/.ssh/config
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${HOME}/.ssh/known_hosts" >> "$GITHUB_ENV"
+          echo "LOOPBACK_HOST=127.0.0.1" >> "$GITHUB_ENV"
+
+      - name: Run purge phase via loopback SSH
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${LOOPBACK_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_ops="${PRODUCTION_DEPLOY_ROOT}/scripts/ops"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p ${remote_ops}"
+          scp "${ssh_opts[@]}" -P "${SSH_PORT}" \
+            scripts/ops/production-purge-dry-run.sql \
+            scripts/ops/production-purge-keep-admin.sql \
+            scripts/ops/run-production-purge.sh \
+            scripts/ops/emqx-purge-machine-users.sh \
+            "${target}:${remote_ops}/"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "chmod +x ${remote_ops}/*.sh && \
+             cd ${PRODUCTION_DEPLOY_ROOT} && \
+             CONFIRM_PRODUCTION_PURGE=${CONFIRM_PRODUCTION_PURGE} \
+             bash ${remote_ops}/run-production-purge.sh ${PURGE_PHASE}"
 
       - name: API health check
         if: ${{ github.event.inputs.phase == 'verify' || github.event.inputs.phase == 'all' || github.event.inputs.phase == 'restart' }}
