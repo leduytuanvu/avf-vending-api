@@ -19,4 +19,6 @@ var (
 	ErrInvalidArgument = errors.New("catalogadmin: invalid argument")
 	// ErrConflict is returned when an operation violates business constraints (e.g. duplicate target assignment).
 	ErrConflict = errors.New("catalogadmin: conflict")
+	// ErrPlanogramInUse is returned when deleting a planogram referenced by machines.
+	ErrPlanogramInUse = errors.New("catalogadmin: planogram in use by machines")
 )

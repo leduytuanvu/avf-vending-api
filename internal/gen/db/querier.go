@@ -117,12 +117,14 @@ type Querier interface {
 	CashSettlementNetExpectedMinor(ctx context.Context, arg CashSettlementNetExpectedMinorParams) (int64, error)
 	CatalogAdminCountBrands(ctx context.Context) (int64, error)
 	CatalogAdminCountCategories(ctx context.Context) (int64, error)
+	CatalogAdminCountMachineSlotStateByPlanogram(ctx context.Context, planogramID uuid.UUID) (int64, error)
 	CatalogAdminCountPlanograms(ctx context.Context) (int64, error)
 	CatalogAdminCountPriceBooks(ctx context.Context, dollar_1 bool) (int64, error)
 	CatalogAdminCountProducts(ctx context.Context, arg CatalogAdminCountProductsParams) (int64, error)
 	CatalogAdminCountProductsInOrgByIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
 	CatalogAdminCountTags(ctx context.Context) (int64, error)
 	CatalogAdminCountTagsMatchingIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
+	CatalogAdminDeletePlanogram(ctx context.Context, id uuid.UUID) error
 	CatalogAdminDeleteSlotsByPlanogram(ctx context.Context, planogramID uuid.UUID) error
 	CatalogAdminGetBrand(ctx context.Context, id uuid.UUID) (Brand, error)
 	CatalogAdminGetCategory(ctx context.Context, id uuid.UUID) (Category, error)
@@ -153,6 +155,7 @@ type Querier interface {
 	CatalogAdminListTags(ctx context.Context, arg CatalogAdminListTagsParams) ([]Tag, error)
 	CatalogAdminPriceBookItemsForPreview(ctx context.Context, arg CatalogAdminPriceBookItemsForPreviewParams) ([]CatalogAdminPriceBookItemsForPreviewRow, error)
 	CatalogAdminPricingPreviewBooksActiveAt(ctx context.Context, dollar_1 time.Time) ([]PriceBook, error)
+	CatalogAdminUpdatePlanogram(ctx context.Context, arg CatalogAdminUpdatePlanogramParams) (Planogram, error)
 	CatalogWriteArchiveAllProductImagesForProduct(ctx context.Context, id uuid.UUID) error
 	CatalogWriteArchiveProductImage(ctx context.Context, arg CatalogWriteArchiveProductImageParams) (ProductImage, error)
 	CatalogWriteClearProductPrimaryImage(ctx context.Context, id uuid.UUID) (Product, error)

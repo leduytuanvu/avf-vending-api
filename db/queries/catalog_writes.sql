@@ -428,6 +428,24 @@ INSERT INTO planograms (
 )
 RETURNING *;
 
+-- name: CatalogAdminUpdatePlanogram :one
+UPDATE planograms
+SET
+    name = COALESCE(sqlc.narg('name'), name),
+    status = COALESCE(sqlc.narg('status'), status),
+    revision = COALESCE(sqlc.narg('revision'), revision)
+WHERE id = $1
+RETURNING *;
+
+-- name: CatalogAdminCountMachineSlotStateByPlanogram :one
+SELECT count(*)::bigint AS cnt
+FROM machine_slot_state
+WHERE planogram_id = $1;
+
+-- name: CatalogAdminDeletePlanogram :exec
+DELETE FROM planograms
+WHERE id = $1;
+
 -- name: CatalogAdminDeleteSlotsByPlanogram :exec
 DELETE FROM slots
 WHERE planogram_id = $1;

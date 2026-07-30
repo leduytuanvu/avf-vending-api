@@ -1055,6 +1055,13 @@ type V1AdminPlanogramCreateRequest struct {
 	Revision *int32 `json:"revision,omitempty"`
 }
 
+// V1AdminPlanogramPatchRequest is PATCH /v1/admin/planograms/{planogramId}.
+type V1AdminPlanogramPatchRequest struct {
+	Name     *string `json:"name,omitempty"`
+	Status   *string `json:"status,omitempty"`
+	Revision *int32  `json:"revision,omitempty"`
+}
+
 // V1AdminPlanogramSlotReplaceItem is one slot in PUT /v1/admin/planograms/{planogramId}/slots.
 type V1AdminPlanogramSlotReplaceItem struct {
 	SlotIndex   int32   `json:"slotIndex"`
