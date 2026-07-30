@@ -1,0 +1,134 @@
+name: Production Purge Self-Hosted
+
+# Runs directly on app-node A self-hosted runner (no SSH from GitHub-hosted, no production environment gate).
+# Destructive: wipes test data, keeps admin@avf.com.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_purge:
+        description: "Must be exactly I_UNDERSTAND_THIS_WIPES_PRODUCTION"
+        required: true
+        type: string
+      phase:
+        description: "Phase (preflight, postgres, redis, media, emqx, restart, verify, all)"
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - preflight
+          - postgres
+          - redis
+          - media
+          - emqx
+          - restart
+          - verify
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-purge-self-hosted
+  cancel-in-progress: false
+
+jobs:
+  purge-on-app-node:
+    name: Purge on app-node A
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    if: ${{ github.event.inputs.phase != 'emqx' }}
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
+      PURGE_PHASE: ${{ github.event.inputs.phase }}
+    steps:
+      - name: Validate purge confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${CONFIRM_PRODUCTION_PURGE}" == "I_UNDERSTAND_THIS_WIPES_PRODUCTION" ]] \
+            || { echo "error: invalid confirm_purge"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Sync scripts to deploy root
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          mkdir -p "${deploy_root}/scripts/ops"
+          cp scripts/ops/production-purge-dry-run.sql "${deploy_root}/scripts/ops/"
+          cp scripts/ops/production-purge-keep-admin.sql "${deploy_root}/scripts/ops/"
+          cp scripts/ops/run-production-purge.sh "${deploy_root}/scripts/ops/"
+          cp scripts/ops/emqx-purge-machine-users.sh "${deploy_root}/scripts/ops/"
+          chmod +x "${deploy_root}/scripts/ops/"*.sh
+
+      - name: Run purge phase
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cd "${PRODUCTION_DEPLOY_ROOT}"
+          CONFIRM_PRODUCTION_PURGE="${CONFIRM_PRODUCTION_PURGE}" \
+            bash scripts/ops/run-production-purge.sh "${PURGE_PHASE}"
+
+      - name: API health check
+        if: ${{ github.event.inputs.phase == 'verify' || github.event.inputs.phase == 'all' || github.event.inputs.phase == 'restart' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          curl -fsS https://api.ldtv.dev/health/live
+          curl -fsS https://api.ldtv.dev/version
+
+  purge-emqx-on-data-node:
+    name: Purge EMQX on data-node B
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    needs: purge-on-app-node
+    if: ${{ always() && (github.event.inputs.phase == 'emqx' || (github.event.inputs.phase == 'all' && (needs.purge-on-app-node.result == 'success' || needs.purge-on-app-node.result == 'skipped'))) }}
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      DATA_NODE_HOST: ${{ secrets.PRODUCTION_DATA_NODE_HOST || secrets.PROD_DATA_NODE_HOST || secrets.DATA_HOST || vars.PRODUCTION_DATA_NODE_HOST }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
+    steps:
+      - name: Validate purge confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${CONFIRM_PRODUCTION_PURGE}" == "I_UNDERSTAND_THIS_WIPES_PRODUCTION" ]] \
+            || { echo "error: invalid confirm_purge"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install SSH credentials
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_purge_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts" >> "$GITHUB_ENV"
+
+      - name: Run EMQX purge on data-node
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${DATA_NODE_HOST}" ]] || { echo "error: DATA_NODE_HOST missing"; exit 1; }
+          target="${SSH_USER}@${DATA_NODE_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          scp "${ssh_opts[@]}" -P "${SSH_PORT}" \
+            scripts/ops/emqx-purge-machine-users.sh \
+            "${target}:${PRODUCTION_DEPLOY_ROOT}/scripts/ops/"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "chmod +x ${PRODUCTION_DEPLOY_ROOT}/scripts/ops/emqx-purge-machine-users.sh && \
+             cd ${PRODUCTION_DEPLOY_ROOT} && \
+             CONFIRM_PRODUCTION_PURGE=${CONFIRM_PRODUCTION_PURGE} \
+             bash scripts/ops/emqx-purge-machine-users.sh"
