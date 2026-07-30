@@ -119,6 +119,14 @@ func (s *Service) ListSites(ctx context.Context, in ListSitesInput) ([]domainfle
 	return items, total, nil
 }
 
+// CountNonRetiredMachinesForSite returns machines attached to a site excluding retired assets.
+func (s *Service) CountNonRetiredMachinesForSite(ctx context.Context, companyID, siteID uuid.UUID) (int64, error) {
+	if err := validateNonZero("site_id", siteID); err != nil {
+		return 0, err
+	}
+	return s.repo.CountNonRetiredMachinesForSite(ctx, companyID, siteID)
+}
+
 // UpdateSite merges a PATCH into the current site row.
 func (s *Service) UpdateSite(ctx context.Context, in UpdateSiteInput) (domainfleet.Site, error) {
 	if err := validateNonZero("site_id", in.SiteID); err != nil {

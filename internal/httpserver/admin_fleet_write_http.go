@@ -237,6 +237,10 @@ func writeFleetAppError(w http.ResponseWriter, ctx context.Context, err error) {
 }
 
 func siteJSON(s domainfleet.Site) map[string]any {
+	return siteJSONWithMachineCount(s, nil)
+}
+
+func siteJSONWithMachineCount(s domainfleet.Site, machineCount *int64) map[string]any {
 	out := map[string]any{
 		"id":         s.ID.String(),
 		"name":       s.Name,
@@ -249,10 +253,19 @@ func siteJSON(s domainfleet.Site) map[string]any {
 	if s.RegionID != nil {
 		out["region_id"] = s.RegionID.String()
 	}
+	if machineCount != nil {
+		out["machine_count"] = *machineCount
+	}
 	if len(s.Address) > 0 {
-		var raw any
+		var raw map[string]any
 		if json.Unmarshal(s.Address, &raw) == nil {
 			out["address"] = raw
+			if city, ok := raw["city"].(string); ok && strings.TrimSpace(city) != "" {
+				out["city"] = city
+			}
+			if region, ok := raw["region"].(string); ok && strings.TrimSpace(region) != "" {
+				out["region"] = region
+			}
 		} else {
 			out["address"] = json.RawMessage(s.Address)
 		}
@@ -340,7 +353,6 @@ func machineJSON(m domainfleet.Machine) map[string]any {
 func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		scopeID, err := parseAdminFleetCompanyScope(r)
-		_ = scopeID
 		if err != nil {
 			writeV1ListError(w, r.Context(), err)
 			return
@@ -365,7 +377,11 @@ func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.Han
 		}
 		arr := make([]map[string]any, 0, len(items))
 		for _, s := range items {
-			arr = append(arr, siteJSON(s))
+			var mc *int64
+			if n, err := f.CountNonRetiredMachinesForSite(r.Context(), scopeID, s.ID); err == nil {
+				mc = &n
+			}
+			arr = append(arr, siteJSONWithMachineCount(s, mc))
 		}
 		writeJSON(w, http.StatusOK, map[string]any{
 			"items": arr,

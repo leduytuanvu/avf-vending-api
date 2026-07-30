@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -48,6 +49,20 @@ func pgTextStringPtr(t pgtype.Text) *string {
 	return &s
 }
 
+func sqlcScalarString(v interface{}) string {
+	if v == nil {
+		return ""
+	}
+	switch t := v.(type) {
+	case string:
+		return t
+	case []byte:
+		return string(t)
+	default:
+		return fmt.Sprint(t)
+	}
+}
+
 func pgUUIDStringPtr(u pgtype.UUID) *string {
 	if !u.Valid {
 		return nil
@@ -90,6 +105,8 @@ func baseItemFromFleetListRow(m db.FleetAdminListMachinesRow) AdminMachineListIt
 	return AdminMachineListItem{
 		MachineID:           m.ID.String(),
 		MachineName:         m.Name,
+		Code:                m.Code,
+		Model:               sqlcScalarString(m.Model),
 		SiteID:              m.SiteID.String(),
 		SiteName:            m.SiteName,
 		HardwareProfileID:   pgUUIDStringPtr(m.HardwareProfileID),
@@ -116,6 +133,8 @@ func baseItemFromFleetDetailRow(m db.FleetAdminGetMachineDetailRow) AdminMachine
 	return AdminMachineListItem{
 		MachineID:             m.ID.String(),
 		MachineName:           m.Name,
+		Code:                  m.Code,
+		Model:                 sqlcScalarString(m.Model),
 		SiteID:                m.SiteID.String(),
 		SiteName:              m.SiteName,
 		HardwareProfileID:     pgUUIDStringPtr(m.HardwareProfileID),

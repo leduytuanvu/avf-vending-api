@@ -1521,6 +1521,8 @@ type V1AdminCurrentOperator struct {
 type V1AdminMachineListItem struct {
 	MachineID             string                         `json:"machineId"`
 	MachineName           string                         `json:"machineName"`
+	Code                  string                         `json:"code"`
+	Model                 string                         `json:"model"`
 	SiteID                string                         `json:"siteId"`
 	SiteName              string                         `json:"siteName"`
 	HardwareProfileID     *string                        `json:"hardwareProfileId,omitempty"`
