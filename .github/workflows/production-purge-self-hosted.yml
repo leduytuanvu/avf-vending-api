@@ -40,6 +40,7 @@ jobs:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
       PURGE_PHASE: ${{ github.event.inputs.phase }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
     steps:
       - name: Validate purge confirmation
         shell: bash
@@ -48,6 +49,42 @@ jobs:
           [[ "${CONFIRM_PRODUCTION_PURGE}" == "I_UNDERSTAND_THIS_WIPES_PRODUCTION" ]] \
             || { echo "error: invalid confirm_purge"; exit 1; }
 
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -55,11 +92,12 @@ jobs:
         shell: bash
         env:
           AVF_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          export AVF_DEPLOY_ROOT="${AVF_DEPLOY_ROOT}"
-          CONFIRM_PRODUCTION_PURGE="${CONFIRM_PRODUCTION_PURGE}" \
-            bash scripts/ops/run-production-purge.sh "${PURGE_PHASE}"
+          workdir="${GITHUB_WORKSPACE}"
+          cmd="cd '${workdir}' && export AVF_DEPLOY_ROOT='${AVF_DEPLOY_ROOT}' && export CONFIRM_PRODUCTION_PURGE='${CONFIRM_PRODUCTION_PURGE}' && bash scripts/ops/run-production-purge.sh '${PURGE_PHASE}'"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "${cmd}"
 
       - name: API health check
         if: ${{ github.event.inputs.phase == 'verify' || github.event.inputs.phase == 'all' || github.event.inputs.phase == 'restart' }}
