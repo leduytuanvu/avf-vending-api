@@ -51,7 +51,11 @@ run_privileged "set -Eeuo pipefail
   install -d -m 755 /run/sshd
   sshd -t
   systemctl reset-failed ssh ssh.socket sshd 2>/dev/null || true
-  systemctl stop ssh.socket 2>/dev/null || true
+  systemctl stop ssh.socket ssh.service sshd 2>/dev/null || true
+  if ss -lntp 2>/dev/null | grep -q ':22 '; then
+    pkill -x sshd 2>/dev/null || true
+    sleep 1
+  fi
   systemctl disable ssh.socket 2>/dev/null || true
   systemctl enable ssh.service 2>/dev/null || systemctl enable sshd 2>/dev/null || true
   systemctl start ssh.service 2>/dev/null || systemctl start sshd 2>/dev/null || true
