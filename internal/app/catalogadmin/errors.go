@@ -11,6 +11,8 @@ var (
 	ErrDuplicateBarcode = errors.New("catalogadmin: duplicate barcode in company")
 	// ErrDuplicateSlug is returned for brands/categories/tags slug collisions.
 	ErrDuplicateSlug = errors.New("catalogadmin: duplicate slug in company")
+	// ErrDuplicateNameRevision is returned when planogram name+revision already exists.
+	ErrDuplicateNameRevision = errors.New("catalogadmin: duplicate planogram name and revision")
 	// ErrNotFound is returned when a catalog row is missing for the org.
 	ErrNotFound = errors.New("catalogadmin: not found")
 	// ErrInvalidArgument is returned for bad input.

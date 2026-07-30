@@ -74,6 +74,8 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 		r.With(writeRL).Post("/price-books/{priceBookId}/assign-target", postAdminPriceBookAssignTarget(svc))
 		r.With(writeRL).Delete("/price-books/{priceBookId}/targets/{targetId}", deleteAdminPriceBookTarget(svc))
 		registerAdminPromotionWriteRoutes(r, svc, writeRL)
+		r.With(writeRL).Post("/planograms", postAdminPlanogramCreate(svc))
+		r.With(writeRL).Put("/planograms/{planogramId}/slots", putAdminPlanogramSlotsReplace(svc))
 	})
 }
 
@@ -316,6 +318,112 @@ func getAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
 			Planogram: mapPlanogram(pg),
 			Slots:     slotItems,
 		})
+	}
+}
+
+func postAdminPlanogramCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
+		_ = scopeID
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		var body V1AdminPlanogramCreateRequest
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		in := appcatalogadmin.CreatePlanogramInput{
+			Name:   body.Name,
+			Status: body.Status,
+		}
+		if body.Revision != nil {
+			in.Revision = *body.Revision
+		}
+		row, err := svc.CreatePlanogram(r.Context(), in)
+		if err != nil {
+			writeAdminCatalogError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, mapPlanogram(row))
+	}
+}
+
+func putAdminPlanogramSlotsReplace(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		scopeID, err := requireCatalogPrincipalUUID(r, nil)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		pgid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "planogramId")))
+		if err != nil || pgid == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_planogram_id", "invalid planogramId")
+			return
+		}
+		var body V1AdminPlanogramSlotsReplaceRequest
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		slots := make([]appcatalogadmin.PlanogramSlotReplaceInput, 0, len(body.Slots))
+		for _, item := range body.Slots {
+			var productID *uuid.UUID
+			if item.ProductID != nil {
+				pid, perr := uuidFromOptionalString(item.ProductID)
+				if perr != nil {
+					writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", "invalid productId")
+					return
+				}
+				productID = pid
+			}
+			slots = append(slots, appcatalogadmin.PlanogramSlotReplaceInput{
+				SlotIndex:   item.SlotIndex,
+				ProductID:   productID,
+				MaxQuantity: item.MaxQuantity,
+			})
+		}
+		pg, err := svc.ReplacePlanogramSlots(r.Context(), appcatalogadmin.ReplacePlanogramSlotsInput{
+			PlanogramID: pgid,
+			Slots:       slots,
+		})
+		if err != nil {
+			writeAdminCatalogError(w, r, err)
+			return
+		}
+		slotRows, err := svc.ListPlanogramSlots(r.Context(), scopeID, pgid)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, buildAdminPlanogramDetail(pg, slotRows))
+	}
+}
+
+func buildAdminPlanogramDetail(pg db.Planogram, slots []db.CatalogAdminListSlotsByPlanogramRow) V1AdminPlanogramDetail {
+	slotItems := make([]V1AdminPlanogramSlot, 0, len(slots))
+	for _, s := range slots {
+		slotItems = append(slotItems, V1AdminPlanogramSlot{
+			ID:          s.ID.String(),
+			PlanogramID: s.PlanogramID.String(),
+			SlotIndex:   s.SlotIndex,
+			ProductID:   uuidPtrFromPgUUID(s.ProductID),
+			MaxQuantity: s.MaxQuantity,
+			ProductSku:  textFromPgText(s.ProductSku),
+			ProductName: textFromPgText(s.ProductName),
+			CreatedAt:   formatAPITimeRFC3339Nano(s.CreatedAt),
+		})
+	}
+	return V1AdminPlanogramDetail{
+		Planogram: mapPlanogram(pg),
+		Slots:     slotItems,
 	}
 }
 
