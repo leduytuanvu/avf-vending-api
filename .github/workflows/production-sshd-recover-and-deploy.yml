@@ -96,37 +96,14 @@ jobs:
         continue-on-error: true
         run: |
           set -Eeuo pipefail
-
-          pub_key="$(ssh-keygen -y -f "${SSH_IDENTITY_FILE}")"
-          user_home="$(getent passwd "${SSH_USER}" | cut -d: -f6 || true)"
-          [[ -n "${user_home}" ]] || user_home="/root"
-
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "set -Eeuo pipefail
-             auth_dir='${user_home}/.ssh'
-             auth_file=\"\${auth_dir}/authorized_keys\"
-             mkdir -p \"\${auth_dir}\"
-             chmod 700 \"\${auth_dir}\"
-             touch \"\${auth_file}\"
-             grep -Fq '${pub_key}' \"\${auth_file}\" 2>/dev/null || echo '${pub_key} github-actions-production-deploy' >> \"\${auth_file}\"
-             chmod 600 \"\${auth_file}\"
-             command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client status sshd >/dev/null 2>&1 && {
-               fail2ban-client set sshd unbanip 127.0.0.1 2>/dev/null || true
-               fail2ban-client set sshd unbanip 72.62.244.94 2>/dev/null || true
-               fail2ban-client unban --all 2>/dev/null || true
-             } || true
-             systemctl restart ssh 2>/dev/null || systemctl restart sshd
-             sleep 2"
-
+          chmod +x scripts/deploy/recover_loopback_ssh.sh
           set +e
-          ssh -o BatchMode=yes -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
-            -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "printf 'loopback-ssh-ok\n'"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" PRIV_HELPER=/tmp/avf-prod-root.sh \
+            bash scripts/deploy/recover_loopback_ssh.sh
           probe_rc=$?
           set -e
           if [[ "${probe_rc}" -ne 0 ]]; then
             echo "::warning::Loopback SSH still failing after recovery (rc=${probe_rc}); continuing with local deploy path"
-          else
-            echo "Loopback SSH probe passed"
           fi
 
       - name: Sync app-node assets locally on app node A
