@@ -13,6 +13,98 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CatalogAdminDeleteSlotsByPlanogram = `-- name: CatalogAdminDeleteSlotsByPlanogram :exec
+DELETE FROM slots
+WHERE planogram_id = $1
+`
+
+func (q *Queries) CatalogAdminDeleteSlotsByPlanogram(ctx context.Context, planogramID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, CatalogAdminDeleteSlotsByPlanogram, planogramID)
+	return err
+}
+
+const CatalogAdminInsertPlanogram = `-- name: CatalogAdminInsertPlanogram :one
+INSERT INTO planograms (
+    name,
+    revision,
+    status,
+    meta
+) VALUES (
+    $1,
+    $2,
+    $3,
+    COALESCE($4, '{}'::jsonb)
+)
+RETURNING id, name, revision, status, meta, created_at
+`
+
+type CatalogAdminInsertPlanogramParams struct {
+	Name     string
+	Revision int32
+	Status   string
+	Column4  interface{}
+}
+
+func (q *Queries) CatalogAdminInsertPlanogram(ctx context.Context, arg CatalogAdminInsertPlanogramParams) (Planogram, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminInsertPlanogram,
+		arg.Name,
+		arg.Revision,
+		arg.Status,
+		arg.Column4,
+	)
+	var i Planogram
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Revision,
+		&i.Status,
+		&i.Meta,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminInsertPlanogramSlot = `-- name: CatalogAdminInsertPlanogramSlot :one
+INSERT INTO slots (
+    planogram_id,
+    slot_index,
+    product_id,
+    max_quantity
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+RETURNING id, planogram_id, slot_index, product_id, max_quantity, created_at
+`
+
+type CatalogAdminInsertPlanogramSlotParams struct {
+	PlanogramID uuid.UUID
+	SlotIndex   int32
+	ProductID   pgtype.UUID
+	MaxQuantity int32
+}
+
+func (q *Queries) CatalogAdminInsertPlanogramSlot(ctx context.Context, arg CatalogAdminInsertPlanogramSlotParams) (Slot, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminInsertPlanogramSlot,
+		arg.PlanogramID,
+		arg.SlotIndex,
+		arg.ProductID,
+		arg.MaxQuantity,
+	)
+	var i Slot
+	err := row.Scan(
+		&i.ID,
+		&i.PlanogramID,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.MaxQuantity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const CatalogWriteArchiveAllProductImagesForProduct = `-- name: CatalogWriteArchiveAllProductImagesForProduct :exec
 UPDATE product_images pi
 SET

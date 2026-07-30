@@ -44,6 +44,8 @@ func writeAdminCatalogError(w http.ResponseWriter, r *http.Request, err error) {
 		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_barcode", "barcode already exists in this company")
 	case errors.Is(err, appcatalogadmin.ErrDuplicateSlug):
 		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_slug", "slug already exists in this company")
+	case errors.Is(err, appcatalogadmin.ErrDuplicateNameRevision):
+		writeAPIError(w, r.Context(), http.StatusConflict, "duplicate_name_revision", "planogram name and revision already exists")
 	case errors.Is(err, appcatalogadmin.ErrInvalidArgument):
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_argument", err.Error())
 	case errors.Is(err, appcatalogadmin.ErrConflict):

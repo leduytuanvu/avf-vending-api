@@ -123,6 +123,7 @@ type Querier interface {
 	CatalogAdminCountProductsInOrgByIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
 	CatalogAdminCountTags(ctx context.Context) (int64, error)
 	CatalogAdminCountTagsMatchingIDs(ctx context.Context, dollar_1 []uuid.UUID) (int64, error)
+	CatalogAdminDeleteSlotsByPlanogram(ctx context.Context, planogramID uuid.UUID) error
 	CatalogAdminGetBrand(ctx context.Context, id uuid.UUID) (Brand, error)
 	CatalogAdminGetCategory(ctx context.Context, id uuid.UUID) (Category, error)
 	CatalogAdminGetMachineSiteForOrg(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
@@ -134,6 +135,8 @@ type Querier interface {
 	CatalogAdminGetProductImageForOrg(ctx context.Context, arg CatalogAdminGetProductImageForOrgParams) (ProductImage, error)
 	CatalogAdminGetProductMediumForOrgProductImage(ctx context.Context, arg CatalogAdminGetProductMediumForOrgProductImageParams) (ProductMedium, error)
 	CatalogAdminGetTag(ctx context.Context, id uuid.UUID) (Tag, error)
+	CatalogAdminInsertPlanogram(ctx context.Context, arg CatalogAdminInsertPlanogramParams) (Planogram, error)
+	CatalogAdminInsertPlanogramSlot(ctx context.Context, arg CatalogAdminInsertPlanogramSlotParams) (Slot, error)
 	CatalogAdminListBrands(ctx context.Context, arg CatalogAdminListBrandsParams) ([]Brand, error)
 	CatalogAdminListCategories(ctx context.Context, arg CatalogAdminListCategoriesParams) ([]Category, error)
 	CatalogAdminListPlanograms(ctx context.Context, arg CatalogAdminListPlanogramsParams) ([]Planogram, error)

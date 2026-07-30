@@ -997,3 +997,118 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, companyID, produ
 	s.bumpCatalogCache(ctx, companyID)
 	return row, nil
 }
+
+// CreatePlanogramInput creates an org-level planogram header.
+type CreatePlanogramInput struct {
+	Name     string
+	Status   string
+	Revision int32
+	Meta     json.RawMessage
+}
+
+// CreatePlanogram inserts a planogram row.
+func (s *Service) CreatePlanogram(ctx context.Context, in CreatePlanogramInput) (db.Planogram, error) {
+	if s == nil {
+		return db.Planogram{}, errors.New("catalogadmin: nil service")
+	}
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		return db.Planogram{}, fmt.Errorf("%w: name required", ErrInvalidArgument)
+	}
+	status := strings.TrimSpace(in.Status)
+	if status == "" {
+		status = "published"
+	}
+	switch status {
+	case "draft", "published", "archived":
+	default:
+		return db.Planogram{}, fmt.Errorf("%w: invalid planogram status", ErrInvalidArgument)
+	}
+	revision := in.Revision
+	if revision <= 0 {
+		revision = 1
+	}
+	meta := in.Meta
+	if len(meta) == 0 {
+		meta = []byte("{}")
+	}
+	row, err := s.q.CatalogAdminInsertPlanogram(ctx, db.CatalogAdminInsertPlanogramParams{
+		Name:     name,
+		Revision: revision,
+		Status:   status,
+		Column4:  meta,
+	})
+	if err != nil {
+		if isUniqueViolation(err) {
+			return db.Planogram{}, ErrDuplicateNameRevision
+		}
+		return db.Planogram{}, err
+	}
+	return row, nil
+}
+
+// PlanogramSlotReplaceInput is one slot row for ReplacePlanogramSlots.
+type PlanogramSlotReplaceInput struct {
+	SlotIndex   int32
+	ProductID   *uuid.UUID
+	MaxQuantity int32
+}
+
+// ReplacePlanogramSlotsInput replaces all slot rows on a planogram.
+type ReplacePlanogramSlotsInput struct {
+	PlanogramID uuid.UUID
+	Slots       []PlanogramSlotReplaceInput
+}
+
+// ReplacePlanogramSlots deletes existing slots and inserts the provided set.
+func (s *Service) ReplacePlanogramSlots(ctx context.Context, in ReplacePlanogramSlotsInput) (db.Planogram, error) {
+	if s == nil {
+		return db.Planogram{}, errors.New("catalogadmin: nil service")
+	}
+	if in.PlanogramID == uuid.Nil {
+		return db.Planogram{}, fmt.Errorf("%w: planogram id required", ErrInvalidArgument)
+	}
+	if _, err := s.q.CatalogAdminGetPlanogram(ctx, in.PlanogramID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.Planogram{}, ErrNotFound
+		}
+		return db.Planogram{}, err
+	}
+	for _, slot := range in.Slots {
+		if slot.SlotIndex < 0 {
+			return db.Planogram{}, fmt.Errorf("%w: slot_index must be >= 0", ErrInvalidArgument)
+		}
+		if slot.MaxQuantity < 0 {
+			return db.Planogram{}, fmt.Errorf("%w: max_quantity must be >= 0", ErrInvalidArgument)
+		}
+	}
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return db.Planogram{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+
+	if err := qtx.CatalogAdminDeleteSlotsByPlanogram(ctx, in.PlanogramID); err != nil {
+		return db.Planogram{}, err
+	}
+	for _, slot := range in.Slots {
+		var productID pgtype.UUID
+		if slot.ProductID != nil && *slot.ProductID != uuid.Nil {
+			productID = pgtype.UUID{Bytes: *slot.ProductID, Valid: true}
+		}
+		if _, err := qtx.CatalogAdminInsertPlanogramSlot(ctx, db.CatalogAdminInsertPlanogramSlotParams{
+			PlanogramID: in.PlanogramID,
+			SlotIndex:   slot.SlotIndex,
+			ProductID:   productID,
+			MaxQuantity: slot.MaxQuantity,
+		}); err != nil {
+			return db.Planogram{}, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.Planogram{}, err
+	}
+	return s.q.CatalogAdminGetPlanogram(ctx, in.PlanogramID)
+}

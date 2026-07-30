@@ -413,3 +413,35 @@ ON CONFLICT (id)
         status = EXCLUDED.status,
         updated_at = now()
 RETURNING *;
+
+-- name: CatalogAdminInsertPlanogram :one
+INSERT INTO planograms (
+    name,
+    revision,
+    status,
+    meta
+) VALUES (
+    $1,
+    $2,
+    $3,
+    COALESCE($4, '{}'::jsonb)
+)
+RETURNING *;
+
+-- name: CatalogAdminDeleteSlotsByPlanogram :exec
+DELETE FROM slots
+WHERE planogram_id = $1;
+
+-- name: CatalogAdminInsertPlanogramSlot :one
+INSERT INTO slots (
+    planogram_id,
+    slot_index,
+    product_id,
+    max_quantity
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+RETURNING *;
