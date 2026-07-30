@@ -75,6 +75,9 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 		r.With(writeRL).Delete("/price-books/{priceBookId}/targets/{targetId}", deleteAdminPriceBookTarget(svc))
 		registerAdminPromotionWriteRoutes(r, svc, writeRL)
 		r.With(writeRL).Post("/planograms", postAdminPlanogramCreate(svc))
+		r.With(writeRL).Patch("/planograms/{planogramId}", patchAdminPlanogramUpdate(svc))
+		r.With(writeRL).Put("/planograms/{planogramId}", patchAdminPlanogramUpdate(svc))
+		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermCatalogDelete)).Delete("/planograms/{planogramId}", deleteAdminPlanogram(svc))
 		r.With(writeRL).Put("/planograms/{planogramId}/slots", putAdminPlanogramSlotsReplace(svc))
 	})
 }
@@ -350,6 +353,62 @@ func postAdminPlanogramCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 			return
 		}
 		writeJSON(w, http.StatusCreated, mapPlanogram(row))
+	}
+}
+
+func patchAdminPlanogramUpdate(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		if _, err := requireCatalogPrincipalUUID(r, nil); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		pgid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "planogramId")))
+		if err != nil || pgid == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_planogram_id", "invalid planogramId")
+			return
+		}
+		var body V1AdminPlanogramPatchRequest
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		row, err := svc.UpdatePlanogram(r.Context(), appcatalogadmin.UpdatePlanogramInput{
+			PlanogramID: pgid,
+			Name:        body.Name,
+			Status:      body.Status,
+			Revision:    body.Revision,
+		})
+		if err != nil {
+			writeAdminCatalogError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, mapPlanogram(row))
+	}
+}
+
+func deleteAdminPlanogram(svc *appcatalogadmin.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if _, err := requireWriteIdempotencyKey(r); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "missing_idempotency_key", err.Error())
+			return
+		}
+		if _, err := requireCatalogPrincipalUUID(r, nil); err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", err.Error())
+			return
+		}
+		pgid, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "planogramId")))
+		if err != nil || pgid == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_planogram_id", "invalid planogramId")
+			return
+		}
+		if err := svc.DeletePlanogram(r.Context(), pgid); err != nil {
+			writeAdminCatalogError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 

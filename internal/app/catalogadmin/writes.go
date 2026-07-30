@@ -1112,3 +1112,79 @@ func (s *Service) ReplacePlanogramSlots(ctx context.Context, in ReplacePlanogram
 	}
 	return s.q.CatalogAdminGetPlanogram(ctx, in.PlanogramID)
 }
+
+// UpdatePlanogramInput patches org-level planogram metadata.
+type UpdatePlanogramInput struct {
+	PlanogramID uuid.UUID
+	Name        *string
+	Status      *string
+	Revision    *int32
+}
+
+// UpdatePlanogram updates planogram header fields.
+func (s *Service) UpdatePlanogram(ctx context.Context, in UpdatePlanogramInput) (db.Planogram, error) {
+	if s == nil {
+		return db.Planogram{}, errors.New("catalogadmin: nil service")
+	}
+	if in.PlanogramID == uuid.Nil {
+		return db.Planogram{}, fmt.Errorf("%w: planogram id required", ErrInvalidArgument)
+	}
+	if _, err := s.q.CatalogAdminGetPlanogram(ctx, in.PlanogramID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.Planogram{}, ErrNotFound
+		}
+		return db.Planogram{}, err
+	}
+	params := db.CatalogAdminUpdatePlanogramParams{ID: in.PlanogramID}
+	if in.Name != nil {
+		name := strings.TrimSpace(*in.Name)
+		if name == "" {
+			return db.Planogram{}, fmt.Errorf("%w: name required", ErrInvalidArgument)
+		}
+		params.Name = pgtype.Text{String: name, Valid: true}
+	}
+	if in.Status != nil {
+		status := strings.TrimSpace(*in.Status)
+		switch status {
+		case "draft", "published", "archived":
+			params.Status = pgtype.Text{String: status, Valid: true}
+		default:
+			return db.Planogram{}, fmt.Errorf("%w: invalid planogram status", ErrInvalidArgument)
+		}
+	}
+	if in.Revision != nil {
+		params.Revision = pgtype.Int4{Int32: *in.Revision, Valid: true}
+	}
+	row, err := s.q.CatalogAdminUpdatePlanogram(ctx, params)
+	if err != nil {
+		if isUniqueViolation(err) {
+			return db.Planogram{}, ErrDuplicateNameRevision
+		}
+		return db.Planogram{}, err
+	}
+	return row, nil
+}
+
+// DeletePlanogram removes an org planogram when not referenced by machine slot state.
+func (s *Service) DeletePlanogram(ctx context.Context, planogramID uuid.UUID) error {
+	if s == nil {
+		return errors.New("catalogadmin: nil service")
+	}
+	if planogramID == uuid.Nil {
+		return fmt.Errorf("%w: planogram id required", ErrInvalidArgument)
+	}
+	if _, err := s.q.CatalogAdminGetPlanogram(ctx, planogramID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	count, err := s.q.CatalogAdminCountMachineSlotStateByPlanogram(ctx, planogramID)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrPlanogramInUse
+	}
+	return s.q.CatalogAdminDeletePlanogram(ctx, planogramID)
+}

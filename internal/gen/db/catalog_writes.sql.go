@@ -13,6 +13,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CatalogAdminCountMachineSlotStateByPlanogram = `-- name: CatalogAdminCountMachineSlotStateByPlanogram :one
+SELECT count(*)::bigint AS cnt
+FROM machine_slot_state
+WHERE planogram_id = $1
+`
+
+func (q *Queries) CatalogAdminCountMachineSlotStateByPlanogram(ctx context.Context, planogramID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminCountMachineSlotStateByPlanogram, planogramID)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const CatalogAdminDeletePlanogram = `-- name: CatalogAdminDeletePlanogram :exec
+DELETE FROM planograms
+WHERE id = $1
+`
+
+func (q *Queries) CatalogAdminDeletePlanogram(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, CatalogAdminDeletePlanogram, id)
+	return err
+}
+
 const CatalogAdminDeleteSlotsByPlanogram = `-- name: CatalogAdminDeleteSlotsByPlanogram :exec
 DELETE FROM slots
 WHERE planogram_id = $1
@@ -100,6 +123,42 @@ func (q *Queries) CatalogAdminInsertPlanogramSlot(ctx context.Context, arg Catal
 		&i.SlotIndex,
 		&i.ProductID,
 		&i.MaxQuantity,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const CatalogAdminUpdatePlanogram = `-- name: CatalogAdminUpdatePlanogram :one
+UPDATE planograms
+SET
+    name = COALESCE($2, name),
+    status = COALESCE($3, status),
+    revision = COALESCE($4, revision)
+WHERE id = $1
+RETURNING id, name, revision, status, meta, created_at
+`
+
+type CatalogAdminUpdatePlanogramParams struct {
+	ID       uuid.UUID
+	Name     pgtype.Text
+	Status   pgtype.Text
+	Revision pgtype.Int4
+}
+
+func (q *Queries) CatalogAdminUpdatePlanogram(ctx context.Context, arg CatalogAdminUpdatePlanogramParams) (Planogram, error) {
+	row := q.db.QueryRow(ctx, CatalogAdminUpdatePlanogram,
+		arg.ID,
+		arg.Name,
+		arg.Status,
+		arg.Revision,
+	)
+	var i Planogram
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Revision,
+		&i.Status,
+		&i.Meta,
 		&i.CreatedAt,
 	)
 	return i, err
