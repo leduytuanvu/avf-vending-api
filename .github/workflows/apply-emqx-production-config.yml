@@ -13,6 +13,11 @@ on:
         required: false
         default: true
         type: boolean
+      renew_mqtt_tls:
+        description: "Renew/sync Let's Encrypt mqtt.ldtv.dev cert into EMQX and restart broker"
+        required: false
+        default: false
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -115,7 +120,8 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/data-node deployments/prod/emqx deployments/prod/shared deployments/prod/docker-compose.prod.yml | \
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
-              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh'"
+              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/renew_emqx_mqtt_tls.sh'"
 
       - name: Install EMQX ACL on data node
         if: inputs.install_acl && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
@@ -136,3 +142,25 @@ jobs:
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
             bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/install_emqx_acl.sh"
+
+      - name: Renew EMQX MQTT TLS from Let's Encrypt
+        if: inputs.renew_mqtt_tls && (env.DATA_NODE_HOST != '' || env.APP_NODE_B_HOST != '')
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          [[ -n "${EMQX_DATA_HOST}" ]] || {
+            echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required for MQTT TLS renewal" >&2
+            exit 1
+          }
+          if ! ssh-keygen -F "${EMQX_DATA_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            && ! ssh-keygen -F "[${EMQX_DATA_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            echo "Pinning SSH host key for EMQX data host ${EMQX_DATA_HOST}:${SSH_PORT}"
+            ssh-keyscan -H -p "${SSH_PORT}" "${EMQX_DATA_HOST}" >> "${HOME}/.ssh/known_hosts"
+          fi
+          target="${SSH_USER}@${EMQX_DATA_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "chmod +x \
+            '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/renew_emqx_mqtt_tls.sh'"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/data-node/scripts/renew_emqx_mqtt_tls.sh"
