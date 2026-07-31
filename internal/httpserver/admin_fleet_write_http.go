@@ -366,8 +366,14 @@ func serveAdminSitesList(app *api.HTTPApplication, f *appfleet.Service) http.Han
 		if raw := strings.TrimSpace(r.URL.Query().Get("status")); raw != "" {
 			st = &raw
 		}
+		search := strings.TrimSpace(r.URL.Query().Get("search"))
+		city := strings.TrimSpace(r.URL.Query().Get("city"))
+		region := strings.TrimSpace(r.URL.Query().Get("region"))
 		items, total, err := f.ListSites(r.Context(), appfleet.ListSitesInput{
 			Status: st,
+			Search: search,
+			City:   city,
+			Region: region,
 			Limit:  int32(limit),
 			Offset: int32(offset),
 		})

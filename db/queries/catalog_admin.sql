@@ -3,7 +3,9 @@ SELECT count(*)::bigint AS cnt
 FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
-  AND (NOT $2 OR p.active = true);
+  AND (NOT $2 OR p.active = true)
+  AND ($3::text = '' OR p.brand_id = $3::uuid)
+  AND ($4::text = '' OR p.category_id = $4::uuid);
 
 -- name: CatalogAdminListProducts :many
 SELECT
@@ -21,8 +23,10 @@ FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
   AND (NOT $2 OR p.active = true)
+  AND ($3::text = '' OR p.brand_id = $3::uuid)
+  AND ($4::text = '' OR p.category_id = $4::uuid)
 ORDER BY p.updated_at DESC, p.id
-LIMIT $3 OFFSET $4;
+LIMIT $5 OFFSET $6;
 
 -- name: CatalogAdminGetProduct :one
 SELECT
