@@ -1,0 +1,61 @@
+name: Production Resume Edge Traffic
+
+on:
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  resume-caddy:
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+
+      - name: Start Caddy edge proxy on app node A
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --remove-orphans caddy"
+
+      - name: Public smoke check
+        shell: bash
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${BASE_URL}" ]] || BASE_URL="https://api.ldtv.dev"
+          curl -fsS --max-time 20 "${BASE_URL%/}/health/live" || echo "::warning::public /health/live not yet ok"
+          curl -fsS --max-time 20 "${BASE_URL%/}/version" || echo "::warning::public /version not yet ok"
