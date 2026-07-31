@@ -48,7 +48,7 @@ jobs:
           set -Eeuo pipefail
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --remove-orphans caddy"
+            "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --no-deps --remove-orphans caddy"
 
       - name: Public smoke check
         shell: bash

@@ -62,7 +62,7 @@ note "restart rollback app workloads"
 
 PHASE="resume"
 note "resume app-node traffic by starting caddy (before verify so a failed smoke gate does not leave edge traffic drained)"
-"${COMPOSE[@]}" up -d --remove-orphans caddy
+"${COMPOSE[@]}" up -d --no-deps --remove-orphans caddy
 
 PHASE="verify-app"
 APP_NODE_CHECK_CADDY="0" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
