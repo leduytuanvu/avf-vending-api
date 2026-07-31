@@ -46,6 +46,8 @@ Those dependencies are expected to be managed services or remote endpoints suppl
 3. Change node-specific values that must be unique, especially `COMPOSE_PROJECT_NAME`, `MQTT_CLIENT_ID_API`, and `MQTT_CLIENT_ID_INGEST`.
 4. Point `DATABASE_URL`, `REDIS_URL`, `NATS_URL`, and `MQTT_BROKER_URL` to managed services or the fallback data node.
 5. Prefer `APP_BASE_URL=https://api.ldtv.dev`, Supabase for `DATABASE_URL`, and `OBJECT_STORAGE_BUCKET=avf-vending-prod-assets`.
+   - Use Supabase **Transaction** pooler (`:6543`) for runtime `DATABASE_URL` when possible.
+   - If stuck on session pooler (`:5432`, pool_size=15), set `API_DATABASE_MAX_CONNS=10` (or lower) and optional `BACKUP_DATABASE_URL` to the direct `db.*.supabase.co` host for deploy-time `pg_dump`.
 6. If you use Temporal-backed flows, set `TEMPORAL_ENABLED=true`, fill the Temporal env, and start with `--profile temporal`.
 7. Run schema migrations as a one-shot profile with the existing goose image when needed.
 

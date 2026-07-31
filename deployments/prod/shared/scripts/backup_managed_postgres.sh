@@ -173,13 +173,33 @@ execute)
 	fi
 	mkdir -p "$(dirname "${OUTPUT_PATH}")"
 
-	if ! pg_dump \
-		--format=custom \
-		--compress=9 \
-		--no-owner \
-		--no-privileges \
-		--file "${OUTPUT_PATH}" \
-		"${DATABASE_URL}"; then
+	dump_url="${BACKUP_DATABASE_URL:-${DATABASE_URL}}"
+	if [[ -n "${BACKUP_DATABASE_URL:-}" ]]; then
+		note "using BACKUP_DATABASE_URL for pg_dump"
+	fi
+
+	attempt=1
+	max_attempts=5
+	err_file="$(mktemp)"
+	while [[ "${attempt}" -le "${max_attempts}" ]]; do
+		if pg_dump \
+			--format=custom \
+			--compress=9 \
+			--no-owner \
+			--no-privileges \
+			--file "${OUTPUT_PATH}" \
+			"${dump_url}" 2>"${err_file}"; then
+			rm -f "${err_file}"
+			break
+		fi
+		if grep -Eiq 'max clients reached|EMAXCONNSESSION|too many clients' "${err_file}" && [[ "${attempt}" -lt "${max_attempts}" ]]; then
+			note "pg_dump pool limit (attempt ${attempt}/${max_attempts}); retrying in $((attempt * 5))s"
+			sleep $((attempt * 5))
+			attempt=$((attempt + 1))
+			continue
+		fi
+		cat "${err_file}" >&2
+		rm -f "${err_file}"
 		write_report \
 			"backup-artifact-generation" \
 			"execute" \
@@ -195,6 +215,24 @@ execute)
 			"${backup_started_at_utc}" \
 			"$(utc_timestamp)"
 		fail "pg_dump failed for DATABASE_URL"
+	done
+	rm -f "${err_file}"
+	if [[ ! -s "${OUTPUT_PATH}" ]]; then
+		write_report \
+			"backup-artifact-generation" \
+			"execute" \
+			"fail" \
+			"unmet" \
+			"true" \
+			"false" \
+			"pg_dump produced an empty backup artifact" \
+			"false" \
+			"${OUTPUT_PATH}" \
+			"" \
+			"0" \
+			"${backup_started_at_utc}" \
+			"$(utc_timestamp)"
+		fail "pg_dump produced empty file"
 	fi
 
 	sha256_path=""
