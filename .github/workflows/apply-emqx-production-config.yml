@@ -58,6 +58,12 @@ jobs:
           set -Eeuo pipefail
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           EMQX_DATA_HOST="${APP_NODE_B_HOST:-${DATA_NODE_HOST:-}}"
+          if [[ -n "${EMQX_DATA_HOST}" ]] \
+            && ! ssh-keygen -F "${EMQX_DATA_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            && ! ssh-keygen -F "[${EMQX_DATA_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            echo "Pinning SSH host key for EMQX data host ${EMQX_DATA_HOST}:${SSH_PORT}"
+            ssh-keyscan -H -p "${SSH_PORT}" "${EMQX_DATA_HOST}" >> "${HOME}/.ssh/known_hosts"
+          fi
           [[ -n "${EMQX_DATA_HOST}" ]] || {
             echo "error: APP_NODE_B_HOST or DATA_NODE_HOST is required" >&2
             exit 1
