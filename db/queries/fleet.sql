@@ -276,15 +276,29 @@ SELECT *
 FROM sites
 WHERE
     ($1::boolean IS FALSE OR status = $2::text)
+    AND (
+        $3::text = ''
+        OR name ILIKE '%' || $3 || '%'
+        OR code ILIKE '%' || $3 || '%'
+    )
+    AND ($4::text = '' OR address ->> 'city' ILIKE $4)
+    AND ($5::text = '' OR address ->> 'region' ILIKE $5)
 ORDER BY
     name ASC
-LIMIT $3 OFFSET $4;
+LIMIT $6 OFFSET $7;
 
 -- name: AdminCountSitesForOrg :one
 SELECT count(*)::bigint AS cnt
 FROM sites
 WHERE
-    ($1::boolean IS FALSE OR status = $2::text);
+    ($1::boolean IS FALSE OR status = $2::text)
+    AND (
+        $3::text = ''
+        OR name ILIKE '%' || $3 || '%'
+        OR code ILIKE '%' || $3 || '%'
+    )
+    AND ($4::text = '' OR address ->> 'city' ILIKE $4)
+    AND ($5::text = '' OR address ->> 'region' ILIKE $5);
 
 -- name: AdminUpdateSiteRow :one
 UPDATE sites

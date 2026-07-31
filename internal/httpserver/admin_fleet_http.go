@@ -87,13 +87,17 @@ func parseAdminFleetListScope(r *http.Request) (listscope.AdminFleet, error) {
 		utc := t.UTC()
 		to = &utc
 	}
+	search := strings.TrimSpace(q.Get("search"))
+	if search == "" {
+		search = strings.TrimSpace(q.Get("q"))
+	}
 	return listscope.AdminFleet{
 		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
 		SiteID:          siteID,
 		MachineID:       machineID,
 		TechnicianID:    technicianID,
 		Status:          strings.TrimSpace(q.Get("status")),
-		Search:          strings.TrimSpace(q.Get("search")),
+		Search:          search,
 		From:            from,
 		To:              to,
 		Limit:           limit,

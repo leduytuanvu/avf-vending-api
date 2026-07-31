@@ -142,6 +142,9 @@ type InsertSiteParams struct {
 // ListSitesParams filters admin site listing.
 type ListSitesParams struct {
 	StatusFilter *string
+	Search       string
+	City         string
+	Region       string
 	Limit        int32
 	Offset       int32
 }
@@ -214,6 +217,9 @@ type UpdateSiteInput struct {
 // ListSitesInput lists sites with pagination.
 type ListSitesInput struct {
 	Status *string
+	Search string
+	City   string
+	Region string
 	Limit  int32
 	Offset int32
 }

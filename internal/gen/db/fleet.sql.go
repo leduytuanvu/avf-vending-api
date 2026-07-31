@@ -33,15 +33,31 @@ SELECT count(*)::bigint AS cnt
 FROM sites
 WHERE
     ($1::boolean IS FALSE OR status = $2::text)
+    AND (
+        $3::text = ''
+        OR name ILIKE '%' || $3 || '%'
+        OR code ILIKE '%' || $3 || '%'
+    )
+    AND ($4::text = '' OR address ->> 'city' ILIKE $4)
+    AND ($5::text = '' OR address ->> 'region' ILIKE $5)
 `
 
 type AdminCountSitesForOrgParams struct {
 	Column1 bool
 	Column2 string
+	Column3 string
+	Column4 string
+	Column5 string
 }
 
 func (q *Queries) AdminCountSitesForOrg(ctx context.Context, arg AdminCountSitesForOrgParams) (int64, error) {
-	row := q.db.QueryRow(ctx, AdminCountSitesForOrg, arg.Column1, arg.Column2)
+	row := q.db.QueryRow(ctx, AdminCountSitesForOrg,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
+	)
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
@@ -265,14 +281,24 @@ SELECT id, region_id, name, address, timezone, code, contact_info, status, creat
 FROM sites
 WHERE
     ($1::boolean IS FALSE OR status = $2::text)
+    AND (
+        $3::text = ''
+        OR name ILIKE '%' || $3 || '%'
+        OR code ILIKE '%' || $3 || '%'
+    )
+    AND ($4::text = '' OR address ->> 'city' ILIKE $4)
+    AND ($5::text = '' OR address ->> 'region' ILIKE $5)
 ORDER BY
     name ASC
-LIMIT $3 OFFSET $4
+LIMIT $6 OFFSET $7
 `
 
 type AdminListSitesForOrgParams struct {
 	Column1 bool
 	Column2 string
+	Column3 string
+	Column4 string
+	Column5 string
 	Limit   int32
 	Offset  int32
 }
@@ -281,6 +307,9 @@ func (q *Queries) AdminListSitesForOrg(ctx context.Context, arg AdminListSitesFo
 	rows, err := q.db.Query(ctx, AdminListSitesForOrg,
 		arg.Column1,
 		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+		arg.Column5,
 		arg.Limit,
 		arg.Offset,
 	)

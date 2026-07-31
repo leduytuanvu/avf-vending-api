@@ -54,6 +54,9 @@ func (r *fleetRepository) ListSitesForOrg(ctx context.Context, p appfleet.ListSi
 	rows, err := q.AdminListSitesForOrg(ctx, db.AdminListSitesForOrgParams{
 		Column1: filter,
 		Column2: st,
+		Column3: strings.TrimSpace(p.Search),
+		Column4: strings.TrimSpace(p.City),
+		Column5: strings.TrimSpace(p.Region),
 		Limit:   p.Limit,
 		Offset:  p.Offset,
 	})
@@ -78,6 +81,9 @@ func (r *fleetRepository) CountSitesForOrg(ctx context.Context, p appfleet.ListS
 	n, err := q.AdminCountSitesForOrg(ctx, db.AdminCountSitesForOrgParams{
 		Column1: filter,
 		Column2: st,
+		Column3: strings.TrimSpace(p.Search),
+		Column4: strings.TrimSpace(p.City),
+		Column5: strings.TrimSpace(p.Region),
 	})
 	if err != nil {
 		return 0, err

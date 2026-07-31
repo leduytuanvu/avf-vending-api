@@ -100,11 +100,31 @@ func listAdminProducts(app *api.HTTPApplication) http.HandlerFunc {
 		search := strings.TrimSpace(r.URL.Query().Get("q"))
 		activeOnly := strings.EqualFold(strings.TrimSpace(r.URL.Query().Get("active_only")), "true") ||
 			strings.TrimSpace(r.URL.Query().Get("active_only")) == "1"
+		var brandID *uuid.UUID
+		if raw := strings.TrimSpace(r.URL.Query().Get("brand_id")); raw != "" {
+			bid, perr := uuid.Parse(raw)
+			if perr != nil || bid == uuid.Nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_brand_id", "invalid brand_id")
+				return
+			}
+			brandID = &bid
+		}
+		var categoryID *uuid.UUID
+		if raw := strings.TrimSpace(r.URL.Query().Get("category_id")); raw != "" {
+			cid, perr := uuid.Parse(raw)
+			if perr != nil || cid == uuid.Nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_category_id", "invalid category_id")
+				return
+			}
+			categoryID = &cid
+		}
 		res, err := svc.ListProducts(r.Context(), appcatalogadmin.ListProductsParams{
 			Limit:      limit,
 			Offset:     offset,
 			Search:     search,
 			ActiveOnly: activeOnly,
+			BrandID:    brandID,
+			CategoryID: categoryID,
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
