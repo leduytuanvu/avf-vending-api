@@ -991,6 +991,7 @@ jobs:
           bash -n deployments/prod/shared/scripts/validate_digest_pinned_image_refs.sh
           bash -n deployments/prod/shared/scripts/validate_cloudinary_deploy_secrets.sh
           bash -n deployments/prod/shared/scripts/apply_cloudinary_app_node_env.sh
+          bash -n deployments/prod/shared/scripts/apply_external_product_image_app_node_env.sh
           bash -n deployments/prod/shared/scripts/apply_machine_grpc_app_node_env.sh
           bash -n deployments/prod/app-node/scripts/release_app_node.sh
           bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
@@ -2449,6 +2450,22 @@ jobs:
           apply_cloudinary_remote "${APP_NODE_A_HOST}"
           if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
             apply_cloudinary_remote "${APP_NODE_B_HOST}"
+          fi
+          apply_external_product_image_remote() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            read -r -a ssh_opts <<< "${SSH_OPTS}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED=${PRODUCT_IMAGE_EXTERNAL_URLS_ENABLED:-true}" \
+              "PRODUCT_IMAGE_EXTERNAL_URL_REQUIRE_HTTPS=${PRODUCT_IMAGE_EXTERNAL_URL_REQUIRE_HTTPS:-true}" \
+              "PRODUCT_IMAGE_EXTERNAL_URL_ALLOWED_HOSTS=${PRODUCT_IMAGE_EXTERNAL_URL_ALLOWED_HOSTS:-cdn.pixabay.com,res.cloudinary.com,images.unsplash.com,adm.avf.vn}" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_external_product_image_app_node_env.sh" "${env_path}"
+          }
+          apply_external_product_image_remote "${APP_NODE_A_HOST}"
+          if [[ "${DEPLOY_APP_NODE_B}" == "true" && -n "${APP_NODE_B_HOST:-}" ]]; then
+            apply_external_product_image_remote "${APP_NODE_B_HOST}"
           fi
           apply_machine_grpc_remote() {
             local host="$1"
