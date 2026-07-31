@@ -119,6 +119,8 @@ type ListProductsParams struct {
 	Offset     int32
 	Search     string
 	ActiveOnly bool
+	BrandID    *uuid.UUID
+	CategoryID *uuid.UUID
 }
 
 // ListProductsResult is a paged product list.
@@ -133,18 +135,30 @@ func (s *Service) ListProducts(ctx context.Context, p ListProductsParams) (*List
 		return nil, errors.New("catalogadmin: nil service")
 	}
 	search := p.Search
+	brandFilter := ""
+	if p.BrandID != nil && *p.BrandID != uuid.Nil {
+		brandFilter = p.BrandID.String()
+	}
+	categoryFilter := ""
+	if p.CategoryID != nil && *p.CategoryID != uuid.Nil {
+		categoryFilter = p.CategoryID.String()
+	}
 	cnt, err := s.q.CatalogAdminCountProducts(ctx, db.CatalogAdminCountProductsParams{
 		Column1: search,
 		Column2: p.ActiveOnly,
+		Column3: brandFilter,
+		Column4: categoryFilter,
 	})
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.q.CatalogAdminListProducts(ctx, db.CatalogAdminListProductsParams{Column1: search,
+	rows, err := s.q.CatalogAdminListProducts(ctx, db.CatalogAdminListProductsParams{
+		Column1: search,
 		Column2: p.ActiveOnly,
-
-		Limit:  p.Limit,
-		Offset: p.Offset,
+		Column3: brandFilter,
+		Column4: categoryFilter,
+		Limit:   p.Limit,
+		Offset:  p.Offset,
 	})
 	if err != nil {
 		return nil, err

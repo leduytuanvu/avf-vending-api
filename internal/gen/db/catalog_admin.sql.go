@@ -72,15 +72,24 @@ FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
   AND (NOT $2 OR p.active = true)
+  AND ($3::text = '' OR p.brand_id = $3::uuid)
+  AND ($4::text = '' OR p.category_id = $4::uuid)
 `
 
 type CatalogAdminCountProductsParams struct {
 	Column1 string
 	Column2 interface{}
+	Column3 string
+	Column4 string
 }
 
 func (q *Queries) CatalogAdminCountProducts(ctx context.Context, arg CatalogAdminCountProductsParams) (int64, error) {
-	row := q.db.QueryRow(ctx, CatalogAdminCountProducts, arg.Column1, arg.Column2)
+	row := q.db.QueryRow(ctx, CatalogAdminCountProducts,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
 	var cnt int64
 	err := row.Scan(&cnt)
 	return cnt, err
@@ -979,13 +988,17 @@ FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
   AND (NOT $2 OR p.active = true)
+  AND ($3::text = '' OR p.brand_id = $3::uuid)
+  AND ($4::text = '' OR p.category_id = $4::uuid)
 ORDER BY p.updated_at DESC, p.id
-LIMIT $3 OFFSET $4
+LIMIT $5 OFFSET $6
 `
 
 type CatalogAdminListProductsParams struct {
 	Column1 string
 	Column2 interface{}
+	Column3 string
+	Column4 string
 	Limit   int32
 	Offset  int32
 }
@@ -1007,6 +1020,8 @@ func (q *Queries) CatalogAdminListProducts(ctx context.Context, arg CatalogAdmin
 	rows, err := q.db.Query(ctx, CatalogAdminListProducts,
 		arg.Column1,
 		arg.Column2,
+		arg.Column3,
+		arg.Column4,
 		arg.Limit,
 		arg.Offset,
 	)

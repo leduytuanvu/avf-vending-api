@@ -105,6 +105,9 @@ func (s *Service) ListSites(ctx context.Context, in ListSitesInput) ([]domainfle
 	}
 	p := ListSitesParams{
 		StatusFilter: st,
+		Search:       strings.TrimSpace(in.Search),
+		City:         strings.TrimSpace(in.City),
+		Region:       strings.TrimSpace(in.Region),
 		Limit:        lim,
 		Offset:       off,
 	}
