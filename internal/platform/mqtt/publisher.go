@@ -57,6 +57,7 @@ func NewPublisher(cfg BrokerConfig, log *zap.Logger, clientIDSuffix string) (*Pu
 	}
 	opts.SetKeepAlive(30 * time.Second)
 	opts.SetPingTimeout(10 * time.Second)
+	opts.SetConnectTimeout(30 * time.Second)
 	opts.SetAutoReconnect(true)
 	opts.SetConnectRetry(true)
 	opts.SetConnectRetryInterval(5 * time.Second)
@@ -68,7 +69,9 @@ func NewPublisher(cfg BrokerConfig, log *zap.Logger, clientIDSuffix string) (*Pu
 
 	client := pahomqtt.NewClient(opts)
 	token := client.Connect()
-	token.Wait()
+	if !token.WaitTimeout(30 * time.Second) {
+		return nil, fmt.Errorf("mqtt publisher connect: timed out after 30s")
+	}
 	if token.Error() != nil {
 		return nil, fmt.Errorf("mqtt publisher connect: %w", token.Error())
 	}
