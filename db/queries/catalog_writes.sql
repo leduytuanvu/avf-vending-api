@@ -241,6 +241,16 @@ WHERE pi.product_id = p.id
   AND p.id = $1
   AND pi.status = 'active';
 
+-- name: CatalogWriteArchiveAllProductMediaForProduct :exec
+UPDATE product_media pm
+SET
+    status = 'archived',
+    media_role = 'gallery',
+    media_version = media_version + 1,
+    updated_at = now()
+WHERE pm.product_id = $1
+  AND pm.status = 'active';
+
 -- name: CatalogWriteProductReferencedPublishedPlanogram :one
 SELECT EXISTS (
     SELECT 1

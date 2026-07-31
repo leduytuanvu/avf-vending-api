@@ -183,6 +183,22 @@ func (q *Queries) CatalogWriteArchiveAllProductImagesForProduct(ctx context.Cont
 	return err
 }
 
+const CatalogWriteArchiveAllProductMediaForProduct = `-- name: CatalogWriteArchiveAllProductMediaForProduct :exec
+UPDATE product_media pm
+SET
+    status = 'archived',
+    media_role = 'gallery',
+    media_version = media_version + 1,
+    updated_at = now()
+WHERE pm.product_id = $1
+  AND pm.status = 'active'
+`
+
+func (q *Queries) CatalogWriteArchiveAllProductMediaForProduct(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, CatalogWriteArchiveAllProductMediaForProduct, productID)
+	return err
+}
+
 const CatalogWriteArchiveProductImage = `-- name: CatalogWriteArchiveProductImage :one
 UPDATE product_images pi
 SET

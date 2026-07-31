@@ -157,6 +157,7 @@ type Querier interface {
 	CatalogAdminPricingPreviewBooksActiveAt(ctx context.Context, dollar_1 time.Time) ([]PriceBook, error)
 	CatalogAdminUpdatePlanogram(ctx context.Context, arg CatalogAdminUpdatePlanogramParams) (Planogram, error)
 	CatalogWriteArchiveAllProductImagesForProduct(ctx context.Context, id uuid.UUID) error
+	CatalogWriteArchiveAllProductMediaForProduct(ctx context.Context, productID uuid.UUID) error
 	CatalogWriteArchiveProductImage(ctx context.Context, arg CatalogWriteArchiveProductImageParams) (ProductImage, error)
 	CatalogWriteClearProductPrimaryImage(ctx context.Context, id uuid.UUID) (Product, error)
 	CatalogWriteDeactivatePriceBook(ctx context.Context, id uuid.UUID) (PriceBook, error)

@@ -732,6 +732,9 @@ func (s *Service) bindProductPrimaryMediaWithQ(ctx context.Context, qtx *db.Quer
 	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, productID); err != nil {
 		return nil, err
 	}
+	if err := qtx.CatalogWriteArchiveAllProductMediaForProduct(ctx, productID); err != nil {
+		return nil, err
+	}
 	img, err := qtx.CatalogWriteInsertProductImageWithMedia(ctx, db.CatalogWriteInsertProductImageWithMediaParams{
 		ProductID:    productID,
 		StorageKey:   storageKey,
