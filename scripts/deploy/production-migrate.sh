@@ -35,6 +35,7 @@ Optional:
   COMPOSE_PROJECT_NAME  compose project name
   MIGRATION_LOG_DIR     backup and log directory (default: /opt/avf-vending-api/deployments/prod/logs/migrations)
   DATABASE_URL          override (otherwise loaded from COMPOSE_ENV_FILE)
+  BACKUP_DATABASE_URL   optional direct Postgres URL for pg_dump only (bypasses session pooler)
   APP_IMAGE_REF         override (otherwise loaded from COMPOSE_ENV_FILE)
   DRY_VALIDATE=1        validate migrations in image only (no DB backup/up)
   --validate-only       same as DRY_VALIDATE=1
@@ -149,17 +150,41 @@ validate_image_migrations() {
 
 backup_database() {
 	local backup_path="$1"
+	local dump_url
+	dump_url="$(resolve_backup_database_url)"
 	note "backup database to ${backup_path}"
-	mkdir -p "$(dirname "${backup_path}")"
-	if ! docker run --rm \
-		--env-file "${COMPOSE_ENV_FILE}" \
-		-e "DATABASE_URL=${DATABASE_URL}" \
-		-v "$(dirname "${backup_path}"):/backup" \
-		"${POSTGRES_TOOLS_IMAGE}" \
-		pg_dump "${DATABASE_URL}" -Fc -f "/backup/$(basename "${backup_path}")"; then
-		fail_with_code "${EXIT_BACKUP}" "pg_dump failed"
+	if [[ "${dump_url}" != "${DATABASE_URL}" ]]; then
+		note "using BACKUP_DATABASE_URL for pg_dump (direct/non-pooler connection)"
+	else
+		note "using DATABASE_URL for pg_dump"
 	fi
-	[[ -s "${backup_path}" ]] || fail_with_code "${EXIT_BACKUP}" "backup file is empty: ${backup_path}"
+	mkdir -p "$(dirname "${backup_path}")"
+	local attempt=1
+	local max_attempts=5
+	local err_file
+	err_file="$(mktemp)"
+	trap 'rm -f "${err_file}"' RETURN
+	while [[ "${attempt}" -le "${max_attempts}" ]]; do
+		if docker run --rm \
+			--env-file "${COMPOSE_ENV_FILE}" \
+			-e "DATABASE_URL=${dump_url}" \
+			-v "$(dirname "${backup_path}"):/backup" \
+			"${POSTGRES_TOOLS_IMAGE}" \
+			pg_dump "${dump_url}" -Fc -f "/backup/$(basename "${backup_path}")" 2>"${err_file}"; then
+			rm -f "${err_file}"
+			[[ -s "${backup_path}" ]] || fail_with_code "${EXIT_BACKUP}" "backup file is empty: ${backup_path}"
+			return 0
+		fi
+		if is_pg_pool_exhausted "${err_file}" && [[ "${attempt}" -lt "${max_attempts}" ]]; then
+			note "pg_dump hit pool limit (attempt ${attempt}/${max_attempts}); retrying in $((attempt * 5))s"
+			sleep $((attempt * 5))
+			attempt=$((attempt + 1))
+			continue
+		fi
+		cat "${err_file}" >&2
+		fail_with_code "${EXIT_BACKUP}" "pg_dump failed"
+	done
+	fail_with_code "${EXIT_BACKUP}" "pg_dump failed after ${max_attempts} attempts"
 }
 
 verify_backup() {
@@ -238,6 +263,23 @@ if [[ -z "${DATABASE_URL:-}" ]]; then
 	load_env_file "${COMPOSE_ENV_FILE}"
 fi
 [[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is empty"
+
+if [[ -z "${BACKUP_DATABASE_URL:-}" ]]; then
+	BACKUP_DATABASE_URL="$(read_env_value_from_file "${COMPOSE_ENV_FILE}" "BACKUP_DATABASE_URL" || true)"
+fi
+
+resolve_backup_database_url() {
+	if [[ -n "${BACKUP_DATABASE_URL:-}" ]]; then
+		printf '%s' "${BACKUP_DATABASE_URL}"
+	else
+		printf '%s' "${DATABASE_URL}"
+	fi
+}
+
+is_pg_pool_exhausted() {
+	local err_file="$1"
+	grep -Eiq 'max clients reached|EMAXCONNSESSION|too many clients' "${err_file}" 2>/dev/null
+}
 
 if [[ -z "${APP_IMAGE_REF:-}" ]]; then
 	APP_IMAGE_REF="$(read_env_value_from_file "${COMPOSE_ENV_FILE}" "APP_IMAGE_REF" || true)"
