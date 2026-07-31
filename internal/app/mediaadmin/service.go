@@ -261,6 +261,9 @@ func normalizeMIMEHeader(mt string) string {
 	if i := strings.IndexByte(s, ';'); i >= 0 {
 		s = strings.TrimSpace(s[:i])
 	}
+	if s == "image/jpg" {
+		return "image/jpeg"
+	}
 	return s
 }
 
