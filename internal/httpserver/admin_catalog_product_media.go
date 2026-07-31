@@ -18,8 +18,102 @@ func adminProductStatus(active bool) string {
 	return "inactive"
 }
 
-func mapMediaVariantsForDoc(ctx context.Context, media *appmediaadmin.Service, variants []db.MediaVariant) []V1AdminProductMediaVariantDoc {
-	if media == nil || len(variants) == 0 {
+func isHTTPURL(s string) bool {
+	u := strings.TrimSpace(s)
+	return strings.HasPrefix(strings.ToLower(u), "http://") ||
+		strings.HasPrefix(strings.ToLower(u), "https://")
+}
+
+func hostedMediaURL(asset db.MediaAsset) string {
+	if asset.OriginalUrl.Valid {
+		if u := strings.TrimSpace(asset.OriginalUrl.String); isHTTPURL(u) {
+			return u
+		}
+	}
+	if isHTTPURL(asset.DisplayObjectKey) {
+		return strings.TrimSpace(asset.DisplayObjectKey)
+	}
+	if asset.ObjectKey.Valid {
+		if u := strings.TrimSpace(asset.ObjectKey.String); isHTTPURL(u) {
+			return u
+		}
+	}
+	return ""
+}
+
+func hostedMediaThumbURL(asset db.MediaAsset, displayURL string) string {
+	if isHTTPURL(asset.ThumbObjectKey) {
+		return strings.TrimSpace(asset.ThumbObjectKey)
+	}
+	return displayURL
+}
+
+func mapMediaVariantDownloadURL(ctx context.Context, media *appmediaadmin.Service, objectKey string) string {
+	key := strings.TrimSpace(objectKey)
+	if key == "" {
+		return ""
+	}
+	if isHTTPURL(key) {
+		return key
+	}
+	if media == nil {
+		return ""
+	}
+	u, err := media.PresignedDownloadURL(ctx, key)
+	if err != nil {
+		return ""
+	}
+	return u
+}
+
+func mapMediaVariantsForDoc(ctx context.Context, media *appmediaadmin.Service, asset db.MediaAsset, variants []db.MediaVariant) []V1AdminProductMediaVariantDoc {
+	if len(variants) == 0 {
+		switch strings.ToLower(strings.TrimSpace(asset.SourceType)) {
+		case "cloudinary", "external":
+			display := hostedMediaURL(asset)
+			if display == "" {
+				return nil
+			}
+			thumb := hostedMediaThumbURL(asset, display)
+			out := make([]V1AdminProductMediaVariantDoc, 0, 2)
+			out = append(out, V1AdminProductMediaVariantDoc{
+				Variant:     "display",
+				DownloadURL: display,
+				Version:     asset.ObjectVersion,
+			})
+			if thumb != "" && thumb != display {
+				out = append(out, V1AdminProductMediaVariantDoc{
+					Variant:     "thumb",
+					DownloadURL: thumb,
+					Version:     asset.ObjectVersion,
+				})
+			}
+			if asset.MimeType.Valid && strings.TrimSpace(asset.MimeType.String) != "" {
+				for i := range out {
+					out[i].MimeType = asset.MimeType.String
+				}
+			}
+			if asset.Width.Valid {
+				for i := range out {
+					out[i].Width = asset.Width.Int32
+				}
+			}
+			if asset.Height.Valid {
+				for i := range out {
+					out[i].Height = asset.Height.Int32
+				}
+			}
+			if asset.SizeBytes.Valid {
+				for i := range out {
+					out[i].SizeBytes = asset.SizeBytes.Int64
+				}
+			}
+			return out
+		default:
+			return nil
+		}
+	}
+	if media == nil {
 		return nil
 	}
 	order := map[string]int{"thumb": 0, "display": 1, "original": 2, "fallback": 3}
@@ -33,10 +127,7 @@ func mapMediaVariantsForDoc(ctx context.Context, media *appmediaadmin.Service, v
 	})
 	out := make([]V1AdminProductMediaVariantDoc, 0, len(cp))
 	for _, v := range cp {
-		u, err := media.PresignedDownloadURL(ctx, v.ObjectKey)
-		if err != nil {
-			u = ""
-		}
+		u := mapMediaVariantDownloadURL(ctx, media, v.ObjectKey)
 		item := V1AdminProductMediaVariantDoc{
 			Variant:     v.Variant,
 			DownloadURL: u,
@@ -108,7 +199,7 @@ func mediaDocsByAssetIDs(ctx context.Context, app *api.HTTPApplication, assetIDs
 				ID:       a.ID.String(),
 				Status:   a.Status,
 				Version:  a.ObjectVersion,
-				Variants: mapMediaVariantsForDoc(ctx, app.MediaAdmin, varByAsset[aid]),
+				Variants: mapMediaVariantsForDoc(ctx, app.MediaAdmin, a, varByAsset[aid]),
 			},
 		}
 	}

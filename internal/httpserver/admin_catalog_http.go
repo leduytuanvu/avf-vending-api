@@ -3,6 +3,7 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strings"
 
@@ -127,8 +128,8 @@ func listAdminProducts(app *api.HTTPApplication) http.HandlerFunc {
 		if app != nil && app.MediaAdmin != nil && len(assetByProd) > 0 {
 			mediaByProd, err = batchAdminProductMediaDocs(r.Context(), app, assetByProd)
 			if err != nil {
-				writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
-				return
+				log.Printf("admin products: media enrichment degraded: %v", err)
+				mediaByProd = nil
 			}
 		}
 		items := make([]V1AdminProductListItem, 0, len(res.Items))

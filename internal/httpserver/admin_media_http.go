@@ -476,17 +476,31 @@ func writeMediaUploadCompleteV2(w http.ResponseWriter, ctx context.Context, svc 
 func mapAdminMediaAssetJSON(a db.MediaAsset) map[string]any {
 	out := map[string]any{
 		"id":             a.ID.String(),
+		"mediaId":        a.ID.String(),
 		"kind":           a.Kind,
 		"status":         a.Status,
 		"object_version": a.ObjectVersion,
 		"created_at":     formatAPITimeRFC3339Nano(a.CreatedAt),
 		"updated_at":     formatAPITimeRFC3339Nano(a.UpdatedAt),
 	}
+	if a.OriginalFilename.Valid && strings.TrimSpace(a.OriginalFilename.String) != "" {
+		fn := strings.TrimSpace(a.OriginalFilename.String)
+		out["filename"] = fn
+		out["original_filename"] = fn
+	}
 	if a.MimeType.Valid {
 		out["mime_type"] = a.MimeType.String
 	}
 	if a.SizeBytes.Valid {
 		out["size_bytes"] = a.SizeBytes.Int64
+	}
+	display := hostedMediaURL(a)
+	if display != "" {
+		out["display_url"] = display
+		out["url"] = display
+	}
+	if thumb := hostedMediaThumbURL(a, display); thumb != "" {
+		out["thumb_url"] = thumb
 	}
 	if a.Sha256.Valid {
 		out["sha256"] = a.Sha256.String
