@@ -897,6 +897,9 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, in.ProductID); err != nil {
 		return db.Product{}, err
 	}
+	if err := qtx.CatalogWriteArchiveAllProductMediaForProduct(ctx, in.ProductID); err != nil {
+		return db.Product{}, err
+	}
 
 	ch := strings.TrimSpace(in.ContentHash)
 	var chText pgtype.Text
@@ -980,6 +983,9 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, companyID, produ
 		return db.Product{}, err
 	}
 	if err := qtx.CatalogWriteArchiveAllProductImagesForProduct(ctx, productID); err != nil {
+		return db.Product{}, err
+	}
+	if err := qtx.CatalogWriteArchiveAllProductMediaForProduct(ctx, productID); err != nil {
 		return db.Product{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -360,4 +360,45 @@ func TestPrimaryMedia_phase3_manifest_bind_complete_validation(t *testing.T) {
 		_, err = mediaSvc.BindProductPrimaryMedia(ctx, company, p.ID, init.MediaID)
 		require.NoError(t, err)
 	})
+
+	t.Run("rebind_primary_archives_old_product_media", func(t *testing.T) {
+		uploadReady := func(name string) uuid.UUID {
+			t.Helper()
+			init, err := mediaSvc.InitUpload(ctx, company, name, "image/png", "product_image")
+			require.NoError(t, err)
+			b := pngUploadBytes(t)
+			require.NoError(t, st.Put(ctx, init.OriginalKey, bytes.NewReader(b), int64(len(b)), "image/png"))
+			_, err = mediaSvc.CompleteUpload(ctx, company, init.MediaID)
+			require.NoError(t, err)
+			return init.MediaID
+		}
+
+		firstMediaID := uploadReady("rebind1.png")
+		secondMediaID := uploadReady("rebind2.png")
+
+		p, err := catSvc.CreateProduct(ctx, CreateProductInput{
+			Sku:         "SKU-REBIND-" + uuid.NewString()[:8],
+			Name:        "Rebind",
+			Description: "d",
+			Active:      false,
+			CompanyID:   uuid.Nil,
+		})
+		require.NoError(t, err)
+
+		_, err = mediaSvc.BindProductPrimaryMedia(ctx, company, p.ID, firstMediaID)
+		require.NoError(t, err)
+		_, err = mediaSvc.BindProductPrimaryMedia(ctx, company, p.ID, secondMediaID)
+		require.NoError(t, err)
+
+		var primaryCount int
+		err = pool.QueryRow(ctx, `
+			SELECT count(*)::int
+			FROM product_media
+			WHERE product_id = $1
+			  AND media_role = 'primary'
+			  AND status = 'active'
+		`, p.ID).Scan(&primaryCount)
+		require.NoError(t, err)
+		require.Equal(t, 1, primaryCount)
+	})
 }
