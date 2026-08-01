@@ -16016,7 +16016,7 @@
               }
             }
           },
-          "description": "site_id, serial_number, name, optional hardware_profile_id, status",
+          "description": "site_id, name, optional serial_number, optional hardware_profile_id, status",
           "required": true
         },
         "responses": {
