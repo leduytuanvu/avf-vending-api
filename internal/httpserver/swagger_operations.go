@@ -2874,7 +2874,7 @@ func DocOpV1AdminSiteDelete() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param body body object true "site_id, serial_number, name, optional hardware_profile_id, status"
+// @Param body body object true "site_id, name, optional serial_number, optional hardware_profile_id, status"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
