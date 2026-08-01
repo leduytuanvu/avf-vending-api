@@ -87,9 +87,6 @@ type AssignTechnicianInput struct {
 // CreateMachine validates scope and inserts a machine row.
 func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (domainfleet.Machine, error) {
 	serial := strings.TrimSpace(in.SerialNumber)
-	if serial == "" {
-		return domainfleet.Machine{}, errors.Join(ErrInvalidArgument, errors.New("serial_number is required"))
-	}
 	if strings.TrimSpace(in.Status) == "" {
 		in.Status = "draft"
 	}
