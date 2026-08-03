@@ -39,18 +39,23 @@ func BuildTemporalWorkerActivityDeps(ctx context.Context, cfg *config.Config, po
 		return workfloworch.ActivityDeps{}, func() {}, fmt.Errorf("bootstrap: temporal worker refund sink: %w", err)
 	}
 	store := postgres.NewStore(pool)
+	reg := platformpayments.NewRegistry(cfg)
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
 		OrderVend:              store,
 		Lifecycle:              store,
 		SaleLines:              store,
 		WorkflowOrchestration:  workfloworch.NewDisabled(),
-		PaymentSessionRegistry: platformpayments.NewRegistry(cfg),
+		PaymentSessionRegistry: reg,
 	})
 	return workfloworch.ActivityDeps{
 			Lifecycle:   store,
 			RefundSink:  sink,
 			VendStarter: commerceSvc,
 			CommandAcks: commandAckStore{store: store},
+			Refunds: platformpayments.RegistryRefundBridge{
+				Reg:            reg,
+				ResolveAttempt: store.ResolvePaymentProviderAttempt,
+			},
 		}, func() {
 			if nc != nil && nc.Conn != nil {
 				_ = nc.Conn.Drain()

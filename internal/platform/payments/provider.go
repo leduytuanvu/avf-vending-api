@@ -11,12 +11,16 @@ import (
 // CreatePaymentSessionInput is passed to outbound PSP session creators after the payment row exists.
 // AmountMinor and Currency are always server-authoritative (never copied from the vending client).
 type CreatePaymentSessionInput struct {
-	CompanyID      uuid.UUID
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	AmountMinor    int64
-	Currency       string
-	IdempotencyKey string
+	CompanyID           uuid.UUID
+	OrderID             uuid.UUID
+	PaymentID           uuid.UUID
+	AmountMinor         int64
+	Currency            string
+	IdempotencyKey      string
+	MachineExternalCode string // machine_code for AVF/TFO tenant selection
+	StoreID             string // terminal/store hint for PSP
+	ProviderReference   string // optional pre-assigned ref (legacy order_code); else adapter generates ≤21
+	PreferredMethod     string // e.g. vietqr embed preference when using zalopay adapter
 }
 
 // CreatePaymentSessionResult carries provider-owned session material returned by the adapter.

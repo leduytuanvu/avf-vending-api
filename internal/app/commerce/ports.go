@@ -81,6 +81,7 @@ type Orchestrator interface {
 	GetCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error)
 	GetCheckoutStatusByLineSequence(ctx context.Context, companyID, orderID uuid.UUID, lineSequence int32) (CheckoutStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
+	RefreshPendingPaymentFromProvider(ctx context.Context, companyID, orderID uuid.UUID)
 
 	EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error
 	CancelOrder(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)

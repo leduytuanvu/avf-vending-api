@@ -36,12 +36,17 @@ type ApplyPaymentProviderWebhookInput struct {
 
 // PaymentWebhookAppliedEvent is emitted to WebhookAppliedHook after a successful webhook apply (including idempotent replays).
 type PaymentWebhookAppliedEvent struct {
-	OrderID        uuid.UUID
-	PaymentID      uuid.UUID
-	Replay         bool
-	Provider       string
-	WebhookEventID string
-	Validation     string
+	OrderID                uuid.UUID
+	PaymentID              uuid.UUID
+	Replay                 bool
+	Provider               string
+	WebhookEventID         string
+	Validation             string
+	NormalizedPaymentState string
+	ProviderReference      string
+	AmountMinor            int64
+	Currency               string
+	MachineID              uuid.UUID
 }
 
 // ApplyPaymentProviderWebhookResult is the outcome of a webhook apply transaction.

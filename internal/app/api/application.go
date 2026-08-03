@@ -19,6 +19,7 @@ import (
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	appfleetadmin "github.com/avf/avf-vending-api/internal/app/fleetadmin"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
+	applegacypayment "github.com/avf/avf-vending-api/internal/app/legacypayment"
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
@@ -36,6 +37,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/google/uuid"
 )
 
@@ -94,6 +96,10 @@ type HTTPApplication struct {
 	CashSettlementVarianceReviewThresholdMinor int64
 	// ListPaymentProviders returns non-secret PSP registry rows for GET /v1/admin/payment/providers (nil hides the route).
 	ListPaymentProviders func() []PaymentProviderRegistryInfo
+	// PaymentProviders resolves live PSP adapters for native IPN / legacy payment HTTP (nil disables those routes).
+	PaymentProviders *platformpayments.Registry
+	// LegacyPayment optional facade for /payment-service/payment/* when ENABLE_LEGACY_PAYMENT_HTTP is set.
+	LegacyPayment *applegacypayment.Service
 }
 
 // PaymentProviderRegistryInfo is a read-only admin view of a registered payment provider adapter (secrets are never included).

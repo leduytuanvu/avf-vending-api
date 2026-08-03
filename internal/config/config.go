@@ -52,6 +52,11 @@ type CommerceHTTPConfig struct {
 	PaymentWebhookProviderSecrets map[string]string
 	// DefaultPaymentProvider is COMMERCE_PAYMENT_PROVIDER (lowercased): preferred registry key for outbound payment sessions when implemented.
 	DefaultPaymentProvider string
+	// AllowedPaymentProviders is COMMERCE_PAYMENT_PROVIDERS (CSV): multi-provider allowlist for client-selected PSP keys.
+	// When empty, ResolveForPaymentSession falls back to single-key COMMERCE_PAYMENT_PROVIDER equality (legacy).
+	AllowedPaymentProviders []string
+	// PaymentPushMQTT enables enqueue of payment.captured machine commands after IPN capture (COMMERCE_PAYMENT_PUSH_MQTT).
+	PaymentPushMQTT bool
 	// MachineOrderCheckoutMaxAge is the maximum age of an order (since created_at) for machine gRPC checkout
 	// mutations (payment session, cash confirm, vend start/outcome). Loaded from COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE (default 30m).
 	MachineOrderCheckoutMaxAge time.Duration
@@ -187,6 +192,9 @@ type Config struct {
 	APIWiring APIWiringRequirements
 
 	Commerce CommerceHTTPConfig
+
+	// PSP holds live payment gateway credentials (MoMo, ZaloPay, VNPay, ShopeePay).
+	PSP PSPCredentials
 
 	// CashSettlement configures admin cashbox / collection close review thresholds.
 	CashSettlement CashSettlementConfig
@@ -480,6 +488,12 @@ type TransportBoundaryConfig struct {
 	MachineRESTLegacyEnabled bool
 	// MachineRESTLegacyAllowInProduction must be true when enabling legacy machine REST in production.
 	MachineRESTLegacyAllowInProduction bool
+	// LegacyPaymentHTTPEnabled mounts /payment-service/payment/* compatibility routes (ENABLE_LEGACY_PAYMENT_HTTP).
+	LegacyPaymentHTTPEnabled bool
+	// LegacyPaymentHTTPAllowInProduction must be true when enabling legacy payment HTTP in production.
+	LegacyPaymentHTTPAllowInProduction bool
+	// LegacyPaymentHTTPAllowCIDRs optional comma-separated CIDRs for legacy payment HTTP source filtering.
+	LegacyPaymentHTTPAllowCIDRs []string
 	// MQTTCommandTransport documents/enforces backend→device command delivery (MQTT_TLS + ledger). Default "mqtt".
 	MQTTCommandTransport string
 }
@@ -1768,6 +1782,10 @@ func loadTransportBoundary(appEnv AppEnvironment) TransportBoundaryConfig {
 	} else if _, ok := os.LookupEnv("MACHINE_REST_LEGACY_ENABLED"); ok {
 		legacyEnabled = getenvBool("MACHINE_REST_LEGACY_ENABLED", false)
 	}
+	legacyPaymentEnabled := defaultLegacyREST
+	if _, ok := os.LookupEnv("ENABLE_LEGACY_PAYMENT_HTTP"); ok {
+		legacyPaymentEnabled = getenvBool("ENABLE_LEGACY_PAYMENT_HTTP", false)
+	}
 	tr := strings.TrimSpace(getenv("MQTT_COMMAND_TRANSPORT", "mqtt"))
 	if tr == "" {
 		tr = "mqtt"
@@ -1775,6 +1793,9 @@ func loadTransportBoundary(appEnv AppEnvironment) TransportBoundaryConfig {
 	return TransportBoundaryConfig{
 		MachineRESTLegacyEnabled:           legacyEnabled,
 		MachineRESTLegacyAllowInProduction: getenvBool("MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION", false),
+		LegacyPaymentHTTPEnabled:           legacyPaymentEnabled,
+		LegacyPaymentHTTPAllowInProduction: getenvBool("LEGACY_PAYMENT_HTTP_ALLOW_IN_PRODUCTION", false),
+		LegacyPaymentHTTPAllowCIDRs:        splitCSV(os.Getenv("LEGACY_PAYMENT_HTTP_ALLOW_CIDRS")),
 		MQTTCommandTransport:               tr,
 	}
 }
@@ -1888,7 +1909,9 @@ func Load() (*Config, error) {
 			PaymentWebhookAllowUnsigned:                 getenvBool("COMMERCE_PAYMENT_WEBHOOK_ALLOW_UNSIGNED", false),
 			PaymentWebhookUnsafeAllowUnsignedProduction: getenvBool("COMMERCE_PAYMENT_WEBHOOK_UNSAFE_ALLOW_UNSIGNED_PRODUCTION", false),
 			PaymentWebhookProviderSecrets:               webhookProvSecrets,
-			DefaultPaymentProvider:                      strings.ToLower(strings.TrimSpace(getenv("COMMERCE_PAYMENT_PROVIDER", ""))),
+			DefaultPaymentProvider:                      NormalizePaymentProviderKey(getenv("COMMERCE_PAYMENT_PROVIDER", "")),
+			AllowedPaymentProviders:                     ParsePaymentProvidersCSV(os.Getenv("COMMERCE_PAYMENT_PROVIDERS")),
+			PaymentPushMQTT:                             getenvBool("COMMERCE_PAYMENT_PUSH_MQTT", true),
 			MachineOrderCheckoutMaxAge:                  mustParseDuration("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", getenv("COMMERCE_MACHINE_ORDER_CHECKOUT_MAX_AGE", "30m")),
 			RequireVendHardwareEvidence:                 getenvBool("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE", false),
 			RequireVendHardwareEvidenceMachineIDs:       parseUUIDCSV("COMMERCE_REQUIRE_VEND_HARDWARE_EVIDENCE_MACHINE_IDS"),
@@ -1898,6 +1921,7 @@ func Load() (*Config, error) {
 			VendOutboxEventTypeReconciliation:           strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION", "reconciliation.required")),
 			VendOutboxAggregateType:                     strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_AGGREGATE_TYPE", "order")),
 		},
+		PSP: loadPSPCredentials(),
 		CashSettlement: CashSettlementConfig{
 			VarianceReviewThresholdMinor: getenvInt64("CASH_SETTLEMENT_VARIANCE_REVIEW_THRESHOLD_MINOR", 500),
 		},

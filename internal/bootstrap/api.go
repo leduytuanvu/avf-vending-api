@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,10 +12,13 @@ import (
 	appartifacts "github.com/avf/avf-vending-api/internal/app/artifacts"
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	appdevice "github.com/avf/avf-vending-api/internal/app/device"
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
+	applegacypayment "github.com/avf/avf-vending-api/internal/app/legacypayment"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	appsalecatalog "github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
+	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/grpcserver"
 	"github.com/avf/avf-vending-api/internal/httpserver"
@@ -28,7 +32,9 @@ import (
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
+	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -233,6 +239,12 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		MachineStaleThreshold:                      cfg.MachineStaleThreshold,
 	})
 	if rt.Deps.PaymentProviders != nil {
+		if reg, ok := rt.Deps.PaymentProviders.(*platformpayments.Registry); ok {
+			httpApp.PaymentProviders = reg
+			if cfg.TransportBoundary.LegacyPaymentHTTPEnabled {
+				httpApp.LegacyPayment = applegacypayment.NewService(rt.Pool(), commerceSvc, store, reg, cfg)
+			}
+		}
 		httpApp.ListPaymentProviders = func() []api.PaymentProviderRegistryInfo {
 			rows := rt.Deps.PaymentProviders.ProviderSummaries()
 			out := make([]api.PaymentProviderRegistryInfo, len(rows))
@@ -251,6 +263,50 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 			}
 			return out
 		}
+	}
+
+	// Wire payment.captured MQTT push after RemoteCommands exists on httpApp.
+	if httpApp.RemoteCommands != nil && httpApp.Commerce != nil {
+		dispatcher := httpApp.RemoteCommands
+		commerceSvc.SetWebhookAppliedHook(func(ctx context.Context, evt appcommerce.PaymentWebhookAppliedEvent) {
+			if !cfg.Commerce.PaymentPushMQTT {
+				return
+			}
+			if !strings.EqualFold(strings.TrimSpace(evt.NormalizedPaymentState), "captured") {
+				return
+			}
+			if evt.MachineID == uuid.Nil || evt.PaymentID == uuid.Nil {
+				return
+			}
+			payload, err := json.Marshal(map[string]any{
+				"type":               "payment.captured",
+				"order_id":           evt.OrderID.String(),
+				"payment_id":         evt.PaymentID.String(),
+				"provider":           evt.Provider,
+				"provider_reference": evt.ProviderReference,
+				"amount_minor":       evt.AmountMinor,
+				"currency":           evt.Currency,
+			})
+			if err != nil {
+				log.Warn("payment.captured mqtt payload marshal failed", zap.Error(err))
+				return
+			}
+			idem := appcommerce.PaymentCapturedMQTTIdempotencyKey(evt.PaymentID.String(), evt.WebhookEventID)
+			if _, err := dispatcher.DispatchRemoteMQTTCommand(ctx, appdevice.RemoteCommandDispatchInput{
+				Append: domaindevice.AppendCommandInput{
+					MachineID:      evt.MachineID,
+					CommandType:    "payment.captured",
+					Payload:        payload,
+					IdempotencyKey: idem,
+				},
+			}); err != nil {
+				log.Warn("payment.captured mqtt push failed",
+					zap.Error(err),
+					zap.String("payment_id", evt.PaymentID.String()),
+					zap.String("machine_id", evt.MachineID.String()),
+				)
+			}
+		})
 	}
 
 	if err := httpserver.ValidateP0HTTPApplication(cfg, httpApp); err != nil {

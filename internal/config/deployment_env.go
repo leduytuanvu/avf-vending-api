@@ -67,9 +67,10 @@ func isLocalDatabaseHost(host string) bool {
 }
 
 // productionPlaceholderLiveCommercePaymentProvider reports unwired live PSP shell keys (keep aligned with payments.PlaceholderLiveProviderKeys).
+// After Path A wiring, only stripe remains a placeholder shell; momo/zalopay/vnpay/shopeepay/vietqr are WiredLiveProvider keys.
 func productionPlaceholderLiveCommercePaymentProvider(key string) bool {
 	switch strings.ToLower(strings.TrimSpace(key)) {
-	case "stripe", "momo", "zalopay", "vnpay":
+	case "stripe":
 		return true
 	default:
 		return false
@@ -202,6 +203,9 @@ func (c *Config) validateProduction(payment string) error {
 		if strings.TrimSpace(c.Commerce.DefaultPaymentProvider) != "" {
 			return errors.New("config: APP_ENV=production with PAYMENT_ENV=cash_only forbids COMMERCE_PAYMENT_PROVIDER (QR/card sessions are disabled)")
 		}
+		if len(c.Commerce.AllowedPaymentProviders) > 0 {
+			return errors.New("config: APP_ENV=production with PAYMENT_ENV=cash_only forbids COMMERCE_PAYMENT_PROVIDERS")
+		}
 	} else {
 		if productionSandboxFamilyCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
 			k := strings.TrimSpace(c.Commerce.DefaultPaymentProvider)
@@ -212,6 +216,20 @@ func (c *Config) validateProduction(payment string) error {
 		}
 		if productionPlaceholderLiveCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live forbids unwired placeholder COMMERCE_PAYMENT_PROVIDER=%q (implement and register a WiredLiveProvider, or use PAYMENT_ENV=cash_only)", strings.ToLower(strings.TrimSpace(c.Commerce.DefaultPaymentProvider)))
+		}
+		if err := c.validateLivePSPCredentials(c.Commerce.DefaultPaymentProvider); err != nil {
+			return err
+		}
+		for _, k := range c.Commerce.AllowedPaymentProviders {
+			if productionSandboxFamilyCommercePaymentProvider(k) {
+				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (mock/sandbox family)", k)
+			}
+			if productionPlaceholderLiveCommercePaymentProvider(k) {
+				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (placeholder)", k)
+			}
+			if err := c.validateLivePSPCredentials(k); err != nil {
+				return err
+			}
 		}
 	}
 	if pub := publicBaseURLForValidation(c); pub != ProductionPublicBaseURL {
@@ -265,6 +283,9 @@ func (c *Config) validateProduction(payment string) error {
 	}
 	if c.TransportBoundary.MachineRESTLegacyEnabled && !c.TransportBoundary.MachineRESTLegacyAllowInProduction {
 		return errors.New("config: APP_ENV=production with legacy machine HTTP enabled requires MACHINE_REST_LEGACY_ALLOW_IN_PRODUCTION=true (set ENABLE_LEGACY_MACHINE_HTTP or MACHINE_REST_LEGACY_ENABLED)")
+	}
+	if c.TransportBoundary.LegacyPaymentHTTPEnabled && !c.TransportBoundary.LegacyPaymentHTTPAllowInProduction {
+		return errors.New("config: APP_ENV=production with legacy payment HTTP enabled requires LEGACY_PAYMENT_HTTP_ALLOW_IN_PRODUCTION=true (set ENABLE_LEGACY_PAYMENT_HTTP)")
 	}
 	mt := strings.ToLower(strings.TrimSpace(c.TransportBoundary.MQTTCommandTransport))
 	if mt != "" && mt != "mqtt" {
@@ -387,4 +408,31 @@ func dbHostFromURLOrEmpty(raw string) string {
 		return ""
 	}
 	return h
+}
+
+// validateLivePSPCredentials ensures production live provider keys have outbound credentials configured.
+func (c *Config) validateLivePSPCredentials(provider string) error {
+	k := NormalizePaymentProviderKey(provider)
+	if k == "" || productionPlaceholderLiveCommercePaymentProvider(k) || productionSandboxFamilyCommercePaymentProvider(k) {
+		return nil
+	}
+	switch k {
+	case "momo":
+		if !c.PSP.MoMo.MoMoWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires MoMo credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
+		}
+	case "zalopay", "vietqr":
+		if !c.PSP.ZaloPay.ZaloPayWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ZaloPay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
+		}
+	case "vnpay":
+		if !c.PSP.VNPay.VNPayWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires VNPay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
+		}
+	case "shopeepay":
+		if !c.PSP.ShopeePay.ShopeePayWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ShopeePay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
+		}
+	}
+	return nil
 }

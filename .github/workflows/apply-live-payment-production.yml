@@ -1,0 +1,170 @@
+name: Apply Live Payment Production Env
+
+# Applies PAYMENT_ENV=live + MoMo/ZaloPay/VietQR allowlist on app-node env, restarts api, verifies /version.
+# Prerequisite: production image must register WiredLiveProvider for momo (not placeholder). Current
+# cash_only image (momo as PlaceholderLiveProvider) will fail this workflow and auto-revert to cash_only.
+
+on:
+  workflow_dispatch:
+    inputs:
+      restart_api:
+        description: "Restart app-node api compose service after env apply"
+        required: false
+        default: true
+        type: boolean
+      public_version_url:
+        description: "Public /version URL for post-apply verification"
+        required: false
+        default: "https://api.ldtv.dev/version"
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  apply-live-payment:
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      APP_NODE_A_HOST: ${{ secrets.PRODUCTION_APP_NODE_A_HOST }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST }}
+      SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || '22' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER }}
+      VERSION_URL: ${{ inputs.public_version_url }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure SSH
+        shell: bash
+        env:
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
+          chmod 600 "${identity_file}"
+          printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+          } >> "$GITHUB_ENV"
+
+      - name: Preflight public payment_runtime
+        id: preflight
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          body="$(curl -fsS --max-time 20 "${VERSION_URL}")"
+          echo "${body}" | tee preflight-version.json
+          mode="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("payment_runtime",{}).get("payment_mode",""))' < preflight-version.json)"
+          echo "preflight_payment_mode=${mode}" >> "$GITHUB_OUTPUT"
+          echo "Preflight payment_mode=${mode}"
+
+      - name: Sync apply scripts to app nodes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          for host in "${APP_NODE_A_HOST}" "${APP_NODE_B_HOST:-}"; do
+            [[ -n "${host}" ]] || continue
+            target="${SSH_USER}@${host}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts'"
+            scp "${ssh_opts[@]}" -P "${SSH_PORT}" \
+              deployments/prod/shared/scripts/apply_live_payment_app_node_env.sh \
+              deployments/prod/shared/scripts/apply_cash_only_payment_app_node_env.sh \
+              "${target}:${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+              "chmod +x '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_live_payment_app_node_env.sh' \
+                        '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_cash_only_payment_app_node_env.sh'"
+          done
+
+      - name: Apply live payment env on app nodes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          apply_one() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "PAYMENT_ENV=live" \
+              "COMMERCE_PAYMENT_PROVIDER=momo" \
+              "COMMERCE_PAYMENT_PROVIDERS=momo,zalopay,vietqr,vnpay,shopeepay" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_live_payment_app_node_env.sh" "${env_path}"
+          }
+          apply_one "${APP_NODE_A_HOST}"
+          if [[ -n "${APP_NODE_B_HOST:-}" ]]; then
+            apply_one "${APP_NODE_B_HOST}"
+          fi
+
+      - name: Restart api on app nodes
+        if: inputs.restart_api
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          restart_one() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local app_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+              "cd '${app_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --force-recreate --no-deps api"
+          }
+          restart_one "${APP_NODE_A_HOST}"
+          if [[ -n "${APP_NODE_B_HOST:-}" ]]; then
+            restart_one "${APP_NODE_B_HOST}"
+          fi
+          sleep 15
+
+      - name: Verify live_psp or revert cash_only
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ok=0
+          for attempt in 1 2 3 4 5 6; do
+            if body="$(curl -fsS --max-time 20 "${VERSION_URL}" 2>/dev/null)"; then
+              echo "${body}" | tee post-version.json
+              mode="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("payment_runtime",{}).get("payment_mode",""))' < post-version.json)"
+              avail="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("payment_runtime",{}).get("card_qr_sessions_available",False))' < post-version.json)"
+              echo "attempt=${attempt} payment_mode=${mode} card_qr_sessions_available=${avail}"
+              if [[ "${mode}" == "live_psp" && "${avail}" == "True" ]]; then
+                ok=1
+                break
+              fi
+            else
+              echo "attempt=${attempt} /version unreachable"
+            fi
+            sleep 5
+          done
+          if [[ "${ok}" -eq 1 ]]; then
+            echo "Apply Live Payment: PASS (payment_mode=live_psp, sessions available)"
+            exit 0
+          fi
+          echo "::error::Live payment verification failed ΓÇö reverting PAYMENT_ENV=cash_only"
+          revert_one() {
+            local host="$1"
+            local target="${SSH_USER}@${host}"
+            local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            local app_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
+              "PAYMENT_ENV=cash_only" \
+              "APP_NODE_ENV_FILE=${env_path}" \
+              bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_cash_only_payment_app_node_env.sh" "${env_path}"
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+              "cd '${app_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --force-recreate --no-deps api"
+          }
+          revert_one "${APP_NODE_A_HOST}"
+          if [[ -n "${APP_NODE_B_HOST:-}" ]]; then
+            revert_one "${APP_NODE_B_HOST}"
+          fi
+          sleep 10
+          curl -fsS --max-time 20 "${VERSION_URL}" | tee revert-version.json || true
+          exit 1

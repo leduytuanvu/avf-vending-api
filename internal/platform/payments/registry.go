@@ -34,14 +34,16 @@ type Registry struct {
 
 	defaultPaymentProviderKey string
 	paymentEnv                string
+	allowedPaymentProviders   []string
 }
 
 // NewRegistry builds the process-local provider registry from config.
 func NewRegistry(cfg *config.Config) *Registry {
 	r := &Registry{byKey: make(map[string]PaymentProvider)}
 	if cfg != nil {
-		r.defaultPaymentProviderKey = strings.ToLower(strings.TrimSpace(cfg.Commerce.DefaultPaymentProvider))
+		r.defaultPaymentProviderKey = NormalizeProviderKey(cfg.Commerce.DefaultPaymentProvider)
 		r.paymentEnv = strings.ToLower(strings.TrimSpace(cfg.PaymentEnv))
+		r.allowedPaymentProviders = append([]string(nil), cfg.Commerce.AllowedPaymentProviders...)
 	}
 	for _, k := range []string{"mock", "sandbox", "test", "psp_fixture", "dev", "psp_grpc_int"} {
 		p := NewSandboxProvider(k)
@@ -52,6 +54,9 @@ func NewRegistry(cfg *config.Config) *Registry {
 		r.byKey[p.Key()] = p
 	}
 	r.byKey["cash"] = cashPaymentProvider{}
+	if cfg != nil {
+		registerLivePSPAdapters(r, cfg)
+	}
 	return r
 }
 
@@ -64,48 +69,8 @@ func sandboxFamilyProviderKey(key string) bool {
 	}
 }
 
-// ResolveForPaymentSession selects the canonical PSP adapter for machine/API-initiated payment sessions.
-// Client-declared provider keys must match COMMERCE_PAYMENT_PROVIDER when that env is set.
-func (r *Registry) ResolveForPaymentSession(appEnv config.AppEnvironment, clientDeclaredProvider string) (PaymentProvider, string, error) {
-	if r == nil {
-		return nil, "", fmt.Errorf("payments: nil registry")
-	}
-	def := strings.ToLower(strings.TrimSpace(r.defaultPaymentProviderKey))
-	client := strings.ToLower(strings.TrimSpace(clientDeclaredProvider))
-	if client != "" && def != "" && client != def {
-		return nil, "", fmt.Errorf("%w: got %q want %q", ErrProviderKeyMismatch, client, def)
-	}
-	key := def
-	if key == "" {
-		key = client
-	}
-	if r.paymentEnv == config.PaymentEnvCashOnly {
-		return nil, "", ErrProviderUnavailable
-	}
-	if key == "" {
-		if appEnv == config.AppEnvProduction {
-			return nil, "", ErrPaymentProviderRequired
-		}
-		key = "sandbox"
-	}
-	if key == "cash" {
-		return nil, "", fmt.Errorf("%w: card/QR sessions cannot use provider cash", ErrInvalidCardSessionProvider)
-	}
-	p := r.Get(key)
-	if p == nil {
-		return nil, "", fmt.Errorf("%w: %q", ErrUnknownProvider, key)
-	}
-	if appEnv == config.AppEnvProduction && sandboxFamilyProviderKey(key) {
-		return nil, "", fmt.Errorf("%w: %q", ErrSandboxProviderInProduction, key)
-	}
-	if IsPlaceholderLiveProvider(p) {
-		return nil, "", fmt.Errorf("%w: %q", ErrProviderUnavailable, key)
-	}
-	if w, ok := p.(WiredLiveProvider); ok && !w.LivePaymentWired() {
-		return nil, "", fmt.Errorf("%w: %q", ErrProviderUnavailable, key)
-	}
-	return p, key, nil
-}
+// ResolveForPaymentSession is implemented in resolve.go (multi-provider allowlist).
+
 
 // DeploymentRuntime returns non-secret deployment payment capability for ops/version endpoints.
 func (r *Registry) DeploymentRuntime(cfg *config.Config) DeploymentRuntime {

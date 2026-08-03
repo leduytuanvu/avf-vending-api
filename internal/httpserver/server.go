@@ -208,6 +208,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 
 	r.Route("/v1", func(r chi.Router) {
 		mountCommercePublicWebhookPost(r, app, cfg, abuse, writeRL)
+		mountCommercePSPWebhooks(r, app, cfg, abuse, writeRL)
 		mountPublicActivationClaim(r, app, cfg, abuse, writeRL)
 
 		r.Route("/auth", func(r chi.Router) {
@@ -375,6 +376,10 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 			}
 		})
 	})
+
+	if app != nil {
+		mountLegacyPaymentRoutes(r, app, cfg, app.LegacyPayment, abuse, writeRL)
+	}
 }
 
 func machineShadowGet(svc api.MachineShadowService) http.HandlerFunc {

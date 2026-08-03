@@ -2,110 +2,89 @@
 
 This document is the operator and Android handoff reference for **which payment methods are safe to expose** in production.
 
-## Chosen path: **Path B — explicit cash-only production pilot**
+## Chosen path: **Path A — multi-provider live PSP + dual surface**
 
-No live PSP (`stripe`, `momo`, `zalopay`, `vnpay`) is wired for outbound `CreatePaymentSession` in this release. Production **must** run `PAYMENT_ENV=cash_only` until Path A (real PSP) is implemented, registered as `WiredLiveProvider`, and field-tested.
+Live VN PSPs are implemented as `WiredLiveProvider` adapters: **`momo`**, **`zalopay`**, **`vietqr`**, **`vnpay`**, **`shopeepay`**. `stripe` remains an unwired placeholder shell.
 
-**Android rule:** show cash checkout only when `payment_methods.cash_enabled=true`. **Never** show QR/card unless `payment_methods.qr_card_enabled=true` (requires wired live PSP + `PAYMENT_ENV=live`).
+Production may run:
 
-## Current production posture (Path B — explicit cash-only)
+| Mode | When |
+|------|------|
+| `PAYMENT_ENV=live` | **Default in production examples** — wired MoMo / ZaloPay / VietQR (+ optional VNPay/ShopeePay) |
+| `PAYMENT_ENV=cash_only` | Explicit cash pilot; QR/card hidden |
 
-AVF production pilot runs with **cash-only** vending unless a **wired live PSP** is registered and validated.
+**Android rule:** show cash when `payment_methods.cash_enabled=true`. Show QR/card only when `payment_methods.qr_card_enabled=true`.
 
-| Setting | Cash-only pilot (current) | Live QR/card (future) |
-|---------|---------------------------|------------------------|
-| `PAYMENT_ENV` | `cash_only` | `live` |
-| `COMMERCE_PAYMENT_PROVIDER` | **unset** | Wired adapter key (not a placeholder) |
-| QR/card in Android | **Hidden** (`qr_card_enabled=false`) | Shown when `qr_card_enabled=true` |
-| Cash in Android | **Shown** when `cash_enabled=true` | Per machine feature flag |
+**Recommended live allowlist (examples + `apply_live_payment_app_node_env.sh`):**
+
+```
+PAYMENT_ENV=live
+COMMERCE_PAYMENT_PROVIDER=momo
+COMMERCE_PAYMENT_PROVIDERS=momo,zalopay,vietqr,vnpay,shopeepay
+```
+
+Fill `MOMO_*` / `ZALOPAY_*` (and VietQR) from the secret store. To revert to cash pilot, use `apply_cash_only_payment_app_node_env.sh`.
+
+## Surfaces (Hướng 3)
+
+| Surface | Path | Clients |
+|---------|------|---------|
+| gRPC | `CreatePaymentSession` + poll `GetOrderStatus` | `avf-vending-app` |
+| Legacy HTTP | `/payment-service/payment/*` when `ENABLE_LEGACY_PAYMENT_HTTP=true` | Old machines (domain-only cutover) |
+| Native IPN | `/v1/commerce/webhooks/{momo,zalopay,shopeepay}` + `GET .../vnpay/return` | PSP portals |
+| Legacy IPN aliases | `/payment-service/payment/momo/callback`, `/callback`, `/shopeepay/callback`, `/vnpay_return` | Same handlers; keep old path on new domain |
+| MQTT push | `command_type=payment.captured` after IPN capture | New app (poll remains mandatory fallback) |
+
+## Config
+
+| Env | Role |
+|-----|------|
+| `PAYMENT_ENV` | `sandbox` \| `live` \| `cash_only` |
+| `COMMERCE_PAYMENT_PROVIDER` | Default registry key |
+| `COMMERCE_PAYMENT_PROVIDERS` | CSV allowlist for multi-method (e.g. `momo,zalopay,vietqr,vnpay,shopeepay`) |
+| `COMMERCE_PAYMENT_PUSH_MQTT` | Enqueue `payment.captured` (default true) |
+| `ENABLE_LEGACY_PAYMENT_HTTP` | Mount legacy `/payment-service/payment/*` |
+| `LEGACY_PAYMENT_HTTP_ALLOW_IN_PRODUCTION` | Required when legacy payment HTTP is on in production |
+| `MOMO_*` / `TFO_MOMO_*` | MoMo credentials |
+| `ZALOPAY_*` | ZaloPay credentials |
+| `VNP_*` / `VPN_*` | VNPay Merchant QR credentials |
+| `SHOPEEPAY_*` / `TFO_SHOPEEPAY_*` | ShopeePay credentials + `SHOPEEPAY_CALLBACK_IP_WHITELIST` |
 
 Config load **fails** if:
 
-- `APP_ENV=production` + `PAYMENT_ENV=live` + placeholder key (`stripe`, `momo`, `zalopay`, `vnpay`)
-- `APP_ENV=production` + `PAYMENT_ENV=cash_only` + `COMMERCE_PAYMENT_PROVIDER` is set
+- `APP_ENV=production` + `PAYMENT_ENV=live` + placeholder `stripe` or sandbox family keys
+- `APP_ENV=production` + `PAYMENT_ENV=live` + live key **without** outbound credentials (unwired)
+- `APP_ENV=production` + `PAYMENT_ENV=cash_only` + `COMMERCE_PAYMENT_PROVIDER` / `COMMERCE_PAYMENT_PROVIDERS` set
+- Production + legacy payment HTTP without `LEGACY_PAYMENT_HTTP_ALLOW_IN_PRODUCTION=true`
 
 ## Provider registry
 
 | Key family | Type | Outbound `CreatePaymentSession` | Production card/QR |
 |------------|------|----------------------------------|--------------------|
-| `mock`, `sandbox`, `test`, `psp_fixture`, `dev`, `psp_grpc_int` | Sandbox | Yes (deterministic) | **Forbidden** |
-| `cash` | Cash ledger | No (use `ConfirmCashPayment`) | Cash checkout only |
-| `stripe`, `momo`, `zalopay`, `vnpay` | Placeholder shell | **No** (`provider_unavailable`) | **Forbidden** at config load when `PAYMENT_ENV=live` |
-| Custom registered `WiredLiveProvider` | Live adapter | Yes | Allowed when `PAYMENT_ENV=live` |
+| `mock`, `sandbox`, … | Sandbox | Yes | **Forbidden** in production |
+| `cash` | Cash ledger | No (`ConfirmCashPayment`) | Cash only |
+| `stripe` | Placeholder | No | **Forbidden** as live default |
+| `momo`, `zalopay`, `vietqr`, `vnpay`, `shopeepay` | WiredLiveProvider | Yes when credentials present | Allowed when `PAYMENT_ENV=live` |
 
-Placeholders verify inbound webhooks (HMAC) but **must not** be used for paid QR/card sales.
+## Payment success notification
 
-## Android runtime signals
+1. PSP IPN → `ApplyPaymentProviderWebhook` (`captured`)
+2. MQTT command `payment.captured` to machine (best-effort; never fails IPN)
+3. App **must** confirm via `GetOrderStatus` / legacy `/query` before vend
+4. `GetOrderStatus` may also refresh pending payments via provider query (ZaloPay-style)
 
-### Bootstrap (`GetBootstrap`)
+Ops: `GET /version` → `payment_runtime.enabled_providers`; `GET /v1/admin/payment/providers`.
 
-`GetBootstrapResponse.payment_methods`:
+## Enabling live QR/card checklist
 
-| Field | Meaning |
-|-------|---------|
-| `cash_enabled` | Show cash checkout |
-| `qr_card_enabled` | Show QR/card checkout |
-| `payment_mode` | `cash_only` \| `live_psp` \| `sandbox` |
-| `card_qr_provider_key` | Registry key when enabled; empty when disabled |
-| `card_qr_provider_status` | `unavailable` \| `wired` \| `sandbox` \| `placeholder` |
-| `qr_card_unavailable_reason` | Stable reason code, e.g. `provider_unavailable` |
-
-**Android rule:** hide QR/card UI unless `qr_card_enabled == true`.
-
-### Commerce gRPC
-
-| RPC | When QR/card disabled |
-|-----|------------------------|
-| `CreatePaymentSession` | `FailedPrecondition` / `provider_unavailable` |
-| `ConfirmCashPayment` | `FailedPrecondition` / `cash_payment_disabled` when `cash_enabled=false` |
-
-### Ops visibility
-
-| Endpoint | Field |
-|----------|-------|
-| `GET /version` | `payment_runtime` object |
-| `GET /v1/admin/payment/providers` | `wired`, `session_available`, `provider_status` per key |
-
-## Machine-local overrides
-
-Feature flags on the machine (via `RuntimeHints.feature_flags`):
-
-| Flag | Default | Effect |
-|------|---------|--------|
-| `commerce.cash_enabled` | `true` in cash-only | Set `false` to disable cash on a machine |
-| `commerce.qr_card_enabled` | follows deployment | Cannot enable QR/card when deployment has no wired PSP |
-
-## Enabling live QR/card (Path A checklist)
-
-1. Implement `WiredLiveProvider` for the pilot PSP (`CreatePaymentSession`, webhook verify, cancel/refund/reconcile as required).
-2. `Register` the adapter in `NewRegistry` or bootstrap wiring (replacing the placeholder entry).
-3. Set `PAYMENT_ENV=live` and `COMMERCE_PAYMENT_PROVIDER=<wired-key>`.
-4. Verify config load, `/version.payment_runtime.card_qr_sessions_available=true`, bootstrap `qr_card_enabled=true`.
-5. Run commerce integration tests and field QA before fleet rollout.
+1. Set PSP credentials for chosen keys
+2. `PAYMENT_ENV=live` + `COMMERCE_PAYMENT_PROVIDER` and/or `COMMERCE_PAYMENT_PROVIDERS`
+3. Register IPN URLs on PSP portals (canonical or legacy alias on new domain)
+4. Verify `/version.payment_runtime.card_qr_sessions_available=true`
+5. Field QA: create → IPN/MQTT → poll → vend; legacy create/query if used
 
 ## Related docs
 
-- [Machine gRPC production contract](../api/machine-grpc-production-contract.md)
 - [Payment webhooks](../api/payment.md)
-- [Backend production app contract audit](../archive/audits/audit/BACKEND_PRODUCTION_APP_CONTRACT_AUDIT.md)
-
-## Contract tests
-
-| Test area | Location |
-|-----------|----------|
-| Cash-only capability flags | `internal/platform/payments/production_payment_safety_test.go` |
-| Placeholder session blocked | `internal/platform/payments/production_payment_safety_test.go`, `registry_resolve_test.go` |
-| Production config rejects placeholders | `internal/config/deployment_env_test.go` |
-| gRPC `CreatePaymentSession` → `provider_unavailable` | `internal/grpcserver/machine_commerce_cash_only_test.go` |
-| Bootstrap `payment_methods` | `internal/grpcserver/machine_commerce_cash_only_test.go`, `machine_payment_runtime_test.go` |
-| `/version.payment_runtime` | `internal/observability/version_payment_test.go` |
-
-Run:
-
-```bash
-go test ./internal/platform/payments/...
-go test ./internal/app/commerce/...
-go test ./internal/config/... -run Production
-go test ./internal/grpcserver/... -run CashOnly
-go test ./...
-```
+- [MQTT contract](../api/mqtt-contract.md) — `payment.captured` command
+- [Machine gRPC](../api/machine-grpc.md)
