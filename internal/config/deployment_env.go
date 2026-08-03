@@ -217,18 +217,14 @@ func (c *Config) validateProduction(payment string) error {
 		if productionPlaceholderLiveCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live forbids unwired placeholder COMMERCE_PAYMENT_PROVIDER=%q (implement and register a WiredLiveProvider, or use PAYMENT_ENV=cash_only)", strings.ToLower(strings.TrimSpace(c.Commerce.DefaultPaymentProvider)))
 		}
-		if err := c.validateLivePSPCredentials(c.Commerce.DefaultPaymentProvider); err != nil {
-			return err
-		}
+		// Missing PSP credentials must not hard-fail boot: WiredLiveProvider adapters report
+		// session_available=false per key until MOMO_*/ZALOPAY_*/VNP_*/SHOPEEPAY_* are set.
 		for _, k := range c.Commerce.AllowedPaymentProviders {
 			if productionSandboxFamilyCommercePaymentProvider(k) {
 				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (mock/sandbox family)", k)
 			}
 			if productionPlaceholderLiveCommercePaymentProvider(k) {
 				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (placeholder)", k)
-			}
-			if err := c.validateLivePSPCredentials(k); err != nil {
-				return err
 			}
 		}
 	}

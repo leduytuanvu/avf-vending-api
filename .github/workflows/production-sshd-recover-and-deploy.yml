@@ -140,6 +140,18 @@ jobs:
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
             "echo '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
 
+      - name: Revert app-node payment env to cash_only before recover rollout
+        if: inputs.recover_sshd_only != true
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+          script_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_cash_only_payment_app_node_env.sh"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "test -f '${script_path}' && test -f '${env_path}' && PAYMENT_ENV=cash_only bash '${script_path}' '${env_path}'"
+
       - name: Roll out app node A locally (no SSH)
         if: inputs.recover_sshd_only != true
         shell: bash

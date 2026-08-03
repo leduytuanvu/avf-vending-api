@@ -34,5 +34,6 @@ unset_env_kv() {
 PAYMENT_ENV="${PAYMENT_ENV:-cash_only}"
 set_env_kv "PAYMENT_ENV" "${PAYMENT_ENV}"
 unset_env_kv "COMMERCE_PAYMENT_PROVIDER"
+unset_env_kv "COMMERCE_PAYMENT_PROVIDERS"
 
-echo "apply_cash_only_payment_app_node_env: ok (PAYMENT_ENV=${PAYMENT_ENV}, COMMERCE_PAYMENT_PROVIDER unset)"
+echo "apply_cash_only_payment_app_node_env: ok (PAYMENT_ENV=${PAYMENT_ENV}, COMMERCE_PAYMENT_PROVIDER/PROVIDERS unset)"
