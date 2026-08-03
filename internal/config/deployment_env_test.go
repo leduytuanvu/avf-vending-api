@@ -203,34 +203,27 @@ func TestLoad_Production_RejectsMockCommercePaymentProvider(t *testing.T) {
 	}
 }
 
-func TestLoad_Production_RequiresWiredProviderWhenLive(t *testing.T) {
+func TestLoad_Production_AllowsLiveWiredKeysWithoutCredentials(t *testing.T) {
+	// Missing MOMO_*/VNP_* must not block boot; adapters report session_available=false until wired.
 	setMinimalProductionLoadEnv(t)
 	t.Setenv("PAYMENT_ENV", "live")
 	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "vnpay")
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
-		t.Fatalf("unexpected: %v", err)
+	t.Setenv("COMMERCE_PAYMENT_PROVIDERS", "momo,zalopay,vietqr,vnpay,shopeepay")
+	if _, err := Load(); err != nil {
+		t.Fatalf("live keys without credentials must load: %v", err)
 	}
 }
 
-func TestLoad_Production_RejectsAllPlaceholderLiveProviders(t *testing.T) {
-	for _, provider := range []string{"stripe", "momo", "zalopay", "vnpay"} {
-		provider := provider
-		t.Run(provider, func(t *testing.T) {
-			setMinimalProductionLoadEnv(t)
-			t.Setenv("PAYMENT_ENV", "live")
-			t.Setenv("COMMERCE_PAYMENT_PROVIDER", provider)
-			_, err := Load()
-			if err == nil {
-				t.Fatalf("expected error for placeholder %q", provider)
-			}
-			if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
-				t.Fatalf("unexpected: %v", err)
-			}
-		})
+func TestLoad_Production_RejectsStripePlaceholderWhenLive(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("PAYMENT_ENV", "live")
+	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "stripe")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error for stripe placeholder")
+	}
+	if !strings.Contains(err.Error(), "placeholder") {
+		t.Fatalf("unexpected: %v", err)
 	}
 }
 
