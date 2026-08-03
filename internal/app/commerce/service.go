@@ -794,15 +794,29 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 	}
 	if s.webhookAppliedHook != nil {
 		s.webhookAppliedHook(ctx, PaymentWebhookAppliedEvent{
-			OrderID:        in2.OrderID,
-			PaymentID:      in2.PaymentID,
-			Replay:         res.Replay,
-			Provider:       in2.Provider,
-			WebhookEventID: wid,
-			Validation:     vstat,
+			OrderID:                in2.OrderID,
+			PaymentID:              in2.PaymentID,
+			Replay:                 res.Replay,
+			Provider:               in2.Provider,
+			WebhookEventID:         wid,
+			Validation:             vstat,
+			NormalizedPaymentState: in2.NormalizedPaymentState,
+			ProviderReference:      in2.ProviderReference,
+			AmountMinor:            res.Payment.AmountMinor,
+			Currency:               res.Payment.Currency,
+			MachineID:              res.Order.MachineID,
 		})
 	}
 	return res, nil
+}
+
+// SetWebhookAppliedHook replaces the optional post-apply hook (e.g. MQTT payment.captured push).
+// Safe to call after NewService when dispatch dependencies are constructed later.
+func (s *Service) SetWebhookAppliedHook(h func(context.Context, PaymentWebhookAppliedEvent)) {
+	if s == nil {
+		return
+	}
+	s.webhookAppliedHook = h
 }
 
 func validateCreateOrder(in CreateOrderInput) error {

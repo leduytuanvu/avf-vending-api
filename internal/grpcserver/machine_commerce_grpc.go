@@ -61,6 +61,17 @@ func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machi
 	}
 }
 
+func machineExternalCode(ctx context.Context, deps MachineGRPCServicesDeps, machineID uuid.UUID) string {
+	if deps.Pool == nil || machineID == uuid.Nil {
+		return ""
+	}
+	m, err := db.New(deps.Pool).GetMachineByID(ctx, machineID)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(m.Code)
+}
+
 func machinePrincipalFromAccessClaims(c plauth.MachineAccessClaims) plauth.Principal {
 	return plauth.Principal{
 		Subject:    "machine:" + c.MachineID.String(),
@@ -420,17 +431,18 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	_ = payState // vending clients cannot choose non-created PSP states; validated again in app layer
 
 	res, err := svc.CreateMachinePaymentSession(ctx, appcommerce.CreateMachinePaymentSessionInput{
-		OrderID:         orderID,
-		MachineID:       claims.MachineID,
-		IdempotencyKey:  wctx.IdempotencyKey,
-		ClientProvider:  strings.TrimSpace(req.GetProvider()),
-		ClientPayState:  strings.TrimSpace(req.GetPaymentState()),
-		AmountMinor:     amt,
-		Currency:        cur,
-		AppEnv:          s.deps.Config.AppEnv,
-		OutboxTopic:     topic,
-		OutboxEventType: evType,
-		OutboxAggregate: aggType,
+		OrderID:             orderID,
+		MachineID:           claims.MachineID,
+		IdempotencyKey:      wctx.IdempotencyKey,
+		ClientProvider:      strings.TrimSpace(req.GetProvider()),
+		ClientPayState:      strings.TrimSpace(req.GetPaymentState()),
+		AmountMinor:         amt,
+		Currency:            cur,
+		AppEnv:              s.deps.Config.AppEnv,
+		OutboxTopic:         topic,
+		OutboxEventType:     evType,
+		OutboxAggregate:     aggType,
+		MachineExternalCode: machineExternalCode(ctx, s.deps, claims.MachineID),
 	})
 	if err != nil {
 		return nil, mapCommercePaymentSessionErr(err)
@@ -633,6 +645,17 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	st, err := s.getStatus(ctx, claims, svc, orderID, req.GetSlotIndex())
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
+	}
+	// Accelerate pending QR payments via provider query (ZaloPay-style); IPN/MQTT remain primary.
+	if st.PaymentPresent {
+		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
+		if ps == "created" || ps == "authorized" || ps == "pending" {
+			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID)
+			st, err = s.getStatus(ctx, claims, svc, orderID, req.GetSlotIndex())
+			if err != nil {
+				return nil, mapCommerceGRPCErr(err)
+			}
+		}
 	}
 	resp := &machinev1.GetOrderStatusResponse{
 		OrderId:        st.Order.ID.String(),

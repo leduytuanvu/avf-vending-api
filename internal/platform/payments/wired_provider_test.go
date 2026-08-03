@@ -62,7 +62,7 @@ func TestResolveForPaymentSession_WiredLiveProviderAllowed(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDeploymentRuntime_LivePlaceholderUnavailable(t *testing.T) {
+func TestDeploymentRuntime_LiveUnwiredPSPUnavailable(t *testing.T) {
 	t.Parallel()
 	cfg := &config.Config{
 		AppEnv:     config.AppEnvProduction,
@@ -75,6 +75,16 @@ func TestDeploymentRuntime_LivePlaceholderUnavailable(t *testing.T) {
 	dr := reg.DeploymentRuntime(cfg)
 	require.Equal(t, PaymentModeLivePSP, dr.PaymentMode)
 	require.False(t, dr.CardQRSessionsAvailable)
-	require.Equal(t, ProviderStatusPlaceholder, dr.CardQRProviderStatus)
+	require.Equal(t, ProviderStatusUnavailable, dr.CardQRProviderStatus)
 	require.Equal(t, QRCardUnavailableReasonProviderUnavailable, dr.QRCardUnavailableReason)
+
+	p := reg.Get("momo")
+	require.NotNil(t, p)
+	w, ok := p.(WiredLiveProvider)
+	require.True(t, ok, "momo must be WiredLiveProvider")
+	require.False(t, w.LivePaymentWired())
+	_, err := p.CreatePaymentSession(context.Background(), CreatePaymentSessionInput{
+		OrderID: uuid.New(), PaymentID: uuid.New(), AmountMinor: 1000, Currency: "VND", IdempotencyKey: "k",
+	})
+	require.ErrorIs(t, err, ErrLiveProviderNotWired)
 }

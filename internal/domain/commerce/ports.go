@@ -85,9 +85,11 @@ type CommandLedgerSummary struct {
 
 // PaymentProviderLookup identifies a payment for PSP-side status reconciliation.
 type PaymentProviderLookup struct {
-	Provider  string
-	PaymentID uuid.UUID
-	OrderID   uuid.UUID
+	Provider          string
+	PaymentID         uuid.UUID
+	OrderID           uuid.UUID
+	ProviderReference string // PSP order/ref code when known (payment_attempt.provider_reference)
+	AmountMinor       int64  // optional; required by some PSPs (e.g. ShopeePay check)
 }
 
 // PaymentStatusSnapshot is a provider-normalized payment state hint (adapters interpret ProviderHint).

@@ -7,7 +7,8 @@ import (
 )
 
 // PlaceholderLiveProviderKeys are registry keys registered as PlaceholderLiveProvider shells (not production-wired).
-var PlaceholderLiveProviderKeys = []string{"stripe", "momo", "zalopay", "vnpay"}
+// Live VN PSPs (momo/zalopay/vnpay/shopeepay/vietqr) are registered as WiredLiveProvider adapters in NewRegistry.
+var PlaceholderLiveProviderKeys = []string{"stripe"}
 
 const (
 	// PaymentModeSandbox is non-production PSP simulation (sandbox family keys).
@@ -43,14 +44,15 @@ type WiredLiveProvider interface {
 
 // DeploymentRuntime describes process-level payment capability (non-secret).
 type DeploymentRuntime struct {
-	PaymentEnv                string `json:"payment_env"`
-	PaymentMode               string `json:"payment_mode"`
-	CardQRProviderKey         string `json:"card_qr_provider_key,omitempty"`
-	CardQRProviderStatus      string `json:"card_qr_provider_status"`
-	CardQRSessionsAvailable   bool   `json:"card_qr_sessions_available"`
-	CashAllowedByDeployment   bool   `json:"cash_allowed_by_deployment"`
-	QRCardUnavailableReason   string `json:"qr_card_unavailable_reason,omitempty"`
-	DefaultSessionProviderKey string `json:"default_session_provider_key,omitempty"`
+	PaymentEnv                string   `json:"payment_env"`
+	PaymentMode               string   `json:"payment_mode"`
+	CardQRProviderKey         string   `json:"card_qr_provider_key,omitempty"`
+	CardQRProviderStatus      string   `json:"card_qr_provider_status"`
+	CardQRSessionsAvailable   bool     `json:"card_qr_sessions_available"`
+	CashAllowedByDeployment   bool     `json:"cash_allowed_by_deployment"`
+	QRCardUnavailableReason   string   `json:"qr_card_unavailable_reason,omitempty"`
+	DefaultSessionProviderKey string   `json:"default_session_provider_key,omitempty"`
+	EnabledProviders          []string `json:"enabled_providers,omitempty"`
 }
 
 // MachinePaymentMethodsView is the machine-facing payment method matrix for bootstrap/config.
@@ -61,6 +63,7 @@ type MachinePaymentMethodsView struct {
 	CardQRProviderKey       string
 	CardQRProviderStatus    string
 	QRCardUnavailableReason string
+	EnabledProviders        []string // allowlist ∩ wired session-capable keys
 }
 
 // IsPlaceholderLiveProviderKey reports whether key is a known unwired live PSP shell.
@@ -158,6 +161,7 @@ func DeploymentRuntimeFromConfig(cfg *config.Config, reg *Registry) DeploymentRu
 	if out.PaymentMode == PaymentModeLivePSP && !avail {
 		out.QRCardUnavailableReason = QRCardUnavailableReasonProviderUnavailable
 	}
+	out.EnabledProviders = enabledWiredProviders(cfg, reg)
 	return out
 }
 
@@ -184,6 +188,38 @@ func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlag
 	if !deploy.CardQRSessionsAvailable {
 		out.QRCardEnabled = false
 		out.QRCardUnavailableReason = QRCardUnavailableReasonProviderUnavailable
+	}
+	out.EnabledProviders = enabledWiredProviders(cfg, reg)
+	return out
+}
+
+func enabledWiredProviders(cfg *config.Config, reg *Registry) []string {
+	if cfg == nil || reg == nil {
+		return nil
+	}
+	keys := cfg.Commerce.AllowedPaymentProviders
+	if len(keys) == 0 {
+		if def := NormalizeProviderKey(cfg.Commerce.DefaultPaymentProvider); def != "" {
+			keys = []string{def}
+		}
+	}
+	var out []string
+	for _, k := range keys {
+		k = NormalizeProviderKey(k)
+		if k == "" || k == "cash" {
+			continue
+		}
+		p := reg.Get(k)
+		if p == nil || IsPlaceholderLiveProvider(p) {
+			continue
+		}
+		if w, ok := p.(WiredLiveProvider); ok && !w.LivePaymentWired() {
+			continue
+		}
+		if sandboxFamilyProviderKey(k) {
+			continue
+		}
+		out = append(out, k)
 	}
 	return out
 }

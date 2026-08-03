@@ -16,17 +16,21 @@ import (
 // CreateMachinePaymentSessionInput is the app-layer contract for vending gRPC payment sessions.
 // Untrusted vending fields (QR URLs, provider references, outbox JSON) must never be passed here.
 type CreateMachinePaymentSessionInput struct {
-	OrderID         uuid.UUID
-	MachineID       uuid.UUID
-	IdempotencyKey  string
-	ClientProvider  string
-	ClientPayState  string
-	AmountMinor     int64
-	Currency        string
-	AppEnv          config.AppEnvironment
-	OutboxTopic     string
-	OutboxEventType string
-	OutboxAggregate string
+	OrderID             uuid.UUID
+	MachineID           uuid.UUID
+	IdempotencyKey      string
+	ClientProvider      string
+	ClientPayState      string
+	AmountMinor         int64
+	Currency            string
+	AppEnv              config.AppEnvironment
+	OutboxTopic         string
+	OutboxEventType     string
+	OutboxAggregate     string
+	MachineExternalCode string // machine_code for AVF/TFO tenant selection
+	StoreID             string // terminal/store hint for PSP
+	ProviderReference   string // optional pre-assigned ref (legacy order_code)
+	PreferredMethod     string // e.g. vietqr when using zalopay adapter
 }
 
 // CreateMachinePaymentSessionResult returns provider-owned display material for the kiosk.
@@ -129,11 +133,15 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		}
 	}
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{
-		OrderID:        in.OrderID,
-		PaymentID:      payRes.Payment.ID,
-		AmountMinor:    o.TotalMinor,
-		Currency:       o.Currency,
-		IdempotencyKey: key,
+		OrderID:             in.OrderID,
+		PaymentID:           payRes.Payment.ID,
+		AmountMinor:         o.TotalMinor,
+		Currency:            o.Currency,
+		IdempotencyKey:      key,
+		MachineExternalCode: strings.TrimSpace(in.MachineExternalCode),
+		StoreID:             strings.TrimSpace(in.StoreID),
+		ProviderReference:   strings.TrimSpace(in.ProviderReference),
+		PreferredMethod:     strings.TrimSpace(in.PreferredMethod),
 	})
 	if err != nil {
 		return out, err

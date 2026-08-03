@@ -6,7 +6,18 @@ This document is the operator and Android handoff reference for **which payment 
 
 No live PSP (`stripe`, `momo`, `zalopay`, `vnpay`) is wired for outbound `CreatePaymentSession` in this release. Production **must** run `PAYMENT_ENV=cash_only` until Path A (real PSP) is implemented, registered as `WiredLiveProvider`, and field-tested.
 
-**Android rule:** show cash checkout only when `payment_methods.cash_enabled=true`. **Never** show QR/card unless `payment_methods.qr_card_enabled=true` (requires wired live PSP + `PAYMENT_ENV=live`).
+**Android rule:** show cash when payment_methods.cash_enabled=true. Show QR/card only when payment_methods.qr_card_enabled=true.
+
+**Recommended live allowlist (examples + apply_live_payment_app_node_env.sh):**
+
+`
+PAYMENT_ENV=live
+COMMERCE_PAYMENT_PROVIDER=momo
+COMMERCE_PAYMENT_PROVIDERS=momo,zalopay,vietqr,vnpay,shopeepay
+`
+
+Fill MOMO_* / ZALOPAY_* / VNP_* / SHOPEEPAY_* from the secret store. To revert to cash pilot, use pply_cash_only_payment_app_node_env.sh.
+
 
 ## Current production posture (Path B — explicit cash-only)
 
