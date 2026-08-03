@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # Ensure production app-node env uses live QR/card payment (MoMo/ZaloPay/VietQR/VNPay/ShopeePay).
 # Does not write PSP secrets — fill MOMO_* / ZALOPAY_* / VNP_* / SHOPEEPAY_* separately.
 # Usage: apply_live_payment_app_node_env.sh [path/to/.env.app-node]
