@@ -1,13 +1,13 @@
 name: Deploy Production
 
 # Primary topology: **two app VPS** (`app-node` rolling) plus optional **`data-node`** or **managed**
-# Postgres/Redis/NATS/object storage/MQTT â€” not legacy single-host `docker-compose.prod.yml` as the enterprise path.
+# Postgres/Redis/NATS/object storage/MQTT — not legacy single-host `docker-compose.prod.yml` as the enterprise path.
 # Develop branch automation does **not** deploy here; staging/pre-prod is **deploy-develop.yml** (after Security Release on develop).
 #
-# Production policy: this workflow is manual-only. Trigger is on.workflow_dispatch (Operators â†’ Actions
-# â†’ run workflow) on the main branch. There is no on.push, on.schedule, on.workflow_run, or other
+# Production policy: this workflow is manual-only. Trigger is on.workflow_dispatch (Operators → Actions
+# → run workflow) on the main branch. There is no on.push, on.schedule, on.workflow_run, or other
 # Release audit: production-release-audit-package (this workflow), release-audit-package (Build and Push),
-# security-release-audit-package (Security Release) â€” see docs/deployment/release-evidence-retention.md
+# security-release-audit-package (Security Release) — see docs/deployment/release-evidence-retention.md
 # automatic start for production. Operators provide build_run_id, security_release_run_id, digest-pinned
 # image refs, staging_evidence_id (run id of Staging Deployment Contract with artifact staging-deploy-evidence),
 # and confirmation text per the inputs below. Staging is the default release gate: without allow_missing_staging_evidence
@@ -77,7 +77,7 @@ on:
         default: ""
         type: string
       fleet_scale_target:
-        description: "Fleet scale target â€” storm load-test evidence required for scale-* (see telemetry-production-rollout.md)"
+        description: "Fleet scale target — storm load-test evidence required for scale-* (see telemetry-production-rollout.md)"
         required: false
         default: pilot
         type: choice
@@ -127,7 +127,7 @@ on:
         default: "168"
         type: string
       allow_missing_staging_evidence:
-        description: "TEMPORARY: allow production deploy without staging evidence (use only while staging gate is not enforceable). Requires missing_staging_evidence_reason. Default false â€” production stays strict for enterprise readiness."
+        description: "TEMPORARY: allow production deploy without staging evidence (use only while staging gate is not enforceable). Requires missing_staging_evidence_reason. Default false — production stays strict for enterprise readiness."
         required: false
         default: false
         type: boolean
@@ -483,7 +483,7 @@ jobs:
             recovery_pre="${INPUT_RECOVERY_PRE_DEPLOY_REASON:-}"
             recovery_pre="${recovery_pre//[[:space:]]/}"
             if [[ -n "${recovery_pre}" ]]; then
-              echo "::warning::PRE-DEPLOY SLO BYPASS (recovery_pre_deploy_reason) â€” reason: ${INPUT_RECOVERY_PRE_DEPLOY_REASON}"
+              echo "::warning::PRE-DEPLOY SLO BYPASS (recovery_pre_deploy_reason) — reason: ${INPUT_RECOVERY_PRE_DEPLOY_REASON}"
             fi
             allow_miss="${INPUT_ALLOW_MISSING_STAGING_EVIDENCE:-false}"
             stg_id="${INPUT_STAGING_EVIDENCE_ID:-}"
@@ -495,7 +495,7 @@ jobs:
               STAGING_EVIDENCE_BYPASSED="true"
               MISSING_STAGING_REASON_OUT="${reason_in}"
               STAGING_DIGEST_CROSS_CHECK_NOTE="BYPASS: staging evidence not validated (allow_missing_staging_evidence)"
-              echo "::warning::PRODUCTION STAGING GATE BYPASS (allow_missing_staging_evidence) â€” reason: ${reason_in}"
+              echo "::warning::PRODUCTION STAGING GATE BYPASS (allow_missing_staging_evidence) — reason: ${reason_in}"
               if [[ -n "${stg_id}" ]]; then
                 echo "::warning::staging_evidence_id (${stg_id}) was provided but is IGNORED when allow_missing_staging_evidence is true" >&2
               fi
@@ -559,7 +559,7 @@ jobs:
               if [[ -n "${ev_b}" && "${ev_b}" == "${BUILD_RUN_ID}" ]]; then
                 STAGING_DIGEST_CROSS_CHECK_NOTE="staging evidence build_run_id matches production build_run_id; image digests matched"
               else
-                STAGING_DIGEST_CROSS_CHECK_NOTE="staging build_run_id (${ev_b}) differs from production build_run_id (${BUILD_RUN_ID}) â€” image digests matched (typical: develop build vs main build for same release)"
+                STAGING_DIGEST_CROSS_CHECK_NOTE="staging build_run_id (${ev_b}) differs from production build_run_id (${BUILD_RUN_ID}) — image digests matched (typical: develop build vs main build for same release)"
               fi
               STAGING_RELEASE_GATE="validated"
               STAGING_EVIDENCE_WORKFLOW_RUN_ID="${stg_id}"
@@ -765,7 +765,7 @@ jobs:
               echo "### Previous production last-known-good"
               echo "- rollback_available: \`${rb:-false}\`"
               echo "- resolved from workflow run: [#${previous_run_number}](${previous_run_url})"
-              echo "- manual **rollback** workflow_dispatch â€” copy exactly (digest-pinned):"
+              echo "- manual **rollback** workflow_dispatch — copy exactly (digest-pinned):"
               echo '```'
               echo "rollback_app_image_ref: ${prev_app}"
               echo "rollback_goose_image_ref: ${prev_goose}"
@@ -914,11 +914,11 @@ jobs:
 
           if [[ "${ACTION_MODE}" == "deploy" && "${ROLLBACK_AVAILABLE:-false}" != "true" ]]; then
             {
-              echo "- rollback readiness: \`warn â€” no digest-pinned last-known-good image pair was resolved from a prior successful production run\`"
+              echo "- rollback readiness: \`warn — no digest-pinned last-known-good image pair was resolved from a prior successful production run\`"
               echo "- impact: \`if this deploy mutates live nodes and then fails, automatic rollback cannot repin containers to the prior release\`"
               echo "- mitigation: \`archive production-deployment-manifest artifacts externally, or complete one clean production deploy to publish a new manifest\`"
             } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning:: rollback_available=false â€” failed deploys cannot auto-revert without a prior production-deployment-manifest; see job summary"
+            echo "::warning:: rollback_available=false — failed deploys cannot auto-revert without a prior production-deployment-manifest; see job summary"
           fi
 
           if [[ -z "${PREVIOUS_APP_DIGEST}" || -z "${PREVIOUS_GOOSE_DIGEST}" ]]; then
@@ -1565,12 +1565,12 @@ jobs:
           rc=$?
           fleet_lc="$(printf '%s' "${FLEET_SCALE_TARGET:-pilot}" | tr '[:upper:]' '[:lower:]')"
           if [[ "${_bypass_lc}" == "true" && -n "${SCALE_GATE_BYPASS_REASON}" && "${fleet_lc}" != "pilot" ]]; then
-            echo "::warning:: Fleet scale storm gate BYPASSED â€” ${SCALE_GATE_BYPASS_REASON}"
+            echo "::warning:: Fleet scale storm gate BYPASSED — ${SCALE_GATE_BYPASS_REASON}"
             {
               echo ""
-              echo "### âš ï¸ OPERATOR BYPASS â€” fleet scale storm gate"
+              echo "### ⚠️ OPERATOR BYPASS — fleet scale storm gate"
               echo ""
-              echo "**ALLOW_SCALE_GATE_BYPASS=true** â€” telemetry storm evidence was **not** validated for this deploy."
+              echo "**ALLOW_SCALE_GATE_BYPASS=true** — telemetry storm evidence was **not** validated for this deploy."
               echo ""
               echo "**fleet_scale_target:** \`${FLEET_SCALE_TARGET}\`"
               echo ""
@@ -1911,7 +1911,7 @@ jobs:
             [[ -n "${found}" ]] || fail "archive did not contain backup-evidence/backup-evidence.json (or backup-evidence.json)"
             ev_file="${found}"
           else
-            fail "backup_evidence_id must be only digits (GitHub Actions run id) or path:relative/path/backup-evidence.json â€” got unsupported value (see docs/production/production-backup-restore-drill.md)"
+            fail "backup_evidence_id must be only digits (GitHub Actions run id) or path:relative/path/backup-evidence.json — got unsupported value (see docs/production/production-backup-restore-drill.md)"
           fi
 
           python3 scripts/ci/validate_backup_evidence.py --for-production-migration --expect-repository "${GITHUB_REPOSITORY}" "${ev_file}"
@@ -2958,7 +2958,7 @@ jobs:
           write_rollback_outputs
 
           if [[ "${rollback_attempted}" == "true" && "${rollback_rc}" -ne 0 ]]; then
-            echo "error: automatic rollback did not complete successfully (rollback_result=failed); verify cluster state and runbooks â€” do not assume production was restored." >&2
+            echo "error: automatic rollback did not complete successfully (rollback_result=failed); verify cluster state and runbooks — do not assume production was restored." >&2
             exit 1
           fi
 

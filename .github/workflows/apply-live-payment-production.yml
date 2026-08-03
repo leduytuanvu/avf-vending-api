@@ -1,8 +1,7 @@
 name: Apply Live Payment Production Env
 
-# Applies PAYMENT_ENV=live + MoMo/ZaloPay/VietQR allowlist on app-node env, restarts api, verifies /version.
-# Prerequisite: production image must register WiredLiveProvider for momo (not placeholder). Current
-# cash_only image (momo as PlaceholderLiveProvider) will fail this workflow and auto-revert to cash_only.
+# Applies PAYMENT_ENV=live + MoMo/ZaloPay/VietQR/VNPay/ShopeePay allowlist on app-node env,
+# restarts api, verifies /version. Prerequisite: production image registers WiredLiveProvider.
 
 on:
   workflow_dispatch:
@@ -148,7 +147,7 @@ jobs:
             echo "Apply Live Payment: PASS (payment_mode=live_psp, sessions available)"
             exit 0
           fi
-          echo "::error::Live payment verification failed ΓÇö reverting PAYMENT_ENV=cash_only"
+          echo "::error::Live payment verification failed - reverting PAYMENT_ENV=cash_only"
           revert_one() {
             local host="$1"
             local target="${SSH_USER}@${host}"

@@ -71,7 +71,6 @@ func sandboxFamilyProviderKey(key string) bool {
 
 // ResolveForPaymentSession is implemented in resolve.go (multi-provider allowlist).
 
-
 // DeploymentRuntime returns non-secret deployment payment capability for ops/version endpoints.
 func (r *Registry) DeploymentRuntime(cfg *config.Config) DeploymentRuntime {
 	return DeploymentRuntimeFromConfig(cfg, r)
