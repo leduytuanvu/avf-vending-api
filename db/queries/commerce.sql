@@ -659,23 +659,6 @@ RETURNING
     payload,
     created_at;
 
--- name: GetPaymentByProviderReference :one
-SELECT
-    p.id AS payment_id,
-    p.order_id,
-    p.provider,
-    p.state AS payment_state,
-    p.amount_minor,
-    p.currency,
-    pa.provider_reference,
-    o.machine_id
-FROM payment_attempts pa
-INNER JOIN payments p ON p.id = pa.payment_id
-INNER JOIN orders o ON o.id = p.order_id
-WHERE pa.provider_reference = $1
-ORDER BY pa.created_at DESC
-LIMIT 1;
-
 -- name: UpdatePaymentStateForReconciliation :one
 UPDATE payments
 SET

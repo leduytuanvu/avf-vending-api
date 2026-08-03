@@ -362,15 +362,17 @@ grep -qF "uses: actions/checkout@" "${WF}/build-push.yml" || fail "build-push.ym
 pbd_block="$(
   awk '/^  publish-build-metadata:/{p=1;next} p && /^  [a-zA-Z0-9_-]+:/{exit} p' "${WF}/build-push.yml"
 )"
-printf '%s\n' "${pbd_block}" | grep -qE '^[[:space:]]*permissions:' || fail "build-push.yml job publish-build-metadata must declare a permissions: block"
+# Use here-strings (not printf|grep) so set -o pipefail cannot false-fail on SIGPIPE
+# when grep -q exits early on a large publish-build-metadata job block.
+grep -qE '^[[:space:]]*permissions:' <<<"${pbd_block}" || fail "build-push.yml job publish-build-metadata must declare a permissions: block"
 pbd_perm_slice="$(
-  printf '%s\n' "${pbd_block}" | awk '/^[[:space:]]*permissions:/{p=1;next} p && /^[[:space:]]*steps:/{exit} p'
+  awk '/^[[:space:]]*permissions:/{p=1;next} p && /^[[:space:]]*steps:/{exit} p' <<<"${pbd_block}"
 )"
-printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*contents:[[:space:]]*read[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set contents: read (GITHUB_TOKEN default does not allow checkout when job permissions are explicit without contents)"
-printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*actions:[[:space:]]*write[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set actions: write (upload-artifact / download-artifact)"
-printf '%s\n' "${pbd_perm_slice}" | grep -qE '^[[:space:]]*packages:[[:space:]]*read[[:space:]]*$' || fail "build-push.yml job publish-build-metadata must set packages: read (GHCR image pull for SBOM)"
+grep -qE '^[[:space:]]*contents:[[:space:]]*read[[:space:]]*$' <<<"${pbd_perm_slice}" || fail "build-push.yml job publish-build-metadata must set contents: read (GITHUB_TOKEN default does not allow checkout when job permissions are explicit without contents)"
+grep -qE '^[[:space:]]*actions:[[:space:]]*write[[:space:]]*$' <<<"${pbd_perm_slice}" || fail "build-push.yml job publish-build-metadata must set actions: write (upload-artifact / download-artifact)"
+grep -qE '^[[:space:]]*packages:[[:space:]]*read[[:space:]]*$' <<<"${pbd_perm_slice}" || fail "build-push.yml job publish-build-metadata must set packages: read (GHCR image pull for SBOM)"
 pbd_key_count="$(
-  printf '%s\n' "${pbd_perm_slice}" | grep -E -c '^[[:space:]]+[a-zA-Z0-9_-]+:[[:space:]]*[^[:space:]]' || true
+  grep -E -c '^[[:space:]]+[a-zA-Z0-9_-]+:[[:space:]]*[^[:space:]]' <<<"${pbd_perm_slice}" || true
 )"
 [[ "${pbd_key_count}" -eq 3 ]] || fail "build-push.yml job publish-build-metadata must declare exactly three permission keys (contents: read, actions: write, packages: read); found ${pbd_key_count} key line(s) under permissions"
 
