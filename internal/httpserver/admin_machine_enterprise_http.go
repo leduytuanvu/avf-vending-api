@@ -726,11 +726,41 @@ func deviceAttachmentJSON(att db.MachineDeviceAttachment) map[string]any {
 	if att.AndroidID.Valid {
 		out["android_id"] = att.AndroidID.String
 	}
+	if att.AndroidSerial.Valid {
+		out["android_serial"] = att.AndroidSerial.String
+	}
 	if att.BoardSerial.Valid {
 		out["board_serial"] = att.BoardSerial.String
 	}
+	if att.DeviceSerial.Valid {
+		out["device_serial"] = att.DeviceSerial.String
+	}
+	if att.SimSerial.Valid {
+		out["sim_serial"] = att.SimSerial.String
+	}
 	if att.SimIccid.Valid {
 		out["sim_iccid"] = att.SimIccid.String
+	}
+	if att.SimOperator.Valid {
+		out["sim_operator"] = att.SimOperator.String
+	}
+	if att.SimCountryIso.Valid {
+		out["sim_country_iso"] = att.SimCountryIso.String
+	}
+	if att.Manufacturer.Valid {
+		out["manufacturer"] = att.Manufacturer.String
+	}
+	if att.Model.Valid {
+		out["model"] = att.Model.String
+	}
+	if att.PackageName.Valid {
+		out["package_name"] = att.PackageName.String
+	}
+	if att.VersionName.Valid {
+		out["version_name"] = att.VersionName.String
+	}
+	if att.VersionCode.Valid {
+		out["version_code"] = att.VersionCode.Int64
 	}
 	return out
 }
