@@ -484,9 +484,9 @@ func extractReportedMachineID(detail []byte) string {
 		return ""
 	}
 	var envelope struct {
-		MachineID string `json:"machineId"`
-		MachineIDSnake string `json:"machine_id"`
-		Payload   map[string]string `json:"payload"`
+		MachineID      string            `json:"machineId"`
+		MachineIDSnake string            `json:"machine_id"`
+		Payload        map[string]string `json:"payload"`
 	}
 	if err := json.Unmarshal(detail, &envelope); err != nil {
 		return ""
