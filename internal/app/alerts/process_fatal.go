@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +30,7 @@ func ReportProcessTerminalError(log *zap.Logger, reporter *ServerErrorReporter, 
 		)
 	}
 	reporter.Report(ctx, ServerAlert{
-		OccurrenceID: fmt.Sprintf("process_fatal:%s:%s", strings.TrimSpace(service), uuid.NewString()),
+		OccurrenceID: fmt.Sprintf("process_fatal:%s:%s", strings.TrimSpace(service), id.NewUUIDV7String()),
 		Severity:     "critical",
 		Code:         "process_terminal_failure",
 		Title:        "Process stopped with unexpected error",

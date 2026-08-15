@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -67,7 +67,7 @@ func (r *ServerErrorReporter) Report(ctx context.Context, in ServerAlert) {
 	}
 	occ := strings.TrimSpace(in.OccurrenceID)
 	if occ == "" {
-		occ = uuid.NewString()
+		occ = id.NewUUIDV7String()
 	}
 	title := strings.TrimSpace(in.Title)
 	if title == "" {

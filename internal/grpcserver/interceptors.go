@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/observability/grpcprom"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/ratelimit"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
@@ -118,7 +119,7 @@ func reportGRPCServerFailure(ctx context.Context, info *grpc.UnaryServerInfo, er
 		codeStr = "grpc_panic"
 	}
 	alert := alerts.ServerAlert{
-		OccurrenceID:  uuid.NewString(),
+		OccurrenceID:  id.NewUUIDV7String(),
 		Severity:      "high",
 		Code:          codeStr,
 		Title:         title,
@@ -175,7 +176,7 @@ func unaryRequestMetaInterceptor() grpc.UnaryServerInterceptor {
 		md, _ := metadata.FromIncomingContext(ctx)
 		requestID := firstMetadata(md, "x-request-id", "request-id")
 		if requestID == "" {
-			requestID = uuid.NewString()
+			requestID = id.NewUUIDV7String()
 		}
 		correlationID := firstMetadata(md, "x-correlation-id", "correlation-id")
 		if correlationID == "" {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
@@ -229,7 +230,7 @@ func (s *Store) ProjectMachineIncident(ctx context.Context, in alerts.ProjectInp
 		occurrenceID = alerts.ExtractOccurrenceIDFromDetail(in.Detail)
 	}
 	if occurrenceID == "" {
-		occurrenceID = "legacy:" + uuid.NewString()
+		occurrenceID = "legacy:" + id.NewUUIDV7String()
 	}
 	in.OccurrenceID = occurrenceID
 
