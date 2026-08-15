@@ -163,14 +163,20 @@ func main() {
 				log.Error("telemetry jetstream workers exited", zap.Error(err))
 			}
 		}()
+		if cfg.Telegram.AppUsesLegacyChatFallback() {
+			log.Warn("telegram legacy shared chat id fallback in use", zap.String("source", "app"))
+		}
+		if cfg.Telegram.ServerUsesLegacyChatFallback() {
+			log.Warn("telegram legacy shared chat id fallback in use", zap.String("source", "server"))
+		}
 		telegramDispatcher := alerts.NewTelegramDispatcher(log, nc.Conn, alerts.BotRouter{
 			App: platformtelegram.NewClient(platformtelegram.Config{
 				BotToken: cfg.Telegram.AppToken(),
-				ChatID:   cfg.Telegram.AlertChatID,
+				ChatID:   cfg.Telegram.AppChatID(),
 			}),
 			Server: platformtelegram.NewClient(platformtelegram.Config{
 				BotToken: cfg.Telegram.ServerToken(),
-				ChatID:   cfg.Telegram.AlertChatID,
+				ChatID:   cfg.Telegram.ServerChatID(),
 			}),
 		}, alerts.TelegramDispatcherConfig{
 			Required: cfg.Telegram.Required,

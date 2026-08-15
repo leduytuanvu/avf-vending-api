@@ -16,7 +16,7 @@ func NewReporter(log *zap.Logger, cfg *config.Config, pool *pgxpool.Pool) *alert
 	}
 	return alerts.NewServerErrorReporter(log, pool, platformtelegram.NewClient(platformtelegram.Config{
 		BotToken: cfg.Telegram.ServerToken(),
-		ChatID:   cfg.Telegram.AlertChatID,
+		ChatID:   cfg.Telegram.ServerChatID(),
 	}))
 }
 
