@@ -29,6 +29,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts/processalert"
 	"github.com/avf/avf-vending-api/internal/bootstrap"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/observability"
@@ -59,6 +60,7 @@ func main() {
 	defer stop()
 
 	if err := bootstrap.RunAPI(ctx, cfg, log); err != nil && !errors.Is(err, context.Canceled) {
+		processalert.ReportTerminal(log, cfg, nil, "api", err)
 		log.Fatal("api stopped with error", zap.Error(err))
 	}
 

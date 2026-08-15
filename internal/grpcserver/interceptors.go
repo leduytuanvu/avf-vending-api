@@ -7,10 +7,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/observability/grpcprom"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/ratelimit"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
@@ -21,6 +23,20 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+var grpcServerAlertReporter *alerts.ServerErrorReporter
+
+// test-only hook so unit tests can observe pages without a real Telegram client.
+var grpcServerAlertTestHook func(alerts.ServerAlert)
+
+// SetGRPCServerAlertReporter wires optional SERVER Telegram reporting for unexpected gRPC failures.
+func SetGRPCServerAlertReporter(r *alerts.ServerErrorReporter) {
+	grpcServerAlertReporter = r
+}
+
+func setGRPCServerAlertTestHook(fn func(alerts.ServerAlert)) {
+	grpcServerAlertTestHook = fn
+}
 
 type grpcMetaContextKey struct{}
 
@@ -64,6 +80,7 @@ func chainUnaryInterceptors(cfg *config.Config, log *zap.Logger, validator auth.
 	}
 	return grpc.ChainUnaryInterceptor(
 		unaryRecoveryInterceptor(log),
+		unaryServerAlertInterceptor(),
 		grpcprom.UnaryServerInterceptor(),
 		unaryRequestMetaInterceptor(),
 		unaryAccessLogInterceptor(log),
@@ -72,6 +89,63 @@ func chainUnaryInterceptors(cfg *config.Config, log *zap.Logger, validator auth.
 		newUnaryMachineReplayInterceptor(cfg, replayLedger),
 		unaryMachineHotRPCInterceptor(cfg, rlBackend),
 	)
+}
+
+func unaryServerAlertInterceptor() grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+		resp, err := handler(ctx, req)
+		reportGRPCServerFailure(ctx, info, err, false)
+		return resp, err
+	}
+}
+
+func reportGRPCServerFailure(ctx context.Context, info *grpc.UnaryServerInfo, err error, fromPanic bool) {
+	if err == nil && !fromPanic {
+		return
+	}
+	code := status.Code(err)
+	if !fromPanic && !shouldPageGRPCCode(code) {
+		return
+	}
+	meta, _ := GRPCRequestMetaFromContext(ctx)
+	method := ""
+	if info != nil {
+		method = info.FullMethod
+	}
+	title := "Unexpected gRPC failure"
+	codeStr := "grpc_server_error"
+	if fromPanic {
+		title = "gRPC panic recovered"
+		codeStr = "grpc_panic"
+	}
+	alert := alerts.ServerAlert{
+		OccurrenceID:  id.NewUUIDV7String(),
+		Severity:      "high",
+		Code:          codeStr,
+		Title:         title,
+		Service:       "api-grpc",
+		Operation:     method,
+		CorrelationID: meta.CorrelationID,
+		Detail: map[string]string{
+			"grpc_code": code.String(),
+			"method":    method,
+		},
+	}
+	if grpcServerAlertTestHook != nil {
+		grpcServerAlertTestHook(alert)
+	}
+	if grpcServerAlertReporter != nil {
+		grpcServerAlertReporter.Report(ctx, alert)
+	}
+}
+
+func shouldPageGRPCCode(code codes.Code) bool {
+	switch code {
+	case codes.Internal, codes.Unknown, codes.DataLoss, codes.Unavailable:
+		return true
+	default:
+		return false
+	}
 }
 
 func unaryRecoveryInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
@@ -90,6 +164,7 @@ func unaryRecoveryInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 					zap.ByteString("stack", debug.Stack()),
 				)
 				err = status.Errorf(codes.Internal, "internal error")
+				reportGRPCServerFailure(ctx, info, err, true)
 			}
 		}()
 		return handler(ctx, req)
@@ -101,7 +176,7 @@ func unaryRequestMetaInterceptor() grpc.UnaryServerInterceptor {
 		md, _ := metadata.FromIncomingContext(ctx)
 		requestID := firstMetadata(md, "x-request-id", "request-id")
 		if requestID == "" {
-			requestID = uuid.NewString()
+			requestID = id.NewUUIDV7String()
 		}
 		correlationID := firstMetadata(md, "x-correlation-id", "correlation-id")
 		if correlationID == "" {

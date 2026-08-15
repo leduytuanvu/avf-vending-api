@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/activation"
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
@@ -47,6 +48,9 @@ type MachineGRPCServicesDeps struct {
 	PaymentRuntime MachinePaymentRuntimeSource
 	// TelemetryStore applies vend-success inventory decrements (same Store as HTTP TelemetryStore).
 	TelemetryStore *postgres.Store
+	// IncidentProjector optionally overrides TelemetryStore for incident projection (tests / heal hooks).
+	// When nil, TelemetryStore is used.
+	IncidentProjector alerts.IncidentProjector
 	// MediaStore issues fresh presigned HTTPS URLs for catalog/media manifests when wired (nil keeps DB URLs).
 	MediaStore objectstore.Store
 	// MediaPresignTTL is the presigned GET lifetime for MediaStore refresh (typically cfg.Artifacts.DownloadPresignTTL).

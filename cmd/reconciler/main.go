@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts/processalert"
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"
 	"github.com/avf/avf-vending-api/internal/bootstrap"
 	"github.com/avf/avf-vending-api/internal/config"
@@ -132,6 +133,7 @@ func main() {
 	)
 
 	if err := appbackground.RunReconciler(ctx, deps); err != nil && !errors.Is(err, context.Canceled) {
+		processalert.ReportTerminal(log, cfg, pool, "reconciler", err)
 		log.Fatal("reconciler stopped with error", zap.Error(err))
 	}
 

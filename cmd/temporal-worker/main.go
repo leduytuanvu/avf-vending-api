@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts/processalert"
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	"github.com/avf/avf-vending-api/internal/bootstrap"
 	"github.com/avf/avf-vending-api/internal/config"
@@ -131,6 +132,7 @@ func main() {
 		w.Stop()
 	}()
 	if err := platformtemporal.RunInteractive(w); err != nil && !errors.Is(err, context.Canceled) {
+		processalert.ReportTerminal(log, cfg, pool, "temporal-worker", err)
 		log.Fatal("temporal worker stopped with error", zap.Error(err))
 	}
 	log.Info("temporal worker stopped cleanly")

@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
+	"github.com/avf/avf-vending-api/internal/app/alerts/processalert"
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"
 	appreliability "github.com/avf/avf-vending-api/internal/app/reliability"
 	"github.com/avf/avf-vending-api/internal/app/telemetryapp"
@@ -23,6 +25,7 @@ import (
 	platformdb "github.com/avf/avf-vending-api/internal/platform/db"
 	platformnats "github.com/avf/avf-vending-api/internal/platform/nats"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
+	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
 	"github.com/joho/godotenv"
 	natssrv "github.com/nats-io/nats.go"
 	"go.uber.org/zap"
@@ -150,6 +153,7 @@ func main() {
 			JS:        nc.JS,
 			Store:     store,
 			Telemetry: cfg.TelemetryJetStream,
+			Alerts:    cfg.Telegram,
 			Limits:    jsLim,
 		})
 		telemetryWorkers = tw
@@ -157,6 +161,24 @@ func main() {
 		go func() {
 			if err := tw.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				log.Error("telemetry jetstream workers exited", zap.Error(err))
+			}
+		}()
+		telegramDispatcher := alerts.NewTelegramDispatcher(log, nc.Conn, alerts.BotRouter{
+			App: platformtelegram.NewClient(platformtelegram.Config{
+				BotToken: cfg.Telegram.AppToken(),
+				ChatID:   cfg.Telegram.AlertChatID,
+			}),
+			Server: platformtelegram.NewClient(platformtelegram.Config{
+				BotToken: cfg.Telegram.ServerToken(),
+				ChatID:   cfg.Telegram.AlertChatID,
+			}),
+		}, alerts.TelegramDispatcherConfig{
+			Required: cfg.Telegram.Required,
+			Enabled:  cfg.Telegram.Enabled,
+		})
+		go func() {
+			if err := telegramDispatcher.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+				log.Error("telegram alert dispatcher exited", zap.Error(err))
 			}
 		}()
 	}
@@ -364,6 +386,7 @@ func main() {
 	)
 
 	if err := appbackground.RunWorker(ctx, deps); err != nil && !errors.Is(err, context.Canceled) {
+		processalert.ReportTerminal(log, cfg, pool, "worker", err)
 		log.Fatal("worker stopped with error", zap.Error(err))
 	}
 

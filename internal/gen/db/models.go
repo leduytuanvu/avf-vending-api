@@ -825,6 +825,26 @@ type MachineIncident struct {
 	DedupeKey pgtype.Text
 	OpenedAt  time.Time
 	UpdatedAt time.Time
+	// Count of distinct logical occurrences for this grouped incident (fingerprint/dedupe_key).
+	OccurrenceCount int64
+	// When a Telegram notification intent was last queued; independent of updated_at/last_seen.
+	LastAlertedAt pgtype.Timestamptz
+}
+
+// One row per logical App/backend machine incident occurrence; cross-transport dedupe by (machine_id, occurrence_id).
+type MachineIncidentOccurrence struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	MachineIncidentID pgtype.UUID
+	OccurrenceID      string
+	DedupeKey         string
+	Severity          string
+	Code              string
+	Title             pgtype.Text
+	Detail            []byte
+	SourceTransport   string
+	OccurredAt        time.Time
+	ReceivedAt        time.Time
 }
 
 // Active TCN lane merge pairs (double-wide slots); split sets is_active=false.

@@ -2044,7 +2044,9 @@ CREATE TABLE machine_incidents (
     detail jsonb NOT NULL DEFAULT '{}'::jsonb,
     dedupe_key text,
     opened_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    occurrence_count bigint NOT NULL DEFAULT 1,
+    last_alerted_at timestamptz NULL
 );
 
 CREATE UNIQUE INDEX ux_machine_incidents_machine_dedupe ON machine_incidents (machine_id, dedupe_key)
@@ -2055,6 +2057,37 @@ WHERE
 CREATE INDEX ix_machine_incidents_machine_opened ON machine_incidents (machine_id, opened_at DESC);
 
 COMMENT ON TABLE machine_incidents IS 'Operational/security incidents promoted from telemetry; not raw high-frequency logs.';
+
+COMMENT ON COLUMN machine_incidents.occurrence_count IS 'Count of distinct logical occurrences for this grouped incident (fingerprint/dedupe_key).';
+
+COMMENT ON COLUMN machine_incidents.last_alerted_at IS 'When a Telegram notification intent was last queued; independent of updated_at/last_seen.';
+
+CREATE TABLE machine_incident_occurrences (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    machine_incident_id uuid NULL REFERENCES machine_incidents (id) ON DELETE SET NULL,
+    occurrence_id text NOT NULL,
+    dedupe_key text NOT NULL,
+    severity text NOT NULL,
+    code text NOT NULL,
+    title text,
+    detail jsonb NOT NULL DEFAULT '{}'::jsonb,
+    source_transport text NOT NULL DEFAULT '',
+    occurred_at timestamptz NOT NULL DEFAULT now(),
+    received_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ck_machine_incident_occurrences_occurrence_id_nonempty CHECK (btrim(occurrence_id) <> ''),
+    CONSTRAINT ck_machine_incident_occurrences_dedupe_nonempty CHECK (btrim(dedupe_key) <> '')
+);
+
+CREATE UNIQUE INDEX ux_machine_incident_occurrences_machine_occurrence ON machine_incident_occurrences (machine_id, occurrence_id);
+
+CREATE INDEX ix_machine_incident_occurrences_machine_received ON machine_incident_occurrences (machine_id, received_at DESC);
+
+CREATE INDEX ix_machine_incident_occurrences_incident ON machine_incident_occurrences (machine_incident_id)
+WHERE
+    machine_incident_id IS NOT NULL;
+
+COMMENT ON TABLE machine_incident_occurrences IS 'One row per logical App/backend machine incident occurrence; cross-transport dedupe by (machine_id, occurrence_id).';
 
 CREATE TABLE telemetry_rollups (
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,

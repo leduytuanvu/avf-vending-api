@@ -3,12 +3,15 @@ package httpserver
 import (
 	"context"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -18,6 +21,65 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+var httpServerAlertReporter *alerts.ServerErrorReporter
+
+// test-only hook so unit tests can observe pages without Telegram/outbox.
+var httpServerAlertTestHook func(alerts.ServerAlert)
+
+type httpServerAlertAlreadyReportedKey struct{}
+
+// SetHTTPServerAlertReporter wires optional SERVER Telegram reporting for unexpected HTTP 5xx.
+func SetHTTPServerAlertReporter(r *alerts.ServerErrorReporter) {
+	httpServerAlertReporter = r
+}
+
+func emitHTTPServerAlert(ctx context.Context, alert alerts.ServerAlert) {
+	if httpServerAlertTestHook != nil {
+		httpServerAlertTestHook(alert)
+	}
+	if httpServerAlertReporter != nil {
+		httpServerAlertReporter.Report(ctx, alert)
+	}
+}
+
+// recoverServerAlertMiddleware recovers panics, writes a safe 500, and pages SERVER once.
+// It marks the request so requestLoggingMiddleware does not double-report the recovered 500.
+func recoverServerAlertMiddleware(base *zap.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if rec := recover(); rec != nil {
+					log := observability.LoggerFromContext(r.Context(), base)
+					if log == nil {
+						log = zap.NewNop()
+					}
+					log.Error("http panic recovered",
+						zap.Any("panic", rec),
+						zap.String("path", r.URL.Path),
+						zap.String("method", r.Method),
+					)
+					alert := alerts.ServerAlert{
+						OccurrenceID: id.NewUUIDV7String(),
+						Severity:     "high",
+						Code:         "http_panic",
+						Title:        "HTTP panic recovered",
+						Service:      "api",
+						Operation:    r.Method + " " + routeLabel(r),
+						Detail: map[string]string{
+							"path": r.URL.Path,
+						},
+					}
+					emitHTTPServerAlert(r.Context(), alert)
+					ctx := context.WithValue(r.Context(), httpServerAlertAlreadyReportedKey{}, true)
+					*r = *r.WithContext(ctx)
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				}
+			}()
+			next.ServeHTTP(w, r)
+		})
+	}
+}
 
 func traceMiddleware() func(http.Handler) http.Handler {
 	tracer := otel.Tracer("github.com/avf/avf-vending-api/internal/httpserver")
@@ -119,6 +181,22 @@ func requestLoggingMiddleware(base *zap.Logger) func(http.Handler) http.Handler 
 			switch {
 			case ww.Status() >= http.StatusInternalServerError:
 				log.Error("http_request", fields...)
+				if r.Context().Value(httpServerAlertAlreadyReportedKey{}) != nil {
+					break
+				}
+				alert := alerts.ServerAlert{
+					OccurrenceID: id.NewUUIDV7String(),
+					Severity:     "high",
+					Code:         "http_5xx",
+					Title:        "Unexpected HTTP 5xx",
+					Service:      "api",
+					Operation:    r.Method + " " + routeLabel(r),
+					Detail: map[string]string{
+						"status": strconv.Itoa(ww.Status()),
+						"path":   r.URL.Path,
+					},
+				}
+				emitHTTPServerAlert(r.Context(), alert)
 			default:
 				log.Debug("http_request", fields...)
 			}
