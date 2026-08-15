@@ -121,12 +121,18 @@ type OutboxConfig struct {
 }
 
 // TelegramAlertsConfig controls Telegram delivery of machine/server incident alerts.
-// Tokens are server-side only. Legacy TELEGRAM_BOT_TOKEN falls back to APP bot only.
+// Tokens and chat destinations are server-side only.
+// Legacy TELEGRAM_BOT_TOKEN falls back to APP bot only (never SERVER).
+// Legacy TELEGRAM_ALERT_CHAT_ID falls back independently for APP and SERVER chats
+// when the source-specific chat env vars are unset (never APP↔SERVER cross-fallback).
 type TelegramAlertsConfig struct {
-	Enabled          bool
-	Required         bool
-	AppBotToken      string
-	ServerBotToken   string
+	Enabled           bool
+	Required          bool
+	AppBotToken       string
+	ServerBotToken    string
+	AppAlertChatID    string
+	ServerAlertChatID string
+	// AlertChatID is TELEGRAM_ALERT_CHAT_ID — deprecated shared fallback only.
 	AlertChatID      string
 	IncidentCooldown time.Duration
 	RepeatMode       string // every|aggregate
@@ -145,6 +151,45 @@ func (c TelegramAlertsConfig) AppToken() string {
 // ServerToken returns the SERVER bot token (never falls back to legacy APP token).
 func (c TelegramAlertsConfig) ServerToken() string {
 	return strings.TrimSpace(c.ServerBotToken)
+}
+
+// AppChatID returns the APP alert chat ID (TELEGRAM_APP_ALERT_CHAT_ID, else legacy TELEGRAM_ALERT_CHAT_ID).
+func (c TelegramAlertsConfig) AppChatID() string {
+	if strings.TrimSpace(c.AppAlertChatID) != "" {
+		return strings.TrimSpace(c.AppAlertChatID)
+	}
+	return strings.TrimSpace(c.AlertChatID)
+}
+
+// ServerChatID returns the SERVER alert chat ID (TELEGRAM_SERVER_ALERT_CHAT_ID, else legacy TELEGRAM_ALERT_CHAT_ID).
+func (c TelegramAlertsConfig) ServerChatID() string {
+	if strings.TrimSpace(c.ServerAlertChatID) != "" {
+		return strings.TrimSpace(c.ServerAlertChatID)
+	}
+	return strings.TrimSpace(c.AlertChatID)
+}
+
+// AppUsesLegacyChatFallback reports whether APP chat resolved from deprecated TELEGRAM_ALERT_CHAT_ID.
+func (c TelegramAlertsConfig) AppUsesLegacyChatFallback() bool {
+	return strings.TrimSpace(c.AppAlertChatID) == "" && strings.TrimSpace(c.AlertChatID) != ""
+}
+
+// ServerUsesLegacyChatFallback reports whether SERVER chat resolved from deprecated TELEGRAM_ALERT_CHAT_ID.
+func (c TelegramAlertsConfig) ServerUsesLegacyChatFallback() bool {
+	return strings.TrimSpace(c.ServerAlertChatID) == "" && strings.TrimSpace(c.AlertChatID) != ""
+}
+
+func (c TelegramAlertsConfig) validate() error {
+	if !c.Enabled || !c.Required {
+		return nil
+	}
+	if c.AppToken() == "" || c.AppChatID() == "" {
+		return errors.New("config: TELEGRAM_ALERTS_REQUIRED=true requires APP bot token (TELEGRAM_APP_BOT_TOKEN or legacy TELEGRAM_BOT_TOKEN) and resolved APP chat (TELEGRAM_APP_ALERT_CHAT_ID or legacy TELEGRAM_ALERT_CHAT_ID)")
+	}
+	if c.ServerToken() == "" || c.ServerChatID() == "" {
+		return errors.New("config: TELEGRAM_ALERTS_REQUIRED=true requires TELEGRAM_SERVER_BOT_TOKEN and resolved SERVER chat (TELEGRAM_SERVER_ALERT_CHAT_ID or legacy TELEGRAM_ALERT_CHAT_ID)")
+	}
+	return nil
 }
 
 // Config is the complete process configuration loaded from the environment.
@@ -740,6 +785,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Outbox.validate(); err != nil {
+		return err
+	}
+	if err := c.Telegram.validate(); err != nil {
 		return err
 	}
 	if c.Outbox.PublisherRequired && strings.TrimSpace(c.NATS.URL) == "" {
@@ -1996,6 +2044,8 @@ func Load() (*Config, error) {
 			AppBotToken:        strings.TrimSpace(os.Getenv("TELEGRAM_APP_BOT_TOKEN")),
 			ServerBotToken:     strings.TrimSpace(os.Getenv("TELEGRAM_SERVER_BOT_TOKEN")),
 			DeprecatedBotToken: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")),
+			AppAlertChatID:     strings.TrimSpace(os.Getenv("TELEGRAM_APP_ALERT_CHAT_ID")),
+			ServerAlertChatID:  strings.TrimSpace(os.Getenv("TELEGRAM_SERVER_ALERT_CHAT_ID")),
 			AlertChatID:        strings.TrimSpace(os.Getenv("TELEGRAM_ALERT_CHAT_ID")),
 			IncidentCooldown:   mustParseDuration("TELEGRAM_INCIDENT_COOLDOWN", getenv("TELEGRAM_INCIDENT_COOLDOWN", "15m")),
 			RepeatMode:         getenv("TELEGRAM_INCIDENT_REPEAT_MODE", "every"),
