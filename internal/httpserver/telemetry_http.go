@@ -3,10 +3,13 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/app/api"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
@@ -27,6 +30,7 @@ func mountMachineTelemetryRoutes(r chi.Router, app *api.HTTPApplication, abuse *
 	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/snapshot", telemetrySnapshotHandler(st))
 	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/incidents", telemetryIncidentsHandler(st))
 	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId"), auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermTelemetryRead)).Get("/machines/{machineId}/telemetry/rollups", telemetryRollupsHandler(st))
+	r.With(abuse.MachineScoped(), RequireMachineCompanyAccess(app, "machineId")).Post("/machines/{machineId}/incidents", postMachineIncidentHandler(st, app.IncidentAlertPolicy))
 }
 
 func telemetrySnapshotHandler(st *postgres.Store) http.HandlerFunc {
@@ -103,6 +107,50 @@ func telemetryIncidentsHandler(st *postgres.Store) http.HandlerFunc {
 				Limit:    limit,
 				Returned: len(items),
 			},
+		})
+	}
+}
+
+// postMachineIncidentHandler accepts direct machine incident reports and is idempotent by dedupe_key/fingerprint.
+func postMachineIncidentHandler(st *postgres.Store, policy alerts.Policy) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
+		if err != nil || !json.Valid(body) {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "request body must be valid JSON")
+			return
+		}
+		severity, code, title, dedupe, err := postgres.ParseIncidentPayload(body)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_incident", err.Error())
+			return
+		}
+		occurrenceID := alerts.ExtractOccurrenceIDFromDetail(body)
+		_, err = st.ProjectMachineIncident(r.Context(), alerts.ProjectInput{
+			MachineID:    machineID.String(),
+			OccurrenceID: occurrenceID,
+			Fingerprint:  dedupe,
+			Severity:     severity,
+			Code:         code,
+			Title:        title,
+			EventType:    code,
+			Transport:    "http",
+			Detail:       body,
+			OccurredAt:   time.Now().UTC(),
+		}, policy)
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]any{
+			"machineId":    machineID.String(),
+			"occurrenceId": occurrenceID,
+			"dedupeKey":    dedupe,
+			"status":       "accepted",
 		})
 	}
 }

@@ -120,6 +120,33 @@ type OutboxConfig struct {
 	DLQEnabled        bool
 }
 
+// TelegramAlertsConfig controls Telegram delivery of machine/server incident alerts.
+// Tokens are server-side only. Legacy TELEGRAM_BOT_TOKEN falls back to APP bot only.
+type TelegramAlertsConfig struct {
+	Enabled          bool
+	Required         bool
+	AppBotToken      string
+	ServerBotToken   string
+	AlertChatID      string
+	IncidentCooldown time.Duration
+	RepeatMode       string // every|aggregate
+	// DeprecatedBotToken is TELEGRAM_BOT_TOKEN; used only as APP fallback when AppBotToken empty.
+	DeprecatedBotToken string
+}
+
+// AppToken returns the APP bot token (source-specific wins over legacy).
+func (c TelegramAlertsConfig) AppToken() string {
+	if strings.TrimSpace(c.AppBotToken) != "" {
+		return strings.TrimSpace(c.AppBotToken)
+	}
+	return strings.TrimSpace(c.DeprecatedBotToken)
+}
+
+// ServerToken returns the SERVER bot token (never falls back to legacy APP token).
+func (c TelegramAlertsConfig) ServerToken() string {
+	return strings.TrimSpace(c.ServerBotToken)
+}
+
 // Config is the complete process configuration loaded from the environment.
 type Config struct {
 	AppEnv AppEnvironment
@@ -143,6 +170,7 @@ type Config struct {
 	NATS     NATSConfig
 	MQTT     MQTTConfig
 	Outbox   OutboxConfig
+	Telegram TelegramAlertsConfig
 	// Capacity limits OLTP ingress, reporting scans, and worker recovery batches (see capacity.go).
 	Capacity CapacityLimitsConfig
 	// MachineOnlineThreshold from MACHINE_ONLINE_THRESHOLD_SECONDS (default 60s).
@@ -1961,6 +1989,16 @@ func Load() (*Config, error) {
 			BackoffMin:        mustParseDuration("OUTBOX_BACKOFF_MIN", getenv("OUTBOX_BACKOFF_MIN", "1s")),
 			BackoffMax:        mustParseDuration("OUTBOX_BACKOFF_MAX", getenv("OUTBOX_BACKOFF_MAX", "5m")),
 			DLQEnabled:        getenvBool("OUTBOX_DLQ_ENABLED", true),
+		},
+		Telegram: TelegramAlertsConfig{
+			Enabled:            getenvBool("TELEGRAM_ALERTS_ENABLED", strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")) != "" || strings.TrimSpace(os.Getenv("TELEGRAM_APP_BOT_TOKEN")) != ""),
+			Required:           getenvBool("TELEGRAM_ALERTS_REQUIRED", false),
+			AppBotToken:        strings.TrimSpace(os.Getenv("TELEGRAM_APP_BOT_TOKEN")),
+			ServerBotToken:     strings.TrimSpace(os.Getenv("TELEGRAM_SERVER_BOT_TOKEN")),
+			DeprecatedBotToken: strings.TrimSpace(os.Getenv("TELEGRAM_BOT_TOKEN")),
+			AlertChatID:        strings.TrimSpace(os.Getenv("TELEGRAM_ALERT_CHAT_ID")),
+			IncidentCooldown:   mustParseDuration("TELEGRAM_INCIDENT_COOLDOWN", getenv("TELEGRAM_INCIDENT_COOLDOWN", "15m")),
+			RepeatMode:         getenv("TELEGRAM_INCIDENT_REPEAT_MODE", "every"),
 		},
 		MQTT: loadMQTTConfig(),
 		Telemetry: TelemetryConfig{

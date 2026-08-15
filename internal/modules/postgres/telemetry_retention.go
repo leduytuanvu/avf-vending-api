@@ -145,6 +145,24 @@ func RunTelemetryRetention(ctx context.Context, pool *pgxpool.Pool, cfg config.T
 		return out, err
 	}
 
+	if err := runStage("machine_incident_occurrences", func(c context.Context) (int64, error) {
+		tag, err := pool.Exec(c, `
+DELETE FROM machine_incident_occurrences
+WHERE ctid IN (
+	SELECT o.ctid FROM machine_incident_occurrences AS o
+	WHERE o.received_at < $1
+	ORDER BY o.received_at ASC
+	LIMIT $2
+)`, criticalCutoff, batch)
+		if err != nil {
+			return 0, err
+		}
+		return tag.RowsAffected(), nil
+	}); err != nil {
+		runErr = err
+		return out, err
+	}
+
 	if err := runStage("telemetry_rollups_1m", func(c context.Context) (int64, error) {
 		return q.TelemetryRetentionDeleteRollupsOneMinuteBatch(c, db.TelemetryRetentionDeleteRollupsOneMinuteBatchParams{
 			BucketStart: normalCutoff,

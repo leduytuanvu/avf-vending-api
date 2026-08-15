@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
@@ -184,6 +185,327 @@ func (s *Store) UpsertMachineIncidentDeduped(ctx context.Context, machineID uuid
 	_, err = s.pool.Exec(ctx, `UPDATE machine_incidents SET severity = $1, code = $2, title = COALESCE($3, title), detail = $4::jsonb, updated_at = now() WHERE id = $5`,
 		severity, code, titleArg, jsonOrEmpty(detail), id)
 	return err
+}
+
+// UpsertMachineIncidentWithAlert is a legacy adapter that synthesizes an occurrence ID when missing
+// and delegates to ProjectMachineIncident (occurrence-scoped Telegram intents).
+func (s *Store) UpsertMachineIncidentWithAlert(ctx context.Context, in alerts.Incident, policy alerts.Policy) (bool, error) {
+	occ := strings.TrimSpace(in.OccurrenceID)
+	if occ == "" {
+		occ = alerts.ExtractOccurrenceIDFromDetail(in.Detail)
+	}
+	res, err := s.ProjectMachineIncident(ctx, alerts.ProjectInput{
+		MachineID:    in.MachineID,
+		OccurrenceID: occ,
+		Fingerprint:  in.DedupeKey,
+		Severity:     in.Severity,
+		Code:         in.Code,
+		Title:        in.Title,
+		EventType:    in.EventType,
+		Transport:    firstNonEmpty(in.Transport, "legacy"),
+		Detail:       in.Detail,
+		OccurredAt:   in.OccurredAt,
+	}, policy)
+	if err != nil {
+		return false, err
+	}
+	return res.AlertQueued, nil
+}
+
+// ProjectMachineIncident inserts a logical occurrence (idempotent by machine_id+occurrence_id),
+// updates the grouped machine_incidents row, and queues an APP Telegram outbox intent when policy allows.
+// Transport replays of the same occurrence_id do not increment occurrence_count or create a new intent.
+func (s *Store) ProjectMachineIncident(ctx context.Context, in alerts.ProjectInput, policy alerts.Policy) (alerts.ProjectResult, error) {
+	var out alerts.ProjectResult
+	if s == nil || s.pool == nil {
+		return out, errors.New("postgres: nil store")
+	}
+	machineID, err := uuid.Parse(strings.TrimSpace(in.MachineID))
+	if err != nil {
+		return out, fmt.Errorf("postgres: invalid machine_id: %w", err)
+	}
+	occurrenceID := strings.TrimSpace(in.OccurrenceID)
+	if occurrenceID == "" {
+		occurrenceID = alerts.ExtractOccurrenceIDFromDetail(in.Detail)
+	}
+	if occurrenceID == "" {
+		occurrenceID = "legacy:" + uuid.NewString()
+	}
+	in.OccurrenceID = occurrenceID
+
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return out, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	now := time.Now().UTC()
+	occurredAt := in.OccurredAt
+	if occurredAt.IsZero() {
+		occurredAt = now
+	}
+
+	// Fast path: existing occurrence → transport duplicate.
+	var existingID uuid.UUID
+	err = tx.QueryRow(ctx, `SELECT id FROM machine_incident_occurrences WHERE machine_id = $1 AND occurrence_id = $2`, machineID, occurrenceID).Scan(&existingID)
+	if err == nil {
+		out.TransportDup = true
+		out.NewOccurrence = false
+		_ = tx.QueryRow(ctx, `SELECT COALESCE(occurrence_count, 1) FROM machine_incidents WHERE machine_id = $1 AND dedupe_key = $2`, machineID, firstNonEmpty(strings.TrimSpace(in.Fingerprint), alerts.Fingerprint(alerts.Incident{Code: in.Code, Title: in.Title}))).Scan(&out.OccurrenceCount)
+		if err := tx.Commit(ctx); err != nil {
+			return out, err
+		}
+		return out, nil
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return out, err
+	}
+
+	normalized := alerts.Incident{
+		MachineID:    machineID.String(),
+		OccurrenceID: occurrenceID,
+		Severity:     in.Severity,
+		Code:         in.Code,
+		Title:        in.Title,
+		DedupeKey:    in.Fingerprint,
+		Detail:       in.Detail,
+		Transport:    in.Transport,
+		EventType:    in.EventType,
+		OccurredAt:   occurredAt,
+		Source:       alerts.SourceApp,
+	}
+	if strings.TrimSpace(normalized.DedupeKey) == "" {
+		normalized.DedupeKey = alerts.Fingerprint(normalized)
+	}
+	normalized.Severity = alerts.NormalizeSeverity(normalized.Severity)
+	normalized.Code = strings.TrimSpace(normalized.Code)
+	normalized.Title = strings.TrimSpace(normalized.Title)
+
+	var incidentID uuid.UUID
+	var occurrenceCount int64
+	var lastAlerted pgtype.Timestamptz
+	err = tx.QueryRow(ctx, `
+SELECT id, last_alerted_at, COALESCE(occurrence_count, 1)
+FROM machine_incidents WHERE machine_id = $1 AND dedupe_key = $2 FOR UPDATE`, machineID, normalized.DedupeKey).
+		Scan(&incidentID, &lastAlerted, &occurrenceCount)
+	if errors.Is(err, pgx.ErrNoRows) {
+		occurrenceCount = 1
+		err = tx.QueryRow(ctx, `
+INSERT INTO machine_incidents (machine_id, severity, code, title, detail, dedupe_key, opened_at, updated_at, occurrence_count, last_alerted_at)
+VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$7,1,NULL)
+RETURNING id`,
+			machineID, normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), normalized.DedupeKey, now,
+		).Scan(&incidentID)
+		if err != nil {
+			return out, err
+		}
+	} else if err != nil {
+		return out, err
+	} else {
+		occurrenceCount++
+		_, err = tx.Exec(ctx, `
+UPDATE machine_incidents
+SET severity = $1, code = $2, title = COALESCE($3, title), detail = $4::jsonb, updated_at = $5, occurrence_count = $6
+WHERE id = $7`,
+			normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), now, occurrenceCount, incidentID)
+		if err != nil {
+			return out, err
+		}
+	}
+
+	_, err = tx.Exec(ctx, `
+INSERT INTO machine_incident_occurrences (
+	machine_id, machine_incident_id, occurrence_id, dedupe_key, severity, code, title, detail, source_transport, occurred_at, received_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)`,
+		machineID, incidentID, occurrenceID, normalized.DedupeKey, normalized.Severity, normalized.Code,
+		nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), strings.TrimSpace(in.Transport), occurredAt, now)
+	if err != nil {
+		if isUniqueViolation(err) {
+			out.TransportDup = true
+			if err := tx.Commit(ctx); err != nil {
+				return out, err
+			}
+			return out, nil
+		}
+		return out, err
+	}
+	out.NewOccurrence = true
+	out.OccurrenceCount = occurrenceCount
+
+	var prevAlertPtr *time.Time
+	if lastAlerted.Valid {
+		t := lastAlerted.Time.UTC()
+		prevAlertPtr = &t
+	}
+	decision := policy.DecideForOccurrence(normalized, true, prevAlertPtr, now)
+	if decision.ShouldAlert {
+		var machineCode, machineName, serialNumber string
+		var siteID uuid.UUID
+		_ = tx.QueryRow(ctx, `SELECT code, name, serial_number, site_id FROM machines WHERE id = $1`, machineID).
+			Scan(&machineCode, &machineName, &serialNumber, &siteID)
+		reportedMachineID := extractReportedMachineID(decision.Detail)
+		siteIDStr := ""
+		if siteID != uuid.Nil {
+			siteIDStr = siteID.String()
+		}
+		payload, err := json.Marshal(map[string]any{
+			"schema_version":      1,
+			"source":              alerts.SourceApp,
+			"machine_id":          machineID.String(),
+			"machine_code":        strings.TrimSpace(machineCode),
+			"machine_name":        strings.TrimSpace(machineName),
+			"serial_number":       strings.TrimSpace(serialNumber),
+			"site_id":             siteIDStr,
+			"reported_machine_id": reportedMachineID,
+			"occurrence_id":       occurrenceID,
+			"fingerprint":         decision.DedupeKey,
+			"occurrence_count":    occurrenceCount,
+			"severity":            decision.Severity,
+			"code":                decision.Code,
+			"title":               decision.Title,
+			"dedupe_key":          decision.DedupeKey,
+			"group_key":           decision.GroupKey,
+			"detail":              json.RawMessage(redactIncidentDetail(decision.Detail)),
+		})
+		if err != nil {
+			return out, err
+		}
+		_, err = db.New(tx).InsertOutboxEventIdempotent(ctx, db.InsertOutboxEventIdempotentParams{
+			Topic:          "notification.telegram",
+			EventType:      "machine.incident.alert",
+			Payload:        payload,
+			AggregateType:  "machine_incident",
+			AggregateID:    machineID,
+			IdempotencyKey: pgtype.Text{String: alerts.TelegramAppIdempotencyKey(machineID.String(), occurrenceID), Valid: true},
+		})
+		if err != nil && !isNoRows(err) {
+			return out, err
+		}
+		_, _ = tx.Exec(ctx, `UPDATE machine_incidents SET last_alerted_at = $1 WHERE id = $2`, now, incidentID)
+		out.AlertQueued = true
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+// redactIncidentDetail removes common secret keys from JSON detail before durable Telegram payload.
+func redactIncidentDetail(detail []byte) []byte {
+	if len(detail) == 0 {
+		return []byte("{}")
+	}
+	var root any
+	if err := json.Unmarshal(detail, &root); err != nil {
+		return []byte("{}")
+	}
+	redactJSONValue(root)
+	out, err := json.Marshal(root)
+	if err != nil {
+		return []byte("{}")
+	}
+	return out
+}
+
+func redactJSONValue(v any) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, child := range x {
+			nk := strings.ToLower(strings.ReplaceAll(k, "-", "_"))
+			if isSecretKey(nk) {
+				x[k] = "[REDACTED]"
+				continue
+			}
+			if s, ok := child.(string); ok {
+				x[k] = redactSecretString(s)
+				continue
+			}
+			redactJSONValue(child)
+		}
+	case []any:
+		for _, child := range x {
+			redactJSONValue(child)
+		}
+	}
+}
+
+func isSecretKey(k string) bool {
+	secrets := []string{
+		"authorization", "access_token", "refresh_token", "password", "passwd", "pin", "otp",
+		"cookie", "api_key", "apikey", "telegram_bot_token", "telegram_token", "bot_token",
+		"mqtt_password", "mqtt_pass", "client_secret", "signing_key", "private_key",
+		"qr_payload", "payment_signature", "signature", "card_number", "pan", "cvv",
+		"machine_token", "bearer",
+	}
+	for _, s := range secrets {
+		if k == s {
+			return true
+		}
+	}
+	for _, sub := range []string{"token", "secret", "password", "authorization", "bearer", "cookie", "credential", "telegram", "qr_payload", "signature"} {
+		if strings.Contains(k, sub) {
+			return true
+		}
+	}
+	return false
+}
+
+func redactSecretString(s string) string {
+	lower := strings.ToLower(s)
+	if strings.HasPrefix(lower, "bearer ") {
+		return "Bearer [REDACTED]"
+	}
+	if strings.Contains(lower, "bot") && strings.Contains(s, ":") {
+		return "[REDACTED]"
+	}
+	return s
+}
+
+func nullIfEmpty(v string) any {
+	if strings.TrimSpace(v) == "" {
+		return nil
+	}
+	return strings.TrimSpace(v)
+}
+
+// extractReportedMachineID pulls the device-side machine identifier from Cursor/envelope detail JSON.
+func extractReportedMachineID(detail []byte) string {
+	if len(detail) == 0 {
+		return ""
+	}
+	var envelope struct {
+		MachineID string `json:"machineId"`
+		MachineIDSnake string `json:"machine_id"`
+		Payload   map[string]string `json:"payload"`
+	}
+	if err := json.Unmarshal(detail, &envelope); err != nil {
+		return ""
+	}
+	if v := strings.TrimSpace(envelope.MachineID); v != "" {
+		return v
+	}
+	if v := strings.TrimSpace(envelope.MachineIDSnake); v != "" {
+		return v
+	}
+	if envelope.Payload != nil {
+		if v := strings.TrimSpace(envelope.Payload["machine_id"]); v != "" {
+			return v
+		}
+		if v := strings.TrimSpace(envelope.Payload["machineId"]); v != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 // UpsertHeartbeatSnapshot bumps last_heartbeat_at and ensures a snapshot row exists without clobbering reported state.
@@ -483,24 +805,60 @@ func ParseMetricsPayload(payload []byte) map[string]float64 {
 	return out
 }
 
-// ParseIncidentPayload extracts incident fields from device JSON.
+// ParseIncidentPayload extracts incident fields from device JSON, including Cursor's
+// QueuedTelemetryEnvelope-shaped payloads (eventType, payload.fingerprint, nested detail).
 func ParseIncidentPayload(payload []byte) (severity, code, title, dedupe string, err error) {
-	var m struct {
-		Severity string `json:"severity"`
-		Code     string `json:"code"`
-		Title    string `json:"title"`
-		Dedupe   string `json:"dedupe_key"`
-	}
-	if err = json.Unmarshal(payload, &m); err != nil {
+	var root any
+	if err = json.Unmarshal(payload, &root); err != nil {
 		return "", "", "", "", err
 	}
-	if strings.TrimSpace(m.Severity) == "" {
-		m.Severity = "medium"
+	fields := incidentFields(root)
+	severity = firstIncidentField(fields, "severity", "level")
+	code = firstIncidentField(fields, "code", "event_type", "eventtype", "type")
+	title = firstIncidentField(fields, "title", "message", "summary")
+	dedupe = firstIncidentField(fields, "dedupe_key", "dedupekey", "fingerprint")
+	if strings.TrimSpace(severity) == "" {
+		severity = "medium"
 	}
-	if strings.TrimSpace(m.Code) == "" {
+	if strings.TrimSpace(code) == "" {
 		return "", "", "", "", fmt.Errorf("telemetry: incident.code required")
 	}
-	return strings.TrimSpace(m.Severity), strings.TrimSpace(m.Code), strings.TrimSpace(m.Title), strings.TrimSpace(m.Dedupe), nil
+	return strings.TrimSpace(severity), strings.TrimSpace(code), strings.TrimSpace(title), strings.TrimSpace(dedupe), nil
+}
+
+func incidentFields(v any) map[string][]string {
+	out := make(map[string][]string)
+	var walk func(any)
+	walk = func(value any) {
+		switch x := value.(type) {
+		case map[string]any:
+			for key, child := range x {
+				normalized := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(key), "-", "_"))
+				if s, ok := child.(string); ok && strings.TrimSpace(s) != "" {
+					out[normalized] = append(out[normalized], strings.TrimSpace(s))
+				}
+				switch normalized {
+				case "payload", "data", "detail", "cursor", "incident", "error", "context":
+					walk(child)
+				}
+			}
+		case []any:
+			for _, child := range x {
+				walk(child)
+			}
+		}
+	}
+	walk(v)
+	return out
+}
+
+func firstIncidentField(fields map[string][]string, keys ...string) string {
+	for _, key := range keys {
+		if values := fields[key]; len(values) > 0 {
+			return values[0]
+		}
+	}
+	return ""
 }
 
 // ParseDiagnosticManifestPayload extracts cold storage pointer from MQTT JSON.

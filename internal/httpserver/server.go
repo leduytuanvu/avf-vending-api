@@ -87,7 +87,7 @@ func NewHTTPServer(cfg *config.Config, log *zap.Logger, probe ReadinessProbe, ht
 			MaxAge:           300,
 		}))
 	}
-	r.Use(chimw.Recoverer)
+	r.Use(recoverServerAlertMiddleware(log))
 	r.Use(appmw.RequestID)
 	r.Use(traceMiddleware())
 	r.Use(requestObservabilityMiddleware(log))

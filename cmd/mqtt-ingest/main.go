@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts/processalert"
 	"github.com/avf/avf-vending-api/internal/app/telemetryapp"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
@@ -184,6 +185,7 @@ func main() {
 	}
 
 	if err := sub.Run(ctx, pipeline); err != nil && !errors.Is(err, context.Canceled) {
+		processalert.ReportTerminal(log, cfg, pool, "mqtt-ingest", err)
 		log.Fatal("mqtt-ingest stopped with error", zap.Error(err))
 	}
 

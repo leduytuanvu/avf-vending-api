@@ -6,6 +6,7 @@ import (
 
 	appactivation "github.com/avf/avf-vending-api/internal/app/activation"
 	appadminops "github.com/avf/avf-vending-api/internal/app/adminops"
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	appanomalies "github.com/avf/avf-vending-api/internal/app/anomalies"
 	appartifacts "github.com/avf/avf-vending-api/internal/app/artifacts"
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
@@ -68,6 +69,8 @@ type HTTPApplication struct {
 	Artifacts       *appartifacts.Service
 	// TelemetryStore serves read-only telemetry projection endpoints (rollups / incidents / snapshot).
 	TelemetryStore *postgres.Store
+	// IncidentAlertPolicy controls transactional Telegram alerting for direct machine incident ingest.
+	IncidentAlertPolicy alerts.Policy
 	// SaleCatalog optional shared snapshot builder (e.g. Redis cache); nil uses an uncached builder in HTTP handlers.
 	SaleCatalog appsalecatalog.SnapshotBuilder
 	Reporting   ReportingService
@@ -164,6 +167,8 @@ type HTTPApplicationDeps struct {
 	MachineOnlineThreshold time.Duration
 	// MachineStaleThreshold from MACHINE_STALE_THRESHOLD_SECONDS (zero uses machineruntime default).
 	MachineStaleThreshold time.Duration
+	// IncidentAlertPolicy controls cooldown and severity gating for direct machine incident ingest.
+	IncidentAlertPolicy alerts.Policy
 }
 
 // NewHTTPApplication constructs HTTP ports backed by real adapters where they exist.
@@ -378,6 +383,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		RemoteCommands:         remoteCmd,
 		Artifacts:              deps.Artifacts,
 		TelemetryStore:         deps.Store,
+		IncidentAlertPolicy:    deps.IncidentAlertPolicy,
 		SaleCatalog:            deps.SaleCatalog,
 		Reporting:              reportingSvc,
 		ReportingSyncMaxSpan:   deps.ReportingSyncMaxSpan,

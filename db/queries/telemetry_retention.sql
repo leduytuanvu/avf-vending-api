@@ -123,6 +123,9 @@ WHERE
         LIMIT $2
     );
 
+-- Occurrence prune is intentional raw SQL in telemetry_retention.go (same TX stage pattern).
+-- Do not add a sqlc query for machine_incident_occurrences retention.
+
 -- name: TelemetryRetentionDeleteRollupsOneMinuteBatch :execrows
 DELETE FROM telemetry_rollups
 WHERE

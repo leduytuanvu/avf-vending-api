@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
@@ -177,6 +179,63 @@ func (s *machineTelemetryServer) SubmitTelemetryBatch(ctx context.Context, req *
 		if err != nil {
 			return nil, err
 		}
+		eventType := strings.TrimSpace(ev.GetEventType())
+		if alerts.IsProjectableIncidentEventType(eventType) {
+			projector := s.deps.IncidentProjector
+			if projector == nil && s.deps.TelemetryStore != nil {
+				projector = s.deps.TelemetryStore
+			}
+			if projector != nil {
+				occurrenceID := strings.TrimSpace(ev.GetEventId())
+				if occurrenceID == "" {
+					occurrenceID = alerts.ExtractOccurrenceIDFromDetail(payload)
+				}
+				sev := "high"
+				if attrs := ev.GetAttributes(); attrs != nil {
+					if v := strings.TrimSpace(attrs["severity"]); v != "" {
+						sev = v
+					}
+				}
+				title := eventType
+				if attrs := ev.GetAttributes(); attrs != nil {
+					if v := strings.TrimSpace(attrs["verified_message"]); v != "" {
+						title = v
+					} else if v := strings.TrimSpace(attrs["title"]); v != "" {
+						title = v
+					}
+				}
+				fingerprint := ""
+				if attrs := ev.GetAttributes(); attrs != nil {
+					fingerprint = strings.TrimSpace(attrs["fingerprint"])
+					if fingerprint == "" {
+						fingerprint = strings.TrimSpace(attrs["dedupe_key"])
+					}
+				}
+				policy := alerts.DefaultPolicy()
+				if s.deps.Config != nil {
+					policy = alerts.Policy{
+						Cooldown:   s.deps.Config.Telegram.IncidentCooldown,
+						RepeatMode: alerts.NormalizeRepeatMode(s.deps.Config.Telegram.RepeatMode),
+					}
+				}
+				// Always invoke projection (even on telemetry duplicate) to heal partial failures.
+				_, projErr := projector.ProjectMachineIncident(ctx, alerts.ProjectInput{
+					MachineID:    claims.MachineID.String(),
+					OccurrenceID: occurrenceID,
+					Fingerprint:  fingerprint,
+					Severity:     sev,
+					Code:         eventType,
+					Title:        title,
+					EventType:    eventType,
+					Transport:    "grpc",
+					Detail:       payload,
+					OccurredAt:   occurred.AsTime().UTC(),
+				}, policy)
+				if projErr != nil {
+					return nil, status.Errorf(codes.Internal, "incident projection failed")
+				}
+			}
+		}
 		if dup {
 			id := strings.TrimSpace(ev.GetEventId())
 			if id == "" {
@@ -259,7 +318,7 @@ func (s *machineTelemetryServer) appendTelemetryEventWithConflictCheck(ctx conte
 		return false, err
 	}
 	if ok {
-		if !bytes.Equal(existing, payload) {
+		if !telemetryJSONPayloadEqual(existing, payload) {
 			return false, status.Error(codes.Aborted, "idempotency key conflict")
 		}
 		return true, nil
@@ -273,11 +332,28 @@ func (s *machineTelemetryServer) appendTelemetryEventWithConflictCheck(ctx conte
 		if err != nil {
 			return false, err
 		}
-		if ok && !bytes.Equal(existing, payload) {
+		if ok && !telemetryJSONPayloadEqual(existing, payload) {
 			return false, status.Error(codes.Aborted, "idempotency key conflict")
 		}
 	}
 	return dup, nil
+}
+
+// telemetryJSONPayloadEqual compares telemetry payloads semantically.
+// device_telemetry_events.payload is jsonb; Postgres may re-serialize key order on read-back,
+// so raw bytes.Equal falsely reports conflicts on legitimate idempotent retries.
+func telemetryJSONPayloadEqual(a, b []byte) bool {
+	if bytes.Equal(a, b) {
+		return true
+	}
+	var xa, xb any
+	if err := json.Unmarshal(a, &xa); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(b, &xb); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(xa, xb)
 }
 
 func (s *machineTelemetryServer) existingTelemetryPayload(ctx context.Context, machineID uuid.UUID, dedupeKey string) ([]byte, bool, error) {

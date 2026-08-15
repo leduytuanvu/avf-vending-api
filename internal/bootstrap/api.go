@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appartifacts "github.com/avf/avf-vending-api/internal/app/artifacts"
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
@@ -34,6 +35,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
+	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -237,6 +239,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		CloudinaryUploader:                         cloudinaryUploader,
 		MachineOnlineThreshold:                     cfg.MachineOnlineThreshold,
 		MachineStaleThreshold:                      cfg.MachineStaleThreshold,
+		IncidentAlertPolicy:                        alerts.Policy{Cooldown: cfg.Telegram.IncidentCooldown, RepeatMode: alerts.NormalizeRepeatMode(cfg.Telegram.RepeatMode)},
 	})
 	if rt.Deps.PaymentProviders != nil {
 		if reg, ok := rt.Deps.PaymentProviders.(*platformpayments.Registry); ok {
@@ -312,6 +315,13 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	if err := httpserver.ValidateP0HTTPApplication(cfg, httpApp); err != nil {
 		return fmt.Errorf("bootstrap: P0 HTTP wiring: %w", err)
 	}
+
+	reporter := alerts.NewServerErrorReporter(log, rt.Pool(), platformtelegram.NewClient(platformtelegram.Config{
+		BotToken: cfg.Telegram.ServerToken(),
+		ChatID:   cfg.Telegram.AlertChatID,
+	}))
+	httpserver.SetHTTPServerAlertReporter(reporter)
+	grpcserver.SetGRPCServerAlertReporter(reporter)
 
 	httpSrv, err := httpserver.NewHTTPServer(cfg, log, rt, httpApp, rt.Redis(), accessRevocation)
 	if err != nil {

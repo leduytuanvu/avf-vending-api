@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
@@ -33,6 +34,7 @@ type JetStreamWorkersConfig struct {
 	JS        natssrv.JetStreamContext
 	Store     *postgres.Store
 	Telemetry config.TelemetryJetStreamConfig
+	Alerts    config.TelegramAlertsConfig
 	Limits    platformnats.TelemetryBrokerLimits
 }
 
@@ -43,6 +45,7 @@ type JetStreamWorkers struct {
 	js    natssrv.JetStreamContext
 	store *postgres.Store
 	cfg   config.TelemetryJetStreamConfig
+	alert alerts.Policy
 	lim   platformnats.TelemetryBrokerLimits
 
 	seqDedupe *boundedSeenSet
@@ -73,6 +76,7 @@ func NewJetStreamWorkers(c JetStreamWorkersConfig) *JetStreamWorkers {
 		js:        c.JS,
 		store:     c.Store,
 		cfg:       c.Telemetry,
+		alert:     alerts.Policy{Cooldown: c.Alerts.IncidentCooldown, RepeatMode: alerts.NormalizeRepeatMode(c.Alerts.RepeatMode)},
 		lim:       platformnats.NormalizeTelemetryBrokerLimits(c.Limits),
 		seqDedupe: newBoundedSeenSet(c.Telemetry.ProjectionDedupeLRUSize),
 		idemGuard: newIdempotencyPayloadGuard(idemN),
@@ -462,13 +466,35 @@ func (w *JetStreamWorkers) handleIncident(ctx context.Context, env tel.Envelope)
 	data := unwrapTelemetryData(env.Payload)
 	sev, code, title, dedupe, err := postgres.ParseIncidentPayload(data)
 	if err != nil {
-		return nil
+		// Malformed incident payloads must not ACK silently forever without evidence;
+		// return error so the consumer Nak/redelivers / eventually DLQs per stream policy.
+		return fmt.Errorf("telemetryapp: parse incident: %w", err)
 	}
 	detail := env.Payload
 	if len(detail) == 0 {
 		detail = []byte("{}")
 	}
-	return w.store.UpsertMachineIncidentDeduped(ctx, env.MachineID, sev, code, title, detail, dedupe)
+	occurrenceID := alerts.ResolveOccurrenceID(env.EventID, alerts.ExtractOccurrenceIDFromDetail(detail), alerts.ExtractOccurrenceIDFromDetail(data))
+	eventType := strings.TrimSpace(env.SourceEvent)
+	if eventType == "" {
+		eventType = code
+	}
+	if !alerts.IsProjectableIncidentEventType(eventType) && !alerts.IsProjectableIncidentEventType(code) {
+		return nil
+	}
+	_, err = w.store.ProjectMachineIncident(ctx, alerts.ProjectInput{
+		MachineID:    env.MachineID.String(),
+		OccurrenceID: occurrenceID,
+		Fingerprint:  dedupe,
+		Severity:     sev,
+		Code:         code,
+		Title:        title,
+		EventType:    eventType,
+		Transport:    "mqtt",
+		Detail:       detail,
+		OccurredAt:   env.ReceivedAt,
+	}, w.alert)
+	return err
 }
 
 func (w *JetStreamWorkers) handleCommandReceipt(ctx context.Context, env tel.Envelope) error {
