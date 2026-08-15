@@ -693,6 +693,8 @@ type Querier interface {
 	TelemetryRetentionDeleteMachineCheckInsBatch(ctx context.Context, arg TelemetryRetentionDeleteMachineCheckInsBatchParams) (int64, error)
 	TelemetryRetentionDeleteNonCriticalDeviceEventsBatch(ctx context.Context, arg TelemetryRetentionDeleteNonCriticalDeviceEventsBatchParams) (int64, error)
 	TelemetryRetentionDeleteRollupsOneHourBatch(ctx context.Context, arg TelemetryRetentionDeleteRollupsOneHourBatchParams) (int64, error)
+	// Occurrence prune is intentional raw SQL in telemetry_retention.go (same TX stage pattern).
+	// Do not add a sqlc query for machine_incident_occurrences retention.
 	TelemetryRetentionDeleteRollupsOneMinuteBatch(ctx context.Context, arg TelemetryRetentionDeleteRollupsOneMinuteBatchParams) (int64, error)
 	TelemetryRetentionDeleteStateTransitionsBatch(ctx context.Context, arg TelemetryRetentionDeleteStateTransitionsBatchParams) (int64, error)
 	TimeoutMachineOperatorSessionIfExpired(ctx context.Context, id uuid.UUID) (MachineOperatorSession, error)

@@ -450,6 +450,7 @@ func (q *Queries) TelemetryRetentionDeleteRollupsOneHourBatch(ctx context.Contex
 }
 
 const TelemetryRetentionDeleteRollupsOneMinuteBatch = `-- name: TelemetryRetentionDeleteRollupsOneMinuteBatch :execrows
+
 DELETE FROM telemetry_rollups
 WHERE
     ctid IN (
@@ -471,6 +472,8 @@ type TelemetryRetentionDeleteRollupsOneMinuteBatchParams struct {
 	Limit       int32
 }
 
+// Occurrence prune is intentional raw SQL in telemetry_retention.go (same TX stage pattern).
+// Do not add a sqlc query for machine_incident_occurrences retention.
 func (q *Queries) TelemetryRetentionDeleteRollupsOneMinuteBatch(ctx context.Context, arg TelemetryRetentionDeleteRollupsOneMinuteBatchParams) (int64, error) {
 	result, err := q.db.Exec(ctx, TelemetryRetentionDeleteRollupsOneMinuteBatch, arg.BucketStart, arg.Limit)
 	if err != nil {
