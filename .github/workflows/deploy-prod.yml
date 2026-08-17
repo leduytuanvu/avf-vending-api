@@ -2293,6 +2293,8 @@ jobs:
               "APP_NODE_ENV_FILE=${env_path}" \
               bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_mqtt_enterprise_app_node_env.sh" "${env_path}"
           }
+          # Production sells live MoMo/ZaloPay/VietQR/VNPay. Do NOT call apply_cash_only here —
+          # that was resetting PAYMENT_ENV=cash_only on every deploy and killing QR sessions.
           apply_live_payment_remote() {
             local host="$1"
             local target="${SSH_USER}@${host}"
@@ -2301,7 +2303,8 @@ jobs:
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" env \
               "PAYMENT_ENV=${PAYMENT_ENV:-live}" \
               "COMMERCE_PAYMENT_PROVIDER=${COMMERCE_PAYMENT_PROVIDER:-momo}" \
-              "COMMERCE_PAYMENT_PROVIDERS=${COMMERCE_PAYMENT_PROVIDERS:-momo,zalopay,vietqr,vnpay,shopeepay}" \
+              "COMMERCE_PAYMENT_PROVIDERS=${COMMERCE_PAYMENT_PROVIDERS:-momo,zalopay,vietqr,vnpay}" \
+              "PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://api.ldtv.dev}" \
               "APP_NODE_ENV_FILE=${env_path}" \
               bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_live_payment_app_node_env.sh" "${env_path}"
           }

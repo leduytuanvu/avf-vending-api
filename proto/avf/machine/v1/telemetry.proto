@@ -4,6 +4,7 @@ package avf.machine.v1;
 
 import "avf/machine/v1/common.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/struct.proto";
 
 option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
 
@@ -16,6 +17,8 @@ service MachineTelemetryService {
   rpc SubmitTelemetryBatch(SubmitTelemetryBatchRequest) returns (SubmitTelemetryBatchResponse);
   rpc ReconcileEvents(ReconcileEventsRequest) returns (ReconcileEventsResponse);
   rpc GetEventStatus(GetEventStatusRequest) returns (GetEventStatusResponse);
+  // Additive forensic ingest. ACK means PostgreSQL durable commit of evidence, not commerce mutation.
+  rpc SubmitEventEvidenceBatch(SubmitEventEvidenceBatchRequest) returns (SubmitEventEvidenceBatchResponse);
 }
 
 message CheckInRequest {
@@ -115,4 +118,52 @@ message TelemetryEventStatus {
   google.protobuf.Timestamp accepted_at = 4;
   google.protobuf.Timestamp processed_at = 5;
   bool retryable = 6;
+}
+
+enum EventEvidenceResultStatus {
+  EVENT_EVIDENCE_RESULT_STATUS_UNSPECIFIED = 0;
+  EVENT_EVIDENCE_RESULT_STATUS_ACCEPTED = 1;
+  EVENT_EVIDENCE_RESULT_STATUS_DUPLICATE = 2;
+  EVENT_EVIDENCE_RESULT_STATUS_CONFLICT = 3;
+  EVENT_EVIDENCE_RESULT_STATUS_REJECTED = 4;
+}
+
+message EventEvidence {
+  string event_id = 1;
+  string event_type = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  int32 schema_version = 4;
+  string category = 5;
+  string severity = 6;
+  string source = 7;
+  int64 monotonic_elapsed_ms = 8;
+  int64 client_sequence = 9;
+  string stream_id = 10;
+  string boot_id = 11;
+  string correlation_id = 12;
+  string order_id = 13;
+  string payment_id = 14;
+  string vend_attempt_id = 15;
+  string operator_session_id = 16;
+  google.protobuf.Struct payload = 17;
+  string cause = 18;
+  string recovery_action = 19;
+}
+
+message SubmitEventEvidenceBatchRequest {
+  IdempotencyContext context = 1;
+  MachineRequestMeta meta = 2;
+  repeated EventEvidence events = 3;
+}
+
+message EventEvidenceResult {
+  string event_id = 1;
+  EventEvidenceResultStatus status = 2;
+  string reason = 3;
+}
+
+message SubmitEventEvidenceBatchResponse {
+  MachineResponseMeta meta = 1;
+  repeated EventEvidenceResult results = 2;
+  google.protobuf.Timestamp server_received_at = 3;
 }

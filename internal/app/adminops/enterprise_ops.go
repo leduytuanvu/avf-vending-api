@@ -38,6 +38,7 @@ type RuntimeSession struct {
 type UnifiedTimelineItem struct {
 	ID                string          `json:"id"`
 	OccurredAt        time.Time       `json:"occurredAt"`
+	ReceivedAt        time.Time       `json:"receivedAt"`
 	EventType         string          `json:"eventType"`
 	Severity          string          `json:"severity"`
 	MachineID         uuid.UUID       `json:"machineId"`
@@ -53,6 +54,12 @@ type UnifiedTimelineItem struct {
 	ErrorCode         string          `json:"errorCode,omitempty"`
 	Summary           string          `json:"summary"`
 	Metadata          json.RawMessage `json:"metadata"`
+	Source            string          `json:"source"`
+	Category          string          `json:"category,omitempty"`
+	EventID           string          `json:"eventId,omitempty"`
+	OrderID           *uuid.UUID      `json:"orderId,omitempty"`
+	PaymentID         *uuid.UUID      `json:"paymentId,omitempty"`
+	VendAttemptID     *uuid.UUID      `json:"vendAttemptId,omitempty"`
 }
 
 // TimelineFilter optional query filters for unified timeline.
@@ -60,6 +67,8 @@ type TimelineFilter struct {
 	From              *time.Time
 	To                *time.Time
 	OperatorSessionID *uuid.UUID
+	OrderID           *uuid.UUID
+	PaymentID         *uuid.UUID
 	Limit             int32
 }
 
@@ -129,11 +138,20 @@ func (s *Service) UnifiedMachineTimeline(ctx context.Context, companyID, machine
 	if f.OperatorSessionID != nil {
 		opSess = pgtype.UUID{Bytes: *f.OperatorSessionID, Valid: true}
 	}
+	var orderID, paymentID pgtype.UUID
+	if f.OrderID != nil {
+		orderID = pgtype.UUID{Bytes: *f.OrderID, Valid: true}
+	}
+	if f.PaymentID != nil {
+		paymentID = pgtype.UUID{Bytes: *f.PaymentID, Valid: true}
+	}
 	rows, err := s.q.AdminUnifiedMachineTimeline(ctx, db.AdminUnifiedMachineTimelineParams{
 		MachineID:         pgtype.UUID{Bytes: machineID, Valid: true},
 		FromTs:            from,
 		ToTs:              to,
 		OperatorSessionID: opSess,
+		OrderID:           orderID,
+		PaymentID:         paymentID,
 		Lim:               lim,
 	})
 	if err != nil {
@@ -144,11 +162,15 @@ func (s *Service) UnifiedMachineTimeline(ctx context.Context, companyID, machine
 		item := UnifiedTimelineItem{
 			ID:           r.OccurredAt.UTC().Format(time.RFC3339Nano) + ":" + r.EventType,
 			OccurredAt:   r.OccurredAt.UTC(),
+			ReceivedAt:   r.ReceivedAt.UTC(),
 			EventType:    r.EventType,
 			Severity:     r.Severity,
 			ActorType:    r.ActorType,
 			ResourceType: r.ResourceType,
 			Summary:      r.Summary,
+			Source:       r.Source,
+			Category:     r.Category,
+			EventID:      r.EventID,
 		}
 		if r.MachineID.Valid {
 			item.MachineID = uuid.UUID(r.MachineID.Bytes)
@@ -180,6 +202,18 @@ func (s *Service) UnifiedMachineTimeline(ctx context.Context, companyID, machine
 		if r.CorrelationID.Valid {
 			id := uuid.UUID(r.CorrelationID.Bytes)
 			item.CorrelationID = &id
+		}
+		if r.OrderID.Valid {
+			id := uuid.UUID(r.OrderID.Bytes)
+			item.OrderID = &id
+		}
+		if r.PaymentID.Valid {
+			id := uuid.UUID(r.PaymentID.Bytes)
+			item.PaymentID = &id
+		}
+		if r.VendSessionID.Valid {
+			id := uuid.UUID(r.VendSessionID.Bytes)
+			item.VendAttemptID = &id
 		}
 		if len(r.Metadata) > 0 {
 			item.Metadata = json.RawMessage(r.Metadata)

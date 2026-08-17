@@ -316,12 +316,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		return fmt.Errorf("bootstrap: P0 HTTP wiring: %w", err)
 	}
 
-	if cfg.Telegram.ServerUsesLegacyChatFallback() {
-		log.Warn("telegram legacy shared chat id fallback in use", zap.String("source", "server"))
-	}
 	reporter := alerts.NewServerErrorReporter(log, rt.Pool(), platformtelegram.NewClient(platformtelegram.Config{
 		BotToken: cfg.Telegram.ServerToken(),
-		ChatID:   cfg.Telegram.ServerChatID(),
+		ChatID:   cfg.Telegram.AlertChatID,
 	}))
 	httpserver.SetHTTPServerAlertReporter(reporter)
 	grpcserver.SetGRPCServerAlertReporter(reporter)

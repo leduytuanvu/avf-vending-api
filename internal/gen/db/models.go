@@ -793,6 +793,35 @@ type MachineDeviceCertificate struct {
 	UpdatedAt         time.Time
 }
 
+// Append-only durable semantic device evidence. Unique per (machine_id, event_id). ACK means this row is committed.
+type MachineEventEvidence struct {
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	EventID            string
+	EventType          string
+	SchemaVersion      int32
+	Category           string
+	Severity           string
+	Source             string
+	StreamID           string
+	ClientSequence     int64
+	BootID             string
+	OccurredAt         time.Time
+	ReceivedAt         time.Time
+	MonotonicElapsedMs int64
+	OrderID            string
+	PaymentID          string
+	VendAttemptID      string
+	CorrelationID      string
+	OperatorSessionID  string
+	RequestID          string
+	Cause              string
+	RecoveryAction     string
+	Payload            []byte
+	PayloadFingerprint string
+	ProcessingStatus   string
+}
+
 type MachineHardwareProfile struct {
 	ID        uuid.UUID
 	Name      string
@@ -893,18 +922,21 @@ type MachineMqttCredential struct {
 }
 
 type MachineOfflineEvent struct {
-	ID               uuid.UUID
-	MachineID        uuid.UUID
-	OfflineSequence  int64
-	EventType        string
-	EventID          string
-	ClientEventID    string
-	OccurredAt       time.Time
-	ReceivedAt       time.Time
-	Payload          []byte
-	ProcessingStatus string
-	ProcessingError  string
-	IdempotencyKey   string
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	OfflineSequence    int64
+	EventType          string
+	EventID            string
+	ClientEventID      string
+	RequestID          string
+	StreamID           string
+	PayloadFingerprint string
+	OccurredAt         time.Time
+	ReceivedAt         time.Time
+	Payload            []byte
+	ProcessingStatus   string
+	ProcessingError    string
+	IdempotencyKey     string
 }
 
 // Append-only auth audit for operator sessions; do not UPDATE rows.

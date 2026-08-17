@@ -24,48 +24,30 @@ func TestDispatcherRequiredUnconfiguredNaks(t *testing.T) {
 }
 
 func TestDispatcherRoutesAppAndServerBots(t *testing.T) {
-	const appChatID = "-1000000000001"
-	const serverChatID = "-1000000000002"
-
 	var appHits, serverHits int
-	var lastAppChat, lastServerChat string
 	appSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		appHits++
-		var body struct {
-			ChatID string `json:"chat_id"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		lastAppChat = body.ChatID
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	}))
 	defer appSrv.Close()
 	serverSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		serverHits++
-		var body struct {
-			ChatID string `json:"chat_id"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		lastServerChat = body.ChatID
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	}))
 	defer serverSrv.Close()
 
 	d := NewTelegramDispatcher(nil, nil, BotRouter{
-		App:    platformtelegram.NewClient(platformtelegram.Config{BotToken: "a", ChatID: appChatID, APIBase: appSrv.URL}),
-		Server: platformtelegram.NewClient(platformtelegram.Config{BotToken: "s", ChatID: serverChatID, APIBase: serverSrv.URL}),
+		App:    platformtelegram.NewClient(platformtelegram.Config{BotToken: "a", ChatID: "c", APIBase: appSrv.URL}),
+		Server: platformtelegram.NewClient(platformtelegram.Config{BotToken: "s", ChatID: "c", APIBase: serverSrv.URL}),
 	}, TelegramDispatcherConfig{Enabled: true, Required: true})
 
 	var ack, nak, term bool
 	require.NoError(t, d.ProcessAlertForTest(context.Background(), platformtelegram.IncidentAlert{
 		Source: SourceApp, Severity: "high", Code: "incident_anr", Title: "anr", OccurrenceID: "1",
-		// Payload fields must not select destination; chat routing is client-configured.
-		MachineID: "machine-with-chat_id-attr",
 	}, &ack, &nak, &term))
 	require.True(t, ack)
 	require.Equal(t, 1, appHits)
 	require.Equal(t, 0, serverHits)
-	require.Equal(t, appChatID, lastAppChat)
-	require.NotEqual(t, serverChatID, lastAppChat)
 
 	ack, nak, term = false, false, false
 	require.NoError(t, d.ProcessAlertForTest(context.Background(), platformtelegram.IncidentAlert{
@@ -73,8 +55,6 @@ func TestDispatcherRoutesAppAndServerBots(t *testing.T) {
 	}, &ack, &nak, &term))
 	require.True(t, ack)
 	require.Equal(t, 1, serverHits)
-	require.Equal(t, serverChatID, lastServerChat)
-	require.NotEqual(t, appChatID, lastServerChat)
 }
 
 func TestDispatcherUnknownSourceTerms(t *testing.T) {

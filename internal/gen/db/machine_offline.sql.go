@@ -14,7 +14,7 @@ import (
 
 const GetMachineOfflineEventByClientEventID = `-- name: GetMachineOfflineEventByClientEventID :one
 SELECT
-    id, machine_id, offline_sequence, event_type, event_id, client_event_id, occurred_at, received_at, payload, processing_status, processing_error, idempotency_key
+    id, machine_id, offline_sequence, event_type, event_id, client_event_id, request_id, stream_id, payload_fingerprint, occurred_at, received_at, payload, processing_status, processing_error, idempotency_key
 FROM
     machine_offline_events
 WHERE
@@ -38,6 +38,49 @@ func (q *Queries) GetMachineOfflineEventByClientEventID(ctx context.Context, arg
 		&i.EventType,
 		&i.EventID,
 		&i.ClientEventID,
+		&i.RequestID,
+		&i.StreamID,
+		&i.PayloadFingerprint,
+		&i.OccurredAt,
+		&i.ReceivedAt,
+		&i.Payload,
+		&i.ProcessingStatus,
+		&i.ProcessingError,
+		&i.IdempotencyKey,
+	)
+	return i, err
+}
+
+const GetMachineOfflineEventByStreamSequence = `-- name: GetMachineOfflineEventByStreamSequence :one
+SELECT
+    id, machine_id, offline_sequence, event_type, event_id, client_event_id, request_id, stream_id, payload_fingerprint, occurred_at, received_at, payload, processing_status, processing_error, idempotency_key
+FROM
+    machine_offline_events
+WHERE
+    machine_id = $1
+    AND stream_id = $2
+    AND offline_sequence = $3
+`
+
+type GetMachineOfflineEventByStreamSequenceParams struct {
+	MachineID       uuid.UUID
+	StreamID        string
+	OfflineSequence int64
+}
+
+func (q *Queries) GetMachineOfflineEventByStreamSequence(ctx context.Context, arg GetMachineOfflineEventByStreamSequenceParams) (MachineOfflineEvent, error) {
+	row := q.db.QueryRow(ctx, GetMachineOfflineEventByStreamSequence, arg.MachineID, arg.StreamID, arg.OfflineSequence)
+	var i MachineOfflineEvent
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.OfflineSequence,
+		&i.EventType,
+		&i.EventID,
+		&i.ClientEventID,
+		&i.RequestID,
+		&i.StreamID,
+		&i.PayloadFingerprint,
 		&i.OccurredAt,
 		&i.ReceivedAt,
 		&i.Payload,
@@ -84,6 +127,9 @@ INSERT INTO
     event_type,
     event_id,
     client_event_id,
+    request_id,
+    stream_id,
+    payload_fingerprint,
     occurred_at,
     payload,
     processing_status,
@@ -101,9 +147,12 @@ VALUES
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11,
+    $12,
+    $13
 )
-ON CONFLICT (machine_id, offline_sequence)
+ON CONFLICT (machine_id, stream_id, offline_sequence)
 DO UPDATE SET
     received_at = now()
 RETURNING
@@ -113,6 +162,9 @@ RETURNING
     event_type,
     event_id,
     client_event_id,
+    request_id,
+    stream_id,
+    payload_fingerprint,
     occurred_at,
     received_at,
     payload,
@@ -123,32 +175,38 @@ RETURNING
 `
 
 type InsertMachineOfflineEventParams struct {
-	MachineID        uuid.UUID
-	OfflineSequence  int64
-	EventType        string
-	EventID          string
-	ClientEventID    string
-	OccurredAt       time.Time
-	Payload          []byte
-	ProcessingStatus string
-	ProcessingError  string
-	IdempotencyKey   string
+	MachineID          uuid.UUID
+	OfflineSequence    int64
+	EventType          string
+	EventID            string
+	ClientEventID      string
+	RequestID          string
+	StreamID           string
+	PayloadFingerprint string
+	OccurredAt         time.Time
+	Payload            []byte
+	ProcessingStatus   string
+	ProcessingError    string
+	IdempotencyKey     string
 }
 
 type InsertMachineOfflineEventRow struct {
-	ID               uuid.UUID
-	MachineID        uuid.UUID
-	OfflineSequence  int64
-	EventType        string
-	EventID          string
-	ClientEventID    string
-	OccurredAt       time.Time
-	ReceivedAt       time.Time
-	Payload          []byte
-	ProcessingStatus string
-	ProcessingError  string
-	IdempotencyKey   string
-	Inserted         bool
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	OfflineSequence    int64
+	EventType          string
+	EventID            string
+	ClientEventID      string
+	RequestID          string
+	StreamID           string
+	PayloadFingerprint string
+	OccurredAt         time.Time
+	ReceivedAt         time.Time
+	Payload            []byte
+	ProcessingStatus   string
+	ProcessingError    string
+	IdempotencyKey     string
+	Inserted           bool
 }
 
 func (q *Queries) InsertMachineOfflineEvent(ctx context.Context, arg InsertMachineOfflineEventParams) (InsertMachineOfflineEventRow, error) {
@@ -158,6 +216,9 @@ func (q *Queries) InsertMachineOfflineEvent(ctx context.Context, arg InsertMachi
 		arg.EventType,
 		arg.EventID,
 		arg.ClientEventID,
+		arg.RequestID,
+		arg.StreamID,
+		arg.PayloadFingerprint,
 		arg.OccurredAt,
 		arg.Payload,
 		arg.ProcessingStatus,
@@ -172,6 +233,9 @@ func (q *Queries) InsertMachineOfflineEvent(ctx context.Context, arg InsertMachi
 		&i.EventType,
 		&i.EventID,
 		&i.ClientEventID,
+		&i.RequestID,
+		&i.StreamID,
+		&i.PayloadFingerprint,
 		&i.OccurredAt,
 		&i.ReceivedAt,
 		&i.Payload,
@@ -190,13 +254,15 @@ SET
     processing_error = $2
 WHERE
     machine_id = $3
-    AND offline_sequence = $4
+    AND stream_id = $4
+    AND offline_sequence = $5
 `
 
 type UpdateMachineOfflineEventStatusParams struct {
 	ProcessingStatus string
 	ProcessingError  string
 	MachineID        uuid.UUID
+	StreamID         string
 	OfflineSequence  int64
 }
 
@@ -205,6 +271,7 @@ func (q *Queries) UpdateMachineOfflineEventStatus(ctx context.Context, arg Updat
 		arg.ProcessingStatus,
 		arg.ProcessingError,
 		arg.MachineID,
+		arg.StreamID,
 		arg.OfflineSequence,
 	)
 	return err

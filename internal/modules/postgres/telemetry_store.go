@@ -16,7 +16,6 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
@@ -230,7 +229,7 @@ func (s *Store) ProjectMachineIncident(ctx context.Context, in alerts.ProjectInp
 		occurrenceID = alerts.ExtractOccurrenceIDFromDetail(in.Detail)
 	}
 	if occurrenceID == "" {
-		occurrenceID = "legacy:" + id.NewUUIDV7String()
+		occurrenceID = "legacy:" + uuid.NewString()
 	}
 	in.OccurrenceID = occurrenceID
 
@@ -485,9 +484,9 @@ func extractReportedMachineID(detail []byte) string {
 		return ""
 	}
 	var envelope struct {
-		MachineID      string            `json:"machineId"`
-		MachineIDSnake string            `json:"machine_id"`
-		Payload        map[string]string `json:"payload"`
+		MachineID string `json:"machineId"`
+		MachineIDSnake string `json:"machine_id"`
+		Payload   map[string]string `json:"payload"`
 	}
 	if err := json.Unmarshal(detail, &envelope); err != nil {
 		return ""

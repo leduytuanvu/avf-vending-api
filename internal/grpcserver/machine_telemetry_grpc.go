@@ -21,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -260,6 +261,203 @@ func (s *machineTelemetryServer) SubmitTelemetryBatch(ctx context.Context, req *
 		DuplicateEventIds: duplicates,
 		ServerReceivedAt:  timestamppb.New(time.Now().UTC()),
 	}, nil
+}
+
+func (s *machineTelemetryServer) SubmitEventEvidenceBatch(ctx context.Context, req *machinev1.SubmitEventEvidenceBatchRequest) (*machinev1.SubmitEventEvidenceBatchResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	claims, _, err := s.telemetryAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := parseMachineMutationContext(ctx, req.GetContext()); err != nil {
+		return nil, err
+	}
+	maxEvents := 500
+	maxBytes := 2 << 20
+	if s.deps.Config != nil {
+		maxEvents = s.deps.Config.Capacity.MaxTelemetryGRPCBatchEvents
+		maxBytes = s.deps.Config.Capacity.MaxTelemetryGRPCBatchBytes
+	}
+	if proto.Size(req) > maxBytes {
+		return nil, status.Error(codes.ResourceExhausted, "evidence batch exceeds maximum serialized size")
+	}
+	if len(req.GetEvents()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "events required")
+	}
+	if len(req.GetEvents()) > maxEvents {
+		return nil, status.Errorf(codes.ResourceExhausted, "too many evidence events (max %d)", maxEvents)
+	}
+	requestID := strings.TrimSpace(req.GetMeta().GetRequestId())
+	if requestID == "" {
+		requestID = strings.TrimSpace(req.GetContext().GetIdempotencyKey())
+	}
+	receivedAt := time.Now().UTC()
+	results := make([]*machinev1.EventEvidenceResult, 0, len(req.GetEvents()))
+	tx, err := s.deps.Pool.Begin(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, "evidence ledger unavailable")
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := db.New(tx)
+	for _, ev := range req.GetEvents() {
+		result := persistEventEvidence(ctx, qtx, claims.MachineID, requestID, ev)
+		productionmetrics.RecordMachineEventEvidence(evidenceResultLabel(result.GetStatus()))
+		results = append(results, result)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Error(codes.Unavailable, "evidence commit failed")
+	}
+	return &machinev1.SubmitEventEvidenceBatchResponse{
+		Meta:             responseMetaCtx(ctx, requestID, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Results:          results,
+		ServerReceivedAt: timestamppb.New(receivedAt),
+	}, nil
+}
+
+func persistEventEvidence(ctx context.Context, q *db.Queries, machineID uuid.UUID, requestID string, ev *machinev1.EventEvidence) *machinev1.EventEvidenceResult {
+	if ev == nil {
+		return &machinev1.EventEvidenceResult{
+			Status: machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED,
+			Reason: "empty evidence event",
+		}
+	}
+	eventID := strings.TrimSpace(ev.GetEventId())
+	eventType := strings.TrimSpace(ev.GetEventType())
+	if eventID == "" {
+		return &machinev1.EventEvidenceResult{
+			Status: machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED,
+			Reason: "event_id required",
+		}
+	}
+	if eventType == "" {
+		return &machinev1.EventEvidenceResult{
+			EventId: eventID,
+			Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED,
+			Reason:  "event_type required",
+		}
+	}
+	if ev.GetOccurredAt() == nil || !ev.GetOccurredAt().IsValid() {
+		return &machinev1.EventEvidenceResult{
+			EventId: eventID,
+			Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED,
+			Reason:  "occurred_at required",
+		}
+	}
+	payload, err := protojson.Marshal(ev.GetPayload())
+	if err != nil || len(payload) == 0 {
+		payload = []byte(`{}`)
+	}
+	fingerprint := offlinePayloadFingerprint(eventType, payload)
+	schemaVersion := ev.GetSchemaVersion()
+	if schemaVersion < 1 {
+		schemaVersion = 1
+	}
+	processingStatus := "accepted"
+	if !knownSemanticEvidenceType(eventType) {
+		processingStatus = "unrecognized"
+	}
+	row, err := q.InsertMachineEventEvidence(ctx, db.InsertMachineEventEvidenceParams{
+		MachineID:          machineID,
+		EventID:            eventID,
+		EventType:          eventType,
+		SchemaVersion:      schemaVersion,
+		Category:           strings.TrimSpace(ev.GetCategory()),
+		Severity:           strings.TrimSpace(ev.GetSeverity()),
+		Source:             firstNonEmpty(strings.TrimSpace(ev.GetSource()), "device"),
+		StreamID:           strings.TrimSpace(ev.GetStreamId()),
+		ClientSequence:     ev.GetClientSequence(),
+		BootID:             strings.TrimSpace(ev.GetBootId()),
+		OccurredAt:         ev.GetOccurredAt().AsTime().UTC(),
+		MonotonicElapsedMs: ev.GetMonotonicElapsedMs(),
+		OrderID:            strings.TrimSpace(ev.GetOrderId()),
+		PaymentID:          strings.TrimSpace(ev.GetPaymentId()),
+		VendAttemptID:      strings.TrimSpace(ev.GetVendAttemptId()),
+		CorrelationID:      strings.TrimSpace(ev.GetCorrelationId()),
+		OperatorSessionID:  strings.TrimSpace(ev.GetOperatorSessionId()),
+		RequestID:          requestID,
+		Cause:              strings.TrimSpace(ev.GetCause()),
+		RecoveryAction:     strings.TrimSpace(ev.GetRecoveryAction()),
+		Payload:            payload,
+		PayloadFingerprint: fingerprint,
+		ProcessingStatus:   processingStatus,
+	})
+	if err != nil {
+		return &machinev1.EventEvidenceResult{
+			EventId: eventID,
+			Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED,
+			Reason:  "evidence insert failed",
+		}
+	}
+	if !row.Inserted {
+		if offlineContentConflicts(row.EventType, row.PayloadFingerprint, row.Payload, eventType, fingerprint, payload) {
+			return &machinev1.EventEvidenceResult{
+				EventId: eventID,
+				Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_CONFLICT,
+				Reason:  "evidence identity conflict: payload or event_type differs",
+			}
+		}
+		return &machinev1.EventEvidenceResult{
+			EventId: eventID,
+			Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_DUPLICATE,
+			Reason:  "evidence already stored",
+		}
+	}
+	return &machinev1.EventEvidenceResult{
+		EventId: eventID,
+		Status:  machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_ACCEPTED,
+	}
+}
+
+func evidenceResultLabel(st machinev1.EventEvidenceResultStatus) string {
+	switch st {
+	case machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_ACCEPTED:
+		return "accepted"
+	case machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_DUPLICATE:
+		return "duplicate"
+	case machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_CONFLICT:
+		return "conflict"
+	case machinev1.EventEvidenceResultStatus_EVENT_EVIDENCE_RESULT_STATUS_REJECTED:
+		return "rejected"
+	default:
+		return "unspecified"
+	}
+}
+
+func knownSemanticEvidenceType(eventType string) bool {
+	switch strings.TrimSpace(eventType) {
+	case "payment_status_transition",
+		"vend_result",
+		"technician_session_open",
+		"technician_session_close",
+		"operator_session_open",
+		"operator_session_close",
+		"refill_confirmed",
+		"config_apply_result",
+		"machine_bootstrap_confirmation",
+		"bill_stacked_cashbox",
+		"bill_stored_recycler",
+		"bill_rejected",
+		"commerce_order_created",
+		"commerce_cash_confirmed",
+		"commerce_vend_started",
+		"commerce_vend_succeeded",
+		"commerce_vend_failed",
+		"commerce_order_cancelled":
+		return true
+	default:
+		return false
+	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func (s *machineTelemetryServer) ReconcileEvents(ctx context.Context, req *machinev1.ReconcileEventsRequest) (*machinev1.ReconcileEventsResponse, error) {

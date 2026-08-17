@@ -40,6 +40,16 @@ WHERE
     AND client_event_id = $2
     AND btrim(client_event_id) <> '';
 
+-- name: GetMachineOfflineEventByStreamSequence :one
+SELECT
+    *
+FROM
+    machine_offline_events
+WHERE
+    machine_id = $1
+    AND stream_id = $2
+    AND offline_sequence = $3;
+
 -- name: InsertMachineOfflineEvent :one
 INSERT INTO
     machine_offline_events (
@@ -48,6 +58,9 @@ INSERT INTO
     event_type,
     event_id,
     client_event_id,
+    request_id,
+    stream_id,
+    payload_fingerprint,
     occurred_at,
     payload,
     processing_status,
@@ -65,9 +78,12 @@ VALUES
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11,
+    $12,
+    $13
 )
-ON CONFLICT (machine_id, offline_sequence)
+ON CONFLICT (machine_id, stream_id, offline_sequence)
 DO UPDATE SET
     received_at = now()
 RETURNING
@@ -77,6 +93,9 @@ RETURNING
     event_type,
     event_id,
     client_event_id,
+    request_id,
+    stream_id,
+    payload_fingerprint,
     occurred_at,
     received_at,
     payload,
@@ -92,4 +111,5 @@ SET
     processing_error = $2
 WHERE
     machine_id = $3
-    AND offline_sequence = $4;
+    AND stream_id = $4
+    AND offline_sequence = $5;

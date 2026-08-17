@@ -19,6 +19,7 @@ func TestP06MachineMethodsRequireMachineJWT(t *testing.T) {
 		machinev1.MachineTelemetryService_SubmitTelemetryBatch_FullMethodName,
 		machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName,
 		machinev1.MachineTelemetryService_GetEventStatus_FullMethodName,
+		machinev1.MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName,
 		machinev1.MachineRuntimeSessionService_StartRuntimeSession_FullMethodName,
 		machinev1.MachineRuntimeSessionService_HeartbeatRuntimeSession_FullMethodName,
 		machinev1.MachineRuntimeSessionService_EndRuntimeSession_FullMethodName,

@@ -2874,7 +2874,7 @@ func DocOpV1AdminSiteDelete() {}
 // @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param body body object true "site_id, name, optional serial_number, optional hardware_profile_id, status"
+// @Param body body object true "site_id, serial_number, name, optional hardware_profile_id, status"
 // @Success 201 {object} object
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -3102,7 +3102,13 @@ func DocOpV1AdminMachineOpsOverview() {}
 // @Security BearerAuth
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Success 200 {object} object
+// @Param from query string false "RFC3339 lower bound"
+// @Param to query string false "RFC3339 upper bound"
+// @Param operator_session_id query string false "Operator session UUID"
+// @Param order_id query string false "Filter by order UUID"
+// @Param payment_id query string false "Filter by payment UUID"
+// @Param limit query int false "Page size (max 500)"
+// @Success 200 {object} V1OperatorListEnvelope
 // @Router /v1/admin/machines/{machineId}/timeline/unified [get]
 func DocOpV1AdminMachineUnifiedTimeline() {}
 

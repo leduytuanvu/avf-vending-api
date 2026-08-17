@@ -174,6 +174,7 @@ func isMachineIdempotentMutation(fullMethod string) bool {
 		machinev1.MachineTelemetryService_PushTelemetryBatch_FullMethodName,
 		machinev1.MachineTelemetryService_PushCriticalEvent_FullMethodName,
 		machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName,
+		machinev1.MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName,
 		machinev1.MachineOfflineSyncService_PushOfflineEvents_FullMethodName,
 		machinev1.MachineBootstrapService_CheckIn_FullMethodName,
 		machinev1.MachineBootstrapService_AckConfigVersion_FullMethodName,
@@ -251,6 +252,8 @@ func newMachineMutationResponse(fullMethod string) proto.Message {
 		return &machinev1.PushCriticalEventResponse{}
 	case machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName:
 		return &machinev1.ReconcileEventsResponse{}
+	case machinev1.MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName:
+		return &machinev1.SubmitEventEvidenceBatchResponse{}
 	case machinev1.MachineOfflineSyncService_PushOfflineEvents_FullMethodName:
 		return &machinev1.SyncOfflineEventsResponse{}
 	case machinev1.MachineBootstrapService_CheckIn_FullMethodName:

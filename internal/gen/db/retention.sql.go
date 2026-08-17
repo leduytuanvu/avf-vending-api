@@ -218,10 +218,8 @@ WHERE
     processing_status IN (
         'processed',
         'succeeded',
-        'failed',
         'duplicate',
-        'replayed',
-        'rejected'
+        'replayed'
     )
     AND received_at < $1
 `

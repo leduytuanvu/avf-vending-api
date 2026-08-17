@@ -76,6 +76,10 @@ var (
 		Help:    "Wall-clock lag between offline event occurred_at and server processing time.",
 		Buckets: prometheus.ExponentialBuckets(0.05, 2, 18),
 	})
+	machineEventEvidenceTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "machine_event_evidence_total",
+		Help: "Durable semantic evidence ingest results (bounded label: result only).",
+	}, []string{"result"})
 
 	// Commerce / payment
 	ordersCreatedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -264,6 +268,14 @@ func RecordOfflineReplayFailure(reason string) {
 		reason = "unknown"
 	}
 	machineOfflineReplayFailuresTotal.WithLabelValues(reason).Inc()
+}
+
+// RecordMachineEventEvidence records machine_event_evidence_total{result}.
+func RecordMachineEventEvidence(result string) {
+	if result == "" {
+		result = "unknown"
+	}
+	machineEventEvidenceTotal.WithLabelValues(result).Inc()
 }
 
 // ObserveMachineSyncLag records machine_sync_lag_seconds from payload occurred time to now.

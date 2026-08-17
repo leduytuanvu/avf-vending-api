@@ -630,3 +630,108 @@ func TestP06_OfflineSync_duplicateInventoryAdjustmentDoesNotDoubleApply(t *testi
 		testfixtures.DevMachineID).Scan(&qty2))
 	require.Equal(t, qty1, qty2)
 }
+
+func TestP06_OfflineSync_rejectedRetryIsNotReplayedAndCursorUnchanged(t *testing.T) {
+	t.Parallel()
+
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
+
+	deps := offlineSyncIntegrationDeps(t, pool)
+	srv := &machineOfflineSyncServer{deps: deps}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
+	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
+
+	pushUnsupported := func(idem string) *machinev1.SyncOfflineEventsResponse {
+		out, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+			Meta: &machinev1.MachineRequestMeta{IdempotencyKey: idem, RequestId: idem, StreamId: "install-a"},
+			Events: []*machinev1.OfflineEvent{{
+				Meta: &machinev1.MachineRequestMeta{
+					OfflineSequence: 1,
+					IdempotencyKey:  idem + ":oe",
+					RequestId:       idem,
+					ClientEventId:   "reject-once",
+					OccurredAt:      timestamppb.Now(),
+					StreamId:        "install-a",
+				},
+				EventType: "not.a.canonical.op",
+				Payload:   &structpb.Struct{},
+			}},
+		})
+		require.NoError(t, err)
+		return out
+	}
+
+	first := pushUnsupported("rej-1")
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED, first.GetResults()[0].GetStatus())
+	require.Equal(t, "0", first.GetNextSyncCursor())
+	require.Equal(t, int64(0), first.GetLastAppliedSequence())
+
+	retry := pushUnsupported("rej-2")
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED, retry.GetResults()[0].GetStatus())
+	require.Contains(t, retry.GetResults()[0].GetReason(), "previously rejected")
+	require.Equal(t, "0", retry.GetNextSyncCursor())
+
+	cur, err := srv.GetSyncCursor(ctxClaims, &machinev1.GetSyncCursorRequest{
+		Meta: &machinev1.MachineRequestMeta{StreamId: "install-a"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, first.GetNextSyncCursor(), cur.GetSyncCursor())
+	require.Equal(t, first.GetLastAppliedSequence(), cur.GetLastAppliedSequence())
+}
+
+func TestP06_OfflineSync_payloadConflictIsNotReplayed(t *testing.T) {
+	t.Parallel()
+
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
+
+	deps := offlineSyncIntegrationDeps(t, pool)
+	srv := &machineOfflineSyncServer{deps: deps}
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
+	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
+
+	payload1 := telemetryBatchPayloadForOffline(t, "conflict-a", "conflict-client-a")
+	out1, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "c1", RequestId: "c1"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 1,
+				IdempotencyKey:  "c1oe",
+				RequestId:       "c1",
+				ClientEventId:   "same-identity",
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "telemetry.batch",
+			Payload:   payload1,
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, out1.GetResults()[0].GetStatus())
+
+	payload2 := telemetryBatchPayloadForOffline(t, "conflict-b", "conflict-client-b")
+	out2, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "c2", RequestId: "c2"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 1,
+				IdempotencyKey:  "c2oe",
+				RequestId:       "c2",
+				ClientEventId:   "same-identity",
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "telemetry.batch",
+			Payload:   payload2,
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED, out2.GetResults()[0].GetStatus())
+	require.Contains(t, out2.GetResults()[0].GetReason(), "conflict")
+}
+

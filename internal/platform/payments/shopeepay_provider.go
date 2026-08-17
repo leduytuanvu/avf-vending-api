@@ -9,10 +9,10 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/httpx"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/ref"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/shopeepay"
+	"github.com/google/uuid"
 )
 
 const (
@@ -100,7 +100,7 @@ func (p *ShopeePayProvider) CreatePaymentSession(ctx context.Context, in CreateP
 	if terminalID == "" {
 		terminalID = strings.TrimSpace(creds.TerminalID)
 	}
-	requestID := id.NewUUIDV7String()
+	requestID := uuid.NewString()
 	payload := map[string]any{
 		"request_id":           requestID,
 		"amount":               shopeepay.ToAPIAmount(in.AmountMinor),
@@ -167,7 +167,7 @@ func (p *ShopeePayProvider) QueryPaymentStatus(ctx context.Context, lookup domai
 	}
 	amount := lookup.AmountMinor
 	payload := map[string]any{
-		"request_id":       id.NewUUIDV7String(),
+		"request_id":       uuid.NewString(),
 		"reference_id":     orderCode,
 		"transaction_type": shopeeTxnTypePayment,
 		"merchant_ext_id":  creds.MerchantExtID,
@@ -221,19 +221,19 @@ func (p *ShopeePayProvider) RefundPayment(ctx context.Context, in RefundPaymentI
 	}
 	refundRef := strings.TrimSpace(in.IdempotencyKey)
 	if refundRef == "" {
-		refundRef = id.NewUUIDV7String()
+		refundRef = uuid.NewString()
 	}
 	if len(refundRef) > shopeepay.PaymentReferenceIDMaxLength {
 		refundRef = refundRef[:shopeepay.PaymentReferenceIDMaxLength]
 	}
 	payload := map[string]any{
-		"request_id":          id.NewUUIDV7String(),
-		"reference_id":        orderCode,
-		"transaction_type":    shopeeTxnTypePayment,
-		"refund_reference_id": refundRef,
-		"merchant_ext_id":     creds.MerchantExtID,
-		"store_ext_id":        creds.StoreExtID,
-		"amount":              shopeepay.ToAPIAmount(in.AmountMinor),
+		"request_id":           uuid.NewString(),
+		"reference_id":         orderCode,
+		"transaction_type":     shopeeTxnTypePayment,
+		"refund_reference_id":  refundRef,
+		"merchant_ext_id":      creds.MerchantExtID,
+		"store_ext_id":         creds.StoreExtID,
+		"amount":               shopeepay.ToAPIAmount(in.AmountMinor),
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

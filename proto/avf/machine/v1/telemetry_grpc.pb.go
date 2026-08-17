@@ -19,12 +19,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MachineTelemetryService_PushTelemetryBatch_FullMethodName   = "/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch"
-	MachineTelemetryService_PushCriticalEvent_FullMethodName    = "/avf.machine.v1.MachineTelemetryService/PushCriticalEvent"
-	MachineTelemetryService_CheckIn_FullMethodName              = "/avf.machine.v1.MachineTelemetryService/CheckIn"
-	MachineTelemetryService_SubmitTelemetryBatch_FullMethodName = "/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch"
-	MachineTelemetryService_ReconcileEvents_FullMethodName      = "/avf.machine.v1.MachineTelemetryService/ReconcileEvents"
-	MachineTelemetryService_GetEventStatus_FullMethodName       = "/avf.machine.v1.MachineTelemetryService/GetEventStatus"
+	MachineTelemetryService_PushTelemetryBatch_FullMethodName       = "/avf.machine.v1.MachineTelemetryService/PushTelemetryBatch"
+	MachineTelemetryService_PushCriticalEvent_FullMethodName        = "/avf.machine.v1.MachineTelemetryService/PushCriticalEvent"
+	MachineTelemetryService_CheckIn_FullMethodName                  = "/avf.machine.v1.MachineTelemetryService/CheckIn"
+	MachineTelemetryService_SubmitTelemetryBatch_FullMethodName     = "/avf.machine.v1.MachineTelemetryService/SubmitTelemetryBatch"
+	MachineTelemetryService_ReconcileEvents_FullMethodName          = "/avf.machine.v1.MachineTelemetryService/ReconcileEvents"
+	MachineTelemetryService_GetEventStatus_FullMethodName           = "/avf.machine.v1.MachineTelemetryService/GetEventStatus"
+	MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName = "/avf.machine.v1.MachineTelemetryService/SubmitEventEvidenceBatch"
 )
 
 // MachineTelemetryServiceClient is the client API for MachineTelemetryService service.
@@ -40,6 +41,8 @@ type MachineTelemetryServiceClient interface {
 	SubmitTelemetryBatch(ctx context.Context, in *SubmitTelemetryBatchRequest, opts ...grpc.CallOption) (*SubmitTelemetryBatchResponse, error)
 	ReconcileEvents(ctx context.Context, in *ReconcileEventsRequest, opts ...grpc.CallOption) (*ReconcileEventsResponse, error)
 	GetEventStatus(ctx context.Context, in *GetEventStatusRequest, opts ...grpc.CallOption) (*GetEventStatusResponse, error)
+	// Additive forensic ingest. ACK means PostgreSQL durable commit of evidence, not commerce mutation.
+	SubmitEventEvidenceBatch(ctx context.Context, in *SubmitEventEvidenceBatchRequest, opts ...grpc.CallOption) (*SubmitEventEvidenceBatchResponse, error)
 }
 
 type machineTelemetryServiceClient struct {
@@ -110,6 +113,16 @@ func (c *machineTelemetryServiceClient) GetEventStatus(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *machineTelemetryServiceClient) SubmitEventEvidenceBatch(ctx context.Context, in *SubmitEventEvidenceBatchRequest, opts ...grpc.CallOption) (*SubmitEventEvidenceBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SubmitEventEvidenceBatchResponse)
+	err := c.cc.Invoke(ctx, MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineTelemetryServiceServer is the server API for MachineTelemetryService service.
 // All implementations must embed UnimplementedMachineTelemetryServiceServer
 // for forward compatibility.
@@ -123,6 +136,8 @@ type MachineTelemetryServiceServer interface {
 	SubmitTelemetryBatch(context.Context, *SubmitTelemetryBatchRequest) (*SubmitTelemetryBatchResponse, error)
 	ReconcileEvents(context.Context, *ReconcileEventsRequest) (*ReconcileEventsResponse, error)
 	GetEventStatus(context.Context, *GetEventStatusRequest) (*GetEventStatusResponse, error)
+	// Additive forensic ingest. ACK means PostgreSQL durable commit of evidence, not commerce mutation.
+	SubmitEventEvidenceBatch(context.Context, *SubmitEventEvidenceBatchRequest) (*SubmitEventEvidenceBatchResponse, error)
 	mustEmbedUnimplementedMachineTelemetryServiceServer()
 }
 
@@ -150,6 +165,9 @@ func (UnimplementedMachineTelemetryServiceServer) ReconcileEvents(context.Contex
 }
 func (UnimplementedMachineTelemetryServiceServer) GetEventStatus(context.Context, *GetEventStatusRequest) (*GetEventStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetEventStatus not implemented")
+}
+func (UnimplementedMachineTelemetryServiceServer) SubmitEventEvidenceBatch(context.Context, *SubmitEventEvidenceBatchRequest) (*SubmitEventEvidenceBatchResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubmitEventEvidenceBatch not implemented")
 }
 func (UnimplementedMachineTelemetryServiceServer) mustEmbedUnimplementedMachineTelemetryServiceServer() {
 }
@@ -281,6 +299,24 @@ func _MachineTelemetryService_GetEventStatus_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineTelemetryService_SubmitEventEvidenceBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitEventEvidenceBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineTelemetryServiceServer).SubmitEventEvidenceBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineTelemetryServiceServer).SubmitEventEvidenceBatch(ctx, req.(*SubmitEventEvidenceBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineTelemetryService_ServiceDesc is the grpc.ServiceDesc for MachineTelemetryService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -311,6 +347,10 @@ var MachineTelemetryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetEventStatus",
 			Handler:    _MachineTelemetryService_GetEventStatus_Handler,
+		},
+		{
+			MethodName: "SubmitEventEvidenceBatch",
+			Handler:    _MachineTelemetryService_SubmitEventEvidenceBatch_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

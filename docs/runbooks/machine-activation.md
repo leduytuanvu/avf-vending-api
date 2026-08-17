@@ -76,5 +76,6 @@ Invoke-RestMethod -Method Post `
 - `400 activation_invalid`: invalid, expired, exhausted, or revoked code. Do not disclose which condition to the field user.
 - `403/404` on admin create/list: wrong company scope or missing machine.
 - Bootstrap failure after claim: verify token audience/issuer, machine status, and `machine_id` URL match.
+- App shows `CATALOG_EMPTY` / `machine not operational for inventory` after first install: `machines.status` is likely `active` instead of `online`. Inventory gRPC requires `online` or `offline`. PATCH machine to `online` (see [production-setup-AVF000195-first-install.md](./production-setup-AVF000195-first-install.md#troubleshooting--app-catalog_empty--catalog_sync_fail)).
 
 Related: `docs/api/machine-activation-implementation-handoff.md`, `docs/api/setup-machine.md`, `docs/api/machine-grpc.md`.

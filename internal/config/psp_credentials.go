@@ -58,8 +58,8 @@ type ShopeePayTenantCredentials struct {
 
 // ShopeePayConfig holds AVF + TFO ShopeePay credentials and callback IP whitelist.
 type ShopeePayConfig struct {
-	AVF                 ShopeePayTenantCredentials
-	TFO                 ShopeePayTenantCredentials
+	AVF                ShopeePayTenantCredentials
+	TFO                ShopeePayTenantCredentials
 	CallbackIPWhitelist []string
 }
 

@@ -426,6 +426,51 @@ func (q *Queries) GetPaymentByOrderAndIdempotencyKey(ctx context.Context, arg Ge
 	return i, err
 }
 
+const GetPaymentByProviderReference = `-- name: GetPaymentByProviderReference :one
+SELECT
+    p.id AS payment_id,
+    p.order_id,
+    p.provider,
+    p.state AS payment_state,
+    p.amount_minor,
+    p.currency,
+    pa.provider_reference,
+    o.machine_id
+FROM payment_attempts pa
+INNER JOIN payments p ON p.id = pa.payment_id
+INNER JOIN orders o ON o.id = p.order_id
+WHERE pa.provider_reference = $1
+ORDER BY pa.created_at DESC
+LIMIT 1
+`
+
+type GetPaymentByProviderReferenceRow struct {
+	PaymentID         uuid.UUID
+	OrderID           uuid.UUID
+	Provider          string
+	PaymentState      string
+	AmountMinor       int64
+	Currency          string
+	ProviderReference pgtype.Text
+	MachineID         uuid.UUID
+}
+
+func (q *Queries) GetPaymentByProviderReference(ctx context.Context, providerReference pgtype.Text) (GetPaymentByProviderReferenceRow, error) {
+	row := q.db.QueryRow(ctx, GetPaymentByProviderReference, providerReference)
+	var i GetPaymentByProviderReferenceRow
+	err := row.Scan(
+		&i.PaymentID,
+		&i.OrderID,
+		&i.Provider,
+		&i.PaymentState,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.ProviderReference,
+		&i.MachineID,
+	)
+	return i, err
+}
+
 const GetPaymentProviderEventByProviderRef = `-- name: GetPaymentProviderEventByProviderRef :one
 SELECT
     id,

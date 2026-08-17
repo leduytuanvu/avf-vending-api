@@ -28,7 +28,9 @@ message SyncOfflineEventsRequest {
 message SyncOfflineEventsResponse {
   MachineResponseMeta meta = 1;
   repeated OfflineEventResult results = 2;
+  // Last successfully applied offline_sequence as a decimal string (same concept as GetSyncCursor.sync_cursor).
   string next_sync_cursor = 3;
+  int64 last_applied_sequence = 4;
 }
 
 message OfflineEventResult {
@@ -44,5 +46,7 @@ message GetSyncCursorRequest {
 
 message GetSyncCursorResponse {
   MachineResponseMeta meta = 1;
+  // Last successfully applied offline_sequence as a decimal string (same concept as PushOfflineEvents.next_sync_cursor).
   string sync_cursor = 2;
+  int64 last_applied_sequence = 3;
 }

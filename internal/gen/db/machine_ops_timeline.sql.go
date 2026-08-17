@@ -15,6 +15,7 @@ import (
 const AdminUnifiedMachineTimeline = `-- name: AdminUnifiedMachineTimeline :many
 SELECT
     occurred_at,
+    received_at,
     event_type,
     severity,
     machine_id,
@@ -32,8 +33,36 @@ SELECT
     reason,
     error_code,
     summary,
-    metadata
+    metadata,
+    source,
+    category,
+    event_id
 FROM (
+    SELECT
+        occurred_at,
+        occurred_at AS received_at,
+        event_type,
+        severity,
+        machine_id,
+        actor_type,
+        actor_account_id,
+        operator_session_id,
+        machine_session_id,
+        resource_type,
+        resource_id,
+        order_id,
+        payment_id,
+        vend_session_id,
+        request_id,
+        correlation_id,
+        reason,
+        error_code,
+        summary,
+        metadata,
+        'platform'::text AS source,
+        ''::text AS category,
+        ''::text AS event_id
+    FROM (
     SELECT
         ae.occurred_at,
         ae.action AS event_type,
@@ -494,10 +523,87 @@ FROM (
             $3::timestamptz IS NULL
             OR ms.issued_at <= $3
         )
+) AS platform_events
+    UNION ALL
+    SELECT
+        mee.occurred_at,
+        mee.received_at,
+        mee.event_type,
+        CASE
+            WHEN btrim(mee.severity) <> '' THEN mee.severity
+            ELSE 'info'
+        END AS severity,
+        mee.machine_id,
+        'device'::text AS actor_type,
+        NULL::uuid AS actor_account_id,
+        NULL::uuid AS operator_session_id,
+        NULL::uuid AS machine_session_id,
+        'machine_event_evidence'::text AS resource_type,
+        mee.event_id AS resource_id,
+        CASE
+            WHEN mee.order_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN mee.order_id::uuid
+            ELSE NULL::uuid
+        END AS order_id,
+        CASE
+            WHEN mee.payment_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN mee.payment_id::uuid
+            ELSE NULL::uuid
+        END AS payment_id,
+        CASE
+            WHEN mee.vend_attempt_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN mee.vend_attempt_id::uuid
+            ELSE NULL::uuid
+        END AS vend_session_id,
+        NULLIF(btrim(mee.request_id), '') AS request_id,
+        CASE
+            WHEN mee.correlation_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN mee.correlation_id::uuid
+            ELSE NULL::uuid
+        END AS correlation_id,
+        NULLIF(btrim(mee.cause), '') AS reason,
+        NULL::text AS error_code,
+        mee.event_type AS summary,
+        jsonb_build_object(
+            'category', mee.category,
+            'severity', mee.severity,
+            'source', mee.source,
+            'processing_status', mee.processing_status,
+            'stream_id', mee.stream_id,
+            'boot_id', mee.boot_id,
+            'client_sequence', mee.client_sequence,
+            'payload', mee.payload,
+            'order_id', mee.order_id,
+            'payment_id', mee.payment_id,
+            'vend_attempt_id', mee.vend_attempt_id
+        ) AS metadata,
+        'device_evidence'::text AS source,
+        mee.category,
+        mee.event_id
+    FROM
+        machine_event_evidence mee
+    WHERE
+        mee.machine_id = $1
+        AND (
+            $2::timestamptz IS NULL
+            OR mee.occurred_at >= $2
+        )
+        AND (
+            $3::timestamptz IS NULL
+            OR mee.occurred_at <= $3
+        )
+        AND (
+            $4::uuid IS NULL
+            OR mee.operator_session_id = $4::text
+        )
 ) AS unified
+WHERE (
+    $5::uuid IS NULL
+    OR order_id = $5
+)
+AND (
+    $6::uuid IS NULL
+    OR payment_id = $6
+)
 ORDER BY
     occurred_at DESC
-LIMIT $5
+LIMIT $7
 `
 
 type AdminUnifiedMachineTimelineParams struct {
@@ -505,11 +611,14 @@ type AdminUnifiedMachineTimelineParams struct {
 	FromTs            pgtype.Timestamptz
 	ToTs              pgtype.Timestamptz
 	OperatorSessionID pgtype.UUID
+	OrderID           pgtype.UUID
+	PaymentID         pgtype.UUID
 	Lim               int32
 }
 
 type AdminUnifiedMachineTimelineRow struct {
 	OccurredAt        time.Time
+	ReceivedAt        time.Time
 	EventType         string
 	Severity          string
 	MachineID         pgtype.UUID
@@ -528,6 +637,9 @@ type AdminUnifiedMachineTimelineRow struct {
 	ErrorCode         pgtype.Text
 	Summary           string
 	Metadata          []byte
+	Source            string
+	Category          string
+	EventID           string
 }
 
 func (q *Queries) AdminUnifiedMachineTimeline(ctx context.Context, arg AdminUnifiedMachineTimelineParams) ([]AdminUnifiedMachineTimelineRow, error) {
@@ -536,6 +648,8 @@ func (q *Queries) AdminUnifiedMachineTimeline(ctx context.Context, arg AdminUnif
 		arg.FromTs,
 		arg.ToTs,
 		arg.OperatorSessionID,
+		arg.OrderID,
+		arg.PaymentID,
 		arg.Lim,
 	)
 	if err != nil {
@@ -547,6 +661,7 @@ func (q *Queries) AdminUnifiedMachineTimeline(ctx context.Context, arg AdminUnif
 		var i AdminUnifiedMachineTimelineRow
 		if err := rows.Scan(
 			&i.OccurredAt,
+			&i.ReceivedAt,
 			&i.EventType,
 			&i.Severity,
 			&i.MachineID,
@@ -565,6 +680,9 @@ func (q *Queries) AdminUnifiedMachineTimeline(ctx context.Context, arg AdminUnif
 			&i.ErrorCode,
 			&i.Summary,
 			&i.Metadata,
+			&i.Source,
+			&i.Category,
+			&i.EventID,
 		); err != nil {
 			return nil, err
 		}

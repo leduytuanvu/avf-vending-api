@@ -81,6 +81,6 @@ func TestP23_PushOfflineEvents_rejectsOverConfiguredBatchCap(t *testing.T) {
 	require.Error(t, err)
 	st, ok := status.FromError(err)
 	require.True(t, ok)
-	require.Equal(t, codes.InvalidArgument, st.Code())
+	require.Equal(t, codes.ResourceExhausted, st.Code())
 	require.True(t, strings.Contains(st.Message(), "too many offline events"))
 }

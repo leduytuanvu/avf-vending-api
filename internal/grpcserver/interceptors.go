@@ -12,7 +12,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/observability/grpcprom"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/ratelimit"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
@@ -119,7 +118,7 @@ func reportGRPCServerFailure(ctx context.Context, info *grpc.UnaryServerInfo, er
 		codeStr = "grpc_panic"
 	}
 	alert := alerts.ServerAlert{
-		OccurrenceID:  id.NewUUIDV7String(),
+		OccurrenceID:  uuid.NewString(),
 		Severity:      "high",
 		Code:          codeStr,
 		Title:         title,
@@ -176,7 +175,7 @@ func unaryRequestMetaInterceptor() grpc.UnaryServerInterceptor {
 		md, _ := metadata.FromIncomingContext(ctx)
 		requestID := firstMetadata(md, "x-request-id", "request-id")
 		if requestID == "" {
-			requestID = id.NewUUIDV7String()
+			requestID = uuid.NewString()
 		}
 		correlationID := firstMetadata(md, "x-correlation-id", "correlation-id")
 		if correlationID == "" {
@@ -610,6 +609,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineTelemetryService_PushCriticalEvent_FullMethodName,
 		machinev1.MachineTelemetryService_CheckIn_FullMethodName,
 		machinev1.MachineTelemetryService_SubmitTelemetryBatch_FullMethodName,
+		machinev1.MachineTelemetryService_SubmitEventEvidenceBatch_FullMethodName,
 		machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName,
 		machinev1.MachineTelemetryService_GetEventStatus_FullMethodName,
 		machinev1.MachineOperatorService_OpenOperatorSession_FullMethodName,

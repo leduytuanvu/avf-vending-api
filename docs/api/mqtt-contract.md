@@ -227,6 +227,27 @@ For **`catalog.refresh`** commands only, when the normalized status is **`acked`
 
 Optional: `type` (`"catalog.refresh"`), `detail` (string), `commandId` / `command_id`. Nested objects/arrays in values are rejected.
 
+### `payment.captured` (QR/wallet payment success hint)
+
+After a PSP IPN (or provider query refresh) marks a payment **`captured`**, the API may enqueue a machine command so the kiosk can stop waiting early. **MQTT is not authoritative** — the device must confirm via `GetOrderStatus` (or legacy `/payment-service/payment/query`) before starting vend.
+
+**Dispatch** uses the normal outbound wire. For `command_type: "payment.captured"`, the inner **`payload`** object SHOULD include:
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `type` | string | Must be `"payment.captured"`. |
+| `order_id` | string (UUID) | Commerce order id. |
+| `payment_id` | string (UUID) | Payment id. |
+| `provider` | string | Registry key (`momo`, `zalopay`, …). |
+| `provider_reference` | string | PSP order/ref (≤21 for ShopeePay). |
+| `amount_minor` | int | VND đồng. |
+| `currency` | string | e.g. `VND`. |
+| `order_code` | string | Optional legacy external order code. |
+
+Idempotency key format: `payment.captured:{payment_id}:{webhook_event_id}`.
+
+IPN HTTP responses must not fail when MQTT enqueue/publish fails; the kiosk poll path remains required.
+
 **Example nested ACK `payload`:**
 
 ```json

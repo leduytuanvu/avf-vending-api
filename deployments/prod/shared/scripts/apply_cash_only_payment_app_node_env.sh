@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Ensure production app-node env uses explicit cash-only payment mode (required for pilot rollout).
+# Intentional rollback ONLY: force cash-only and unset COMMERCE_PAYMENT_PROVIDER.
+# Do NOT call from deploy-prod — production default is apply_live_payment_app_node_env.sh.
 # Usage: apply_cash_only_payment_app_node_env.sh [path/to/.env.app-node]
 set -euo pipefail
 
@@ -34,6 +35,5 @@ unset_env_kv() {
 PAYMENT_ENV="${PAYMENT_ENV:-cash_only}"
 set_env_kv "PAYMENT_ENV" "${PAYMENT_ENV}"
 unset_env_kv "COMMERCE_PAYMENT_PROVIDER"
-unset_env_kv "COMMERCE_PAYMENT_PROVIDERS"
 
-echo "apply_cash_only_payment_app_node_env: ok (PAYMENT_ENV=${PAYMENT_ENV}, COMMERCE_PAYMENT_PROVIDER/PROVIDERS unset)"
+echo "apply_cash_only_payment_app_node_env: ok (PAYMENT_ENV=${PAYMENT_ENV}, COMMERCE_PAYMENT_PROVIDER unset)"

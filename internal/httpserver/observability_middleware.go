@@ -11,7 +11,6 @@ import (
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/google/uuid"
@@ -60,7 +59,7 @@ func recoverServerAlertMiddleware(base *zap.Logger) func(http.Handler) http.Hand
 						zap.String("method", r.Method),
 					)
 					alert := alerts.ServerAlert{
-						OccurrenceID: id.NewUUIDV7String(),
+						OccurrenceID: uuid.NewString(),
 						Severity:     "high",
 						Code:         "http_panic",
 						Title:        "HTTP panic recovered",
@@ -185,7 +184,7 @@ func requestLoggingMiddleware(base *zap.Logger) func(http.Handler) http.Handler 
 					break
 				}
 				alert := alerts.ServerAlert{
-					OccurrenceID: id.NewUUIDV7String(),
+					OccurrenceID: uuid.NewString(),
 					Severity:     "high",
 					Code:         "http_5xx",
 					Title:        "Unexpected HTTP 5xx",

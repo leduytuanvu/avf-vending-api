@@ -12,9 +12,9 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/httpx"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/momo"
+	"github.com/google/uuid"
 )
 
 // MoMoProvider is the live MoMo Wallet WiredLiveProvider adapter.
@@ -82,7 +82,7 @@ func (p *MoMoProvider) CreatePaymentSession(ctx context.Context, in CreatePaymen
 	}
 
 	providerRef := resolveProviderRef(in)
-	requestID := id.NewUUIDV7String()
+	requestID := uuid.NewString()
 	storeID := strings.TrimSpace(in.StoreID)
 	if storeID == "" {
 		storeID = strings.TrimSpace(creds.TerminalID)
@@ -148,7 +148,7 @@ func (p *MoMoProvider) QueryPaymentStatus(ctx context.Context, lookup domaincomm
 	if strings.TrimSpace(creds.PartnerCode) == "" {
 		creds = p.keys.TFO
 	}
-	requestID := id.NewUUIDV7String()
+	requestID := uuid.NewString()
 	sig := momo.SignQuery(creds.SecretKey, creds.AccessKey, orderID, creds.PartnerCode, requestID)
 	body := map[string]any{
 		"partnerCode": creds.PartnerCode,
@@ -201,7 +201,7 @@ func (p *MoMoProvider) RefundPayment(ctx context.Context, in RefundPaymentInput)
 	if strings.TrimSpace(creds.PartnerCode) == "" {
 		creds = p.keys.TFO
 	}
-	requestID := id.NewUUIDV7String()
+	requestID := uuid.NewString()
 	amount := momo.FormatAmount(in.AmountMinor)
 	description := "Refund don hang " + orderID
 	raw := fmt.Sprintf(

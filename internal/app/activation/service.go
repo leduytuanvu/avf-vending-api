@@ -356,12 +356,12 @@ type ClaimResult struct {
 
 func (s *Service) refreshTTL() time.Duration {
 	if s == nil || s.issuer == nil {
-		return 720 * time.Hour
+		return 876024 * time.Hour // 100y+1d aligned with MACHINE_REFRESH_TTL / HTTP_AUTH_REFRESH_TTL defaults
 	}
 	if ttl := s.issuer.MachineRefreshTokenTTL(); ttl > 0 {
 		return ttl
 	}
-	return 720 * time.Hour
+	return 876024 * time.Hour
 }
 
 func (s *Service) refreshGracePeriod() time.Duration {

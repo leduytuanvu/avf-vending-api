@@ -2,11 +2,11 @@
 # Internal APIs use buf.gen.avfinternal.yaml → internal/gen/avfinternalv1 (see Makefile proto-check paths).
 version: v2
 plugins:
-  - remote: buf.build/protocolbuffers/go:v1.36.11
+  - remote: buf.build/protocolbuffers/go
     out: .
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go:v1.6.2
+  - remote: buf.build/grpc/go
     out: .
     opt:
       - paths=source_relative

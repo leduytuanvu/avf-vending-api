@@ -264,7 +264,7 @@ const deleteMachineOfflineTerminalSQL = `
 WITH doomed AS (
 	SELECT id
 	FROM machine_offline_events
-	WHERE processing_status IN ('processed', 'succeeded', 'failed', 'duplicate', 'replayed', 'rejected')
+	WHERE processing_status IN ('processed', 'succeeded', 'duplicate', 'replayed')
 	  AND received_at < $1
 	ORDER BY received_at, id
 	LIMIT $2

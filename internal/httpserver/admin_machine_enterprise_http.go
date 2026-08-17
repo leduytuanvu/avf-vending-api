@@ -562,10 +562,23 @@ func serveAdminMachineUnifiedTimeline(app *api.HTTPApplication) http.HandlerFunc
 				opSess = &id
 			}
 		}
+		var orderID, paymentID *uuid.UUID
+		if v := strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("order_id"), r.URL.Query().Get("orderId"))); v != "" {
+			if id, err := uuid.Parse(v); err == nil {
+				orderID = &id
+			}
+		}
+		if v := strings.TrimSpace(firstNonEmpty(r.URL.Query().Get("payment_id"), r.URL.Query().Get("paymentId"))); v != "" {
+			if id, err := uuid.Parse(v); err == nil {
+				paymentID = &id
+			}
+		}
 		items, err := app.AdminOps.UnifiedMachineTimeline(r.Context(), scopeID, machineID, adminops.TimelineFilter{
 			From:              from,
 			To:                to,
 			OperatorSessionID: opSess,
+			OrderID:           orderID,
+			PaymentID:         paymentID,
 			Limit:             int32(limit),
 		})
 		if err != nil {
@@ -576,7 +589,7 @@ func serveAdminMachineUnifiedTimeline(app *api.HTTPApplication) http.HandlerFunc
 		for _, it := range items {
 			out = append(out, unifiedTimelineJSON(it))
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"items": out})
+		writeOperatorListEnvelope(w, out, int32(limit), len(out))
 	}
 }
 
@@ -645,6 +658,7 @@ func unifiedTimelineJSON(it adminops.UnifiedTimelineItem) map[string]any {
 	out := map[string]any{
 		"id":            it.ID,
 		"occurred_at":   it.OccurredAt.Format(time.RFC3339Nano),
+		"received_at":   it.ReceivedAt.Format(time.RFC3339Nano),
 		"event_type":    it.EventType,
 		"severity":      it.Severity,
 		"machine_id":    it.MachineID.String(),
@@ -653,6 +667,13 @@ func unifiedTimelineJSON(it adminops.UnifiedTimelineItem) map[string]any {
 		"resource_id":   it.ResourceID,
 		"summary":       it.Summary,
 		"metadata":      it.Metadata,
+		"source":        it.Source,
+	}
+	if it.Category != "" {
+		out["category"] = it.Category
+	}
+	if it.EventID != "" {
+		out["event_id"] = it.EventID
 	}
 	if it.ActorAccountID != nil {
 		out["actor_account_id"] = it.ActorAccountID.String()
@@ -665,6 +686,15 @@ func unifiedTimelineJSON(it adminops.UnifiedTimelineItem) map[string]any {
 	}
 	if it.CorrelationID != nil {
 		out["correlation_id"] = it.CorrelationID.String()
+	}
+	if it.OrderID != nil {
+		out["order_id"] = it.OrderID.String()
+	}
+	if it.PaymentID != nil {
+		out["payment_id"] = it.PaymentID.String()
+	}
+	if it.VendAttemptID != nil {
+		out["vend_attempt_id"] = it.VendAttemptID.String()
 	}
 	if it.RequestID != "" {
 		out["request_id"] = it.RequestID
