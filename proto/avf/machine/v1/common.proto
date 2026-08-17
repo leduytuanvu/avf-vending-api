@@ -27,8 +27,6 @@ message MachineRequestMeta {
   string catalog_version = 10;
   // Optional echo for offline correlation (also carried on IdempotencyContext.client_event_id for mutations).
   string client_event_id = 11;
-  // Persistent ordered-stream epoch (app installation identity). Empty means legacy stream.
-  string stream_id = 12;
 }
 
 message MachineResponseMeta {
