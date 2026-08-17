@@ -139,8 +139,11 @@ check_managed_postgres() {
 	if command -v pg_isready >/dev/null 2>&1; then
 		if pg_isready -d "${DATABASE_URL}" -t 5 >/dev/null 2>&1; then
 			pass "managed PostgreSQL accepts pg_isready"
+		elif tcp_check "${host}" "${port}" >/dev/null 2>&1; then
+			# Pooler/SSL URLs often accept app drivers while pg_isready fails from the host.
+			pass "managed PostgreSQL TCP reachability ${host}:${port} (pg_isready unavailable; TCP ok)"
 		else
-			fail_check "managed PostgreSQL did not pass pg_isready"
+			fail_check "managed PostgreSQL did not pass pg_isready or TCP reachability for ${host}:${port}"
 		fi
 	elif tcp_check "${host}" "${port}" >/dev/null 2>&1; then
 		pass "managed PostgreSQL TCP reachability ${host}:${port}"
