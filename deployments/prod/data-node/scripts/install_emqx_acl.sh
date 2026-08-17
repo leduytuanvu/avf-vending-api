@@ -19,6 +19,20 @@ if [[ ! -f "${ACL_FILE}" ]]; then
 	sed 's/TOPIC_PREFIX/avf\/devices/g; s/%u/${username}/g' "${EMQX_DIR}/acl.conf.example" >"${ACL_FILE}"
 fi
 
+reload_emqx_acl() {
+	local cid="$1"
+	if [[ -z "${cid}" ]]; then
+		fail "emqx container id is empty"
+	fi
+	note "reload EMQX authorization without recreating the broker (cid=${cid})"
+	# Bind-mounted acl.conf is already visible. Clear authz cache so file rules apply
+	# to new connections without dropping existing MQTT sessions.
+	if ! docker exec "${cid}" emqx ctl authorization cache-clean all; then
+		note "emqx ctl authorization cache-clean failed; trying conf reload"
+		docker exec "${cid}" emqx ctl conf reload || fail "EMQX ACL reload failed"
+	fi
+}
+
 install_via_compose() {
 	local env_file="$1"
 	local compose_file="$2"
@@ -28,8 +42,14 @@ install_via_compose() {
 	local compose=(docker compose --env-file "${env_file}" -f "${compose_file}")
 	note "validate compose ${compose_file}"
 	"${compose[@]}" config >/dev/null
-	note "recreate ${service_name} from ${compose_file}"
-	"${compose[@]}" up -d --force-recreate "${service_name}"
+	# Start the broker if missing; never --force-recreate (that drops every kiosk MQTT session).
+	if ! "${compose[@]}" ps --status running --services 2>/dev/null | grep -qx "${service_name}"; then
+		note "start ${service_name} (no force-recreate)"
+		"${compose[@]}" up -d "${service_name}"
+	fi
+	local cid
+	cid="$("${compose[@]}" ps -q "${service_name}")"
+	reload_emqx_acl "${cid}"
 }
 
 installed=0

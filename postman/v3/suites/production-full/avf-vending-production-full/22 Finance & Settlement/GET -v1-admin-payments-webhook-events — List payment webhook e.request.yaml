@@ -1,0 +1,15 @@
+$kind: http-request
+name: GET /v1/admin/payments/webhook-events — List payment webhook events
+description: Gate 0 coverage for OpenAPI `GET /v1/admin/payments/webhook-events` — List payment webhook events
+url: "{{baseUrl}}/v1/admin/payments/webhook-events"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 13000

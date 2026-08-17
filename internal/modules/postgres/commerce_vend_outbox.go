@@ -8,6 +8,7 @@ import (
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -34,7 +35,7 @@ func insertOutboxEventIdempotent(ctx context.Context, q *db.Queries, p insertOut
 	row, err := q.InsertOutboxEventIdempotent(ctx, db.InsertOutboxEventIdempotentParams{
 		Topic:              topic,
 		EventType:          evType,
-		Payload:            p.Payload,
+		Payload:            pgjson.RequiredString(p.Payload),
 		AggregateType:      strings.TrimSpace(p.AggregateType),
 		AggregateID:        p.AggregateID,
 		IdempotencyKey:     pgtype.Text{String: idem, Valid: true},

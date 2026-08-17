@@ -72,4 +72,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/POST -v1-auth-mfa-totp-enroll — Start TOTP MFA enrollment.resources/examples
-order: 9000
+order: 8000

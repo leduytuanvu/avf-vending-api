@@ -22,6 +22,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -201,6 +202,23 @@ def _environment_path(owner: str, repo: str, environment: str, *suffix: str) -> 
     return "/".join(("repos", owner, repo, "environments", enc, *suffix))
 
 
+_GH_HTTP_STATUS_RE = re.compile(r"\(HTTP (\d{3})\)")
+
+
+def _http_status_from_gh_stderr(returncode: int, err: str) -> int:
+    """gh api exits 1 on HTTP errors; recover the real status from stderr when present."""
+    m = _GH_HTTP_STATUS_RE.search(err or "")
+    if m:
+        return int(m.group(1))
+    return returncode
+
+
+def _is_github_free_classic_protection_unavailable(err: str) -> bool:
+    """Classic branch protection API is a paid feature on private repositories."""
+    m = (err or "").lower()
+    return "upgrade to github pro" in m or "make this repository public to enable this feature" in m
+
+
 def _request_with_gh(api_path: str, token: str) -> tuple[int, bytes | None, str]:
     """api_path: repos/owner/repo/... without leading slash. Uses `gh api` (REST)."""
     if not shutil.which("gh"):
@@ -222,7 +240,7 @@ def _request_with_gh(api_path: str, token: str) -> tuple[int, bytes | None, str]
     )
     err = (p.stderr or b"").decode("utf-8", errors="replace").strip()
     if p.returncode != 0:
-        return p.returncode, None, err
+        return _http_status_from_gh_stderr(p.returncode, err), None, err
     return 0, p.stdout, err
 
 
@@ -251,12 +269,12 @@ def _request_with_urllib(api_path: str, token: str) -> tuple[int, bytes | None, 
 def github_get_json(api_path: str, token: str) -> tuple[int, Any | None, str]:
     if shutil.which("gh"):
         code, data, err = _request_with_gh(api_path, token)
-        if code != 0 or data is None:
-            return code, None, err or "gh api failed"
-        try:
-            return 0, json.loads(data.decode("utf-8")), ""
-        except json.JSONDecodeError as e:
-            return -1, None, f"invalid JSON from gh: {e}"
+        if code == 0 and data is not None:
+            try:
+                return 0, json.loads(data.decode("utf-8")), ""
+            except json.JSONDecodeError as e:
+                return -1, None, f"invalid JSON from gh: {e}"
+        # Fall back to urllib: some PATs fail via `gh api` (exit 1) but succeed on REST.
 
     code, data, err = _request_with_urllib(api_path, token)
     if code < 0 or data is None:
@@ -291,8 +309,12 @@ def _fetch_full_rulesets(
         return "forbidden", None, err or ""
     if code == 404:
         return "unavailable", None, err or ""
-    if code != 0 or not isinstance(data, list):
+    if code != 0:
         return str(code), None, err or ""
+    if isinstance(data, dict) and isinstance(data.get("rulesets"), list):
+        data = data["rulesets"]
+    if not isinstance(data, list):
+        return str(code), None, err or "rulesets API did not return a list"
     out: list[dict] = []
     for item in data:
         if not isinstance(item, dict):
@@ -524,6 +546,8 @@ def _is_github_permission_denied_error(msg: str) -> bool:
     m = (msg or "").lower()
     if "http 401" in m or "http 403" in m:
         return True
+    if "upgrade to github pro" in m:
+        return True
     if "no permission to read" in m:
         return True
     if "resource not accessible" in m or "not accessible by integration" in m:
@@ -554,7 +578,14 @@ def _check_branch_protection_classic(
 ) -> None:
     path = _api_path(owner, repo, "branches", branch, "protection")
     code, data, err = github_get_json(path, token)
-    if code in (401, 403):
+    if code in (401, 403) or _is_github_free_classic_protection_unavailable(err):
+        if _is_github_free_classic_protection_unavailable(err):
+            warnings.append(
+                f"Branch {branch!r}: classic branch protection API is not available on this GitHub plan "
+                "(private repository). Repository rulesets are the required control; "
+                "see docs/deployment/github-governance.md."
+            )
+            return
         errors.append(
             f"Branch {branch!r}: no permission to read classic branch protection (HTTP {code}). "
             "Use a read-only PAT with access to read rulesets and/or branch protection. "
@@ -718,6 +749,7 @@ def _check_environment_production(
     token: str,
     errors: list[str],
     warnings: list[str],
+    rulesets_status: str = "ok",
 ) -> None:
     warn_only = _governance_warn_only()
     path = _environment_path(owner, repo, "production")
@@ -771,7 +803,17 @@ def _check_environment_production(
                 "Environment production: no `required_reviewers` rule in the API response. "
                 "Add **Required reviewers** under the environment (Deploy Production waits on approval)."
             )
-            (warnings if warn_only else errors).append(msg)
+            token_cannot_read_rulesets = rulesets_status in ("forbidden", "unavailable") or (
+                rulesets_status.isdigit() and int(rulesets_status) in (1, 401, 403)
+            )
+            if warn_only or token_cannot_read_rulesets:
+                warnings.append(
+                    msg
+                    + " Token could not complete a full admin audit (rulesets unreadable); "
+                    "confirm reviewers in the GitHub UI rather than failing CI on a truncated payload."
+                )
+            else:
+                errors.append(msg)
         elif reviewer_slots == 0:
             msg = (
                 "Environment production: `required_reviewers` rule exists but no reviewers are listed; "
@@ -935,7 +977,7 @@ def main() -> int:
         rulesets_status=rulesets_status,
         all_rulesets=all_rulesets,
     )
-    _check_environment_production(owner, repo, tok, errors, warnings)
+    _check_environment_production(owner, repo, tok, errors, warnings, rulesets_status)
     _check_environment_staging(owner, repo, tok, warnings)
 
     for w in warnings:

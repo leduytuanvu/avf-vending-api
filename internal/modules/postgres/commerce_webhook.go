@@ -10,6 +10,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -281,7 +282,7 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		if _, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 			Topic:          in.OutboxTopic,
 			EventType:      in.OutboxEventType,
-			Payload:        webhookOutboxPayload(in),
+			Payload:        pgjson.RequiredString(webhookOutboxPayload(in)),
 			AggregateType:  in.OutboxAggregateType,
 			AggregateID:    in.OutboxAggregateID,
 			IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),

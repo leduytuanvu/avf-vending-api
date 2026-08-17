@@ -17,6 +17,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/id"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	tel "github.com/avf/avf-vending-api/internal/platform/telemetry"
 )
 
@@ -374,7 +375,7 @@ INSERT INTO machine_incident_occurrences (
 		_, err = db.New(tx).InsertOutboxEventIdempotent(ctx, db.InsertOutboxEventIdempotentParams{
 			Topic:          "notification.telegram",
 			EventType:      "machine.incident.alert",
-			Payload:        payload,
+			Payload:        pgjson.RequiredString(payload),
 			AggregateType:  "machine_incident",
 			AggregateID:    machineID,
 			IdempotencyKey: pgtype.Text{String: alerts.TelegramAppIdempotencyKey(machineID.String(), occurrenceID), Valid: true},

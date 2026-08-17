@@ -152,7 +152,7 @@ jobs:
         env:
           # When set, shell + verifier prefer this for rulesets/branch/protection/environment reads. Empty when the secret is not defined.
           GOVERNANCE_AUDIT_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GOVERNANCE_AUDIT_TOKEN || github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           ENFORCE_GITHUB_GOVERNANCE: "true"

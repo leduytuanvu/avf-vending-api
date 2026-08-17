@@ -76,6 +76,8 @@ Migration seed **không** tạo dòng trong `platform_auth_accounts`. Đăng nh�
 2. **API và DB phải cùng một nơi**: bạn gọi `https://api.ldtv.dev` thì tài khoản phải tồn tại trong **PostgreSQL mà server đó đang dùng**. Chỉ chạy `INSERT` trên máy local / DBeaver trỏ nhầm instance vẫn sẽ 401 trên host public.
 3. **Tổ chức `11111111-...` phải có trong DB đó**: nếu môi trường deploy **chưa** chạy migration seed `00003`, `INSERT` có thể lỗi FK hoặc bạn đang dùng sai `company_id` so với dữ liệu thật. Kiểm tra: `SELECT id, slug FROM companies;`
 
+`scripts/local/start-api-local.ps1` sets `MEDIA_COMPANY_ID` to this company id when unset, so local `POST /v1/admin/products` with `primaryMediaId` does not return `503 capability_not_configured`.
+
 ### Cặp dev mẫu (chỉ local / lab — không dùng production)
 
 | Trường | Giá trị |

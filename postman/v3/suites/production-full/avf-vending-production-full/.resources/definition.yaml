@@ -128,8 +128,6 @@ scripts:
           throw new Error('postman-avf: production mutating request blocked. Enable allowGatedWrites+confirmProductionWrites OR legacy allow_mutation+allow_production_mutation+confirm_production_run');
         }
       }
-        }
-      }
       const isLocalDev =
         appEnv === "development" ||
         /localhost/.test(base) ||

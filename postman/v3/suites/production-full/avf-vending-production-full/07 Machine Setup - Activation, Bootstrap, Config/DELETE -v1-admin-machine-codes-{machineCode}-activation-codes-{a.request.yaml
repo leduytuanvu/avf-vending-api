@@ -1,0 +1,27 @@
+$kind: http-request
+name: DELETE /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId} — Revoke an activation code by machineCode
+description: Gate 0 coverage for OpenAPI `DELETE /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId}` — Revoke an activation code by machineCode
+url: "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes/{{activationCodeId}}"
+method: DELETE
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+  Idempotency-Key: "{{$guid}}"
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';
+      const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {
+        if (!allowGatedWrites || !confirmProductionWrites) {
+          throw new Error('GATED-WRITE blocked');
+        }
+      }
+    language: text/javascript
+order: 11000

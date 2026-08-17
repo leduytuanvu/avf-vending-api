@@ -129,8 +129,6 @@
           "    throw new Error('postman-avf: production mutating request blocked. Enable allowGatedWrites+confirmProductionWrites OR legacy allow_mutation+allow_production_mutation+confirm_production_run');",
           "  }",
           "}",
-          "  }",
-          "}",
           "const isLocalDev =",
           "  appEnv === \"development\" ||",
           "  /localhost/.test(base) ||",
@@ -1737,6 +1735,280 @@
       "description": "Login, refresh, logout, password reset. Auth: public then bearer. Vars: adminEmail, adminPassword, accessToken.",
       "item": [
         {
+          "name": "POST /v1/auth/login — Exchange email/password for JWT session tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "## Purpose\nExchange email/password for JWT session tokens\n\n## Auth mode\n`public` — required: none\n\n## Required variables\nnone\n\n## Headers\n- Accept: application/json\n- X-Request-ID: {{requestId}}\n- X-Correlation-ID: {{correlationId}}\n- X-Request-ID: (from OpenAPI)\n- X-Correlation-ID: (from OpenAPI)\n\n## Path parameters\n_None_\n\n## Query parameters\n_None_\n\n## Required body fields\n- `email` (string (email))\n- `password` (string)\n\n## Optional body fields\n_None_\n\n## Enum / options\n_None documented in schema_\n\n## Success response\nHTTP **200**\n\n## Common failure statuses\n`400`, `401`, `429`, `500`\n\n## Safety note\nMutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.\n\n## Metadata\n- openapiOperationId: `DocOpV1AuthLogin`\n- openapiKey: `POST /v1/auth/login`\n- production_write: yes\n- idempotency: no",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": [
+            {
+              "name": "200 Exchange email/password for JWT session tokens",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"accountId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"email\": \"operator@example.com\",\n  \"roles\": [\n    \"admin\"\n  ],\n  \"tokens\": {\n    \"accessExpiresAt\": \"2026-04-19T13:00:00Z\",\n    \"accessToken\": \"stub-access-token\",\n    \"refreshExpiresAt\": \"2026-05-19T12:00:00Z\",\n    \"refreshToken\": \"stub-refresh-token\",\n    \"tokenType\": \"Bearer\"\n  }\n}"
+            },
+            {
+              "name": "400 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "401 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"invalid credentials\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "429 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 429,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"rate_limited\",\n    \"details\": {\n      \"retry_after_seconds\": 60\n    },\n    \"message\": \"too many requests\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "500 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"internal\",\n    \"details\": {},\n    \"message\": \"unexpected server error\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "403 forbidden",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"forbidden\",\n    \"message\": \"permission denied\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "404 not_found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"message\": \"resource not found\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "409 conflict",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"conflict\",\n    \"message\": \"resource conflict\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "422 validation_error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"validation_error\",\n    \"message\": \"unprocessable entity\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('auth_type', 'public');",
+                  "pm.collectionVariables.set('requires_idempotency', 'false');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "let json = {};",
+                  "try {",
+                  "  json = pm.response.json();",
+                  "} catch (e) {",
+                  "  throw new Error(\"Login response is not valid JSON: \" + e.message);",
+                  "}",
+                  "",
+                  "pm.test(\"login returns 200\", function () {",
+                  "  pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test(\"login returns tokens\", function () {",
+                  "  pm.expect(json).to.have.property('tokens');",
+                  "  pm.expect(json.tokens).to.have.property('accessToken');",
+                  "  pm.expect(json.tokens).to.have.property('refreshToken');",
+                  "  pm.expect(json.tokens.accessToken).to.be.a('string').and.not.empty;",
+                  "  pm.expect(json.tokens.refreshToken).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "if (pm.response.code === 200 && json.tokens) {",
+                  "  pm.environment.set('accessToken', json.tokens.accessToken);",
+                  "  pm.environment.set('refreshToken', json.tokens.refreshToken);",
+                  "  if (json.accountId) {",
+                  "    pm.environment.set('accountId', json.accountId);",
+                  "  }",
+                  "  if (json.email) {",
+                  "    pm.environment.set('adminEmailResolved', json.email);",
+                  "  }",
+                  "  if (json.roles) {",
+                  "    pm.environment.set('roles', JSON.stringify(json.roles));",
+                  "  }",
+                  "  if (json.tokens.accessExpiresAt) {",
+                  "    pm.environment.set('accessExpiresAt', json.tokens.accessExpiresAt);",
+                  "  }",
+                  "  if (json.tokens.refreshExpiresAt) {",
+                  "    pm.environment.set('refreshExpiresAt', json.tokens.refreshExpiresAt);",
+                  "  }",
+                  "  if (json.tokens.tokenType) {",
+                  "    pm.environment.set('tokenType', json.tokens.tokenType);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "DELETE /v1/auth/sessions — Revoke other sessions",
           "request": {
             "method": "DELETE",
@@ -2692,510 +2964,6 @@
           "response": [
             {
               "name": "204 Change password (self-service)",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "OK",
-              "code": 204,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{}"
-            },
-            {
-              "name": "400 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 400,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "401 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 401,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"missing or invalid bearer token\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "500 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 500,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"internal\",\n    \"details\": {},\n    \"message\": \"unexpected server error\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "403 forbidden",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 403,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"forbidden\",\n    \"message\": \"permission denied\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "404 not_found",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 404,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"message\": \"resource not found\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "409 conflict",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 409,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"conflict\",\n    \"message\": \"resource conflict\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "422 validation_error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 422,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"validation_error\",\n    \"message\": \"unprocessable entity\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            }
-          ],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.environment.set('auth_type', 'admin');",
-                  "pm.collectionVariables.set('requires_idempotency', 'false');"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"expected HTTP success unless negative test\", function () {",
-                  "  if (pm.collectionVariables.get('negative_test') === 'true') { return; }",
-                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
-                  "});"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "POST /v1/auth/login — Exchange email/password for JWT session tokens",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Request-ID",
-                "value": "{{requestId}}"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "auth",
-                "login"
-              ],
-              "query": []
-            },
-            "description": "## Purpose\nExchange email/password for JWT session tokens\n\n## Auth mode\n`public` — required: none\n\n## Required variables\nnone\n\n## Headers\n- Accept: application/json\n- X-Request-ID: {{requestId}}\n- X-Correlation-ID: {{correlationId}}\n- X-Request-ID: (from OpenAPI)\n- X-Correlation-ID: (from OpenAPI)\n\n## Path parameters\n_None_\n\n## Query parameters\n_None_\n\n## Required body fields\n- `email` (string (email))\n- `password` (string)\n\n## Optional body fields\n_None_\n\n## Enum / options\n_None documented in schema_\n\n## Success response\nHTTP **200**\n\n## Common failure statuses\n`400`, `401`, `429`, `500`\n\n## Safety note\nMutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.\n\n## Metadata\n- openapiOperationId: `DocOpV1AuthLogin`\n- openapiKey: `POST /v1/auth/login`\n- production_write: yes\n- idempotency: no",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"operator@example.com\",\n  \"password\": \"example-password\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
-          "response": [
-            {
-              "name": "200 Exchange email/password for JWT session tokens",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"accountId\": \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\",\n  \"email\": \"operator@example.com\",\n  \"roles\": [\n    \"admin\"\n  ],\n  \"tokens\": {\n    \"accessExpiresAt\": \"2026-04-19T13:00:00Z\",\n    \"accessToken\": \"stub-access-token\",\n    \"refreshExpiresAt\": \"2026-05-19T12:00:00Z\",\n    \"refreshToken\": \"stub-refresh-token\",\n    \"tokenType\": \"Bearer\"\n  }\n}"
-            },
-            {
-              "name": "400 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 400,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "401 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 401,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"invalid credentials\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "429 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 429,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"rate_limited\",\n    \"details\": {\n      \"retry_after_seconds\": 60\n    },\n    \"message\": \"too many requests\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "500 error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 500,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"internal\",\n    \"details\": {},\n    \"message\": \"unexpected server error\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
-            },
-            {
-              "name": "403 forbidden",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 403,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"forbidden\",\n    \"message\": \"permission denied\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "404 not_found",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 404,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"message\": \"resource not found\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "409 conflict",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 409,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"conflict\",\n    \"message\": \"resource conflict\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            },
-            {
-              "name": "422 validation_error",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/"
-              },
-              "status": "Error",
-              "code": 422,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"error\": {\n    \"code\": \"validation_error\",\n    \"message\": \"unprocessable entity\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
-            }
-          ],
-          "event": [
-            {
-              "listen": "prerequest",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.environment.set('auth_type', 'public');",
-                  "pm.collectionVariables.set('requires_idempotency', 'false');"
-                ]
-              }
-            },
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "let json = {};",
-                  "try {",
-                  "  json = pm.response.json();",
-                  "} catch (e) {",
-                  "  throw new Error(\"Login response is not valid JSON: \" + e.message);",
-                  "}",
-                  "",
-                  "pm.test(\"login returns 200\", function () {",
-                  "  pm.expect(pm.response.code).to.equal(200);",
-                  "});",
-                  "",
-                  "pm.test(\"login returns tokens\", function () {",
-                  "  pm.expect(json).to.have.property('tokens');",
-                  "  pm.expect(json.tokens).to.have.property('accessToken');",
-                  "  pm.expect(json.tokens).to.have.property('refreshToken');",
-                  "  pm.expect(json.tokens.accessToken).to.be.a('string').and.not.empty;",
-                  "  pm.expect(json.tokens.refreshToken).to.be.a('string').and.not.empty;",
-                  "});",
-                  "",
-                  "if (pm.response.code === 200 && json.tokens) {",
-                  "  pm.environment.set('accessToken', json.tokens.accessToken);",
-                  "  pm.environment.set('refreshToken', json.tokens.refreshToken);",
-                  "  if (json.accountId) {",
-                  "    pm.environment.set('accountId', json.accountId);",
-                  "  }",
-                  "  if (json.email) {",
-                  "    pm.environment.set('adminEmailResolved', json.email);",
-                  "  }",
-                  "  if (json.roles) {",
-                  "    pm.environment.set('roles', JSON.stringify(json.roles));",
-                  "  }",
-                  "  if (json.tokens.accessExpiresAt) {",
-                  "    pm.environment.set('accessExpiresAt', json.tokens.accessExpiresAt);",
-                  "  }",
-                  "  if (json.tokens.refreshExpiresAt) {",
-                  "    pm.environment.set('refreshExpiresAt', json.tokens.refreshExpiresAt);",
-                  "  }",
-                  "  if (json.tokens.tokenType) {",
-                  "    pm.environment.set('tokenType', json.tokens.tokenType);",
-                  "  }",
-                  "}"
-                ]
-              }
-            }
-          ]
-        },
-        {
-          "name": "POST /v1/auth/logout — Revoke refresh token(s)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Request-ID",
-                "value": "{{requestId}}"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "{{correlationId}}"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/v1/auth/logout",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "v1",
-                "auth",
-                "logout"
-              ],
-              "query": []
-            },
-            "description": "## Purpose\nRevoke refresh token(s)\n\n## Auth mode\n`admin` — required: accessToken (set via 02 Auth login)\n\n## Required variables\naccessToken (set via 02 Auth login)\n\n## Headers\n- Accept: application/json\n- X-Request-ID: {{requestId}}\n- X-Correlation-ID: {{correlationId}}\n- Authorization: Bearer {{accessToken}}\n- X-Request-ID: (from OpenAPI)\n- X-Correlation-ID: (from OpenAPI)\n\n## Path parameters\n_None_\n\n## Query parameters\n_None_\n\n## Required body fields\n_None_\n\n## Optional body fields\n- `refreshToken` (string)\n- `revokeAll` (boolean)\n\n## Enum / options\n_None documented in schema_\n\n## Success response\nHTTP **204**\n\n## Common failure statuses\n`400`, `401`, `500`\n\n## Safety note\nMutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.\n\n## Metadata\n- openapiOperationId: `DocOpV1AuthLogout`\n- openapiKey: `POST /v1/auth/logout`\n- production_write: yes\n- idempotency: no",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refreshToken\": \"string\",\n  \"revokeAll\": false\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{accessToken}}",
-                  "type": "string"
-                }
-              ]
-            }
-          },
-          "response": [
-            {
-              "name": "204 Revoke refresh token(s)",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
@@ -4939,6 +4707,236 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.environment.set('auth_type', 'public');",
+                  "pm.collectionVariables.set('requires_idempotency', 'false');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"expected HTTP success unless negative test\", function () {",
+                  "  if (pm.collectionVariables.get('negative_test') === 'true') { return; }",
+                  "  pm.expect(pm.response.code).to.be.within(200, 299);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /v1/auth/logout — Revoke refresh token(s)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "auth",
+                "logout"
+              ],
+              "query": []
+            },
+            "description": "## Purpose\nRevoke refresh token(s)\n\n## Auth mode\n`admin` — required: accessToken (set via 02 Auth login)\n\n## Required variables\naccessToken (set via 02 Auth login)\n\n## Headers\n- Accept: application/json\n- X-Request-ID: {{requestId}}\n- X-Correlation-ID: {{correlationId}}\n- Authorization: Bearer {{accessToken}}\n- X-Request-ID: (from OpenAPI)\n- X-Correlation-ID: (from OpenAPI)\n\n## Path parameters\n_None_\n\n## Query parameters\n_None_\n\n## Required body fields\n_None_\n\n## Optional body fields\n- `refreshToken` (string)\n- `revokeAll` (boolean)\n\n## Enum / options\n_None documented in schema_\n\n## Success response\nHTTP **204**\n\n## Common failure statuses\n`400`, `401`, `500`\n\n## Safety note\nMutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.\n\n## Metadata\n- openapiOperationId: `DocOpV1AuthLogout`\n- openapiKey: `POST /v1/auth/logout`\n- production_write: yes\n- idempotency: no",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"string\",\n  \"revokeAll\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "204 Revoke refresh token(s)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "OK",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{}"
+            },
+            {
+              "name": "400 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"invalid_request\",\n    \"details\": {},\n    \"message\": \"request could not be validated\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "401 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"unauthenticated\",\n    \"details\": {},\n    \"message\": \"missing or invalid bearer token\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "500 error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 500,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"internal\",\n    \"details\": {},\n    \"message\": \"unexpected server error\",\n    \"requestId\": \"01ARZ3NDEKTSV4RRFFQ69G5FAV\"\n  }\n}"
+            },
+            {
+              "name": "403 forbidden",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"forbidden\",\n    \"message\": \"permission denied\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "404 not_found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"not_found\",\n    \"message\": \"resource not found\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "409 conflict",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"conflict\",\n    \"message\": \"resource conflict\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            },
+            {
+              "name": "422 validation_error",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/"
+              },
+              "status": "Error",
+              "code": 422,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": {\n    \"code\": \"validation_error\",\n    \"message\": \"unprocessable entity\",\n    \"requestId\": \"{{requestId}}\"\n  }\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('auth_type', 'admin');",
                   "pm.collectionVariables.set('requires_idempotency', 'false');"
                 ]
               }
@@ -21276,6 +21274,370 @@
             }
           ],
           "disabled": true
+        },
+        {
+          "name": "GET /v1/admin/machines/{machineId}/ops-overview — Machine operational overview (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/ops-overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "ops-overview"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/machines/{machineId}/ops-overview` — Machine operational overview (admin)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/machines/{machineId}/runtime-sessions/current — Current machine runtime session (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/runtime-sessions/current",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "runtime-sessions",
+                "current"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/machines/{machineId}/runtime-sessions/current` — Current machine runtime session (admin)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/machines/{machineId}/runtime-sessions/history — Machine runtime session history (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/runtime-sessions/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "runtime-sessions",
+                "history"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/machines/{machineId}/runtime-sessions/history` — Machine runtime session history (admin)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/machines/{machineId}/timeline/unified — Unified enterprise machine timeline (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/timeline/unified",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "timeline",
+                "unified"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/machines/{machineId}/timeline/unified` — Unified enterprise machine timeline (admin)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /v1/admin/machines/{machineId}/reattach-device — Reattach device after reinstall (admin/technician)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/reattach-device",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "reattach-device"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `POST /v1/admin/machines/{machineId}/reattach-device` — Reattach device after reinstall (admin/technician)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /v1/admin/machines/{machineId}/runtime-sessions/revoke — Revoke machine runtime sessions (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machines/{{machineId}}/runtime-sessions/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machines",
+                "{{machineId}}",
+                "runtime-sessions",
+                "revoke"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `POST /v1/admin/machines/{machineId}/runtime-sessions/revoke` — Revoke machine runtime sessions (admin)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -27230,6 +27592,208 @@
             }
           ],
           "disabled": true
+        },
+        {
+          "name": "DELETE /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId} — Revoke an activation code by machineCode",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes/{{activationCodeId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machine-codes",
+                "{{machineCode}}",
+                "activation-codes",
+                "{{activationCodeId}}"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `DELETE /v1/admin/machine-codes/{machineCode}/activation-codes/{activationCodeId}` — Revoke an activation code by machineCode",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/admin/machine-codes/{machineCode}/activation-codes — List activation codes by machineCode",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machine-codes",
+                "{{machineCode}}",
+                "activation-codes"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/machine-codes/{machineCode}/activation-codes` — List activation codes by machineCode",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /v1/admin/machine-codes/{machineCode}/activation-codes — Create machine activation code by machineCode",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "machine-codes",
+                "{{machineCode}}",
+                "activation-codes"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `POST /v1/admin/machine-codes/{machineCode}/activation-codes` — Create machine activation code by machineCode",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -55750,6 +56314,55 @@
               }
             }
           ]
+        },
+        {
+          "name": "GET /v1/admin/payment/providers — List configured payment providers (read-only registry)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payment/providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payment",
+                "providers"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payment/providers` — List configured payment providers (read-only registry)",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
         }
       ]
     },
@@ -66071,6 +66684,412 @@
             }
           ],
           "disabled": true
+        },
+        {
+          "name": "GET /v1/admin/payments/disputes — List payment disputes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/disputes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "disputes"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payments/disputes` — List payment disputes",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/payments/export — Export payments finance CSV",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/export",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "export"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payments/export` — Export payments finance CSV",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/payments/reconciliation — Payment reconciliation drift report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/reconciliation",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "reconciliation"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payments/reconciliation` — Payment reconciliation drift report",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/payments/settlements — List payment settlements",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/settlements",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "settlements"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payments/settlements` — List payment settlements",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /v1/admin/payments/webhook-events — List payment webhook events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/webhook-events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "webhook-events"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `GET /v1/admin/payments/webhook-events` — List payment webhook events",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /v1/admin/payments/disputes/{disputeId}/resolve — Resolve a payment dispute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/disputes/{{disputeId}}/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "disputes",
+                "{{disputeId}}",
+                "resolve"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `POST /v1/admin/payments/disputes/{disputeId}/resolve` — Resolve a payment dispute",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /v1/admin/payments/settlements/import — Import payment settlements CSV",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{requestId}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/v1/admin/payments/settlements/import",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v1",
+                "admin",
+                "payments",
+                "settlements",
+                "import"
+              ],
+              "query": []
+            },
+            "description": "Gate 0 coverage for OpenAPI `POST /v1/admin/payments/settlements/import` — Import payment settlements CSV",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';",
+                  "const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';",
+                  "if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {",
+                  "  if (!allowGatedWrites || !confirmProductionWrites) {",
+                  "    throw new Error('GATED-WRITE blocked');",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -83888,7 +84907,7 @@
             "description": "## Purpose\nExchange email/password for JWT session tokens\n\n## Auth mode\n`public` — required: none\n\n## Required variables\nnone\n\n## Headers\n- Accept: application/json\n- X-Request-ID: {{requestId}}\n- X-Correlation-ID: {{correlationId}}\n- X-Request-ID: (from OpenAPI)\n- X-Correlation-ID: (from OpenAPI)\n\n## Path parameters\n_None_\n\n## Query parameters\n_None_\n\n## Required body fields\n- `email` (string (email))\n- `password` (string)\n\n## Optional body fields\n_None_\n\n## Enum / options\n_None documented in schema_\n\n## Success response\nHTTP **200**\n\n## Common failure statuses\n`400`, `401`, `429`, `500`\n\n## Safety note\nMutating — requires allowGatedWrites=true and confirmProductionWrites=I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION.\n\n## Metadata\n- openapiOperationId: `DocOpV1AuthLogin`\n- openapiKey: `POST /v1/auth/login`\n- production_write: yes\n- idempotency: no",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"operator@example.com\",\n  \"password\": \"example-password\"\n}",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

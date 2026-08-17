@@ -162,9 +162,9 @@ VALUES (
     $9,
     $10,
     $11,
-    $12,
-    $13,
-    $14,
+    NULLIF($12::text, '')::jsonb,
+    NULLIF($13::text, '')::jsonb,
+    COALESCE(NULLIF($14::text, '')::jsonb, '{}'::jsonb),
     $15,
     COALESCE($16::timestamptz, now())
 )
@@ -183,9 +183,9 @@ type EnterpriseAuditInsertEventParams struct {
 	TraceID      pgtype.Text
 	IpAddress    pgtype.Text
 	UserAgent    pgtype.Text
-	BeforeJson   []byte
-	AfterJson    []byte
-	Metadata     []byte
+	BeforeJson   pgtype.Text
+	AfterJson    pgtype.Text
+	Metadata     string
 	Outcome      string
 	OccurredAt   pgtype.Timestamptz
 }

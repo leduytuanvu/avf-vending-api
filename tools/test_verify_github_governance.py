@@ -78,6 +78,39 @@ class TestRequiredStatusAliases(unittest.TestCase):
         )
         self.assertEqual(missing, ["Security / Secret Scan"])
 
+    def test_gh_stderr_http_status_and_free_plan_classic_protection(self) -> None:
+        err = "gh: Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)"
+        self.assertEqual(vg._http_status_from_gh_stderr(1, err), 403)
+        self.assertTrue(vg._is_github_free_classic_protection_unavailable(err))
+        self.assertTrue(vg._is_github_permission_denied_error(err))
+
+    def test_rulesets_unreadable_downgrades_missing_environment_reviewers(self) -> None:
+        errors: list[str] = []
+        warnings: list[str] = []
+        # Simulate truncated environment payload the limited CI token returns.
+        env = {
+            "protection_rules": [{"type": "branch_policy"}],
+            "deployment_branch_policy": {"protected_branches": False, "custom_branch_policies": True},
+        }
+        orig = vg.github_get_json
+
+        def fake_get(path: str, token: str):
+            if path.endswith("/environments/production"):
+                return 0, env, ""
+            if path.endswith("/deployment-branch-policies"):
+                return 0, {"branch_policies": [{"name": "main"}]}, ""
+            return orig(path, token)
+
+        vg.github_get_json = fake_get  # type: ignore[method-assign]
+        try:
+            vg._check_environment_production(
+                "o", "r", "tok", errors, warnings, rulesets_status="forbidden"
+            )
+        finally:
+            vg.github_get_json = orig  # type: ignore[method-assign]
+        self.assertEqual(errors, [])
+        self.assertTrue(any("required_reviewers" in w for w in warnings))
+
     def test_missing_reports_canonical_not_alias(self) -> None:
         api_ctx: set[str] = set()
         m = vg._missing_recommended_status_checks(

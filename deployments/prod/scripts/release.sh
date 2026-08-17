@@ -676,9 +676,14 @@ cmd_deploy() {
 
 	CURRENT_PHASE="deploy"
 	resolve_emqx_api_credentials
-	note "force-recreate EMQX so the latest config is loaded before API auth preflight"
-	if ! "${COMPOSE[@]}" up -d --force-recreate emqx; then
-		fail "failed to force-recreate emqx"
+	note "ensure EMQX is up without force-recreate (force-recreate drops every MQTT session)"
+	if ! "${COMPOSE[@]}" up -d emqx; then
+		fail "failed to start emqx"
+	fi
+	emqx_cid="$("${COMPOSE[@]}" ps -q emqx || true)"
+	if [[ -n "${emqx_cid}" ]]; then
+		note "reload EMQX authorization cache after ACL bind-mount"
+		docker exec "${emqx_cid}" emqx ctl authorization cache-clean all || note "EMQX ACL cache-clean skipped (ctl not ready yet)"
 	fi
 	wait_for_emqx_control_plane
 	preflight_emqx_api_auth

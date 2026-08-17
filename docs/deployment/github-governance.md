@@ -10,7 +10,7 @@ Deeper runbook (workflow names, check matrices, `GITHUB_TOKEN` patterns): [docs/
 
 ## CI: optional `GOVERNANCE_AUDIT_TOKEN` (repository secret)
 
-**GitHub repository governance** in `.github/workflows/ci.yml` sets `GOVERNANCE_AUDIT_TOKEN` from `secrets.GOVERNANCE_AUDIT_TOKEN` and sets `GITHUB_TOKEN` to the same when that secret is present, otherwise to the default `github.token` (see expression `secrets.GOVERNANCE_AUDIT_TOKEN || github.token` in the workflow). The **shell script and Python verifier** prefer `GOVERNANCE_AUDIT_TOKEN` in the environment, then `GH_TOKEN` / `GITHUB_TOKEN`. Configure a **dedicated** read-only token so the job can list **repository rulesets**, read **environments**, and (when used) **classic** branch protection without avoidable **HTTP 403** from a short-lived `GITHUB_TOKEN` on some events.
+**GitHub repository governance** in `.github/workflows/ci.yml` sets `GOVERNANCE_AUDIT_TOKEN` from `secrets.GOVERNANCE_AUDIT_TOKEN` and keeps `GITHUB_TOKEN` as `github.token` (do not overwrite the Actions token with the audit PAT). The **shell script and Python verifier** prefer `GOVERNANCE_AUDIT_TOKEN` in the environment, then `GH_TOKEN` / `GITHUB_TOKEN`. Configure a **dedicated** read-only token so the job can list **repository rulesets**, read **environments**, and (when used) **classic** branch protection without avoidable **HTTP 403** from a short-lived `GITHUB_TOKEN` on some events.
 
 **Fine-grained personal access token** (create in GitHub **Settings → Developer settings**; **do not** commit the value):
 

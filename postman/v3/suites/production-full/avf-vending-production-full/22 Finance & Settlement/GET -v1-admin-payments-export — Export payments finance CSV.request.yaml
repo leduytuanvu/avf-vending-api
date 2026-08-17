@@ -1,0 +1,15 @@
+$kind: http-request
+name: GET /v1/admin/payments/export — Export payments finance CSV
+description: Gate 0 coverage for OpenAPI `GET /v1/admin/payments/export` — Export payments finance CSV
+url: "{{baseUrl}}/v1/admin/payments/export"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 10000

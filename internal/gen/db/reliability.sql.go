@@ -217,7 +217,7 @@ INSERT INTO outbox_events (
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     $4,
     $5,
     $6,
@@ -231,7 +231,7 @@ RETURNING id, topic, event_type, payload, aggregate_type, aggregate_id, idempote
 type InsertOutboxEventParams struct {
 	Topic              string
 	EventType          string
-	Payload            []byte
+	Payload            string
 	AggregateType      string
 	AggregateID        uuid.UUID
 	IdempotencyKey     pgtype.Text
@@ -295,7 +295,7 @@ INSERT INTO outbox_events (
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     $4,
     $5,
     $6,
@@ -312,7 +312,7 @@ RETURNING id, topic, event_type, payload, aggregate_type, aggregate_id, idempote
 type InsertOutboxEventIdempotentParams struct {
 	Topic              string
 	EventType          string
-	Payload            []byte
+	Payload            string
 	AggregateType      string
 	AggregateID        uuid.UUID
 	IdempotencyKey     pgtype.Text

@@ -57,8 +57,8 @@ body:
   type: json
   content: |-
     {
-      "email": "operator@example.com",
-      "password": "example-password"
+      "email": "{{adminEmail}}",
+      "password": "{{adminPassword}}"
     }
 auth:
   type: noauth

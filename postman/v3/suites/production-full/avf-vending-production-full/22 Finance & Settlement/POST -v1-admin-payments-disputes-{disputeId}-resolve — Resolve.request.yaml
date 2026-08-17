@@ -1,0 +1,30 @@
+$kind: http-request
+name: POST /v1/admin/payments/disputes/{disputeId}/resolve — Resolve a payment dispute
+description: Gate 0 coverage for OpenAPI `POST /v1/admin/payments/disputes/{disputeId}/resolve` — Resolve a payment dispute
+url: "{{baseUrl}}/v1/admin/payments/disputes/{{disputeId}}/resolve"
+method: POST
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+  Idempotency-Key: "{{$guid}}"
+body:
+  type: json
+  content: "{}"
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const allowGatedWrites = String(pm.environment.get('allowGatedWrites') || '').toLowerCase() === 'true';
+      const confirmProductionWrites = pm.environment.get('confirmProductionWrites') === 'I_UNDERSTAND_THIS_WRITES_TO_PRODUCTION';
+      if (pm.environment.get('baseUrl') && String(pm.environment.get('baseUrl')).includes('ldtv.dev')) {
+        if (!allowGatedWrites || !confirmProductionWrites) {
+          throw new Error('GATED-WRITE blocked');
+        }
+      }
+    language: text/javascript
+order: 14000

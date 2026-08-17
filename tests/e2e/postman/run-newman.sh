@@ -99,6 +99,45 @@ else
     extra_args+=(--env-var "admin_password=${ADMIN_PASSWORD}")
   fi
   extra_args+=(--env-var "auth_type=admin")
+  extra_args+=(--env-var "allowGatedWrites=true")
+  extra_args+=(--env-var "allow_destructive=true")
+fi
+
+# production-full: Newman cannot execute gRPC/MQTT folders 30–35; skip 00 runbook + 99 utilities.
+if jq -e '.item[] | select(.name | startswith("01 System"))' "$COLL" >/dev/null 2>&1; then
+  rest_folders=(
+    "01 System - Health, Version, Metrics, Swagger"
+    "02 Auth - Admin / Technician / Session"
+    "03 Admin - Users, Roles, Sessions"
+    "04 Fleet - Sites"
+    "05 Fleet - Machines"
+    "06 Fleet - Technicians & Assignments"
+    "07 Machine Setup - Activation, Bootstrap, Config"
+    "08 Machine Setup - Topology, Slots, Port Binding"
+    "09 Catalog - Brands"
+    "10 Catalog - Categories"
+    "11 Catalog - Tags"
+    "12 Catalog - Products"
+    "13 Catalog - Media"
+    "15 Inventory & Stock"
+    "16 Commerce - Orders"
+    "17 Commerce - Payments"
+    "18 Commerce - Cash & Vend"
+    "19 Telemetry - Machine Runtime"
+    "20 Device Commands"
+    "21 Reports & Exports"
+    "22 Finance & Settlement"
+    "23 Audit, Operations & Incidents"
+    "24 Outbox, Retention & Reconciliation"
+    "25 OTA, Rollouts & Feature Flags"
+    "26 Artifacts & Diagnostics"
+    "27 Webhooks & Public APIs"
+    "29 Admin Utilities / Negative Tests"
+  )
+  for _f in "${rest_folders[@]}"; do
+    extra_args+=(--folder "$_f")
+  done
+  echo "$(now_utc) production-full collection — Newman folders 01–29 only (skip 00/30–35/99)" >>"$LOG"
 fi
 
 set +e

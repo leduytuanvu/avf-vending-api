@@ -81,4 +81,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/POST -v1-auth-logout — Revoke refresh token(s).resources/examples
-order: 7000
+order: 14000

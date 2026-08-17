@@ -81,4 +81,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/POST -v1-auth-mfa-totp-disable — Disable TOTP for the current.resources/examples
-order: 8000
+order: 7000

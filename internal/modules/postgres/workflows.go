@@ -14,6 +14,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/observability/mqttprom"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -257,7 +258,7 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 			Topic:              in.OutboxTopic,
 			EventType:          in.OutboxEventType,
-			Payload:            in.OutboxPayload,
+			Payload:            pgjson.RequiredString(in.OutboxPayload),
 			AggregateType:      in.OutboxAggregateType,
 			AggregateID:        in.OutboxAggregateID,
 			IdempotencyKey:     optionalStringToPgText(in.OutboxIdempotencyKey),
@@ -301,7 +302,7 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 		Topic:              in.OutboxTopic,
 		EventType:          in.OutboxEventType,
-		Payload:            in.OutboxPayload,
+		Payload:            pgjson.RequiredString(in.OutboxPayload),
 		AggregateType:      in.OutboxAggregateType,
 		AggregateID:        in.OutboxAggregateID,
 		IdempotencyKey:     optionalStringToPgText(in.OutboxIdempotencyKey),
@@ -550,7 +551,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 			obRow, insErr := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 				Topic:          in.OutboxTopic,
 				EventType:      in.OutboxEventType,
-				Payload:        in.OutboxPayload,
+				Payload:        pgjson.RequiredString(in.OutboxPayload),
 				AggregateType:  in.OutboxAggregateType,
 				AggregateID:    in.OutboxAggregateID,
 				IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
@@ -622,7 +623,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 	obRow, err := q.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 		Topic:          in.OutboxTopic,
 		EventType:      in.OutboxEventType,
-		Payload:        in.OutboxPayload,
+		Payload:        pgjson.RequiredString(in.OutboxPayload),
 		AggregateType:  in.OutboxAggregateType,
 		AggregateID:    in.OutboxAggregateID,
 		IdempotencyKey: optionalStringToPgText(in.OutboxIdempotencyKey),
@@ -720,7 +721,7 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 			ResourceID:   pgtype.Text{String: cmdRow.ID.String(), Valid: true},
 			MachineID:    machinePG,
 			SiteID:       sitePG,
-			Metadata:     mdMismatch,
+			Metadata:     pgjson.RequiredString(mdMismatch),
 			Outcome:      "failure",
 			OccurredAt:   pgtype.Timestamptz{},
 		}); aerr != nil {
@@ -819,7 +820,7 @@ func (s *Store) ApplyCommandReceiptTransition(ctx context.Context, p CommandRece
 				ResourceID:   pgtype.Text{String: cmdRow.ID.String(), Valid: true},
 				MachineID:    machinePG,
 				SiteID:       sitePG,
-				Metadata:     md,
+				Metadata:     pgjson.RequiredString(md),
 				Outcome:      "success",
 				OccurredAt:   pgtype.Timestamptz{},
 			}); aerr != nil {

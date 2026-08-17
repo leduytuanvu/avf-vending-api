@@ -31,6 +31,33 @@ e2e_prepend_windows_tool_paths() {
   export E2E_WINDOWS_TOOL_PATHS_DONE=1
 }
 
+# Mingw curl (Git Bash) fails with "client returned ERROR on write" for POSIX /d/... -o paths.
+e2e_curl_path() {
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -w "$1"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+# Windows jq (winget) cannot open MSYS paths like /d/repo/file.json.
+jq() {
+  if ! command -v cygpath >/dev/null 2>&1; then
+    command jq "$@"
+    return $?
+  fi
+  local -a _jq_args=()
+  local _jq_a
+  for _jq_a in "$@"; do
+    if [[ -f "$_jq_a" ]]; then
+      _jq_args+=("$(cygpath -w "$_jq_a")")
+    else
+      _jq_args+=("$_jq_a")
+    fi
+  done
+  command jq "${_jq_args[@]}"
+}
+
 load_env() {
   local env_file="${1:-}"
   # If the caller exported E2E_ALLOW_WRITES before sourcing the runner, keep it over values in the env file
