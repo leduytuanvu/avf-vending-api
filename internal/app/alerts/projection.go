@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 )
 
 // ProjectInput is the transport-agnostic incident projection request.
@@ -67,7 +67,7 @@ func BuildIncidentFromPayload(machineID, transport string, occurrenceID string, 
 	}
 	if occurrenceID == "" {
 		// Degraded legacy path: synthesize a unique occurrence so fingerprint is never the occurrence key.
-		occurrenceID = "legacy:" + uuid.NewString()
+		occurrenceID = "legacy:" + id.NewUUIDV7String()
 	}
 	et := code
 	return ProjectInput{
