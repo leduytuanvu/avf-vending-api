@@ -76,6 +76,10 @@ $env:MQTT_TOPIC_PREFIX = 'avf/devices'
 $env:COMMERCE_PAYMENT_WEBHOOK_SECRET = 'e2e-local-commerce-webhook-hmac-not-provider-secret-xx'
 $env:ENABLE_LEGACY_MACHINE_HTTP = 'true'
 $env:MACHINE_REST_LEGACY_ENABLED = 'true'
+# Seed company from docs/api/local-dev-seed-data.md — required for POST /v1/admin/products with media.
+if (-not $env:MEDIA_COMPANY_ID) {
+    $env:MEDIA_COMPANY_ID = '11111111-1111-1111-1111-111111111111'
+}
 
 Write-Host "Starting API from: $RepoRoot"
 Write-Host "HTTP_ADDR=$($env:HTTP_ADDR)  GRPC_ADDR=$($env:GRPC_ADDR)"

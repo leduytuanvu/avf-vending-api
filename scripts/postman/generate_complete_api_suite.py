@@ -652,6 +652,16 @@ def main() -> int:
     ensure_dirs()
     spec = load_swagger()
     inv = build_canonical_inventory()
+    rest_n, grpc_n, mqtt_n = len(inv["rest"]), len(inv["grpc"]), len(inv["mqtt"])
+    if rest_n != gfs.REST_EXPECTED:
+        print("ERROR: REST inventory %s != REST_EXPECTED %s" % (rest_n, gfs.REST_EXPECTED), file=sys.stderr)
+        return 1
+    if grpc_n != gfs.GRPC_EXPECTED:
+        print("ERROR: gRPC inventory %s != GRPC_EXPECTED %s" % (grpc_n, gfs.GRPC_EXPECTED), file=sys.stderr)
+        return 1
+    if mqtt_n != gfs.MQTT_EXPECTED:
+        print("ERROR: MQTT inventory %s != MQTT_EXPECTED %s" % (mqtt_n, gfs.MQTT_EXPECTED), file=sys.stderr)
+        return 1
     write_json(OUT / "API_INVENTORY_CANONICAL.json", {k: v for k, v in inv.items() if not k.startswith("_")})
     (OUT / "API_INVENTORY_CANONICAL.md").write_text(inventory_md(inv), encoding="utf-8")
 

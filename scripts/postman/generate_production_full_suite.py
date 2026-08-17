@@ -761,11 +761,121 @@ Write requests use `Idempotency-Key: {{{{$guid}}}}` directly.
 """
 
 
+def existing_numbered_collection(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    try:
+        coll = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    names = [str(it.get("name") or "") for it in (coll.get("item") or [])]
+    return any(n.startswith("01 System") for n in names)
+
+
+def rewrite_login_bodies_to_env_vars(coll: dict) -> int:
+    """Point POST /v1/auth/login bodies at {{adminEmail}}/{{adminPassword}} (never commit secrets)."""
+    changed = 0
+
+    def walk(items: list) -> None:
+        nonlocal changed
+        for it in items:
+            nested = it.get("item")
+            if isinstance(nested, list):
+                walk(nested)
+            req = it.get("request")
+            if not isinstance(req, dict):
+                continue
+            if str(req.get("method") or "").upper() != "POST":
+                continue
+            url = req.get("url") or {}
+            raw = ""
+            path = ""
+            if isinstance(url, dict):
+                raw = str(url.get("raw") or "")
+                path = "/".join(str(p) for p in (url.get("path") or []))
+            else:
+                raw = str(url)
+                path = raw
+            hay = (raw + " " + path).lower().replace("\\", "/")
+            if "/v1/auth/login" not in hay:
+                continue
+            body = req.get("body")
+            if not isinstance(body, dict):
+                continue
+            raw_body = body.get("raw")
+            if not isinstance(raw_body, str):
+                continue
+            new_body = '{\n  "email": "{{adminEmail}}",\n  "password": "{{adminPassword}}"\n}'
+            if raw_body != new_body:
+                body["raw"] = new_body
+                changed += 1
+
+    walk(coll.get("item") or [])
+    return changed
+
+
+def ensure_auth_login_first(coll: dict) -> bool:
+    """Newman runs folder items in file order; login must precede bearer-protected Auth ops."""
+    changed = False
+    for folder in coll.get("item") or []:
+        name = str(folder.get("name") or "")
+        if not name.startswith("02 Auth"):
+            continue
+        items = folder.get("item")
+        if not isinstance(items, list) or not items:
+            continue
+
+        def is_login(it: dict) -> bool:
+            n = str(it.get("name") or "")
+            return n.startswith("POST /v1/auth/login")
+
+        login_items = [it for it in items if is_login(it)]
+        rest = [it for it in items if not is_login(it)]
+        new_items = login_items + rest
+        if [id(x) for x in new_items] != [id(x) for x in items]:
+            folder["item"] = new_items
+            changed = True
+    return changed
+
+
 def main() -> int:
     if not SWAGGER.is_file():
         print("error: missing swagger at", SWAGGER, file=sys.stderr)
         return 1
     spec = json.loads(SWAGGER.read_text(encoding="utf-8"))
+    existing = OUT_DIR / COLLECTION_NAME
+    if existing_numbered_collection(existing):
+        grpc_rows = gfs.parse_all_protos()
+        mqtt_rows = gfs.fix_mqtt_rows()
+        rest_ops = list(gfs.iter_openapi_operations(spec))
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        (OUT_DIR / GUIDE_NAME).write_text(
+            build_testing_guide(len(rest_ops), len(grpc_rows), len(mqtt_rows)), encoding="utf-8"
+        )
+        coll = json.loads(existing.read_text(encoding="utf-8"))
+        n_login = rewrite_login_bodies_to_env_vars(coll)
+        n_order = ensure_auth_login_first(coll)
+        if n_login or n_order:
+            existing.write_text(json.dumps(coll, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(
+            "preserved numbered 01–29 collection at",
+            existing,
+            "rest_ops=",
+            len(rest_ops),
+            "grpc=",
+            len(grpc_rows),
+            "mqtt=",
+            len(mqtt_rows),
+            "login_bodies_rewritten=",
+            n_login,
+        )
+        print("wrote", OUT_DIR / GUIDE_NAME)
+        import subprocess
+
+        gate = SCRIPT_DIR / "gate0_inventory.py"
+        rc = subprocess.run([sys.executable, str(gate)], cwd=str(REPO_ROOT)).returncode
+        return rc
+
     rest_ops = gfs.iter_openapi_operations(spec)
     flat_coll, rest_count = gfs.build_rest_collection(
         spec,

@@ -33,6 +33,7 @@ REGISTERED_SERVICES = {
     ("avf.machine.v1", "MachineSaleService"),
     ("avf.machine.v1", "MachineOfflineSyncService"),
     ("avf.machine.v1", "MachineCommandService"),
+    ("avf.machine.v1", "MachineRuntimeSessionService"),
     ("avf.internal.v1", "InternalMachineQueryService"),
     ("avf.internal.v1", "InternalTelemetryQueryService"),
     ("avf.internal.v1", "InternalCommerceQueryService"),
@@ -42,8 +43,8 @@ REGISTERED_SERVICES = {
     ("avf.internal.v1", "InternalReportingQueryService"),
 }
 
-REST_EXPECTED = 329
-GRPC_EXPECTED = 86
+REST_EXPECTED = 347
+GRPC_EXPECTED = 92
 MQTT_EXPECTED = 28
 
 def sanitize_full100_text(s: str) -> str:
@@ -462,8 +463,10 @@ def _sanitize_string_leaf(value: str, prop_name: str) -> str:
         return key_map[kn]
 
     low = value.strip().lower()
-    if low == ("password" + "123"):
+    if low == ("password" + "123") or "example-password" in low:
         return "{{adminPassword}}"
+    if low.endswith("@example.com") or low == "operator@example.com":
+        return "{{adminEmail}}"
 
     if _UUID_LIKE.match(value.strip()):
         resource_var = postman_resource_uuid_var(prop_name)

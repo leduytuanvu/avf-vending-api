@@ -1,6 +1,6 @@
 # AVF Production Full API Testing Guide
 
-Generated: 2026-07-05T15:55:11Z
+Generated: 2026-08-17T17:06:08Z
 
 ## 1. Import
 
@@ -57,6 +57,6 @@ Write requests use `Idempotency-Key: {{$guid}}` directly.
 
 ## 8. Coverage
 
-- REST operations: 344
+- REST operations: 347
 - gRPC methods (doc): 92
 - MQTT topics (doc): 28

@@ -48,7 +48,7 @@ e2e_http_get_capture() {
     --argjson auth "$( [[ "$use_auth" == "true" ]] && echo true || echo false)" \
     '{method:$method,path:$path,url:$url,auth:$auth}' >"${req}"
 
-  local -a opts=(-sS -L --max-redirs 3 -D "$hdr" -o "$body" -w '%{http_code}|%{time_total}')
+  local -a opts=(-sS -L --max-redirs 3 -D "$(e2e_curl_path "$hdr")" -o "$(e2e_curl_path "$body")" -w '%{http_code}|%{time_total}')
   if [[ "$use_auth" == "true" ]] && [[ -n "${ADMIN_TOKEN:-}" ]]; then
     opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
   fi
@@ -143,8 +143,8 @@ _e2e_http_json_mutate() {
   local req="${dir}/${step}.request.json"
   local tmp_hdr
   tmp_hdr="$(mktemp)"
-  local -a curl_opts=(-sS -D "${tmp_hdr}" -o "${dir}/${step}.response.json" -w '%{http_code}|%{time_total}')
-  curl_opts+=(-X "$method" -H "Content-Type: application/json" -d @"${body_file}")
+  local -a curl_opts=(-sS -D "$(e2e_curl_path "${tmp_hdr}")" -o "$(e2e_curl_path "${dir}/${step}.response.json")" -w '%{http_code}|%{time_total}')
+  curl_opts+=(-X "$method" -H "Content-Type: application/json" -d @"$(e2e_curl_path "${body_file}")")
   if [[ "$use_auth" == "yes" ]] && [[ -n "${ADMIN_TOKEN:-}" ]]; then
     curl_opts+=(-H "Authorization: Bearer ${ADMIN_TOKEN}")
   fi
@@ -196,7 +196,7 @@ e2e_http_request_json() {
   local tmp_hdr
   tmp_hdr="$(mktemp)"
 
-  local -a curl_opts=(-sS -D "${tmp_hdr}" -o "${dir}/${step}.response.json" -w '%{http_code}|%{time_total}')
+  local -a curl_opts=(-sS -D "$(e2e_curl_path "${tmp_hdr}")" -o "$(e2e_curl_path "${dir}/${step}.response.json")" -w '%{http_code}|%{time_total}')
   curl_opts+=(-X "$method" -H "Content-Type: application/json")
 
   if [[ -n "${ADMIN_TOKEN:-}" ]]; then
@@ -204,7 +204,7 @@ e2e_http_request_json() {
   fi
 
   if [[ -n "$body_file" ]]; then
-    curl_opts+=(-d @"${body_file}")
+    curl_opts+=(-d @"$(e2e_curl_path "${body_file}")")
   fi
 
   jq -nc \
