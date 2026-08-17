@@ -2117,8 +2117,9 @@ func loadHTTPAuthConfig() (HTTPAuthConfig, error) {
 	}
 
 	jwksTTL := mustParseDuration("USER_JWT_JWKS_CACHE_TTL/HTTP_AUTH_JWT_JWKS_CACHE_TTL", getenvAlias("5m", "USER_JWT_JWKS_CACHE_TTL", "HTTP_AUTH_JWT_JWKS_CACHE_TTL"))
-	accessTTL := mustParseDuration("USER_JWT_ACCESS_TTL/HTTP_AUTH_ACCESS_TTL", getenvAlias("15m", "USER_JWT_ACCESS_TTL", "HTTP_AUTH_ACCESS_TTL"))
-	refreshTTL := mustParseDuration("USER_JWT_REFRESH_TTL/HTTP_AUTH_REFRESH_TTL", getenvAlias("720h", "USER_JWT_REFRESH_TTL", "HTTP_AUTH_REFRESH_TTL"))
+	// Defaults: ~100 years access / ~100y+1d refresh (access must stay strictly less than refresh for production gate).
+	accessTTL := mustParseDuration("USER_JWT_ACCESS_TTL/HTTP_AUTH_ACCESS_TTL", getenvAlias("876000h", "USER_JWT_ACCESS_TTL", "HTTP_AUTH_ACCESS_TTL"))
+	refreshTTL := mustParseDuration("USER_JWT_REFRESH_TTL/HTTP_AUTH_REFRESH_TTL", getenvAlias("876024h", "USER_JWT_REFRESH_TTL", "HTTP_AUTH_REFRESH_TTL"))
 	mfaPendingTTL := mustParseDuration("ADMIN_MFA_PENDING_TTL", getenv("ADMIN_MFA_PENDING_TTL", "5m"))
 
 	return HTTPAuthConfig{

@@ -217,14 +217,18 @@ func (c *Config) validateProduction(payment string) error {
 		if productionPlaceholderLiveCommercePaymentProvider(c.Commerce.DefaultPaymentProvider) {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live forbids unwired placeholder COMMERCE_PAYMENT_PROVIDER=%q (implement and register a WiredLiveProvider, or use PAYMENT_ENV=cash_only)", strings.ToLower(strings.TrimSpace(c.Commerce.DefaultPaymentProvider)))
 		}
-		// Missing PSP credentials must not hard-fail boot: WiredLiveProvider adapters report
-		// session_available=false per key until MOMO_*/ZALOPAY_*/VNP_*/SHOPEEPAY_* are set.
+		if err := c.validateLivePSPCredentials(c.Commerce.DefaultPaymentProvider); err != nil {
+			return err
+		}
 		for _, k := range c.Commerce.AllowedPaymentProviders {
 			if productionSandboxFamilyCommercePaymentProvider(k) {
 				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (mock/sandbox family)", k)
 			}
 			if productionPlaceholderLiveCommercePaymentProvider(k) {
 				return fmt.Errorf("config: APP_ENV=production forbids COMMERCE_PAYMENT_PROVIDERS entry %q (placeholder)", k)
+			}
+			if err := c.validateLivePSPCredentials(k); err != nil {
+				return err
 			}
 		}
 	}
@@ -330,17 +334,25 @@ func envSetNonEmpty(keys ...string) bool {
 	return false
 }
 
+// Production JWT session TTL bounds (100y access / 100y+1d refresh ceilings).
+const (
+	productionAccessTTLMin  = 5 * time.Minute
+	productionAccessTTLMax  = 876000 * time.Hour // 100 * 365 days
+	productionRefreshTTLMin = 1 * time.Hour
+	productionRefreshTTLMax = 876024 * time.Hour // 100y + 24h
+)
+
 func (c *Config) validateProductionSessionTTLs() error {
 	if c == nil {
 		return errors.New("config: nil")
 	}
 	access := c.HTTPAuth.AccessTokenTTL
 	refresh := c.HTTPAuth.RefreshTokenTTL
-	if access < 5*time.Minute || access > 24*time.Hour {
-		return fmt.Errorf("config: production requires admin access token TTL (USER_JWT_ACCESS_TTL / HTTP_AUTH_ACCESS_TTL / ADMIN_SESSION_TTL) between 5m and 24h inclusive (got %s)", access)
+	if access < productionAccessTTLMin || access > productionAccessTTLMax {
+		return fmt.Errorf("config: production requires admin access token TTL (USER_JWT_ACCESS_TTL / HTTP_AUTH_ACCESS_TTL / ADMIN_SESSION_TTL) between 5m and 876000h (100y) inclusive (got %s)", access)
 	}
-	if refresh < 1*time.Hour || refresh > 180*24*time.Hour {
-		return fmt.Errorf("config: production requires admin refresh horizon (USER_JWT_REFRESH_TTL / HTTP_AUTH_REFRESH_TTL / ADMIN_REFRESH_TTL) between 1h and 180d inclusive (got %s)", refresh)
+	if refresh < productionRefreshTTLMin || refresh > productionRefreshTTLMax {
+		return fmt.Errorf("config: production requires admin refresh horizon (USER_JWT_REFRESH_TTL / HTTP_AUTH_REFRESH_TTL / ADMIN_REFRESH_TTL) between 1h and 876024h (100y+1d) inclusive (got %s)", refresh)
 	}
 	if access >= refresh {
 		return errors.New("config: production requires access token TTL strictly less than refresh token TTL")

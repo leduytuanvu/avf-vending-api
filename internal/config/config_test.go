@@ -44,6 +44,17 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Runtime.Region != "" {
 		t.Fatalf("development should not invent a region, got %q", cfg.Runtime.Region)
 	}
+
+	wantAccess := 876000 * time.Hour
+	wantRefresh := 876024 * time.Hour
+	if cfg.HTTPAuth.AccessTokenTTL != wantAccess || cfg.HTTPAuth.RefreshTokenTTL != wantRefresh {
+		t.Fatalf("default admin JWT TTLs access=%s refresh=%s want %s / %s",
+			cfg.HTTPAuth.AccessTokenTTL, cfg.HTTPAuth.RefreshTokenTTL, wantAccess, wantRefresh)
+	}
+	if cfg.MachineJWT.AccessTokenTTL != wantAccess || cfg.MachineJWT.RefreshTokenTTL != wantRefresh {
+		t.Fatalf("default machine JWT TTLs should inherit admin: access=%s refresh=%s",
+			cfg.MachineJWT.AccessTokenTTL, cfg.MachineJWT.RefreshTokenTTL)
+	}
 }
 
 func TestLoad_RedisRuntimeFeatureFlags(t *testing.T) {
