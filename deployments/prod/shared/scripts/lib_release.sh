@@ -152,7 +152,7 @@ load_env_file() {
 			val="${val%\'}"
 		fi
 		printf -v "${key}" '%s' "${val}"
-		export "${key}"
+		export "${key?}"
 	done <"${path}"
 }
 
