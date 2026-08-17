@@ -131,12 +131,29 @@ require_dir() {
 }
 
 load_env_file() {
+	# Parse KEY=VALUE lines without `source` so values with ?, &, $, or spaces
+	# (common in DATABASE_URL) do not break bash or leave keys unset.
 	local path="$1"
+	local line key val
 	require_file "${path}"
-	set -a
-	# shellcheck disable=SC1090
-	source "${path}"
-	set +a
+	while IFS= read -r line || [[ -n "${line}" ]]; do
+		line="${line%$'\r'}"
+		[[ -z "${line}" || "${line}" =~ ^[[:space:]]*# ]] && continue
+		[[ "${line}" == export[[:space:]]* ]] && line="${line#export }"
+		[[ "${line}" == *=* ]] || continue
+		key="${line%%=*}"
+		val="${line#*=}"
+		[[ "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+		if [[ "${val}" == \"*\" ]]; then
+			val="${val#\"}"
+			val="${val%\"}"
+		elif [[ "${val}" == \'*\' ]]; then
+			val="${val#\'}"
+			val="${val%\'}"
+		fi
+		printf -v "${key}" '%s' "${val}"
+		export "${key}"
+	done <"${path}"
 }
 
 read_env_value() {
