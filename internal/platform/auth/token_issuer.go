@@ -44,11 +44,11 @@ func NewSessionIssuerFromHTTPAuth(cfg config.HTTPAuthConfig) (*SessionIssuer, er
 	}
 	accessTTL := cfg.AccessTokenTTL
 	if accessTTL <= 0 {
-		accessTTL = 15 * time.Minute
+		accessTTL = 876000 * time.Hour // 100y fallback aligned with config defaults
 	}
 	refreshTTL := cfg.RefreshTokenTTL
 	if refreshTTL <= 0 {
-		refreshTTL = 30 * 24 * time.Hour
+		refreshTTL = 876024 * time.Hour // 100y+1d fallback aligned with config defaults
 	}
 	mfaTTL := cfg.MFAPendingTTL
 	if mfaTTL <= 0 {

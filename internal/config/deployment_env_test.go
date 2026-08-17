@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func minimalStaging(t *testing.T) {
@@ -203,27 +204,34 @@ func TestLoad_Production_RejectsMockCommercePaymentProvider(t *testing.T) {
 	}
 }
 
-func TestLoad_Production_AllowsLiveWiredKeysWithoutCredentials(t *testing.T) {
-	// Missing MOMO_*/VNP_* must not block boot; adapters report session_available=false until wired.
+func TestLoad_Production_RequiresWiredProviderWhenLive(t *testing.T) {
 	setMinimalProductionLoadEnv(t)
 	t.Setenv("PAYMENT_ENV", "live")
 	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "vnpay")
-	t.Setenv("COMMERCE_PAYMENT_PROVIDERS", "momo,zalopay,vietqr,vnpay,shopeepay")
-	if _, err := Load(); err != nil {
-		t.Fatalf("live keys without credentials must load: %v", err)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
+		t.Fatalf("unexpected: %v", err)
 	}
 }
 
-func TestLoad_Production_RejectsStripePlaceholderWhenLive(t *testing.T) {
-	setMinimalProductionLoadEnv(t)
-	t.Setenv("PAYMENT_ENV", "live")
-	t.Setenv("COMMERCE_PAYMENT_PROVIDER", "stripe")
-	_, err := Load()
-	if err == nil {
-		t.Fatal("expected error for stripe placeholder")
-	}
-	if !strings.Contains(err.Error(), "placeholder") {
-		t.Fatalf("unexpected: %v", err)
+func TestLoad_Production_RejectsAllPlaceholderLiveProviders(t *testing.T) {
+	for _, provider := range []string{"stripe", "momo", "zalopay", "vnpay"} {
+		provider := provider
+		t.Run(provider, func(t *testing.T) {
+			setMinimalProductionLoadEnv(t)
+			t.Setenv("PAYMENT_ENV", "live")
+			t.Setenv("COMMERCE_PAYMENT_PROVIDER", provider)
+			_, err := Load()
+			if err == nil {
+				t.Fatalf("expected error for placeholder %q", provider)
+			}
+			if !strings.Contains(err.Error(), "placeholder") && !strings.Contains(err.Error(), "unwired") {
+				t.Fatalf("unexpected: %v", err)
+			}
+		})
 	}
 }
 
@@ -531,5 +539,87 @@ func TestLoad_Production_RejectsOutboxRequiredWithoutNATSURL(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "NATS_URL") {
 		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestLoad_Production_AcceptsLongLivedSessionTTLs(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("USER_JWT_ACCESS_TTL", "876000h")
+	t.Setenv("USER_JWT_REFRESH_TTL", "876024h")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.HTTPAuth.AccessTokenTTL != 876000*time.Hour {
+		t.Fatalf("access TTL=%s", cfg.HTTPAuth.AccessTokenTTL)
+	}
+	if cfg.HTTPAuth.RefreshTokenTTL != 876024*time.Hour {
+		t.Fatalf("refresh TTL=%s", cfg.HTTPAuth.RefreshTokenTTL)
+	}
+}
+
+func TestLoad_Production_RejectsAccessTTLBelowMin(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("HTTP_AUTH_ACCESS_TTL", "4m")
+	t.Setenv("HTTP_AUTH_REFRESH_TTL", "2h")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "access token TTL") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestLoad_Production_RejectsAccessNotLessThanRefresh(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("HTTP_AUTH_ACCESS_TTL", "2h")
+	t.Setenv("HTTP_AUTH_REFRESH_TTL", "2h")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "strictly less than refresh") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestLoad_Production_RejectsAccessAboveMax(t *testing.T) {
+	setMinimalProductionLoadEnv(t)
+	t.Setenv("HTTP_AUTH_ACCESS_TTL", "876001h")
+	t.Setenv("HTTP_AUTH_REFRESH_TTL", "876024h")
+	_, err := Load()
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "access token TTL") {
+		t.Fatalf("unexpected: %v", err)
+	}
+}
+
+func TestValidateProductionSessionTTLs_Unit(t *testing.T) {
+	t.Parallel()
+	cfg := &Config{
+		HTTPAuth: HTTPAuthConfig{
+			AccessTokenTTL:  15 * time.Minute,
+			RefreshTokenTTL: 720 * time.Hour,
+		},
+	}
+	if err := cfg.validateProductionSessionTTLs(); err != nil {
+		t.Fatal(err)
+	}
+	cfg.HTTPAuth.AccessTokenTTL = productionAccessTTLMax
+	cfg.HTTPAuth.RefreshTokenTTL = productionRefreshTTLMax
+	if err := cfg.validateProductionSessionTTLs(); err != nil {
+		t.Fatal(err)
+	}
+	cfg.HTTPAuth.AccessTokenTTL = productionAccessTTLMax + time.Hour
+	if err := cfg.validateProductionSessionTTLs(); err == nil {
+		t.Fatal("expected access above max to fail")
+	}
+	cfg.HTTPAuth.AccessTokenTTL = productionAccessTTLMax
+	cfg.HTTPAuth.RefreshTokenTTL = productionRefreshTTLMax + time.Hour
+	if err := cfg.validateProductionSessionTTLs(); err == nil {
+		t.Fatal("expected refresh above max to fail")
 	}
 }
