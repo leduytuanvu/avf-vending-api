@@ -368,7 +368,7 @@ curl.exe -L -o tmp/avf111111-images/phuc-long.jpg "https://upload.urbox.vn/strap
 ```bash
 curl.exe -X POST "https://api.ldtv.dev/v1/admin/product-images" \
   -H "Authorization: Bearer $TOKEN" \
-  -H "Idempotency-Key: avf111111-img-{productId}" \
+  -H "Idempotency-Key: {stable-idempotency-key}" \
   -F "file=@D:/path/tmp/avf111111-images/phuc-long.png;type=image/png" \
   -F "purpose=product_image" \
   -F "productId=019f38cf-1677-7120-8778-d143ff14d3e9" \
@@ -423,7 +423,7 @@ Phải có `primaryMediaId` và `media.primary.variants[]`.
 
 ```http
 PATCH /v1/admin/products/{productId}
-Idempotency-Key: {stable-idempotency-key}{productId}
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {"active": true}
