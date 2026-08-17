@@ -27,10 +27,20 @@ reload_emqx_acl() {
 	note "reload EMQX authorization without recreating the broker (cid=${cid})"
 	# Bind-mounted acl.conf is already visible. Clear authz cache so file rules apply
 	# to new connections without dropping existing MQTT sessions.
-	if ! docker exec "${cid}" emqx ctl authorization cache-clean all; then
-		note "emqx ctl authorization cache-clean failed; trying conf reload"
-		docker exec "${cid}" emqx ctl conf reload || fail "EMQX ACL reload failed"
+	if docker exec "${cid}" emqx ctl authorization cache-clean all; then
+		return 0
 	fi
+	note "emqx ctl authorization cache-clean failed; trying conf reload"
+	if docker exec "${cid}" emqx ctl conf reload; then
+		return 0
+	fi
+	# ctl can fail with "Node emqx@emqx not responding to pings" while MQTT and the
+	# management API are healthy. Do not --force-recreate; new connections still see the file.
+	if curl -sf "http://127.0.0.1:18083/api/v5/status" | grep -Fq "emqx is running"; then
+		note "EMQX management API is up; continuing without ctl reload"
+		return 0
+	fi
+	fail "EMQX ACL reload failed"
 }
 
 install_via_compose() {
