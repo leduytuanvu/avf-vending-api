@@ -227,13 +227,13 @@ func (p *ShopeePayProvider) RefundPayment(ctx context.Context, in RefundPaymentI
 		refundRef = refundRef[:shopeepay.PaymentReferenceIDMaxLength]
 	}
 	payload := map[string]any{
-		"request_id":           uuid.NewString(),
-		"reference_id":         orderCode,
-		"transaction_type":     shopeeTxnTypePayment,
-		"refund_reference_id":  refundRef,
-		"merchant_ext_id":      creds.MerchantExtID,
-		"store_ext_id":         creds.StoreExtID,
-		"amount":               shopeepay.ToAPIAmount(in.AmountMinor),
+		"request_id":          uuid.NewString(),
+		"reference_id":        orderCode,
+		"transaction_type":    shopeeTxnTypePayment,
+		"refund_reference_id": refundRef,
+		"merchant_ext_id":     creds.MerchantExtID,
+		"store_ext_id":        creds.StoreExtID,
+		"amount":              shopeepay.ToAPIAmount(in.AmountMinor),
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

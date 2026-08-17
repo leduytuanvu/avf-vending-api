@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -31,15 +31,15 @@ func TestSubmitEventEvidenceBatch_acceptsDuplicateAndConflict(t *testing.T) {
 	payload, err := structpb.NewStruct(map[string]any{"order_id": "ord-1"})
 	require.NoError(t, err)
 	ev := &machinev1.EventEvidence{
-		EventId:     "ev-1",
-		EventType:   "vend_result",
-		OccurredAt:  timestamppb.Now(),
-		Category:    "business_critical",
-		Severity:    "info",
-		Source:      "device",
-		StreamId:    "install-1",
-		OrderId:     "ord-1",
-		Payload:     payload,
+		EventId:    "ev-1",
+		EventType:  "vend_result",
+		OccurredAt: timestamppb.Now(),
+		Category:   "business_critical",
+		Severity:   "info",
+		Source:     "device",
+		StreamId:   "install-1",
+		OrderId:    "ord-1",
+		Payload:    payload,
 	}
 	req := &machinev1.SubmitEventEvidenceBatchRequest{
 		Context: &machinev1.IdempotencyContext{IdempotencyKey: "ev-batch-1", ClientEventId: "ev-batch-1", ClientCreatedAt: timestamppb.Now()},

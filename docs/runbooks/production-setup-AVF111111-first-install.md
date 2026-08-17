@@ -182,7 +182,7 @@ GET /v1/admin/sites?limit=50
 
 ```http
 POST /v1/admin/sites
-Idempotency-Key: avf111111-site-create
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {
@@ -224,7 +224,7 @@ Tìm `code == "AVF111111"`. Nếu có → lưu `machineId`. Nếu `retired`/`com
 
 ```http
 POST /v1/admin/machines
-Idempotency-Key: avf111111-machine-create
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {
@@ -261,7 +261,7 @@ Content-Type: application/json
 ```http
 GET /v1/admin/categories?limit=200
 POST /v1/admin/categories
-Idempotency-Key: avf111111-cat
+Idempotency-Key: {stable-idempotency-key}
 
 {"name":"AVF111111 Beverages","slug":"avf111111-beverages","parentId":null,"active":true}
 ```
@@ -270,7 +270,7 @@ Idempotency-Key: avf111111-cat
 
 ```http
 POST /v1/admin/brands
-Idempotency-Key: avf111111-brand
+Idempotency-Key: {stable-idempotency-key}
 
 {"name":"AVF111111","slug":"avf111111","active":true}
 ```
@@ -294,7 +294,7 @@ Production **từ chối** `active: true` khi chưa có `primaryMediaId`:
 
 ```http
 POST /v1/admin/products
-Idempotency-Key: avf111111-prod-AVF111111-A1
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {
@@ -423,7 +423,7 @@ Phải có `primaryMediaId` và `media.primary.variants[]`.
 
 ```http
 PATCH /v1/admin/products/{productId}
-Idempotency-Key: avf111111-act-{productId}
+Idempotency-Key: {stable-idempotency-key}{productId}
 Content-Type: application/json
 
 {"active": true}
@@ -530,7 +530,7 @@ Content-Type: application/json
 
 ```http
 POST /v1/admin/machines/{machineId}/planograms/publish
-Idempotency-Key: avf111111-planogram-publish
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 { ... cùng body với draft ... }
@@ -561,7 +561,7 @@ GET /v1/admin/machines/{machineId}/slots
 
 ```http
 POST /v1/admin/machines/{machineId}/stock-adjustments
-Idempotency-Key: avf111111-stock
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {
@@ -602,7 +602,7 @@ Kỳ vọng: **60 slot**, mỗi slot có `productId`, `currentQuantity` > 0.
 
 ```http
 POST /v1/admin/machine-codes/AVF111111/activation-codes
-Idempotency-Key: avf111111-activation
+Idempotency-Key: {stable-idempotency-key}
 Content-Type: application/json
 
 {

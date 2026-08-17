@@ -734,4 +734,3 @@ func TestP06_OfflineSync_payloadConflictIsNotReplayed(t *testing.T) {
 	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED, out2.GetResults()[0].GetStatus())
 	require.Contains(t, out2.GetResults()[0].GetReason(), "conflict")
 }
-

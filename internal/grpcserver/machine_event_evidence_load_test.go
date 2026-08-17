@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -27,9 +27,9 @@ func TestSubmitEventEvidenceBatch_realLocalLoadMultiMachineRebatchReconnect(t *t
 	srv := &machineTelemetryServer{deps: deps}
 
 	const (
-		machineCount   = 20
+		machineCount     = 20
 		eventsPerMachine = 50 // total logical events = 1000
-		batchSize      = 25
+		batchSize        = 25
 	)
 
 	type machineFixture struct {
