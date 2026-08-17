@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Ensure production app-node env uses live QR/card payment (MoMo/ZaloPay/VietQR/VNPay/ShopeePay).
-# Does not write PSP secrets — fill MOMO_* / ZALOPAY_* / VNP_* / SHOPEEPAY_* separately.
+# Ensure MOMO_* / ZALOPAY_* / VNP_* credentials are set for every key in
+# COMMERCE_PAYMENT_PROVIDERS (default: momo,zalopay,vietqr,vnpay). Add shopeepay
+# only after SHOPEEPAY_* is configured — production boot requires credentials for each allowlisted key.
 # Usage: apply_live_payment_app_node_env.sh [path/to/.env.app-node]
 set -euo pipefail
 
@@ -27,7 +29,9 @@ set_env_kv() {
 
 PAYMENT_ENV="${PAYMENT_ENV:-live}"
 COMMERCE_PAYMENT_PROVIDER="${COMMERCE_PAYMENT_PROVIDER:-momo}"
-COMMERCE_PAYMENT_PROVIDERS="${COMMERCE_PAYMENT_PROVIDERS:-momo,zalopay,vietqr,vnpay,shopeepay}"
+# Only list PSPs that have production credentials wired. Including an unwired key
+# (e.g. shopeepay) makes APP_ENV=production boot fail closed on every process.
+COMMERCE_PAYMENT_PROVIDERS="${COMMERCE_PAYMENT_PROVIDERS:-momo,zalopay,vietqr,vnpay}"
 
 set_env_kv "PAYMENT_ENV" "${PAYMENT_ENV}"
 set_env_kv "COMMERCE_PAYMENT_PROVIDER" "${COMMERCE_PAYMENT_PROVIDER}"
