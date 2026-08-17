@@ -72,4 +72,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/GET -v1-auth-sessions — List current admin sessions.resources/examples
-order: 4000
+order: 5000

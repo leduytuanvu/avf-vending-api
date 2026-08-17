@@ -1,0 +1,15 @@
+$kind: http-request
+name: GET /v1/admin/machine-codes/{machineCode}/activation-codes — List activation codes by machineCode
+description: Gate 0 coverage for OpenAPI `GET /v1/admin/machine-codes/{machineCode}/activation-codes` — List activation codes by machineCode
+url: "{{baseUrl}}/v1/admin/machine-codes/{{machineCode}}/activation-codes"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 12000

@@ -1,0 +1,15 @@
+$kind: http-request
+name: GET /v1/admin/machines/{machineId}/timeline/unified — Unified enterprise machine timeline (admin)
+description: Gate 0 coverage for OpenAPI `GET /v1/admin/machines/{machineId}/timeline/unified` — Unified enterprise machine timeline (admin)
+url: "{{baseUrl}}/v1/admin/machines/{{machineId}}/timeline/unified"
+method: GET
+headers:
+  Accept: application/json
+  X-Request-ID: "{{requestId}}"
+  X-Correlation-ID: "{{correlationId}}"
+  Authorization: Bearer {{accessToken}}
+auth:
+  type: bearer
+  credentials:
+    token: "{{accessToken}}"
+order: 38000

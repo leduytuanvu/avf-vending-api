@@ -75,4 +75,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/POST -v1-auth-refresh — Rotate access token using a refresh to.resources/examples
-order: 14000
+order: 13000

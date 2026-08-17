@@ -79,4 +79,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/DELETE -v1-auth-sessions — Revoke other sessions.resources/examples
-order: 1000
+order: 2000

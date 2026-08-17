@@ -84,4 +84,4 @@ scripts:
       }
     language: text/javascript
 examples: ./.resources/GET -v1-auth-me — Current authenticated principal.resources/examples
-order: 3000
+order: 4000

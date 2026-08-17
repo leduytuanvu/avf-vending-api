@@ -79,4 +79,4 @@ scripts:
       });
     language: text/javascript
 examples: ./.resources/POST -v1-auth-mfa-totp-verify — Verify TOTP (enrollment or log.resources/examples
-order: 10000
+order: 9000
