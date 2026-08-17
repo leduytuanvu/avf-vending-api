@@ -11,6 +11,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/id"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -103,7 +104,7 @@ func (r *ServerErrorReporter) Report(ctx context.Context, in ServerAlert) {
 		_, err := db.New(r.pool).InsertOutboxEventIdempotent(ctx, db.InsertOutboxEventIdempotentParams{
 			Topic:          "notification.telegram",
 			EventType:      "server.error.alert",
-			Payload:        payload,
+			Payload:        pgjson.RequiredString(payload),
 			AggregateType:  "server_alert",
 			AggregateID:    agg,
 			IdempotencyKey: pgtype.Text{String: TelegramServerIdempotencyKey(occ), Valid: true},

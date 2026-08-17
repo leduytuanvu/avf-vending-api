@@ -9,6 +9,7 @@ import (
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -89,7 +90,7 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 		if _, err := qtx.InsertOutboxEvent(ctx, db.InsertOutboxEventParams{
 			Topic:          strings.TrimSpace(in.OutboxTopic),
 			EventType:      strings.TrimSpace(in.OutboxEventType),
-			Payload:        reconciledPaymentOutboxPayload(in, cur),
+			Payload:        pgjson.RequiredString(reconciledPaymentOutboxPayload(in, cur)),
 			AggregateType:  strings.TrimSpace(in.OutboxAggregateType),
 			AggregateID:    in.OutboxAggregateID,
 			IdempotencyKey: optionalStringToPgText(strings.TrimSpace(in.OutboxIdempotencyKey)),

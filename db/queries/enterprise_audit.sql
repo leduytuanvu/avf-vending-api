@@ -18,21 +18,21 @@ INSERT INTO audit_events (
     occurred_at
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13,
-    $14,
-    $15,
+    sqlc.arg('actor_type'),
+    sqlc.narg('actor_id'),
+    sqlc.arg('action'),
+    sqlc.arg('resource_type'),
+    sqlc.narg('resource_id'),
+    sqlc.narg('machine_id'),
+    sqlc.narg('site_id'),
+    sqlc.narg('request_id'),
+    sqlc.narg('trace_id'),
+    sqlc.narg('ip_address'),
+    sqlc.narg('user_agent'),
+    NULLIF(sqlc.narg('before_json')::text, '')::jsonb,
+    NULLIF(sqlc.narg('after_json')::text, '')::jsonb,
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('outcome'),
     COALESCE(sqlc.narg('occurred_at')::timestamptz, now())
 )
 RETURNING *;

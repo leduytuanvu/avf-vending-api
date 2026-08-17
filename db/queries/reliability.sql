@@ -11,15 +11,15 @@ INSERT INTO outbox_events (
     simulation_scenario
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9
+    sqlc.arg('topic'),
+    sqlc.arg('event_type'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('aggregate_type'),
+    sqlc.arg('aggregate_id'),
+    sqlc.narg('idempotency_key'),
+    sqlc.arg('simulated'),
+    sqlc.narg('simulation_run_id'),
+    sqlc.narg('simulation_scenario')
 )
 RETURNING *;
 
@@ -36,15 +36,15 @@ INSERT INTO outbox_events (
     simulation_scenario
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9
+    sqlc.arg('topic'),
+    sqlc.arg('event_type'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('aggregate_type'),
+    sqlc.arg('aggregate_id'),
+    sqlc.narg('idempotency_key'),
+    sqlc.arg('simulated'),
+    sqlc.narg('simulation_run_id'),
+    sqlc.narg('simulation_scenario')
 )
 ON CONFLICT (topic, idempotency_key)
 WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> ''

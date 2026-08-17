@@ -19,6 +19,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -122,16 +123,16 @@ func (s *Service) RecordCriticalTx(ctx context.Context, tx pgx.Tx, in compliance
 func (s *Service) buildInsertParams(ctx context.Context, in compliance.EnterpriseAuditRecord) (db.EnterpriseAuditInsertEventParams, error) {
 	in = withTransportMetaDefaults(ctx, in)
 	md := sanitizeAuditJSONBytes(in.Metadata)
-	if len(md) == 0 || string(md) == "null" {
+	if len(md) == 0 || string(md) == "null" || !json.Valid(md) {
 		md = []byte("{}")
 	}
 	before := sanitizeAuditJSONBytes(in.BeforeJSON)
 	after := sanitizeAuditJSONBytes(in.AfterJSON)
 	var beforePtr, afterPtr []byte
-	if len(before) > 0 && string(before) != "null" {
+	if len(before) > 0 && string(before) != "null" && json.Valid(before) {
 		beforePtr = before
 	}
-	if len(after) > 0 && string(after) != "null" {
+	if len(after) > 0 && string(after) != "null" && json.Valid(after) {
 		afterPtr = after
 	}
 	outcome := in.Outcome
@@ -155,9 +156,9 @@ func (s *Service) buildInsertParams(ctx context.Context, in compliance.Enterpris
 		TraceID:      optionalStringPtrToPgText(in.TraceID),
 		IpAddress:    optionalStringPtrToPgText(in.IPAddress),
 		UserAgent:    optionalStringPtrToPgText(in.UserAgent),
-		BeforeJson:   beforePtr,
-		AfterJson:    afterPtr,
-		Metadata:     md,
+		BeforeJson:   pgjson.TextJSON(beforePtr),
+		AfterJson:    pgjson.TextJSON(afterPtr),
+		Metadata:     pgjson.RequiredString(md),
 		Outcome:      outcome,
 		OccurredAt:   occurred,
 	}, nil

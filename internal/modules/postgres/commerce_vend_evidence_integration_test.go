@@ -76,7 +76,7 @@ func TestOutbox_InsertOutboxEventIdempotent(t *testing.T) {
 	p := db.InsertOutboxEventIdempotentParams{
 		Topic:          topic,
 		EventType:      "vend.succeeded",
-		Payload:        payload,
+		Payload:        string(payload),
 		AggregateType:  "order",
 		AggregateID:    orderID,
 		IdempotencyKey: idemText,
