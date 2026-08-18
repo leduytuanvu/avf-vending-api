@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -21,6 +24,7 @@ const (
 	DefaultTTL                       = 24 * time.Hour
 	DefaultInProgressStale           = 2 * time.Minute
 	ErrMsgIdempotencyPayloadMismatch = "idempotency_payload_mismatch"
+	ErrMsgIdempotencyFinalizeFailed  = "machine_idempotency_finalize_failed"
 )
 
 // Ledger persists machine mutation idempotency rows in PostgreSQL (source of truth).
@@ -148,14 +152,14 @@ func (l *Ledger) MarkSucceeded(ctx context.Context, claims plauth.MachineAccessC
 		return status.Error(codes.Internal, "machine idempotency response encode failed")
 	}
 	key = strings.TrimSpace(key)
-	if _, err := l.q.MarkMachineIdempotencySucceeded(ctx, db.MarkMachineIdempotencySucceededParams{ResponseSnapshot: snap,
-		TraceID: traceID,
-
-		MachineID:      claims.MachineID,
-		Operation:      operation,
-		IdempotencyKey: key,
+	if _, err := l.q.MarkMachineIdempotencySucceeded(ctx, db.MarkMachineIdempotencySucceededParams{
+		ResponseSnapshot: pgjson.RequiredString(snap),
+		TraceID:          traceID,
+		MachineID:        claims.MachineID,
+		Operation:        operation,
+		IdempotencyKey:   key,
 	}); err != nil {
-		return status.Error(codes.Internal, "machine idempotency response store failed")
+		return wrapFinalizeStoreError(err)
 	}
 	return nil
 }
@@ -192,4 +196,38 @@ func (l *Ledger) recordAudit(ctx context.Context, claims plauth.MachineAccessCla
 		ResourceID:   &mid,
 		Metadata:     md,
 	})
+}
+
+type finalizeStoreError struct {
+	SQLState string
+	err      error
+}
+
+func (e *finalizeStoreError) Error() string {
+	if e == nil {
+		return "machine idempotency response store failed"
+	}
+	if e.SQLState != "" {
+		return "machine idempotency response store failed sqlstate=" + e.SQLState
+	}
+	return "machine idempotency response store failed"
+}
+
+func (e *finalizeStoreError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.err
+}
+
+func wrapFinalizeStoreError(err error) error {
+	if err == nil {
+		return nil
+	}
+	out := &finalizeStoreError{err: err}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		out.SQLState = pgErr.Code
+	}
+	return out
 }
