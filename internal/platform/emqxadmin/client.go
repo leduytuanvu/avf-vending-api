@@ -41,6 +41,18 @@ func NewClient(baseURL, apiKey, apiSecret string) (*Client, error) {
 	}, nil
 }
 
+// ManagementHost returns the host:port of the configured management URL (never credentials).
+func (c *Client) ManagementHost() string {
+	if c == nil {
+		return ""
+	}
+	u, err := url.Parse(c.BaseURL)
+	if err != nil || strings.TrimSpace(u.Host) == "" {
+		return ""
+	}
+	return u.Host
+}
+
 func (c *Client) usersURL(userID string) string {
 	if strings.TrimSpace(userID) == "" {
 		return c.BaseURL + defaultUsersPath

@@ -99,3 +99,16 @@ func TestDeleteUserNotFoundOK(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestManagementHost(t *testing.T) {
+	c, err := NewClient("http://10.0.0.20:18083", "key", "secret")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.ManagementHost(); got != "10.0.0.20:18083" {
+		t.Fatalf("ManagementHost=%q", got)
+	}
+	if got := (*Client)(nil).ManagementHost(); got != "" {
+		t.Fatalf("nil ManagementHost=%q", got)
+	}
+}

@@ -993,6 +993,10 @@ jobs:
           bash -n deployments/prod/shared/scripts/apply_cloudinary_app_node_env.sh
           bash -n deployments/prod/shared/scripts/apply_external_product_image_app_node_env.sh
           bash -n deployments/prod/shared/scripts/apply_machine_grpc_app_node_env.sh
+          bash -n deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh
+          bash -n deployments/prod/shared/scripts/probe_emqx_management_from_api.sh
+          bash -n deployments/prod/shared/scripts/reload_app_node_emqx_env.sh
+          bash -n deployments/prod/data-node/scripts/open_emqx_management_from_app_nodes.sh
           bash -n deployments/prod/app-node/scripts/release_app_node.sh
           bash -n deployments/prod/app-node/scripts/release_app_cluster.sh
           bash -n deployments/prod/app-node/scripts/rollback_app_node.sh
