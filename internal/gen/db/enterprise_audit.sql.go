@@ -49,19 +49,17 @@ WHERE
         OR resource_id = $6
     )
     AND (
+        $8::timestamptz IS NULL
+        OR created_at >= $8
+    )
+    AND (
+        $9::timestamptz IS NULL
+        OR created_at <= $9
+    )
+    AND (
         $7::text IS NULL
         OR btrim($7::text) = ''
-        OR created_at >= $7::timestamptz
-    )
-    AND (
-        $8::text IS NULL
-        OR btrim($8::text) = ''
-        OR created_at <= $8::timestamptz
-    )
-    AND (
-        $9::text IS NULL
-        OR btrim($9::text) = ''
-        OR machine_id::text = $9
+        OR machine_id::text = $7
     )
 `
 
@@ -73,8 +71,8 @@ type EnterpriseAuditCountEventsParams struct {
 	Column5 string
 	Column6 string
 	Column7 string
-	Column8 string
-	Column9 string
+	FromTs  pgtype.Timestamptz
+	ToTs    pgtype.Timestamptz
 }
 
 func (q *Queries) EnterpriseAuditCountEvents(ctx context.Context, arg EnterpriseAuditCountEventsParams) (int64, error) {
@@ -86,8 +84,8 @@ func (q *Queries) EnterpriseAuditCountEvents(ctx context.Context, arg Enterprise
 		arg.Column5,
 		arg.Column6,
 		arg.Column7,
-		arg.Column8,
-		arg.Column9,
+		arg.FromTs,
+		arg.ToTs,
 	)
 	var column_1 int64
 	err := row.Scan(&column_1)
@@ -271,23 +269,21 @@ WHERE
         OR resource_id = $6
     )
     AND (
+        $10::timestamptz IS NULL
+        OR created_at >= $10
+    )
+    AND (
+        $11::timestamptz IS NULL
+        OR created_at <= $11
+    )
+    AND (
         $7::text IS NULL
         OR btrim($7::text) = ''
-        OR created_at >= $7::timestamptz
-    )
-    AND (
-        $8::text IS NULL
-        OR btrim($8::text) = ''
-        OR created_at <= $8::timestamptz
-    )
-    AND (
-        $9::text IS NULL
-        OR btrim($9::text) = ''
-        OR machine_id::text = $9
+        OR machine_id::text = $7
     )
 ORDER BY
     created_at DESC
-LIMIT $10 OFFSET $11
+LIMIT $8 OFFSET $9
 `
 
 type EnterpriseAuditListEventsParams struct {
@@ -298,10 +294,10 @@ type EnterpriseAuditListEventsParams struct {
 	Column5 string
 	Column6 string
 	Column7 string
-	Column8 string
-	Column9 string
 	Limit   int32
 	Offset  int32
+	FromTs  pgtype.Timestamptz
+	ToTs    pgtype.Timestamptz
 }
 
 func (q *Queries) EnterpriseAuditListEvents(ctx context.Context, arg EnterpriseAuditListEventsParams) ([]AuditEvent, error) {
@@ -313,10 +309,10 @@ func (q *Queries) EnterpriseAuditListEvents(ctx context.Context, arg EnterpriseA
 		arg.Column5,
 		arg.Column6,
 		arg.Column7,
-		arg.Column8,
-		arg.Column9,
 		arg.Limit,
 		arg.Offset,
+		arg.FromTs,
+		arg.ToTs,
 	)
 	if err != nil {
 		return nil, err

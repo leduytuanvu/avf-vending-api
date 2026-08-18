@@ -11,9 +11,9 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
-	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -156,7 +156,7 @@ func getSaleCatalog(app *api.HTTPApplication) http.HandlerFunc {
 			"items":          items,
 		}
 		repo := postgres.NewSetupRepository(app.TelemetryStore.Pool())
-		dbq := db.New(app.TelemetryStore.Pool())
+		dbq := pgxutil.NewQueries(app.TelemetryStore.Pool())
 		if b, err := repo.GetMachineBootstrap(ctx, machineID); err == nil {
 			if sv, err2 := repo.GetMachineSlotView(ctx, machineID); err2 == nil {
 				if rs, err3 := sellreadiness.Compute(ctx, dbq, sv, b); err3 == nil {

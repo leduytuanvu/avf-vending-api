@@ -4,8 +4,8 @@ FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
   AND (NOT $2 OR p.active = true)
-  AND ($3::text = '' OR p.brand_id = $3::uuid)
-  AND ($4::text = '' OR p.category_id = $4::uuid);
+  AND (sqlc.narg('brand_id')::uuid IS NULL OR p.brand_id = sqlc.narg('brand_id'))
+  AND (sqlc.narg('category_id')::uuid IS NULL OR p.category_id = sqlc.narg('category_id'));
 
 -- name: CatalogAdminListProducts :many
 SELECT
@@ -23,10 +23,10 @@ FROM products p
 WHERE TRUE
   AND ($1::text = '' OR p.name ILIKE '%' || $1 || '%' OR p.sku ILIKE '%' || $1 || '%')
   AND (NOT $2 OR p.active = true)
-  AND ($3::text = '' OR p.brand_id = $3::uuid)
-  AND ($4::text = '' OR p.category_id = $4::uuid)
+  AND (sqlc.narg('brand_id')::uuid IS NULL OR p.brand_id = sqlc.narg('brand_id'))
+  AND (sqlc.narg('category_id')::uuid IS NULL OR p.category_id = sqlc.narg('category_id'))
 ORDER BY p.updated_at DESC, p.id
-LIMIT $5 OFFSET $6;
+LIMIT $3 OFFSET $4;
 
 -- name: CatalogAdminGetProduct :one
 SELECT

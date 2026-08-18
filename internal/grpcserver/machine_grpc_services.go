@@ -17,6 +17,7 @@ import (
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
@@ -453,7 +454,7 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			apIDs = append(apIDs, p.ProductID)
 		}
 		var err error
-		assortReady, err = sellreadiness.PrimaryMediaReadyMap(ctx, db.New(deps.Pool), apIDs)
+		assortReady, err = sellreadiness.PrimaryMediaReadyMap(ctx, pgxutil.NewQueries(deps.Pool), apIDs)
 		if err != nil {
 			return nil, err
 		}
@@ -513,7 +514,7 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 		if err != nil {
 			return nil, err
 		}
-		sr, err := sellreadiness.Compute(ctx, db.New(deps.Pool), sv, b)
+		sr, err := sellreadiness.Compute(ctx, pgxutil.NewQueries(deps.Pool), sv, b)
 		if err != nil {
 			return nil, err
 		}

@@ -20,6 +20,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,7 +51,7 @@ func NewService(pool *pgxpool.Pool, opts ...ServiceOpts) *Service {
 		o = opts[0]
 	}
 	return &Service{
-		q:                db.New(pool),
+		q:                pgxutil.NewQueries(pool),
 		pool:             pool,
 		criticalFailOpen: o.CriticalFailOpen,
 	}
@@ -301,14 +302,11 @@ type EventListResponse struct {
 	Meta  listscope.CollectionMeta `json:"meta"`
 }
 
-func timeRangeStrings(from, to *time.Time) (fromS, toS string) {
-	if from != nil {
-		fromS = from.UTC().Format(time.RFC3339Nano)
+func optionalTimestamptzPtrToPg(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
 	}
-	if to != nil {
-		toS = to.UTC().Format(time.RFC3339Nano)
-	}
-	return fromS, toS
+	return pgtype.Timestamptz{Time: t.UTC(), Valid: true}
 }
 
 // ListEvents returns single-company audit rows with filters.
@@ -316,7 +314,8 @@ func (s *Service) ListEvents(ctx context.Context, p EventListParams) (*EventList
 	if s == nil || s.q == nil {
 		return nil, nil
 	}
-	fromS, toS := timeRangeStrings(p.From, p.To)
+	fromTs := optionalTimestamptzPtrToPg(p.From)
+	toTs := optionalTimestamptzPtrToPg(p.To)
 	cnt, err := s.q.EnterpriseAuditCountEvents(ctx, db.EnterpriseAuditCountEventsParams{
 		Column1: p.Action,
 		Column2: p.ActorID,
@@ -324,9 +323,9 @@ func (s *Service) ListEvents(ctx context.Context, p EventListParams) (*EventList
 		Column4: p.Outcome,
 		Column5: p.ResourceType,
 		Column6: p.ResourceID,
-		Column7: fromS,
-		Column8: toS,
-		Column9: p.MachineID,
+		Column7: p.MachineID,
+		FromTs:  fromTs,
+		ToTs:    toTs,
 	})
 	if err != nil {
 		return nil, err
@@ -338,11 +337,11 @@ func (s *Service) ListEvents(ctx context.Context, p EventListParams) (*EventList
 		Column4: p.Outcome,
 		Column5: p.ResourceType,
 		Column6: p.ResourceID,
-		Column7: fromS,
-		Column8: toS,
-		Column9: p.MachineID,
+		Column7: p.MachineID,
 		Limit:   p.Limit,
 		Offset:  p.Offset,
+		FromTs:  fromTs,
+		ToTs:    toTs,
 	})
 	if err != nil {
 		return nil, err

@@ -17,5 +17,21 @@ sql:
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
+          # sqlc v1.31.1 still emits []uuid.UUID for uuid[] despite these _uuid /
+          # uuid[] overrides. Do not treat generated types as the production fix.
+          # Runtime encoding is pgxutil AfterConnect codecs + WrapQueryDBTX /
+          # NewQueries. Never hand-edit internal/gen/db.
+          - db_type: "_uuid"
+            go_type:
+              import: "github.com/jackc/pgx/v5/pgtype"
+              type: "FlatArray[uuid.UUID]"
+          - db_type: "uuid[]"
+            go_type:
+              import: "github.com/jackc/pgx/v5/pgtype"
+              type: "FlatArray[uuid.UUID]"
+          - db_type: "pg_catalog._uuid"
+            go_type:
+              import: "github.com/jackc/pgx/v5/pgtype"
+              type: "FlatArray[uuid.UUID]"
           - db_type: "timestamptz"
             go_type: "time.Time"

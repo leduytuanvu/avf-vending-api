@@ -15,6 +15,7 @@ import (
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -110,7 +111,7 @@ func (s *Service) CreateCampaign(ctx context.Context, scopeID uuid.UUID, rollout
 	if _, err := normalizeStrategy(strategyJSON); err != nil {
 		return db.RolloutCampaign{}, ErrInvalidArgument
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	row, err := q.InsertRolloutCampaign(ctx, db.InsertRolloutCampaignParams{
 		RolloutType:   rolloutType,
 		TargetVersion: strings.TrimSpace(targetVersion),
@@ -138,7 +139,7 @@ func (s *Service) ListCampaigns(ctx context.Context, scopeID uuid.UUID, limit, o
 	if offset < 0 {
 		offset = 0
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	return q.ListRolloutCampaigns(ctx, db.ListRolloutCampaignsParams{
 		Limit:  limit,
 		Offset: offset,
@@ -149,7 +150,7 @@ func (s *Service) GetCampaign(ctx context.Context, scopeID, campaignID uuid.UUID
 	if s == nil || s.pool == nil {
 		return db.RolloutCampaign{}, nil, ErrInvalidArgument
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	c, err := q.GetRolloutCampaignByID(ctx, campaignID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -170,7 +171,7 @@ func (s *Service) Start(ctx context.Context, scopeID, campaignID uuid.UUID) erro
 	if s == nil || s.pool == nil || s.dispatcher == nil {
 		return ErrInvalidArgument
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	c, err := q.GetRolloutCampaignByID(ctx, campaignID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -241,7 +242,7 @@ func (s *Service) Resume(ctx context.Context, scopeID, campaignID uuid.UUID) err
 }
 
 func (s *Service) Cancel(ctx context.Context, scopeID, campaignID uuid.UUID) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	if _, err := q.MarkRolloutCampaignCancelled(ctx, campaignID); err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func (s *Service) Rollback(ctx context.Context, scopeID, campaignID uuid.UUID) e
 	if s == nil || s.pool == nil || s.dispatcher == nil {
 		return ErrInvalidArgument
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	c, err := q.GetRolloutCampaignByID(ctx, campaignID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -307,7 +308,7 @@ func (s *Service) Rollback(ctx context.Context, scopeID, campaignID uuid.UUID) e
 }
 
 func (s *Service) patchStatus(ctx context.Context, scopeID, campaignID uuid.UUID, status string, action string) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	if _, err := q.UpdateRolloutCampaignStatusOnly(ctx, db.UpdateRolloutCampaignStatusOnlyParams{Status: status,
 
 		ID: campaignID,
@@ -319,7 +320,7 @@ func (s *Service) patchStatus(ctx context.Context, scopeID, campaignID uuid.UUID
 }
 
 func (s *Service) dispatchUntilQuiet(ctx context.Context, scopeID, campaignID uuid.UUID) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	for iter := 0; iter < maxDispatchLoops; iter++ {
 		camp, err := q.GetRolloutCampaignByID(ctx, campaignID)
 		if err != nil {
@@ -385,7 +386,7 @@ func (s *Service) dispatchUntilQuiet(ctx context.Context, scopeID, campaignID uu
 }
 
 func (s *Service) dispatchOne(ctx context.Context, scopeID uuid.UUID, camp db.RolloutCampaign, st Strategy, tgt db.RolloutTarget, version string) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	if s.dispatcher == nil {
 		return ErrInvalidArgument
 	}
@@ -486,7 +487,7 @@ func mergeRolloutDesired(desired []byte, rolloutType, version string) ([]byte, e
 }
 
 func (s *Service) resolveMachines(ctx context.Context, scopeID uuid.UUID, st Strategy) ([]uuid.UUID, error) {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	if len(st.MachineIDs) > 0 {
 		out := make([]uuid.UUID, 0, len(st.MachineIDs))
 		for _, id := range st.MachineIDs {

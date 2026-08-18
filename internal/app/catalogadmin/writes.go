@@ -9,6 +9,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -149,7 +150,7 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		return db.Product{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	if len(tagIDs) > 0 {
 		if err := s.validateProductTagIDsExist(ctx, qtx, tagIDs); err != nil {
 			return db.Product{}, err
@@ -283,7 +284,7 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		return db.Product{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	row, err := qtx.CatalogWriteUpdateProduct(ctx, db.CatalogWriteUpdateProductParams{Sku: sku,
 		Barcode:         barcode,
 		Name:            name,
@@ -734,7 +735,7 @@ func (s *Service) UpdateProductImage(ctx context.Context, in UpdateProductImageI
 		return db.ProductImage{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	if in.IsPrimary != nil && *in.IsPrimary {
 		if _, err := qtx.CatalogWriteClearProductPrimaryImage(ctx, in.ProductID); err != nil {
 			return db.ProductImage{}, err
@@ -797,7 +798,7 @@ func (s *Service) ArchiveProductImage(ctx context.Context, companyID, productID,
 		return db.ProductImage{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	cur, err := qtx.CatalogAdminGetProductImageForOrg(ctx, db.CatalogAdminGetProductImageForOrgParams{
 		ID:   productID,
 		ID_2: imageID,
@@ -849,7 +850,7 @@ func (s *Service) BindProductPrimaryImage(ctx context.Context, in BindProductIma
 		return db.Product{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 
 	if _, err := qtx.CatalogAdminGetProduct(ctx, in.ProductID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -962,7 +963,7 @@ func (s *Service) ClearProductPrimaryImage(ctx context.Context, companyID, produ
 		return db.Product{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 
 	if _, err := qtx.CatalogAdminGetProduct(ctx, productID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -1094,7 +1095,7 @@ func (s *Service) ReplacePlanogramSlots(ctx context.Context, in ReplacePlanogram
 		return db.Planogram{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 
 	if err := qtx.CatalogAdminDeleteSlotsByPlanogram(ctx, in.PlanogramID); err != nil {
 		return db.Planogram{}, err
