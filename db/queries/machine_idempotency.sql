@@ -34,13 +34,13 @@ WHERE
 UPDATE machine_idempotency_keys
 SET
     status = 'succeeded',
-    response_snapshot = $1,
+    response_snapshot = NULLIF(sqlc.arg('response_snapshot')::text, '')::jsonb,
     last_seen_at = now(),
-    trace_id = $2
+    trace_id = sqlc.arg('trace_id')
 WHERE
-    machine_id = $3
-    AND operation = $4
-    AND idempotency_key = $5
+    machine_id = sqlc.arg('machine_id')
+    AND operation = sqlc.arg('operation')
+    AND idempotency_key = sqlc.arg('idempotency_key')
 RETURNING *;
 
 -- name: MarkMachineIdempotencyFailed :exec

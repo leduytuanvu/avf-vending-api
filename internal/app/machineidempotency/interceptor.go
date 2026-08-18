@@ -2,6 +2,10 @@ package machineidempotency
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/platform/auth"
@@ -92,7 +96,8 @@ func UnaryServerInterceptor(ledger *Ledger, cfg InterceptorConfig) grpc.UnarySer
 		}
 		if err := ledger.MarkSucceeded(ctx, claims, begin.Operation, key, rpm, trace(ctx)); err != nil {
 			_ = ledger.MarkFailed(ctx, claims, ledgerOp, key, trace(ctx))
-			return nil, status.Error(codes.FailedPrecondition, "order_created_idempotency_finalize_failed")
+			logIdempotencyFinalizeFailure(ctx, claims, ledgerOp, key, trace(ctx), err)
+			return nil, status.Error(codes.FailedPrecondition, ErrMsgIdempotencyFinalizeFailed)
 		}
 		return resp, nil
 	}
@@ -131,4 +136,40 @@ func shouldMarkLedgerRowFailed(handlerErr error) bool {
 	default:
 		return true
 	}
+}
+
+func logIdempotencyFinalizeFailure(ctx context.Context, claims auth.MachineAccessClaims, operation, key, traceID string, err error) {
+	sqlState, dbClass, stage := finalizeErrorClass(err)
+	slog.ErrorContext(ctx, "machine_idempotency_finalize_failed",
+		"operation", operation,
+		"machineId", claims.MachineID.String(),
+		"requestId", strings.TrimSpace(traceID),
+		"traceId", strings.TrimSpace(traceID),
+		"idempotencyKeyFingerprint", idempotencyKeyFingerprint(key),
+		"stage", stage,
+		"sqlstate", sqlState,
+		"dbErrorClass", dbClass,
+	)
+}
+
+func finalizeErrorClass(err error) (sqlState, dbClass, stage string) {
+	stage = "mark_succeeded"
+	var store *finalizeStoreError
+	if errors.As(err, &store) && store != nil {
+		return store.SQLState, sqlstateClass(store.SQLState), stage
+	}
+	return "", "unknown", stage
+}
+
+func sqlstateClass(code string) string {
+	code = strings.TrimSpace(code)
+	if len(code) < 2 {
+		return "unknown"
+	}
+	return code[:2]
+}
+
+func idempotencyKeyFingerprint(key string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(key)))
+	return hex.EncodeToString(sum[:])[:12]
 }

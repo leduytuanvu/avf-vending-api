@@ -95,7 +95,7 @@ const MarkMachineIdempotencySucceeded = `-- name: MarkMachineIdempotencySucceede
 UPDATE machine_idempotency_keys
 SET
     status = 'succeeded',
-    response_snapshot = $1,
+    response_snapshot = NULLIF($1::text, '')::jsonb,
     last_seen_at = now(),
     trace_id = $2
 WHERE
@@ -106,7 +106,7 @@ RETURNING id, machine_id, operation, idempotency_key, request_hash, response_sna
 `
 
 type MarkMachineIdempotencySucceededParams struct {
-	ResponseSnapshot []byte
+	ResponseSnapshot string
 	TraceID          string
 	MachineID        uuid.UUID
 	Operation        string
