@@ -2,6 +2,7 @@ package pgxutil
 
 import (
 	"context"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -10,16 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RegisterUUIDArrayCodecs maps []uuid.UUID onto PostgreSQL uuid[] so pgx can
-// encode under simple/text protocol (OID 0). Production transaction poolers
-// typically cannot use prepared-statement OIDs.
+// RegisterUUIDArrayCodecs maps uuid slice types onto PostgreSQL _uuid (uuid[])
+// so pgx can encode under simple/exec protocol (OID 0). Production transaction
+// poolers typically cannot use prepared-statement OIDs. RegisterDefaultPgType
+// looks up catalog names; "uuid[]" is a silent no-op when only "_uuid" exists.
 func RegisterUUIDArrayCodecs(conn *pgx.Conn) {
 	if conn == nil {
 		return
 	}
 	m := conn.TypeMap()
-	m.RegisterDefaultPgType([]uuid.UUID{}, "uuid[]")
-	m.RegisterDefaultPgType(pgtype.FlatArray[uuid.UUID]{}, "uuid[]")
+	uuidType, ok := m.TypeForOID(pgtype.UUIDOID)
+	if !ok {
+		uuidType = &pgtype.Type{Name: "uuid", OID: pgtype.UUIDOID, Codec: pgtype.UUIDCodec{}}
+		m.RegisterType(uuidType)
+	}
+	m.RegisterType(&pgtype.Type{
+		Name:  "_uuid",
+		OID:   pgtype.UUIDArrayOID,
+		Codec: &pgtype.ArrayCodec{ElementType: uuidType},
+	})
+	for _, name := range []string{"_uuid", "uuid[]"} {
+		m.RegisterDefaultPgType([]uuid.UUID{}, name)
+		m.RegisterDefaultPgType(pgtype.FlatArray[uuid.UUID]{}, name)
+	}
 }
 
 // ApplyUUIDArrayCodecsToPoolConfig registers codecs on every acquired connection.
@@ -37,8 +51,28 @@ func ApplyUUIDArrayCodecsToPoolConfig(pcfg *pgxpool.Config) {
 	}
 }
 
-// RewriteUUIDSliceArgs converts []uuid.UUID bind values to pgtype.FlatArray
-// which has a text encode plan independent of prepared-statement OIDs.
+// formatUUIDArrayLiteral renders Postgres uuid[] text input ({uuid,uuid} / {}).
+// SQL already casts $1::uuid[] so binding text does not need a TypeMap OID.
+func formatUUIDArrayLiteral(ids []uuid.UUID) string {
+	if len(ids) == 0 {
+		return "{}"
+	}
+	var b strings.Builder
+	b.Grow(2 + len(ids)*37)
+	b.WriteByte('{')
+	for i, id := range ids {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.WriteString(id.String())
+	}
+	b.WriteByte('}')
+	return b.String()
+}
+
+// RewriteUUIDSliceArgs converts []uuid.UUID and FlatArray[uuid.UUID] bind
+// values to a Postgres uuid[] text literal so transaction poolers (OID 0)
+// can encode without a FlatArray codec plan.
 func RewriteUUIDSliceArgs(args []any) []any {
 	if len(args) == 0 {
 		return args
@@ -47,7 +81,9 @@ func RewriteUUIDSliceArgs(args []any) []any {
 	for i, a := range args {
 		switch v := a.(type) {
 		case []uuid.UUID:
-			out[i] = pgtype.FlatArray[uuid.UUID](v)
+			out[i] = formatUUIDArrayLiteral(v)
+		case pgtype.FlatArray[uuid.UUID]:
+			out[i] = formatUUIDArrayLiteral([]uuid.UUID(v))
 		default:
 			out[i] = a
 		}
