@@ -248,7 +248,7 @@ INSERT INTO device_telemetry_events (
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     $4
 )
 RETURNING id, machine_id, event_type, payload, dedupe_key, received_at
@@ -257,7 +257,7 @@ RETURNING id, machine_id, event_type, payload, dedupe_key, received_at
 type InsertDeviceTelemetryEventParams struct {
 	MachineID uuid.UUID
 	EventType string
-	Payload   []byte
+	Payload   string
 	DedupeKey pgtype.Text
 }
 

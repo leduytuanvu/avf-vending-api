@@ -294,9 +294,9 @@ FROM machine_incidents WHERE machine_id = $1 AND dedupe_key = $2 FOR UPDATE`, ma
 		occurrenceCount = 1
 		err = tx.QueryRow(ctx, `
 INSERT INTO machine_incidents (machine_id, severity, code, title, detail, dedupe_key, opened_at, updated_at, occurrence_count, last_alerted_at)
-VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$7,1,NULL)
+VALUES ($1,$2,$3,$4,$5::text::jsonb,$6,$7,$7,1,NULL)
 RETURNING id`,
-			machineID, normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), normalized.DedupeKey, now,
+			machineID, normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), pgjson.RequiredString(normalized.Detail), normalized.DedupeKey, now,
 		).Scan(&incidentID)
 		if err != nil {
 			return out, err
@@ -307,9 +307,9 @@ RETURNING id`,
 		occurrenceCount++
 		_, err = tx.Exec(ctx, `
 UPDATE machine_incidents
-SET severity = $1, code = $2, title = COALESCE($3, title), detail = $4::jsonb, updated_at = $5, occurrence_count = $6
+SET severity = $1, code = $2, title = COALESCE($3, title), detail = $4::text::jsonb, updated_at = $5, occurrence_count = $6
 WHERE id = $7`,
-			normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), now, occurrenceCount, incidentID)
+			normalized.Severity, normalized.Code, nullIfEmpty(normalized.Title), pgjson.RequiredString(normalized.Detail), now, occurrenceCount, incidentID)
 		if err != nil {
 			return out, err
 		}
@@ -318,9 +318,9 @@ WHERE id = $7`,
 	_, err = tx.Exec(ctx, `
 INSERT INTO machine_incident_occurrences (
 	machine_id, machine_incident_id, occurrence_id, dedupe_key, severity, code, title, detail, source_transport, occurred_at, received_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10,$11)`,
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::text::jsonb,$9,$10,$11)`,
 		machineID, incidentID, occurrenceID, normalized.DedupeKey, normalized.Severity, normalized.Code,
-		nullIfEmpty(normalized.Title), jsonOrEmpty(normalized.Detail), strings.TrimSpace(in.Transport), occurredAt, now)
+		nullIfEmpty(normalized.Title), pgjson.RequiredString(normalized.Detail), strings.TrimSpace(in.Transport), occurredAt, now)
 	if err != nil {
 		if isUniqueViolation(err) {
 			out.TransportDup = true
@@ -911,7 +911,7 @@ func (s *Store) AppendDeviceTelemetryEdgeEvent(ctx context.Context, machineID uu
 	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
 		MachineID: machineID,
 		EventType: eventType,
-		Payload:   payload,
+		Payload:   pgjson.RequiredString(payload),
 		DedupeKey: pgtype.Text{String: dedupe, Valid: true},
 	})
 	if err != nil {

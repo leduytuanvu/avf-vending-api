@@ -129,10 +129,10 @@ INSERT INTO device_telemetry_events (
     dedupe_key
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4
+    sqlc.arg('machine_id'),
+    sqlc.arg('event_type'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.narg('dedupe_key')
 )
 RETURNING id, machine_id, event_type, payload, dedupe_key, received_at;
 

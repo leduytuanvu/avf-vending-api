@@ -15,9 +15,11 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -98,9 +100,9 @@ func (s *machineTelemetryServer) CheckIn(ctx context.Context, req *machinev1.Che
 			NetworkState:   strings.TrimSpace(req.GetNetworkState()),
 			BootID:         strings.TrimSpace(req.GetBootId()),
 			OccurredAt:     wctx.ClientCreatedAt,
-			Metadata:       meta,
+			Metadata:       pgjson.RequiredString(meta),
 		}); err != nil {
-			return nil, status.Error(codes.Internal, "check-in insert failed")
+			return nil, grpcInternalSQL("check-in insert failed", err)
 		}
 		_ = q.UpdateMachineCurrentSnapshotLastCheckIn(ctx, db.UpdateMachineCurrentSnapshotLastCheckInParams{
 			MachineID:     claims.MachineID,
@@ -232,7 +234,7 @@ func (s *machineTelemetryServer) SubmitTelemetryBatch(ctx context.Context, req *
 					OccurredAt:   occurred.AsTime().UTC(),
 				}, policy)
 				if projErr != nil {
-					return nil, status.Errorf(codes.Internal, "incident projection failed")
+					return nil, grpcInternalSQL("incident projection failed", projErr)
 				}
 			}
 		}
@@ -325,7 +327,7 @@ func (s *machineTelemetryServer) appendTelemetryEventWithConflictCheck(ctx conte
 	}
 	dup, err := s.deps.TelemetryStore.AppendDeviceTelemetryEdgeEvent(ctx, machineID, strings.TrimSpace(eventType), payload, dedupeKey)
 	if err != nil {
-		return false, status.Error(codes.Internal, "telemetry append failed")
+		return false, grpcInternalSQL("telemetry append failed", err)
 	}
 	if dup {
 		existing, ok, err := s.existingTelemetryPayload(ctx, machineID, dedupeKey)
@@ -437,4 +439,12 @@ func stringToPgText(s string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: strings.TrimSpace(s), Valid: true}
+}
+
+func grpcInternalSQL(op string, err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && strings.TrimSpace(pgErr.Code) != "" {
+		return status.Errorf(codes.Internal, "%s sqlstate=%s", op, pgErr.Code)
+	}
+	return status.Error(codes.Internal, op)
 }
