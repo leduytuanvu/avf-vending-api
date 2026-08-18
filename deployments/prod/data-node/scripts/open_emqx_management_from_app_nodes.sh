@@ -75,6 +75,11 @@ recreate_emqx() {
 	require_file "${env_file}"
 	require_file "${compose_file}"
 	local compose=(docker compose --env-file "${env_file}" -f "${compose_file}")
+	if [[ "${CURRENT_BIND}" == "${desired_bind}" ]]; then
+		note "emqx bind already ${desired_bind}; start/ensure without force-recreate (${compose_file})"
+		"${compose[@]}" up -d --no-deps emqx
+		return 0
+	fi
 	note "recreate emqx from ${compose_file} (port publish change; MQTT sessions on this broker will reconnect)"
 	"${compose[@]}" up -d --no-deps --force-recreate emqx
 }

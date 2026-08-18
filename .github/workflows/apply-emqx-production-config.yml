@@ -77,16 +77,35 @@ jobs:
             ssh-keyscan -H -p "${SSH_PORT}" "${EMQX_DATA_HOST}" >> "${HOME}/.ssh/known_hosts"
           fi
 
+      - name: Sync EMQX scripts to app nodes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          sync_app() {
+            local host="$1"
+            [[ -n "${host}" ]] || return 0
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${host}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+            tar -cf - deployments/prod/shared deployments/prod/app-node/scripts deployments/prod/app-node/docker-compose.app-node.yml | \
+              ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${host}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' && chmod +x \
+                '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/probe_emqx_management_from_api.sh' \
+                '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/reload_app_node_emqx_env.sh' \
+                '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_emqx_management_app_node_env.sh'"
+          }
+          sync_app "${APP_NODE_A_HOST}"
+          sync_app "${APP_NODE_B_HOST:-}"
+
       - name: Probe EMQX management from API (before)
         continue-on-error: true
         shell: bash
         run: |
           set -Eeuo pipefail
-          chmod +x deployments/prod/shared/scripts/probe_emqx_management_from_api.sh
-          EMQX_PROBE_REQUIRE_OK=0 \
-            APP_NODE_ENV_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node" \
-            APP_NODE_COMPOSE_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
-            bash deployments/prod/shared/scripts/probe_emqx_management_from_api.sh || true
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${APP_NODE_A_HOST}" env \
+            EMQX_PROBE_REQUIRE_OK=0 \
+            "APP_NODE_ENV_FILE=${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node" \
+            "APP_NODE_COMPOSE_FILE=${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
+            bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/probe_emqx_management_from_api.sh" || true
 
       - name: Sync EMQX management scripts to data node
         if: inputs.open_management_from_app_nodes || inputs.install_acl || inputs.renew_mqtt_tls
@@ -175,6 +194,7 @@ jobs:
             local host="$1"
             [[ -n "${host}" ]] || return 0
             local env_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+            local compose_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml"
             local script_path="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/reload_app_node_emqx_env.sh"
             if ! ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${host}" "test -f '${env_path}' && test -f '${script_path}'"; then
               echo "skip API recreate on ${host}: app-node env or reload script missing"
@@ -182,13 +202,10 @@ jobs:
             fi
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${host}" env \
               "APP_NODE_ENV_FILE=${env_path}" \
-              "APP_NODE_COMPOSE_FILE=${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
+              "APP_NODE_COMPOSE_FILE=${compose_path}" \
               bash "${script_path}"
           }
-          chmod +x deployments/prod/shared/scripts/reload_app_node_emqx_env.sh
-          APP_NODE_ENV_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node" \
-            APP_NODE_COMPOSE_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
-            bash deployments/prod/shared/scripts/reload_app_node_emqx_env.sh
+          reload_remote "${APP_NODE_A_HOST}"
           reload_remote "${APP_NODE_B_HOST:-}"
 
       - name: Probe EMQX management from API (after)
@@ -196,11 +213,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          chmod +x deployments/prod/shared/scripts/probe_emqx_management_from_api.sh
-          EMQX_PROBE_REQUIRE_OK=1 \
-            APP_NODE_ENV_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node" \
-            APP_NODE_COMPOSE_FILE="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
-            bash deployments/prod/shared/scripts/probe_emqx_management_from_api.sh
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${SSH_USER}@${APP_NODE_A_HOST}" env \
+            EMQX_PROBE_REQUIRE_OK=1 \
+            "APP_NODE_ENV_FILE=${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node" \
+            "APP_NODE_COMPOSE_FILE=${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" \
+            bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/probe_emqx_management_from_api.sh"
 
       - name: Install EMQX ACL on data node
         if: inputs.install_acl
