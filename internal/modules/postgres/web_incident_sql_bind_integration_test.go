@@ -13,8 +13,27 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 )
+
+func testPoolWithQueryExecMode(t *testing.T, mode pgx.QueryExecMode) *pgxpool.Pool {
+	t.Helper()
+	dsn := testDSN(t)
+	migrateUp(t, dsn)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	pcfg, err := pgxpool.ParseConfig(dsn)
+	require.NoError(t, err)
+	pcfg.ConnConfig.DefaultQueryExecMode = mode
+	pgxutil.ApplyUUIDArrayCodecsToPoolConfig(pcfg)
+	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+	testfixtures.EnsureDevCommerceIntegrationData(t, pool)
+	return pool
+}
 
 func TestFleetAdminListMachines_uuidArrayEnrichment(t *testing.T) {
 	pool := testPool(t)
@@ -83,4 +102,36 @@ func TestUUIDArray_codecOnly_noWrap(t *testing.T) {
 	require.NoError(t, err, "codec-only uuid[] fleet enrichment")
 	_, err = q.RuntimeProductPrimaryMediaReady(ctx, []uuid.UUID{testfixtures.DevProductWater})
 	require.NoError(t, err, "codec-only uuid[] media readiness")
+}
+
+func TestFleetAdminListMachines_uuidArrayEnrichment_queryExecMode(t *testing.T) {
+	modes := []pgx.QueryExecMode{pgx.QueryExecModeExec, pgx.QueryExecModeSimpleProtocol}
+	ctx := context.Background()
+	for _, mode := range modes {
+		t.Run(mode.String(), func(t *testing.T) {
+			pool := testPoolWithQueryExecMode(t, mode)
+			svc, err := appfleetadmin.NewService(pgxutil.NewQueries(pool))
+			require.NoError(t, err)
+			for _, limit := range []int32{1, 20} {
+				out, err := svc.ListMachines(ctx, listscope.AdminFleet{Limit: limit, Offset: 0})
+				require.NoError(t, err, "mode=%s limit=%d", mode, limit)
+				require.NotNil(t, out)
+			}
+		})
+	}
+}
+
+func TestCatalogAdminListProducts_omittedUUIDFilters_queryExecMode(t *testing.T) {
+	modes := []pgx.QueryExecMode{pgx.QueryExecModeExec, pgx.QueryExecModeSimpleProtocol}
+	ctx := context.Background()
+	for _, mode := range modes {
+		t.Run(mode.String(), func(t *testing.T) {
+			pool := testPoolWithQueryExecMode(t, mode)
+			svc, err := appcatalogadmin.NewService(pgxutil.NewQueries(pool), pool, nil)
+			require.NoError(t, err)
+			res, err := svc.ListProducts(ctx, appcatalogadmin.ListProductsParams{Limit: 20, Offset: 0})
+			require.NoError(t, err, "mode=%s", mode)
+			require.NotNil(t, res)
+		})
+	}
 }
