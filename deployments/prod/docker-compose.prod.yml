@@ -136,7 +136,7 @@ services:
           - emqx
       edge: {}
     ports:
-      - "127.0.0.1:18083:18083"
+      - "${EMQX_DASHBOARD_BIND_IP:-127.0.0.1}:18083:18083"
     # Align Docker health with the management HTTP API (same signal release.sh uses).
     # `emqx_ctl` can report failures while the HTTP listener is already up.
     # The official EMQX image may not ship `curl`/`wget`, so use bash `/dev/tcp` instead.

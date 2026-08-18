@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -986,10 +987,17 @@ func (s *Service) provisionMachineMQTT(ctx context.Context, q *db.Queries, machi
 	}
 	password, err := randomMQTTPassword()
 	if err != nil {
+		slog.Warn("mqtt_provisioning_failed", "op", "random_password", "machine_id", machineID.String(), "err", err)
 		return "", "", fmt.Errorf("%w: %v", ErrMQTTProvisioning, err)
 	}
 	username := machineID.String()
 	if err := s.emqx.UpsertUser(ctx, username, password); err != nil {
+		slog.Warn("mqtt_provisioning_failed",
+			"op", "upsert_user",
+			"machine_id", machineID.String(),
+			"emqx_host", s.emqx.ManagementHost(),
+			"err", err,
+		)
 		return "", "", fmt.Errorf("%w: %v", ErrMQTTProvisioning, err)
 	}
 	if q != nil {
@@ -999,6 +1007,7 @@ func (s *Service) provisionMachineMQTT(ctx context.Context, q *db.Queries, machi
 			Username:        pgtype.Text{String: username, Valid: true},
 			SecretRef:       pgtype.Text{String: mqttSecretRef(time.Now().UTC().UnixNano()), Valid: true},
 		}); err != nil {
+			slog.Warn("mqtt_provisioning_failed", "op", "persist_metadata", "machine_id", machineID.String(), "err", err)
 			return "", "", fmt.Errorf("%w: persist metadata: %v", ErrMQTTProvisioning, err)
 		}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -279,6 +280,7 @@ func postActivationClaim(app *api.HTTPApplication, cfg *config.Config) http.Hand
 				return
 			}
 			if errors.Is(err, activation.ErrMQTTProvisioning) {
+				slog.Warn("activation_claim_mqtt_provisioning_failed", "err", err)
 				writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "mqtt_provisioning_failed", "mqtt credential provisioning failed")
 				return
 			}

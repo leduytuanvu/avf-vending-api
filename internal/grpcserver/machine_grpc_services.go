@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"strings"
 	"time"
@@ -198,6 +199,7 @@ func mapActivationError(err error) error {
 	case err == activation.ErrMachineNotEligible:
 		return status.Error(codes.PermissionDenied, "machine_not_eligible")
 	case errors.Is(err, activation.ErrMQTTProvisioning):
+		slog.Warn("activation_claim_mqtt_provisioning_failed", "err", err)
 		return status.Error(codes.Unavailable, "mqtt_provisioning_failed")
 	default:
 		return status.Error(codes.Internal, "internal")
