@@ -83,19 +83,17 @@ WHERE
         OR resource_id = $6
     )
     AND (
+        sqlc.narg('from_ts')::timestamptz IS NULL
+        OR created_at >= sqlc.narg('from_ts')
+    )
+    AND (
+        sqlc.narg('to_ts')::timestamptz IS NULL
+        OR created_at <= sqlc.narg('to_ts')
+    )
+    AND (
         $7::text IS NULL
         OR btrim($7::text) = ''
-        OR created_at >= $7::timestamptz
-    )
-    AND (
-        $8::text IS NULL
-        OR btrim($8::text) = ''
-        OR created_at <= $8::timestamptz
-    )
-    AND (
-        $9::text IS NULL
-        OR btrim($9::text) = ''
-        OR machine_id::text = $9
+        OR machine_id::text = $7
     );
 
 -- name: EnterpriseAuditListEvents :many
@@ -135,20 +133,18 @@ WHERE
         OR resource_id = $6
     )
     AND (
+        sqlc.narg('from_ts')::timestamptz IS NULL
+        OR created_at >= sqlc.narg('from_ts')
+    )
+    AND (
+        sqlc.narg('to_ts')::timestamptz IS NULL
+        OR created_at <= sqlc.narg('to_ts')
+    )
+    AND (
         $7::text IS NULL
         OR btrim($7::text) = ''
-        OR created_at >= $7::timestamptz
-    )
-    AND (
-        $8::text IS NULL
-        OR btrim($8::text) = ''
-        OR created_at <= $8::timestamptz
-    )
-    AND (
-        $9::text IS NULL
-        OR btrim($9::text) = ''
-        OR machine_id::text = $9
+        OR machine_id::text = $7
     )
 ORDER BY
     created_at DESC
-LIMIT $10 OFFSET $11;
+LIMIT $8 OFFSET $9;

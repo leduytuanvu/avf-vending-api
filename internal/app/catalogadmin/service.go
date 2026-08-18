@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -135,35 +136,34 @@ func (s *Service) ListProducts(ctx context.Context, p ListProductsParams) (*List
 		return nil, errors.New("catalogadmin: nil service")
 	}
 	search := p.Search
-	brandFilter := ""
-	if p.BrandID != nil && *p.BrandID != uuid.Nil {
-		brandFilter = p.BrandID.String()
-	}
-	categoryFilter := ""
-	if p.CategoryID != nil && *p.CategoryID != uuid.Nil {
-		categoryFilter = p.CategoryID.String()
-	}
 	cnt, err := s.q.CatalogAdminCountProducts(ctx, db.CatalogAdminCountProductsParams{
-		Column1: search,
-		Column2: p.ActiveOnly,
-		Column3: brandFilter,
-		Column4: categoryFilter,
+		Column1:    search,
+		Column2:    p.ActiveOnly,
+		BrandID:    optionalUUIDPtrToPg(p.BrandID),
+		CategoryID: optionalUUIDPtrToPg(p.CategoryID),
 	})
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.q.CatalogAdminListProducts(ctx, db.CatalogAdminListProductsParams{
-		Column1: search,
-		Column2: p.ActiveOnly,
-		Column3: brandFilter,
-		Column4: categoryFilter,
-		Limit:   p.Limit,
-		Offset:  p.Offset,
+		Column1:    search,
+		Column2:    p.ActiveOnly,
+		BrandID:    optionalUUIDPtrToPg(p.BrandID),
+		CategoryID: optionalUUIDPtrToPg(p.CategoryID),
+		Limit:      p.Limit,
+		Offset:     p.Offset,
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &ListProductsResult{Items: rows, TotalCount: cnt}, nil
+}
+
+func optionalUUIDPtrToPg(u *uuid.UUID) pgtype.UUID {
+	if u == nil || *u == uuid.Nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: *u, Valid: true}
 }
 
 // GetProduct returns a single product within the company.
