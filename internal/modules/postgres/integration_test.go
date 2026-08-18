@@ -13,6 +13,7 @@ import (
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,7 +43,10 @@ func testPool(t *testing.T) *pgxpool.Pool {
 	migrateUp(t, dsn)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	pool, err := pgxpool.New(ctx, dsn)
+	pcfg, err := pgxpool.ParseConfig(dsn)
+	require.NoError(t, err)
+	pgxutil.ApplyUUIDArrayCodecsToPoolConfig(pcfg)
+	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
 	require.NoError(t, err)
 	t.Cleanup(pool.Close)
 	testfixtures.EnsureDevCommerceIntegrationData(t, pool)

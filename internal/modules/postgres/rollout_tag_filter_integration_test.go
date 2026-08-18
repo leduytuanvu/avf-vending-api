@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -14,7 +15,7 @@ import (
 func TestRollout_TagFilter_SelectsIntersection(t *testing.T) {
 	ctx := context.Background()
 	pool := testPool(t)
-	q := db.New(pool)
+	q := pgxutil.NewQueries(pool)
 
 	slugA := "rollout-tf-a-" + uuid.NewString()
 	slugB := "rollout-tf-b-" + uuid.NewString()

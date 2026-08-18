@@ -13,6 +13,7 @@ import (
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -830,7 +831,7 @@ func (s *Service) ListAssetsByIDs(ctx context.Context, ids []uuid.UUID) ([]db.Me
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	return q.MediaAdminListAssetsByIDs(ctx, ids)
 }
 
@@ -842,7 +843,7 @@ func (s *Service) ListVariantsForAssets(ctx context.Context, assetIDs []uuid.UUI
 	if len(assetIDs) == 0 {
 		return nil, nil
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	return q.MediaAdminListVariantsForAssets(ctx, assetIDs)
 }
 

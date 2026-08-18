@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/config"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -57,6 +58,7 @@ func newPoolConfig(cfg *config.PostgresConfig, processName string) (*pgxpool.Con
 	if tr := NewSlowQueryTracer(cfg.SlowQueryLogThresholdMS, slog.Default()); tr != nil {
 		pcfg.ConnConfig.Tracer = tr
 	}
+	pgxutil.ApplyUUIDArrayCodecsToPoolConfig(pcfg)
 	return pcfg, nil
 }
 

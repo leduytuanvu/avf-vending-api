@@ -9,6 +9,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 )
 
@@ -38,7 +39,7 @@ func (e *Engine) newBatch(ctx context.Context, scopeID, machineID uuid.UUID, at 
 		return nil, fmt.Errorf("pricingengine: nil engine")
 	}
 	at = at.UTC()
-	q := db.New(e.pool)
+	q := pgxutil.NewQueries(e.pool)
 	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return nil, err

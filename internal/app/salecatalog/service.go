@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -122,7 +123,7 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 	if s == nil || s.pool == nil {
 		return out, setupapp.ErrNotFound
 	}
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	bootstrap, err := s.repo.GetMachineBootstrap(ctx, machineID)
 	if err != nil {
 		return out, err

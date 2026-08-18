@@ -32,13 +32,13 @@ import (
 	approllout "github.com/avf/avf-vending-api/internal/app/rollout"
 	appsalecatalog "github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
-	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/auth/revocation"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 )
 
@@ -184,7 +184,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		panic("api.NewHTTPApplication: nil Commerce service")
 	}
 	pool := deps.Store.Pool()
-	queries := db.New(pool)
+	queries := pgxutil.NewQueries(pool)
 	auditSvc := deps.EnterpriseAudit
 	if auditSvc == nil {
 		auditSvc = appaudit.NewService(pool, appaudit.ServiceOpts{CriticalFailOpen: deps.AuditCriticalFailOpen})
