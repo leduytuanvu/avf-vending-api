@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/netip"
 	"strings"
 	"time"
@@ -316,14 +317,30 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 		BootID:     in.BootID,
 		AppStartID: in.AppStartID,
 	}); err == nil {
+		slog.Info("runtime_session.start.idempotent_hit",
+			"machine_id", in.MachineID.String(),
+			"session_id", existing.ID.String(),
+			"boot_id", in.BootID,
+			"app_start_id", in.AppStartID,
+		)
 		return existing, nil
 	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "lookup_existing", "GetMachineRuntimeAppSessionByBootAndStart", err)
 	}
+
+	slog.Info("runtime_session.start.begin",
+		"machine_id", in.MachineID.String(),
+		"boot_id", in.BootID,
+		"app_start_id", in.AppStartID,
+		"app_instance_id", in.AppInstanceID,
+		"start_reason", startReason,
+		"app_version", in.AppVersion,
+		"app_build_sha", in.AppBuildSHA,
+	)
 
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "begin_tx", "", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := db.New(tx)
@@ -336,14 +353,14 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 	}
 	var prevSessID pgtype.UUID
 	if _, err := qtx.LockMachineForUpdate(ctx, in.MachineID); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "lock_machine", "LockMachineForUpdate", err)
 	}
 	if closed, err := qtx.CloseCurrentRuntimeAppSessionForMachine(ctx, db.CloseCurrentRuntimeAppSessionForMachineParams{
 		MachineID: in.MachineID,
 		Status:    endStatus,
 		EndReason: pgtype.Text{String: endReason, Valid: true},
 	}); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "close_previous_session", "CloseCurrentRuntimeAppSessionForMachine", err)
 	} else if len(closed) > 0 {
 		prevSessID = pgtype.UUID{Bytes: closed[0].ID, Valid: true}
 	}
@@ -355,6 +372,30 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 	sf := strings.TrimSpace(in.StorefrontState)
 	if sf == "" {
 		sf = "INITIALIZING"
+	}
+	blockersText, err := jsonArrayText(json.RawMessage("[]"))
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	hwText, err := jsonObjectText(json.RawMessage("{}"))
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	catText, err := jsonObjectText(json.RawMessage("{}"))
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	outboxText, err := jsonObjectText(json.RawMessage("{}"))
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	recText, err := jsonObjectText(json.RawMessage("{}"))
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	metaText, err := jsonObjectText(meta)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
 	}
 	row, err := qtx.StartMachineRuntimeAppSession(ctx, db.StartMachineRuntimeAppSessionParams{
 		MachineID:                in.MachineID,
@@ -374,36 +415,44 @@ func (s *Service) StartRuntimeAppSession(ctx context.Context, in StartInput) (db
 		LastMqttState:            in.MqttState,
 		StorefrontState:          sf,
 		SellReady:                false,
-		Blockers:                 json.RawMessage("[]"),
-		HardwareStatus:           json.RawMessage("{}"),
-		CatalogStatus:            json.RawMessage("{}"),
-		OutboxStatus:             json.RawMessage("{}"),
-		RecoveryStatus:           json.RawMessage("{}"),
-		Metadata:                 meta,
+		Blockers:                 blockersText,
+		HardwareStatus:           hwText,
+		CatalogStatus:            catText,
+		OutboxStatus:             outboxText,
+		RecoveryStatus:           recText,
+		Metadata:                 metaText,
 	})
 	if err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		logJSONBindAudit("start", err, blockersText, hwText, catText, outboxText, recText, metaText)
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "insert_runtime_session", "StartMachineRuntimeAppSession", err)
 	}
 	now := time.Now().UTC()
 	if err := qtx.UpdateMachineCurrentRuntimeAppSession(ctx, db.UpdateMachineCurrentRuntimeAppSessionParams{
 		ID:                         in.MachineID,
 		CurrentRuntimeAppSessionID: uuidToPg(&row.ID),
 	}); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "update_machine_current_session", "UpdateMachineCurrentRuntimeAppSession", err)
 	}
 	if err := qtx.UpdateMachineOnlineStatus(ctx, db.UpdateMachineOnlineStatusParams{
 		ID:           in.MachineID,
 		OnlineStatus: "online",
 		LastSeenAt:   pgtype.Timestamptz{Time: now, Valid: true},
 	}); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "update_machine_online", "UpdateMachineOnlineStatus", err)
 	}
 	if err := s.projectRuntimeSnapshot(ctx, qtx, in.MachineID, row, "online"); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "update_machine_snapshot", "UpdateMachineCurrentSnapshotRuntime", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("start runtime session", "commit", "", err)
 	}
+	slog.Info("runtime_session.start.ok",
+		"machine_id", in.MachineID.String(),
+		"session_id", row.ID.String(),
+		"boot_id", in.BootID,
+		"app_start_id", in.AppStartID,
+		"start_reason", startReason,
+	)
 	return row, nil
 }
 
@@ -412,9 +461,25 @@ func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatIn
 	if s == nil || s.q == nil {
 		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: nil service")
 	}
-	blockers := in.Blockers
-	if blockers == nil {
-		blockers = json.RawMessage("[]")
+	blockers, err := jsonArrayText(in.Blockers)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	hw, err := jsonObjectText(in.HardwareStatus)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	cat, err := jsonObjectText(in.CatalogStatus)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	outbox, err := jsonObjectText(in.OutboxStatus)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
+	}
+	rec, err := jsonObjectText(in.RecoveryStatus)
+	if err != nil {
+		return db.MachineRuntimeAppSession{}, err
 	}
 	row, err := s.q.HeartbeatMachineRuntimeAppSession(ctx, db.HeartbeatMachineRuntimeAppSessionParams{
 		ID:               in.SessionID,
@@ -425,14 +490,15 @@ func (s *Service) HeartbeatRuntimeAppSession(ctx context.Context, in HeartbeatIn
 		StorefrontState:  in.StorefrontState,
 		SellReady:        in.SellReady,
 		Blockers:         blockers,
-		HardwareStatus:   defaultJSON(in.HardwareStatus),
-		CatalogStatus:    defaultJSON(in.CatalogStatus),
-		OutboxStatus:     defaultJSON(in.OutboxStatus),
-		RecoveryStatus:   defaultJSON(in.RecoveryStatus),
+		HardwareStatus:   hw,
+		CatalogStatus:    cat,
+		OutboxStatus:     outbox,
+		RecoveryStatus:   rec,
 		MachineID:        in.MachineID,
 	})
 	if err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		logJSONBindAudit("heartbeat", err, blockers, hw, cat, outbox, rec, "")
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("heartbeat runtime session", "heartbeat", "HeartbeatMachineRuntimeAppSession", err)
 	}
 	if row.MachineID != in.MachineID {
 		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session machine mismatch")
@@ -464,7 +530,7 @@ func (s *Service) EndRuntimeAppSession(ctx context.Context, in EndInput) (db.Mac
 		MachineID: in.MachineID,
 	})
 	if err != nil {
-		return db.MachineRuntimeAppSession{}, err
+		return db.MachineRuntimeAppSession{}, wrapRuntimeStage("end runtime session", "end", "EndMachineRuntimeAppSession", err)
 	}
 	if row.MachineID != in.MachineID {
 		return db.MachineRuntimeAppSession{}, errors.New("machineruntime: session machine mismatch")
@@ -604,15 +670,15 @@ func (s *Service) projectRuntimeSnapshot(ctx context.Context, q *db.Queries, mac
 	if sess.LastHeartbeatAt.Valid {
 		heartbeat = sess.LastHeartbeatAt
 	}
-	blockers := sess.Blockers
-	if blockers == nil {
-		blockers = []byte("[]")
+	blockers, err := jsonArrayText(sess.Blockers)
+	if err != nil {
+		return err
 	}
 	var sessID pgtype.UUID
 	if !sess.EndedAt.Valid {
 		sessID = pgtype.UUID{Bytes: sess.ID, Valid: true}
 	}
-	return q.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
+	if err := q.UpdateMachineCurrentSnapshotRuntime(ctx, db.UpdateMachineCurrentSnapshotRuntimeParams{
 		MachineID:                  machineID,
 		CurrentDeviceAttachmentID:  attachID,
 		CurrentRuntimeAppSessionID: sessID,
@@ -625,7 +691,11 @@ func (s *Service) projectRuntimeSnapshot(ctx context.Context, q *db.Queries, mac
 		StorefrontState:            sess.StorefrontState,
 		SellReady:                  sess.SellReady,
 		Blockers:                   blockers,
-	})
+	}); err != nil {
+		logJSONBindAudit("snapshot", err, blockers, "", "", "", "", "")
+		return err
+	}
+	return nil
 }
 
 // ComputeMachineOnlineStatus derives online/stale/offline from last signals.

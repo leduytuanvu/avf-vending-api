@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"runtime/debug"
 	"strings"
@@ -25,13 +26,20 @@ import (
 )
 
 var grpcServerAlertReporter *alerts.ServerErrorReporter
+var grpcAppIncidentProjector alerts.IncidentProjector
 
 // test-only hook so unit tests can observe pages without a real Telegram client.
 var grpcServerAlertTestHook func(alerts.ServerAlert)
+var grpcAppIncidentTestHook func(alerts.ProjectInput)
 
 // SetGRPCServerAlertReporter wires optional SERVER Telegram reporting for unexpected gRPC failures.
 func SetGRPCServerAlertReporter(r *alerts.ServerErrorReporter) {
 	grpcServerAlertReporter = r
+}
+
+// SetGRPCAppIncidentProjector wires APP Telegram projection for machine-authenticated server failures.
+func SetGRPCAppIncidentProjector(p alerts.IncidentProjector) {
+	grpcAppIncidentProjector = p
 }
 
 func setGRPCServerAlertTestHook(fn func(alerts.ServerAlert)) {
@@ -80,7 +88,6 @@ func chainUnaryInterceptors(cfg *config.Config, log *zap.Logger, validator auth.
 	}
 	return grpc.ChainUnaryInterceptor(
 		unaryRecoveryInterceptor(log),
-		unaryServerAlertInterceptor(),
 		grpcprom.UnaryServerInterceptor(),
 		unaryRequestMetaInterceptor(),
 		unaryAccessLogInterceptor(log),
@@ -88,6 +95,7 @@ func chainUnaryInterceptors(cfg *config.Config, log *zap.Logger, validator auth.
 		unaryAuthChainInterceptor(cfg, log, validator, accessRevocation, machineTokenChecker, machineCertChecker),
 		newUnaryMachineReplayInterceptor(cfg, replayLedger),
 		unaryMachineHotRPCInterceptor(cfg, rlBackend),
+		unaryServerAlertInterceptor(),
 	)
 }
 
@@ -118,6 +126,24 @@ func reportGRPCServerFailure(ctx context.Context, info *grpc.UnaryServerInfo, er
 		title = "gRPC panic recovered"
 		codeStr = "grpc_panic"
 	}
+	stMsg := sanitizeGRPCErrorMessage(status.Convert(err).Message())
+	sqlstate := extractTaggedField(stMsg, "sqlstate=")
+	stage := extractTaggedField(stMsg, "stage=")
+	sqlName := extractTaggedField(stMsg, "sql=")
+	machineID := ""
+	if c, ok := auth.MachineAccessClaimsFromContext(ctx); ok {
+		machineID = c.MachineID.String()
+	}
+	detail := map[string]string{
+		"grpc_code":   code.String(),
+		"method":      method,
+		"sqlstate":    sqlstate,
+		"stage":       stage,
+		"sql_name":    sqlName,
+		"machine_id":  machineID,
+		"pg_message":  truncateLogField(stMsg, 300),
+		"next_action": grpcNextAction(sqlstate, stMsg),
+	}
 	alert := alerts.ServerAlert{
 		OccurrenceID:  id.NewUUIDV7String(),
 		Severity:      "high",
@@ -126,16 +152,16 @@ func reportGRPCServerFailure(ctx context.Context, info *grpc.UnaryServerInfo, er
 		Service:       "api-grpc",
 		Operation:     method,
 		CorrelationID: meta.CorrelationID,
-		Detail: map[string]string{
-			"grpc_code": code.String(),
-			"method":    method,
-		},
+		Detail:        detail,
 	}
 	if grpcServerAlertTestHook != nil {
 		grpcServerAlertTestHook(alert)
 	}
 	if grpcServerAlertReporter != nil {
 		grpcServerAlertReporter.Report(ctx, alert)
+	}
+	if machineID != "" && isMachineGRPCMethod(method) {
+		queueMachineAppIncident(ctx, machineID, method, code.String(), sqlstate, stage, stMsg)
 	}
 }
 
@@ -146,6 +172,96 @@ func shouldPageGRPCCode(code codes.Code) bool {
 	default:
 		return false
 	}
+}
+
+func sanitizeGRPCErrorMessage(msg string) string {
+	low := strings.ToLower(msg)
+	if strings.Contains(low, "bearer ") || strings.Contains(low, "authorization") ||
+		strings.Contains(low, "password") || strings.Contains(low, "refresh_token") ||
+		strings.Contains(low, "private_key") {
+		return "[REDACTED]"
+	}
+	return truncateLogField(msg, 400)
+}
+
+func truncateLogField(s string, n int) string {
+	s = strings.TrimSpace(s)
+	if n <= 0 || len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
+}
+
+func extractTaggedField(msg, tag string) string {
+	idx := strings.Index(msg, tag)
+	if idx < 0 {
+		return ""
+	}
+	rest := msg[idx+len(tag):]
+	if cut := strings.IndexAny(rest, " \t"); cut >= 0 {
+		rest = rest[:cut]
+	}
+	return strings.TrimSpace(rest)
+}
+
+func grpcNextAction(sqlstate, msg string) string {
+	switch sqlstate {
+	case "22P02":
+		return "bind jsonb as text (::text::jsonb); do not change global query mode first"
+	case "23505":
+		return "unique current-session constraint; check close_previous_session"
+	default:
+		if strings.Contains(msg, "invalid json") {
+			return "reject at service boundary; do not send to Postgres"
+		}
+		return "inspect stage, sqlstate, and table/column; keep sell path fail-closed"
+	}
+}
+
+func queueMachineAppIncident(ctx context.Context, machineID, method, grpcCode, sqlstate, stage, message string) {
+	hour := time.Now().UTC().Format("2006010215")
+	rpc := method
+	if i := strings.LastIndex(method, "/"); i >= 0 {
+		rpc = method[i+1:]
+	}
+	occ := fmt.Sprintf("runtime_session_rpc_failed:%s:%s:%s", machineID, rpc, hour)
+	if !strings.Contains(strings.ToLower(method), "runtimesession") {
+		occ = fmt.Sprintf("machine_grpc_failed:%s:%s:%s", machineID, rpc, hour)
+	}
+	detailMap := map[string]string{
+		"grpc_code": grpcCode,
+		"method":    method,
+		"sqlstate":  sqlstate,
+		"stage":     stage,
+		"message":   truncateLogField(message, 300),
+	}
+	raw, _ := json.Marshal(detailMap)
+	in := alerts.ProjectInput{
+		MachineID:    machineID,
+		OccurrenceID: occ,
+		Fingerprint:  fmt.Sprintf("%s|%s|%s", rpc, grpcCode, sqlstate),
+		Severity:     "high",
+		Code:         "machine_grpc_failure",
+		Title:        "Machine gRPC failure: " + rpc,
+		EventType:    "incident_runtime_error",
+		Transport:    "grpc",
+		Detail:       raw,
+		OccurredAt:   time.Now().UTC(),
+	}
+	if grpcAppIncidentTestHook != nil {
+		grpcAppIncidentTestHook(in)
+	}
+	if grpcAppIncidentProjector == nil {
+		return
+	}
+	_ = ctx
+	inCopy := in
+	proj := grpcAppIncidentProjector
+	go func() {
+		pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _ = proj.ProjectMachineIncident(pctx, inCopy, alerts.DefaultPolicy())
+	}()
 }
 
 func unaryRecoveryInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
@@ -212,9 +328,9 @@ func unaryAccessLogInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 			zap.String("result", code.String()),
 		}
 		if err != nil {
-			fields = append(fields, zap.String("error_code", code.String()))
+			fields = append(fields, zap.String("error_code", code.String()), zap.String("error_message", sanitizeGRPCErrorMessage(err.Error())))
 		} else {
-			fields = append(fields, zap.String("error_code", ""))
+			fields = append(fields, zap.String("error_code", ""), zap.String("error_message", ""))
 		}
 		fields = append(fields, grpcActorIdentityFields(ctx)...)
 		log.Info("grpc unary completed", fields...)

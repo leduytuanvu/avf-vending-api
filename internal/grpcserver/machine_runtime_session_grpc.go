@@ -3,6 +3,8 @@ package grpcserver
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"log/slog"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
@@ -90,7 +92,7 @@ func (s *machineRuntimeSessionServer) StartRuntimeSession(ctx context.Context, r
 		StorefrontState:    strings.TrimSpace(req.GetStorefrontState()),
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "start runtime session: %v", err)
+		return nil, mapRuntimeSessionRPCError(ctx, claims.MachineID, "runtime_session.start.failed", err)
 	}
 	online, _ := rt.ComputeMachineOnlineStatus(ctx, claims.MachineID)
 	return &machinev1.StartRuntimeSessionResponse{
@@ -128,7 +130,7 @@ func (s *machineRuntimeSessionServer) HeartbeatRuntimeSession(ctx context.Contex
 		RecoveryStatus:  structToJSON(req.GetRecoveryStatus()),
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "heartbeat runtime session: %v", err)
+		return nil, mapRuntimeSessionRPCError(ctx, claims.MachineID, "runtime_session.heartbeat.failed", err)
 	}
 	online, _ := rt.ComputeMachineOnlineStatus(ctx, claims.MachineID)
 	return &machinev1.HeartbeatRuntimeSessionResponse{
@@ -159,7 +161,7 @@ func (s *machineRuntimeSessionServer) EndRuntimeSession(ctx context.Context, req
 		Status:    strings.TrimSpace(req.GetStatus()),
 	})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "end runtime session: %v", err)
+		return nil, mapRuntimeSessionRPCError(ctx, claims.MachineID, "runtime_session.end.failed", err)
 	}
 	return &machinev1.EndRuntimeSessionResponse{
 		Meta:    machineResponseMetaOK(req.GetMeta()),
@@ -186,6 +188,33 @@ func (s *machineRuntimeSessionServer) GetRuntimeSessionState(ctx context.Context
 		Meta:    machineResponseMetaOK(nil),
 		Session: mapRuntimeSessionProto(row, online),
 	}, nil
+}
+
+func mapRuntimeSessionRPCError(ctx context.Context, machineID uuid.UUID, event string, err error) error {
+	if err == nil {
+		return nil
+	}
+	stage, sqlName, sqlstate, nextAction, _ := machineruntime.RuntimeSessionDiag(err)
+	slog.Error(event,
+		"machine_id", machineID.String(),
+		"stage", stage,
+		"sql_name", sqlName,
+		"sqlstate", sqlstate,
+		"next_action", nextAction,
+		"error", truncateRPCErr(err.Error()),
+	)
+	if errors.Is(err, machineruntime.ErrInvalidRuntimeJSON) {
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	return status.Errorf(codes.Internal, "%v", err)
+}
+
+func truncateRPCErr(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) > 400 {
+		return s[:400] + "…"
+	}
+	return s
 }
 
 func validateRuntimeMetaMachineID(meta *machinev1.MachineRequestMeta, machineID uuid.UUID) error {
