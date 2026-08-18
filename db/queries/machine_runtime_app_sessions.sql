@@ -24,7 +24,13 @@ INSERT INTO machine_runtime_app_sessions (
     recovery_status,
     metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+    COALESCE(NULLIF(sqlc.arg('blockers')::text, '')::jsonb, '[]'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('hardware_status')::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('catalog_status')::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('outbox_status')::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('recovery_status')::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING *;
 
@@ -68,14 +74,14 @@ SET
     last_mqtt_state = $5,
     storefront_state = $6,
     sell_ready = $7,
-    blockers = $8,
-    hardware_status = $9,
-    catalog_status = $10,
-    outbox_status = $11,
-    recovery_status = $12,
+    blockers = COALESCE(NULLIF(sqlc.arg('blockers')::text, '')::jsonb, '[]'::jsonb),
+    hardware_status = COALESCE(NULLIF(sqlc.arg('hardware_status')::text, '')::jsonb, '{}'::jsonb),
+    catalog_status = COALESCE(NULLIF(sqlc.arg('catalog_status')::text, '')::jsonb, '{}'::jsonb),
+    outbox_status = COALESCE(NULLIF(sqlc.arg('outbox_status')::text, '')::jsonb, '{}'::jsonb),
+    recovery_status = COALESCE(NULLIF(sqlc.arg('recovery_status')::text, '')::jsonb, '{}'::jsonb),
     updated_at = now()
 WHERE id = $1
-    AND machine_id = $13
+    AND machine_id = sqlc.arg('machine_id')
     AND ended_at IS NULL
 RETURNING *;
 
@@ -166,6 +172,6 @@ SET
     last_mqtt_state = $9,
     storefront_state = $10,
     sell_ready = $11,
-    blockers = $12,
+    blockers = COALESCE(NULLIF(sqlc.arg('blockers')::text, '')::jsonb, '[]'::jsonb),
     updated_at = now()
 WHERE machine_id = $1;

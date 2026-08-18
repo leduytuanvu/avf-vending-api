@@ -325,6 +325,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}))
 	httpserver.SetHTTPServerAlertReporter(reporter)
 	grpcserver.SetGRPCServerAlertReporter(reporter)
+	if httpApp.TelemetryStore != nil {
+		grpcserver.SetGRPCAppIncidentProjector(httpApp.TelemetryStore)
+	}
 
 	httpSrv, err := httpserver.NewHTTPServer(cfg, log, rt, httpApp, rt.Redis(), accessRevocation)
 	if err != nil {

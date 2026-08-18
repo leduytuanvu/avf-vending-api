@@ -278,6 +278,35 @@ func TestUnaryServerAlertInterceptor_PagesInternalNotClientErrors(t *testing.T) 
 	require.Len(t, reports, 1)
 }
 
+func TestUnaryServerAlertInterceptor_MachineInternalQueuesAppIncident(t *testing.T) {
+	t.Cleanup(func() {
+		setGRPCServerAlertTestHook(nil)
+		grpcAppIncidentTestHook = nil
+	})
+	var reports []alerts.ServerAlert
+	setGRPCServerAlertTestHook(func(a alerts.ServerAlert) { reports = append(reports, a) })
+	var app []alerts.ProjectInput
+	grpcAppIncidentTestHook = func(in alerts.ProjectInput) { app = append(app, in) }
+
+	machineID := id.NewUUIDV7()
+	ctx := plauth.WithMachineAccessClaims(context.Background(), plauth.MachineAccessClaims{MachineID: machineID})
+	interceptor := unaryServerAlertInterceptor()
+	info := &grpc.UnaryServerInfo{FullMethod: machinev1.MachineRuntimeSessionService_StartRuntimeSession_FullMethodName}
+	_, err := interceptor(ctx, nil, info, func(ctx context.Context, req any) (any, error) {
+		return nil, status.Error(codes.Internal, "start runtime session: stage=insert_runtime_session sql=StartMachineRuntimeAppSession sqlstate=22P02 msg=invalid input syntax for type json")
+	})
+	require.Error(t, err)
+	require.Len(t, reports, 1)
+	require.Equal(t, "22P02", reports[0].Detail["sqlstate"])
+	require.Equal(t, "insert_runtime_session", reports[0].Detail["stage"])
+	require.Equal(t, machineID.String(), reports[0].Detail["machine_id"])
+	require.Contains(t, reports[0].Detail["next_action"], "jsonb")
+	require.Len(t, app, 1)
+	require.Equal(t, machineID.String(), app[0].MachineID)
+	require.Equal(t, "incident_runtime_error", app[0].EventType)
+	require.NotContains(t, string(app[0].Detail), "Bearer")
+}
+
 func TestShouldPageGRPCCode(t *testing.T) {
 	require.True(t, shouldPageGRPCCode(codes.Internal))
 	require.True(t, shouldPageGRPCCode(codes.Unknown))

@@ -328,11 +328,11 @@ SET
     last_mqtt_state = $5,
     storefront_state = $6,
     sell_ready = $7,
-    blockers = $8,
-    hardware_status = $9,
-    catalog_status = $10,
-    outbox_status = $11,
-    recovery_status = $12,
+    blockers = COALESCE(NULLIF($8::text, '')::jsonb, '[]'::jsonb),
+    hardware_status = COALESCE(NULLIF($9::text, '')::jsonb, '{}'::jsonb),
+    catalog_status = COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb),
+    outbox_status = COALESCE(NULLIF($11::text, '')::jsonb, '{}'::jsonb),
+    recovery_status = COALESCE(NULLIF($12::text, '')::jsonb, '{}'::jsonb),
     updated_at = now()
 WHERE id = $1
     AND machine_id = $13
@@ -348,11 +348,11 @@ type HeartbeatMachineRuntimeAppSessionParams struct {
 	LastMqttState    string
 	StorefrontState  string
 	SellReady        bool
-	Blockers         []byte
-	HardwareStatus   []byte
-	CatalogStatus    []byte
-	OutboxStatus     []byte
-	RecoveryStatus   []byte
+	Blockers         string
+	HardwareStatus   string
+	CatalogStatus    string
+	OutboxStatus     string
+	RecoveryStatus   string
 	MachineID        uuid.UUID
 }
 
@@ -610,7 +610,13 @@ INSERT INTO machine_runtime_app_sessions (
     recovery_status,
     metadata
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+    COALESCE(NULLIF($18::text, '')::jsonb, '[]'::jsonb),
+    COALESCE(NULLIF($19::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF($20::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF($21::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF($22::text, '')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF($23::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING id, machine_id, device_attachment_id, machine_session_id, operator_session_id, previous_runtime_session_id, boot_id, app_start_id, app_instance_id, package_name, app_version, app_build_sha, start_reason, end_reason, status, started_at, ended_at, last_heartbeat_at, last_check_in_at, last_mqtt_seen_at, last_network_state, last_mqtt_state, storefront_state, sell_ready, blockers, hardware_status, catalog_status, outbox_status, recovery_status, metadata, created_at, updated_at
 `
@@ -633,12 +639,12 @@ type StartMachineRuntimeAppSessionParams struct {
 	LastMqttState            string
 	StorefrontState          string
 	SellReady                bool
-	Blockers                 []byte
-	HardwareStatus           []byte
-	CatalogStatus            []byte
-	OutboxStatus             []byte
-	RecoveryStatus           []byte
-	Metadata                 []byte
+	Blockers                 string
+	HardwareStatus           string
+	CatalogStatus            string
+	OutboxStatus             string
+	RecoveryStatus           string
+	Metadata                 string
 }
 
 func (q *Queries) StartMachineRuntimeAppSession(ctx context.Context, arg StartMachineRuntimeAppSessionParams) (MachineRuntimeAppSession, error) {
@@ -756,7 +762,7 @@ SET
     last_mqtt_state = $9,
     storefront_state = $10,
     sell_ready = $11,
-    blockers = $12,
+    blockers = COALESCE(NULLIF($12::text, '')::jsonb, '[]'::jsonb),
     updated_at = now()
 WHERE machine_id = $1
 `
@@ -773,7 +779,7 @@ type UpdateMachineCurrentSnapshotRuntimeParams struct {
 	LastMqttState              string
 	StorefrontState            string
 	SellReady                  bool
-	Blockers                   []byte
+	Blockers                   string
 }
 
 func (q *Queries) UpdateMachineCurrentSnapshotRuntime(ctx context.Context, arg UpdateMachineCurrentSnapshotRuntimeParams) error {

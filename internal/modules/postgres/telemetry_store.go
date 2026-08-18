@@ -570,7 +570,7 @@ ON CONFLICT (machine_id) DO UPDATE SET
 			LastMqttState:              "mqtt_heartbeat",
 			StorefrontState:            sess.StorefrontState,
 			SellReady:                  sess.SellReady,
-			Blockers:                   blockers,
+			Blockers:                   string(blockers),
 		})
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return err
