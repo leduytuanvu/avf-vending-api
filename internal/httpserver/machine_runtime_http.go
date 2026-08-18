@@ -10,6 +10,7 @@ import (
 	appfeatureflags "github.com/avf/avf-vending-api/internal/app/featureflags"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -90,7 +91,7 @@ func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
 			NetworkState:   strings.TrimSpace(body.NetworkState),
 			BootID:         strings.TrimSpace(body.BootID),
 			OccurredAt:     occurredAt.UTC(),
-			Metadata:       meta,
+			Metadata:       pgjson.RequiredString(meta),
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "insert_failed", err.Error())

@@ -62,7 +62,7 @@ SELECT
     $11,
     $12,
     $13,
-    $14
+    COALESCE(NULLIF($14::text, '')::jsonb, '{}'::jsonb)
 FROM
     machines m
 WHERE
@@ -101,7 +101,7 @@ type InsertMachineCheckInParams struct {
 	NetworkState   string
 	BootID         string
 	OccurredAt     time.Time
-	Metadata       []byte
+	Metadata       string
 	ID             uuid.UUID
 }
 

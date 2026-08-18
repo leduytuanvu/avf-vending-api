@@ -922,7 +922,7 @@ func (s *Store) IngestTelemetry(ctx context.Context, in platformmqtt.TelemetryIn
 	_, err = q.InsertDeviceTelemetryEvent(ctx, db.InsertDeviceTelemetryEventParams{
 		MachineID: in.MachineID,
 		EventType: in.EventType,
-		Payload:   in.Payload,
+		Payload:   pgjson.RequiredString(in.Payload),
 		DedupeKey: optionalStringPtrToPgText(in.DedupeKey),
 	})
 	if err != nil {

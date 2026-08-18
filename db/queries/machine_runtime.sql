@@ -39,11 +39,11 @@ SELECT
     $11,
     $12,
     $13,
-    $14
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 FROM
     machines m
 WHERE
-    m.id = $15
+    m.id = sqlc.arg('id')
 RETURNING
     id,
     machine_id,
