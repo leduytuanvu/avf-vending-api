@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -154,6 +156,7 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
+	started := time.Now()
 	fp := req.GetDeviceFingerprint()
 	cip, ua := grpcActivationClaimTransport(ctx)
 	out, err := s.deps.Activation.Claim(ctx, activation.ClaimInput{
@@ -163,6 +166,7 @@ func (s *machineActivationServer) ClaimActivation(ctx context.Context, req *mach
 		UserAgent:         ua,
 	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix, resolveMQTTTopicLayout(s.deps))
 	if err != nil {
+		logUnmappedClaimActivationError(ctx, err, started)
 		return nil, mapActivationError(err)
 	}
 	resp := &machinev1.ClaimActivationResponse{
@@ -204,6 +208,76 @@ func mapActivationError(err error) error {
 	default:
 		return status.Error(codes.Internal, "internal")
 	}
+}
+
+// Standalone 6-digit tokens matching activation.ActivationCodeLength / ^[0-9]{6}$.
+// Word boundaries avoid redacting SQLSTATE (5 digits), AVF000001, UUIDs, and duration_ms.
+var claimActivationCodePlaintextRE = regexp.MustCompile(`\b[0-9]{6}\b`)
+
+func claimActivationLogger() *slog.Logger {
+	if claimActivationTestLogger != nil {
+		return claimActivationTestLogger
+	}
+	return slog.Default()
+}
+
+// claimActivationTestLogger is test-only; production always uses slog.Default().
+var claimActivationTestLogger *slog.Logger
+
+func logUnmappedClaimActivationError(ctx context.Context, err error, started time.Time) {
+	if err == nil || err == activation.ErrInvalid || err == activation.ErrMachineNotEligible || errors.Is(err, activation.ErrMQTTProvisioning) {
+		return
+	}
+	meta, _ := GRPCRequestMetaFromContext(ctx)
+	md, _ := metadata.FromIncomingContext(ctx)
+	attrs := []any{
+		"grpc_method", machinev1.MachineActivationService_ClaimActivation_FullMethodName,
+		"request_id", meta.RequestID,
+		"correlation_id", meta.CorrelationID,
+		"trace_id", grpcAccessTraceID(md, meta),
+		"error_type", claimActivationInnermostErrorType(err),
+		"error", claimActivationLogErrorText(err),
+	}
+	if !started.IsZero() {
+		attrs = append(attrs, "duration_ms", time.Since(started).Milliseconds())
+	}
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr != nil {
+		attrs = append(attrs,
+			"sqlstate", pgErr.Code,
+			"pg_table", pgErr.TableName,
+			"pg_constraint", pgErr.ConstraintName,
+		)
+	}
+	claimActivationLogger().Error("machine activation claim failed", attrs...)
+}
+
+func claimActivationInnermostErrorType(err error) string {
+	for err != nil {
+		next := errors.Unwrap(err)
+		if next == nil {
+			return fmt.Sprintf("%T", err)
+		}
+		err = next
+	}
+	return ""
+}
+
+func claimActivationLogErrorText(err error) string {
+	if err == nil {
+		return ""
+	}
+	text := err.Error()
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr != nil {
+		for _, extra := range []string{pgErr.Detail, pgErr.Hint, pgErr.Where, pgErr.InternalQuery} {
+			if s := strings.TrimSpace(extra); s != "" {
+				text = strings.ReplaceAll(text, s, "")
+			}
+		}
+	}
+	text = sanitizeGRPCErrorMessage(text)
+	return claimActivationCodePlaintextRE.ReplaceAllString(text, "[REDACTED_ACTIVATION_CODE]")
 }
 
 type machineTokenServer struct {
