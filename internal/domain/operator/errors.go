@@ -10,6 +10,7 @@ var (
 	ErrSessionNotFound                     = errors.New("operator: session not found")
 	ErrSessionMachineMismatch              = errors.New("operator: session does not belong to this machine")
 	ErrSessionNotActive                    = errors.New("operator: session is not active")
+	ErrOperatorSessionRequired             = errors.New("operator: operator_session_id is required for this physical machine action")
 	ErrTimeoutNotApplicable                = errors.New("operator: session is not eligible for expiry timeout")
 	ErrInvalidAuthMethod                   = errors.New("operator: unknown auth_method")
 	ErrInvalidAuthEventType                = errors.New("operator: unknown auth event_type")

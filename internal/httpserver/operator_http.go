@@ -791,6 +791,8 @@ func writeOperatorError(w http.ResponseWriter, ctx context.Context, err error) {
 		writeAPIError(w, ctx, http.StatusForbidden, "forbidden", err.Error())
 	case errors.Is(err, domainoperator.ErrSessionNotFound):
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
+	case errors.Is(err, domainoperator.ErrOperatorSessionRequired):
+		writeAPIError(w, ctx, http.StatusBadRequest, "operator_session_required", err.Error())
 	case errors.Is(err, domainoperator.ErrSessionNotActive):
 		writeAPIError(w, ctx, http.StatusConflict, "session_not_active", err.Error())
 	case errors.Is(err, domainoperator.ErrActiveSessionExists):
