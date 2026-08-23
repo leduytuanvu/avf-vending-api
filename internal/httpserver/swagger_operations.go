@@ -1775,13 +1775,13 @@ func DocOpV1AdminMachineSlots() {}
 
 // DocOpV1AdminMachineStockAdjustmentsPost godoc
 // @Summary Apply stock adjustments (restock, cycle count, manual, reconcile)
-// @Description Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, **operatorSessionId**, **technicianId** (from session), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.
+// @Description Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, optional **operatorSessionId**, **technicianId** (from session when present), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). **operator_session_id** is optional for authenticated remote admin (origin **api**); if sent it must be **ACTIVE** on this machine. Invalid sessions are rejected. Requires **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.
 // @Tags Inventory
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body V1AdminStockAdjustmentsRequest true "operator_session_id, reason, items[]"
+// @Param body body V1AdminStockAdjustmentsRequest true "optional operator_session_id, reason, items[]"
 // @Success 200 {object} V1AdminStockAdjustmentsResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2158,13 +2158,13 @@ func DocOpV1SetupActivationClaimPost() {}
 
 // DocOpV1AdminMachineTopologyPut godoc
 // @Summary Upsert machine cabinet topology and slot layouts
-// @Description Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **single_company_admin_context** query for company pick.
+// @Description Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). **operator_session_id** is optional for authenticated remote admin (action origin **api**, actor taken from the JWT). If **operator_session_id** is sent, it must be an **ACTIVE** session on this machine; invalid/ended/mismatched sessions are rejected (never silently ignored). This handler never auto-starts or takes over an operator session. **platform_admin** must pass **single_company_admin_context** query for company pick.
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body object true "operator_session_id, cabinets[], layouts[]"
+// @Param body body object true "optional operator_session_id, cabinets[], layouts[]"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2179,13 +2179,13 @@ func DocOpV1AdminMachineTopologyPut() {}
 
 // DocOpV1AdminMachinePlanogramDraftPut godoc
 // @Summary Save draft cabinet slot planogram assignments
-// @Description Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. Requires **operator_session_id** for an **ACTIVE** session on this machine.
+// @Description Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
+// @Param body body object true "optional operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError
@@ -2200,13 +2200,13 @@ func DocOpV1AdminMachinePlanogramDraftPut() {}
 
 // DocOpV1AdminMachinePlanogramPublishPost godoc
 // @Summary Publish draft planogram as current and dispatch device command
-// @Description Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** must reference an **ACTIVE** session on this machine.
+// @Description Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body object true "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
+// @Param body body object true "optional operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]"
 // @Success 200 {object} V1AdminPlanogramPublishResponse
 // @Failure 400 {object} V1StandardError "missing_idempotency_key / invalid_json"
 // @Failure 401 {object} V1BearerAuthError
@@ -2221,13 +2221,13 @@ func DocOpV1AdminMachinePlanogramPublishPost() {}
 
 // DocOpV1AdminMachineSetupSyncPost godoc
 // @Summary Queue a machine setup / inventory sync command
-// @Description Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** must reference an **ACTIVE** session on this machine.
+// @Description Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.
 // @Tags Machine Setup
 // @Security BearerAuth
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body object true "operator_session_id, optional reason"
+// @Param body body object true "optional operator_session_id, optional reason"
 // @Success 200 {object} V1AdminMachineSyncResponse
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError

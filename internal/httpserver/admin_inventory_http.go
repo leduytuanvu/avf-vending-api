@@ -384,11 +384,8 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "items_required", "items must contain at least one entry")
 			return
 		}
-		sid, ok := parseOperatorSessionIDField(w, r, body.OperatorSessionID)
+		actor, ok := resolveAdminMachineAction(w, r, app, machineID, body.OperatorSessionID, domainoperator.SessionOptionalByOrigin)
 		if !ok {
-			return
-		}
-		if !requireActiveOperatorSession(w, r, app, machineID, sid) {
 			return
 		}
 		if _, err := inventoryapp.StockAdjustmentReasonToEventType(body.Reason); err != nil {
@@ -452,7 +449,7 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 		repo := postgres.NewInventoryRepository(app.TelemetryStore.Pool())
 		res, err := repo.CreateInventoryAdjustmentBatch(r.Context(), inventoryapp.AdjustmentBatchInput{
 			MachineID:         machineID,
-			OperatorSessionID: &sid,
+			OperatorSessionID: actor.OperatorSessionID,
 			CorrelationID:     correlationUUIDFromRequest(r.Context()),
 			Reason:            strings.TrimSpace(body.Reason),
 			IdempotencyKey:    idem,
@@ -493,6 +490,15 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 				Metadata:     md,
 				Outcome:      compliance.OutcomeSuccess,
 			})
+		}
+		if actor.OperatorSessionID == nil {
+			resourceID := machineID.String()
+			if len(res.EventIDs) > 0 {
+				resourceID = fmt.Sprintf("%d", res.EventIDs[0])
+			}
+			if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "inventory_events", resourceID, "inventory", "inventory.adjustment_batch") {
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, V1AdminStockAdjustmentsResponse{Replay: res.Replay, EventIds: res.EventIDs})
 	}
@@ -842,11 +848,8 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		sid, ok := parseOperatorSessionIDField(w, r, body.OperatorSessionID)
+		actor, ok := resolveAdminMachineAction(w, r, app, machineID, body.OperatorSessionID, domainoperator.SessionOptionalByOrigin)
 		if !ok {
-			return
-		}
-		if !requireActiveOperatorSession(w, r, app, machineID, sid) {
 			return
 		}
 		cabs := make([]setupapp.CabinetUpsert, 0, len(body.Cabinets))
@@ -897,6 +900,9 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 			writeSetupMutationError(w, r.Context(), err)
 			return
 		}
+		if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_cabinets", machineID.String(), "setup", "setup.topology_upsert") {
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -921,11 +927,8 @@ func putAdminMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		sid, ok := parseOperatorSessionIDField(w, r, in.OperatorSessionID)
+		actor, ok := resolveAdminMachineAction(w, r, app, machineID, in.OperatorSessionID, domainoperator.SessionOptionalByOrigin)
 		if !ok {
-			return
-		}
-		if !requireActiveOperatorSession(w, r, app, machineID, sid) {
 			return
 		}
 		saveIn, ok := planogramBodyToSaveInput(w, r, in, false)
@@ -934,6 +937,9 @@ func putAdminMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 		}
 		if err := repo.SaveDraftOrCurrentSlotConfigs(r.Context(), machineID, saveIn); err != nil {
 			writeSetupMutationError(w, r.Context(), err)
+			return
+		}
+		if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_slot_configs", machineID.String(), "setup", "setup.planogram_draft") {
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
@@ -1020,11 +1026,8 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 		if !ok {
 			return
 		}
-		sid, ok := parseOperatorSessionIDField(w, r, in.OperatorSessionID)
+		actor, ok := resolveAdminMachineAction(w, r, app, machineID, in.OperatorSessionID, domainoperator.SessionOptionalByOrigin)
 		if !ok {
-			return
-		}
-		if !requireActiveOperatorSession(w, r, app, machineID, sid) {
 			return
 		}
 		saveIn, ok := planogramBodyToSaveInput(w, r, in, true)
@@ -1043,13 +1046,16 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 			return
 		}
 		if ledgerErr == nil && strings.TrimSpace(existing.CommandType) == adminMachinePlanogramPublishCommandType {
-			out, dispatchErr := finishPublishFromReplay(r.Context(), app, machineID, idem, sid, existing.Payload)
+			out, dispatchErr := finishPublishFromReplay(r.Context(), app, machineID, idem, actor.OperatorSessionID, existing.Payload)
 			if dispatchErr != nil {
 				if errors.Is(dispatchErr, appdevice.ErrMQTTCommandPublisherMissing) {
 					writeCapabilityNotConfigured(w, r.Context(), "mqtt_command_dispatch", "MQTT broker client is not configured for this API process (set MQTT_BROKER_URL and MQTT_CLIENT_ID)")
 					return
 				}
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "dispatch_failed", dispatchErr.Error())
+				return
+			}
+			if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_configs", machineID.String(), "setup", "setup.planogram_publish") {
 				return
 			}
 			writeJSON(w, http.StatusOK, out)
@@ -1064,7 +1070,7 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 			writeSetupMutationError(w, r.Context(), err)
 			return
 		}
-		_, cfgRev, cerr := insertMachineConfigSnapshot(r.Context(), pool, uuid.Nil, machineID, sid, in.PlanogramID, in.PlanogramRevision)
+		_, cfgRev, cerr := insertMachineConfigSnapshot(r.Context(), pool, uuid.Nil, machineID, actor.OperatorSessionID, in.PlanogramID, in.PlanogramRevision)
 		if cerr != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", cerr.Error())
 			return
@@ -1092,7 +1098,7 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 				Payload:           payloadBytes,
 				IdempotencyKey:    idem,
 				DesiredState:      desired,
-				OperatorSessionID: &sid,
+				OperatorSessionID: actor.OperatorSessionID,
 			},
 		})
 		if derr != nil {
@@ -1108,6 +1114,9 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 			PlanogramID:          in.PlanogramID,
 			PlanogramRevision:    in.PlanogramRevision,
 			Command:              mapDispatchToCommandInfo(disp),
+		}
+		if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_configs", machineID.String(), "setup", "setup.planogram_publish") {
+			return
 		}
 		writeJSON(w, http.StatusOK, out)
 	}
@@ -1137,11 +1146,8 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 		if !decodeStrictJSON(w, r, &body) {
 			return
 		}
-		sid, ok := parseOperatorSessionIDField(w, r, body.OperatorSessionID)
+		actor, ok := resolveAdminMachineAction(w, r, app, machineID, body.OperatorSessionID, domainoperator.SessionOptionalByOrigin)
 		if !ok {
-			return
-		}
-		if !requireActiveOperatorSession(w, r, app, machineID, sid) {
 			return
 		}
 		pool := app.TelemetryStore.Pool()
@@ -1171,7 +1177,7 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 					Payload:           payloadBytes,
 					IdempotencyKey:    idem,
 					DesiredState:      []byte("{}"),
-					OperatorSessionID: &sid,
+					OperatorSessionID: actor.OperatorSessionID,
 				},
 			})
 			if derr != nil {
@@ -1180,6 +1186,9 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 					return
 				}
 				writeAPIError(w, r.Context(), http.StatusInternalServerError, "dispatch_failed", derr.Error())
+				return
+			}
+			if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_commands", machineID.String(), "setup", "setup.machine_sync") {
 				return
 			}
 			writeJSON(w, http.StatusOK, V1AdminMachineSyncResponse{Command: mapDispatchToCommandInfo(disp)})
@@ -1205,7 +1214,7 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 				Payload:           payloadBytes,
 				IdempotencyKey:    idem,
 				DesiredState:      []byte("{}"),
-				OperatorSessionID: &sid,
+				OperatorSessionID: actor.OperatorSessionID,
 			},
 		})
 		if derr != nil {
@@ -1214,6 +1223,9 @@ func postAdminMachineSetupSync(app *api.HTTPApplication) http.HandlerFunc {
 				return
 			}
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "dispatch_failed", derr.Error())
+			return
+		}
+		if !recordResolvedMachineActionAttributionOrFail(w, r, app, actor, "machine_commands", machineID.String(), "setup", "setup.machine_sync") {
 			return
 		}
 		writeJSON(w, http.StatusOK, V1AdminMachineSyncResponse{Command: mapDispatchToCommandInfo(disp)})
@@ -1285,14 +1297,18 @@ func planogramBodyToSaveInput(w http.ResponseWriter, r *http.Request, body plano
 	}, true
 }
 
-func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, scopeID, machineID, sessionID uuid.UUID, planogramID string, planogramRevision int32) (db.MachineConfig, int32, error) {
+func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, scopeID, machineID uuid.UUID, sessionID *uuid.UUID, planogramID string, planogramRevision int32) (db.MachineConfig, int32, error) {
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return db.MachineConfig{}, 0, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	row, next, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, scopeID, machineID, pgtype.UUID{Bytes: sessionID, Valid: true}, planogramID, planogramRevision, nil)
+	var sess pgtype.UUID
+	if sessionID != nil && *sessionID != uuid.Nil {
+		sess = pgtype.UUID{Bytes: *sessionID, Valid: true}
+	}
+	row, next, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, scopeID, machineID, sess, planogramID, planogramRevision, nil)
 	if err != nil {
 		return db.MachineConfig{}, 0, err
 	}
@@ -1302,7 +1318,7 @@ func insertMachineConfigSnapshot(ctx context.Context, pool *pgxpool.Pool, scopeI
 	return row, next, nil
 }
 
-func finishPublishFromReplay(ctx context.Context, app *api.HTTPApplication, machineID uuid.UUID, idem string, sid uuid.UUID, ledgerPayload []byte) (V1AdminPlanogramPublishResponse, error) {
+func finishPublishFromReplay(ctx context.Context, app *api.HTTPApplication, machineID uuid.UUID, idem string, sid *uuid.UUID, ledgerPayload []byte) (V1AdminPlanogramPublishResponse, error) {
 	var parsed planogramPublishPayload
 	if err := json.Unmarshal(ledgerPayload, &parsed); err != nil {
 		return V1AdminPlanogramPublishResponse{}, err
@@ -1319,7 +1335,7 @@ func finishPublishFromReplay(ctx context.Context, app *api.HTTPApplication, mach
 			Payload:           ledgerPayload,
 			IdempotencyKey:    idem,
 			DesiredState:      desired,
-			OperatorSessionID: &sid,
+			OperatorSessionID: sid,
 		},
 	})
 	if err != nil {

@@ -19329,7 +19329,7 @@
     },
     "/v1/admin/machines/{machineId}/planograms/draft": {
       "put": {
-        "description": "Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. Requires **operator_session_id** for an **ACTIVE** session on this machine.",
+        "description": "Writes **draft** `machine_slot_configs` rows (not current) and optionally syncs legacy `machine_slot_state` when **syncLegacyReadModel** is true. **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.",
         "operationId": "DocOpV1AdminMachinePlanogramDraftPut",
         "parameters": [
           {
@@ -19378,7 +19378,7 @@
               }
             }
           },
-          "description": "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
+          "description": "optional operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
           "required": true
         },
         "responses": {
@@ -19555,7 +19555,7 @@
     },
     "/v1/admin/machines/{machineId}/planograms/publish": {
       "post": {
-        "description": "Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** must reference an **ACTIVE** session on this machine.",
+        "description": "Applies current slot configs, records a **machine_configs** snapshot (monotonic **desiredConfigVersion** / `config_revision`), updates shadow **desired_state**, and enqueues **machine_planogram_publish** on the MQTT command path. **Idempotency-Key** header is required (same semantics as command dispatch). **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.",
         "operationId": "DocOpV1AdminMachinePlanogramPublishPost",
         "parameters": [
           {
@@ -19607,7 +19607,7 @@
               }
             }
           },
-          "description": "operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
+          "description": "optional operator_session_id, planogramId, planogramRevision, syncLegacyReadModel, items[]",
           "required": true
         },
         "responses": {
@@ -21014,7 +21014,7 @@
     },
     "/v1/admin/machines/{machineId}/stock-adjustments": {
       "post": {
-        "description": "Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, **operatorSessionId**, **technicianId** (from session), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). Requires **operator_session_id** for an **ACTIVE** session and **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.",
+        "description": "Validates **quantityBefore** against `machine_slot_state`, appends **inventory_events** with **reasonCode**, **cabinetCode**, **slotCode**, **quantityBefore** / **quantityDelta** / **quantityAfter**, **unitPriceMinor**, **currency**, optional **operatorSessionId**, **technicianId** (from session when present), **occurredAt** / **recordedAt**, then updates `machine_slot_state` in the same transaction. Optional **occurredAt** on the body backdates the business time (defaults to now). **operator_session_id** is optional for authenticated remote admin (origin **api**); if sent it must be **ACTIVE** on this machine. Invalid sessions are rejected. Requires **Idempotency-Key** (replay returns **replay=true** without double-applying inventory). Reasons: **restock**, **cycle_count**, **manual_adjustment**, **machine_reconcile**.",
         "operationId": "DocOpV1AdminMachineStockAdjustmentsPost",
         "parameters": [
           {
@@ -21063,7 +21063,7 @@
               }
             }
           },
-          "description": "operator_session_id, reason, items[]",
+          "description": "optional operator_session_id, reason, items[]",
           "required": true
         },
         "responses": {
@@ -21283,7 +21283,7 @@
     },
     "/v1/admin/machines/{machineId}/sync": {
       "post": {
-        "description": "Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** must reference an **ACTIVE** session on this machine.",
+        "description": "Dispatches **machine_setup_sync** with optional **reason** in the payload. **Idempotency-Key** is required. **operator_session_id** is optional for authenticated remote admin (origin **api**). If provided, it must be **ACTIVE** on this machine; invalid sessions are rejected. Never auto-starts a session.",
         "operationId": "DocOpV1AdminMachineSetupSyncPost",
         "parameters": [
           {
@@ -21320,7 +21320,7 @@
               }
             }
           },
-          "description": "operator_session_id, optional reason",
+          "description": "optional operator_session_id, optional reason",
           "required": true
         },
         "responses": {
@@ -21806,7 +21806,7 @@
     },
     "/v1/admin/machines/{machineId}/topology": {
       "put": {
-        "description": "Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). Body requires **operator_session_id** for an **ACTIVE** session on this machine. **platform_admin** must pass **single_company_admin_context** query for company pick.",
+        "description": "Upserts **cabinets** then **layouts** (cabinet-scoped `machine_slot_layouts`). **operator_session_id** is optional for authenticated remote admin (action origin **api**, actor taken from the JWT). If **operator_session_id** is sent, it must be an **ACTIVE** session on this machine; invalid/ended/mismatched sessions are rejected (never silently ignored). This handler never auto-starts or takes over an operator session. **platform_admin** must pass **single_company_admin_context** query for company pick.",
         "operationId": "DocOpV1AdminMachineTopologyPut",
         "parameters": [
           {
@@ -21859,7 +21859,7 @@
               }
             }
           },
-          "description": "operator_session_id, cabinets[], layouts[]",
+          "description": "optional operator_session_id, cabinets[], layouts[]",
           "required": true
         },
         "responses": {
