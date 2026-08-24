@@ -590,7 +590,7 @@ INSERT INTO products (
     $2,
     $3,
     $4,
-    $5,
+    COALESCE(NULLIF($5::text, ''), '{}')::jsonb,
     $6,
     $7,
     $8,
@@ -607,7 +607,7 @@ type CatalogWriteInsertProductParams struct {
 	Barcode         pgtype.Text
 	Name            string
 	Description     string
-	Attrs           []byte
+	Attrs           string
 	Active          bool
 	CategoryID      pgtype.UUID
 	BrandID         pgtype.UUID
@@ -1073,7 +1073,7 @@ SET
     barcode = $2,
     name = $3,
     description = $4,
-    attrs = $5,
+    attrs = COALESCE(NULLIF($5::text, ''), '{}')::jsonb,
     active = $6,
     category_id = $7,
     brand_id = $8,
@@ -1091,7 +1091,7 @@ type CatalogWriteUpdateProductParams struct {
 	Barcode         pgtype.Text
 	Name            string
 	Description     string
-	Attrs           []byte
+	Attrs           string
 	Active          bool
 	CategoryID      pgtype.UUID
 	BrandID         pgtype.UUID

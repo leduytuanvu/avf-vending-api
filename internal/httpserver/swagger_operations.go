@@ -871,7 +871,7 @@ func DocOpV1AdminProductGet() {}
 
 // DocOpV1AdminProductCreate godoc
 // @Summary Create product (admin catalog)
-// @Description Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags.
+// @Description Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags. **primaryImageUrl** registers an external HTTPS image when **primaryMediaId** is omitted. Active products require primary media.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
@@ -888,7 +888,7 @@ func DocOpV1AdminProductCreate() {}
 
 // DocOpV1AdminProductReplace godoc
 // @Summary Update product (PUT/PATCH)
-// @Description Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`.
+// @Description Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`. **primaryMediaId** replaces primary media. If **primaryMediaId** is omitted, **primaryImageUrl** registers an external HTTPS image and binds it (same as create). Omit both to leave the current primary image.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
@@ -907,7 +907,7 @@ func DocOpV1AdminProductReplace() {}
 
 // DocOpV1AdminProductPatch godoc
 // @Summary Update product (PATCH)
-// @Description Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces.
+// @Description Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces. **primaryImageUrl** is honored when **primaryMediaId** is omitted.
 // @Tags Catalog Admin
 // @Security BearerAuth
 // @Accept json
