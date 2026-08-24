@@ -17,11 +17,11 @@ func TestPatchAdminProduct_primaryImageUrlWithoutMediaAdmin_capabilityNotConfigu
 	r := planogramHTTPTestRouter(t, svc)
 
 	createBody, err := json.Marshal(map[string]any{
-		"sku":             "IMGURL-" + uuid.NewString()[:8],
-		"name":            "Draft Image URL",
-		"active":          false,
-		"ageRestricted":   false,
-		"allergenCodes":   []string{},
+		"sku":           "IMGURL-" + uuid.NewString()[:8],
+		"name":          "Draft Image URL",
+		"active":        false,
+		"ageRestricted": false,
+		"allergenCodes": []string{},
 	})
 	require.NoError(t, err)
 
