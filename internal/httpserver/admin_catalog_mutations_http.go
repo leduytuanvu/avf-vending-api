@@ -57,6 +57,43 @@ func writeAdminCatalogError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 }
 
+func registerExternalProductImageURL(
+	w http.ResponseWriter,
+	r *http.Request,
+	app *api.HTTPApplication,
+	scopeID uuid.UUID,
+	imageURL string,
+	missingCompanyReason string,
+) (uuid.UUID, uuid.UUID, bool) {
+	if app == nil || app.MediaAdmin == nil || !app.MediaAdmin.ExternalConfigured() {
+		writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.external_images", "external product image URLs are not configured for this process")
+		return uuid.Nil, scopeID, false
+	}
+	if scopeID == uuid.Nil {
+		var serr error
+		scopeID, serr = requireCatalogMediaCompanyScope(r, app.MediaAdmin)
+		if errors.Is(serr, errMediaCompanyNotConfigured) {
+			writeCapabilityNotConfigured(w, r.Context(), "v1.admin.catalog", missingCompanyReason)
+			return uuid.Nil, scopeID, false
+		}
+		if serr != nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", serr.Error())
+			return uuid.Nil, scopeID, false
+		}
+	}
+	reg, rerr := app.MediaAdmin.RegisterExternalProductImage(r.Context(), appmediaadmin.RegisterExternalProductImageInput{
+		CompanyID:   scopeID,
+		URL:         imageURL,
+		Purpose:     "product_image",
+		ContentType: "image/png",
+	})
+	if rerr != nil {
+		writeMediaAdminError(w, r.Context(), rerr)
+		return uuid.Nil, scopeID, false
+	}
+	return reg.MediaID, scopeID, true
+}
+
 func uuidFromOptionalString(s *string) (*uuid.UUID, error) {
 	if s == nil {
 		return nil, nil
@@ -201,35 +238,17 @@ func postAdminProductCreate(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		if (pm == nil || *pm == uuid.Nil) && body.PrimaryImageURL != nil && strings.TrimSpace(*body.PrimaryImageURL) != "" {
-			if app.MediaAdmin == nil || !app.MediaAdmin.ExternalConfigured() {
-				writeCapabilityNotConfigured(w, r.Context(), "v1.admin.media.external_images", "external product image URLs are not configured for this process")
+			mid, nextScope, ok := registerExternalProductImageURL(
+				w, r, app, scopeID, strings.TrimSpace(*body.PrimaryImageURL),
+				"product create with primaryImageUrl requires MEDIA_COMPANY_ID server configuration",
+			)
+			if !ok {
 				return
 			}
-			if scopeID == uuid.Nil {
-				var serr error
-				scopeID, serr = requireCatalogMediaCompanyScope(r, app.MediaAdmin)
-				if errors.Is(serr, errMediaCompanyNotConfigured) {
-					writeCapabilityNotConfigured(w, r.Context(), "v1.admin.catalog", "product create with primaryImageUrl requires MEDIA_COMPANY_ID server configuration")
-					return
-				}
-				if serr != nil {
-					writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_scope", serr.Error())
-					return
-				}
-			}
-			reg, rerr := app.MediaAdmin.RegisterExternalProductImage(r.Context(), appmediaadmin.RegisterExternalProductImageInput{
-				CompanyID:   scopeID,
-				URL:         strings.TrimSpace(*body.PrimaryImageURL),
-				Purpose:     "product_image",
-				ContentType: "image/png",
-			})
-			if rerr != nil {
-				writeMediaAdminError(w, r.Context(), rerr)
-				return
-			}
-			pm = &reg.MediaID
+			scopeID = nextScope
+			pm = &mid
 		}
-		needsMediaCompany := body.Active || (pm != nil && *pm != uuid.Nil)
+		needsMediaCompany := pm != nil && *pm != uuid.Nil
 		if needsMediaCompany && scopeID == uuid.Nil {
 			var serr error
 			scopeID, serr = requireCatalogMediaCompanyScope(r, app.MediaAdmin)
@@ -326,6 +345,17 @@ func putAdminProductUpdate(app *api.HTTPApplication) http.HandlerFunc {
 				return
 			}
 			in.PrimaryMediaIDReplace = &u
+		} else if body.PrimaryImageURL != nil && strings.TrimSpace(*body.PrimaryImageURL) != "" {
+			mid, nextScope, ok := registerExternalProductImageURL(
+				w, r, app, scopeID, strings.TrimSpace(*body.PrimaryImageURL),
+				"product update with primaryImageUrl requires MEDIA_COMPANY_ID server configuration",
+			)
+			if !ok {
+				return
+			}
+			scopeID = nextScope
+			in.CompanyID = scopeID
+			in.PrimaryMediaIDReplace = &mid
 		}
 		row, err := svc.UpdateProduct(r.Context(), in)
 		if err != nil {
