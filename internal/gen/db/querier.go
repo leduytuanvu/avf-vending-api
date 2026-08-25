@@ -271,6 +271,7 @@ type Querier interface {
 	FleetAdminCountMachines(ctx context.Context, arg FleetAdminCountMachinesParams) (int64, error)
 	FleetAdminCountOTACampaigns(ctx context.Context, arg FleetAdminCountOTACampaignsParams) (int64, error)
 	FleetAdminCountTechnicians(ctx context.Context, arg FleetAdminCountTechniciansParams) (int64, error)
+	FleetAdminDeleteMachineSlotConfigDraftsByLayout(ctx context.Context, arg FleetAdminDeleteMachineSlotConfigDraftsByLayoutParams) error
 	FleetAdminGetMachineCabinetByMachineAndCode(ctx context.Context, arg FleetAdminGetMachineCabinetByMachineAndCodeParams) (MachineCabinet, error)
 	FleetAdminGetMachineDetail(ctx context.Context, id uuid.UUID) (FleetAdminGetMachineDetailRow, error)
 	FleetAdminGetMachineSlotLayoutByKey(ctx context.Context, arg FleetAdminGetMachineSlotLayoutByKeyParams) (MachineSlotLayout, error)

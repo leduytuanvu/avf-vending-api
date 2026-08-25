@@ -198,6 +198,12 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 		}
 	}
 
+	type layoutDraftScope struct {
+		cabinetID uuid.UUID
+		layoutID  uuid.UUID
+	}
+	clearedDraftScopes := make(map[layoutDraftScope]struct{})
+
 	for _, it := range in.Items {
 		cabRow, err := q.FleetAdminGetMachineCabinetByMachineAndCode(ctx, db.FleetAdminGetMachineCabinetByMachineAndCodeParams{
 			MachineID:   machineID,
@@ -240,6 +246,17 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 				Metadata:            meta,
 			})
 		} else {
+			scope := layoutDraftScope{cabinetID: cabRow.ID, layoutID: layoutRow.ID}
+			if _, ok := clearedDraftScopes[scope]; !ok {
+				if err := q.FleetAdminDeleteMachineSlotConfigDraftsByLayout(ctx, db.FleetAdminDeleteMachineSlotConfigDraftsByLayoutParams{
+					MachineID:           machineID,
+					MachineCabinetID:    cabRow.ID,
+					MachineSlotLayoutID: layoutRow.ID,
+				}); err != nil {
+					return err
+				}
+				clearedDraftScopes[scope] = struct{}{}
+			}
 			_, err = q.FleetAdminInsertMachineSlotConfigDraft(ctx, db.FleetAdminInsertMachineSlotConfigDraftParams{
 				MachineID:           machineID,
 				MachineCabinetID:    cabRow.ID,

@@ -92,6 +92,39 @@ func TestMountAdminCatalogRoutes_planogramWriteRoutesRegistered(t *testing.T) {
 	}
 }
 
+func TestPostAdminPlanogramCreate_withMeta(t *testing.T) {
+	pool := planogramHTTPTestPool(t)
+	svc := planogramHTTPTestCatalogAdmin(t, pool)
+	r := planogramHTTPTestRouter(t, svc)
+
+	machineID := uuid.NewString()
+	name := "Meta Planogram " + uuid.NewString()[:8]
+	createBody, err := json.Marshal(map[string]any{
+		"name":   name,
+		"status": "draft",
+		"meta": map[string]any{
+			"scope":     "machine",
+			"machineId": machineID,
+		},
+	})
+	require.NoError(t, err)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/planograms", bytes.NewReader(createBody))
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("Idempotency-Key", "planogram-create-meta-"+uuid.NewString())
+	createReq = withCatalogAdminPrincipal(createReq)
+
+	createRec := httptest.NewRecorder()
+	r.ServeHTTP(createRec, createReq)
+	require.Equal(t, http.StatusCreated, createRec.Code, createRec.Body.String())
+
+	var created V1AdminPlanogram
+	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
+	require.Equal(t, name, created.Name)
+	require.Equal(t, "draft", created.Status)
+	require.JSONEq(t, `{"scope":"machine","machineId":"`+machineID+`"}`, string(created.Meta))
+}
+
 func TestPostAdminPlanogramCreate_andPutSlots(t *testing.T) {
 	pool := planogramHTTPTestPool(t)
 	svc := planogramHTTPTestCatalogAdmin(t, pool)

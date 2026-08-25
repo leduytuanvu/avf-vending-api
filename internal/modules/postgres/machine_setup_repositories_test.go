@@ -2,7 +2,7 @@ package postgres_test
 
 import (
 	"context"
-	"github.com/avf/avf-vending-api/internal/platform/id"
+	"strconv"
 	"testing"
 	"time"
 
@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -284,3 +285,102 @@ func TestSetupRepository_publishCurrentSyncsCommerceAssortment(t *testing.T) {
 }
 
 func ptrUUID(u uuid.UUID) *uuid.UUID { return &u }
+
+func TestSetupRepository_draftSaveReplacesPriorDraftRows(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
+
+	repo := postgres.NewSetupRepository(pool)
+	require.NoError(t, repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Alpha",
+			SortOrder: 1,
+			Metadata:  []byte(`{}`),
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "default",
+			Revision:    1,
+			LayoutSpec:  []byte(`{"rows":6,"cols":10}`),
+			Status:      "published",
+		}},
+	))
+
+	makeDraftItems := func(n int) []setupapp.SlotConfigSaveItem {
+		items := make([]setupapp.SlotConfigSaveItem, 0, n)
+		for i := 1; i <= n; i++ {
+			idx := int32(i)
+			items = append(items, setupapp.SlotConfigSaveItem{
+				CabinetCode:     "A",
+				LayoutKey:       "default",
+				LayoutRevision:  1,
+				SlotCode:        "S" + strconv.Itoa(i),
+				LegacySlotIndex: &idx,
+				MaxQuantity:     1,
+				PriceMinor:      100,
+				Metadata:        []byte(`{}`),
+			})
+		}
+		return items
+	}
+	saveDraft := func(items []setupapp.SlotConfigSaveItem) {
+		require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+			PlanogramID:       testfixtures.DevPlanogramID,
+			PlanogramRevision: 1,
+			PublishAsCurrent:  false,
+			Items:             items,
+		}))
+	}
+
+	saveDraft(makeDraftItems(60))
+
+	var draftCount int
+	err := pool.QueryRow(ctx, `
+SELECT count(*)::int
+FROM machine_slot_configs
+WHERE machine_id = $1
+  AND is_current = FALSE`, testfixtures.DevMachineID).Scan(&draftCount)
+	require.NoError(t, err)
+	require.Equal(t, 60, draftCount)
+
+	slotIdx := int32(99)
+	prod := testfixtures.DevProductCola
+	require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+		PlanogramID:         testfixtures.DevPlanogramID,
+		PlanogramRevision:   1,
+		PublishAsCurrent:    true,
+		SyncLegacyReadModel: false,
+		Items: []setupapp.SlotConfigSaveItem{{
+			CabinetCode:     "A",
+			LayoutKey:       "default",
+			LayoutRevision:  1,
+			SlotCode:        "CURRENT",
+			LegacySlotIndex: &slotIdx,
+			ProductID:       &prod,
+			MaxQuantity:     5,
+			PriceMinor:      200,
+			Metadata:        []byte(`{}`),
+		}},
+	}))
+
+	saveDraft(makeDraftItems(59))
+
+	err = pool.QueryRow(ctx, `
+SELECT count(*)::int
+FROM machine_slot_configs
+WHERE machine_id = $1
+  AND is_current = FALSE`, testfixtures.DevMachineID).Scan(&draftCount)
+	require.NoError(t, err)
+	require.Equal(t, 59, draftCount)
+
+	var currentCount int
+	err = pool.QueryRow(ctx, `
+SELECT count(*)::int
+FROM machine_slot_configs
+WHERE machine_id = $1
+  AND is_current = TRUE`, testfixtures.DevMachineID).Scan(&currentCount)
+	require.NoError(t, err)
+	require.Equal(t, 1, currentCount)
+}

@@ -364,6 +364,7 @@ func postAdminPlanogramCreate(svc *appcatalogadmin.Service) http.HandlerFunc {
 		in := appcatalogadmin.CreatePlanogramInput{
 			Name:   body.Name,
 			Status: body.Status,
+			Meta:   body.Meta,
 		}
 		if body.Revision != nil {
 			in.Revision = *body.Revision
