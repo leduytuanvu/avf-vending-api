@@ -581,6 +581,26 @@ func (q *Queries) FleetAdminInsertAssortment(ctx context.Context, arg FleetAdmin
 	return i, err
 }
 
+const FleetAdminDeleteMachineSlotConfigDraftsByLayout = `-- name: FleetAdminDeleteMachineSlotConfigDraftsByLayout :exec
+DELETE FROM machine_slot_configs
+WHERE
+    machine_id = $1
+    AND machine_cabinet_id = $2
+    AND machine_slot_layout_id = $3
+    AND is_current = FALSE
+`
+
+type FleetAdminDeleteMachineSlotConfigDraftsByLayoutParams struct {
+	MachineID           uuid.UUID
+	MachineCabinetID    uuid.UUID
+	MachineSlotLayoutID uuid.UUID
+}
+
+func (q *Queries) FleetAdminDeleteMachineSlotConfigDraftsByLayout(ctx context.Context, arg FleetAdminDeleteMachineSlotConfigDraftsByLayoutParams) error {
+	_, err := q.db.Exec(ctx, FleetAdminDeleteMachineSlotConfigDraftsByLayout, arg.MachineID, arg.MachineCabinetID, arg.MachineSlotLayoutID)
+	return err
+}
+
 const FleetAdminInsertMachineSlotConfigDraft = `-- name: FleetAdminInsertMachineSlotConfigDraft :one
 INSERT INTO machine_slot_configs (
     machine_id,

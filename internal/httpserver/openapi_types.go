@@ -1050,9 +1050,10 @@ type V1AdminPlanogramDetail struct {
 
 // V1AdminPlanogramCreateRequest is POST /v1/admin/planograms.
 type V1AdminPlanogramCreateRequest struct {
-	Name     string `json:"name"`
-	Status   string `json:"status,omitempty"`
-	Revision *int32 `json:"revision,omitempty"`
+	Name     string          `json:"name"`
+	Status   string          `json:"status,omitempty"`
+	Revision *int32          `json:"revision,omitempty"`
+	Meta     json.RawMessage `json:"meta,omitempty"`
 }
 
 // V1AdminPlanogramPatchRequest is PATCH /v1/admin/planograms/{planogramId}.

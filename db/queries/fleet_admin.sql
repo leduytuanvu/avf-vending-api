@@ -638,6 +638,14 @@ WHERE
     AND layout_key = $3
     AND revision = $4;
 
+-- name: FleetAdminDeleteMachineSlotConfigDraftsByLayout :exec
+DELETE FROM machine_slot_configs
+WHERE
+    machine_id = $1
+    AND machine_cabinet_id = $2
+    AND machine_slot_layout_id = $3
+    AND is_current = FALSE;
+
 -- name: FleetAdminInsertMachineSlotConfigDraft :one
 INSERT INTO machine_slot_configs (
     machine_id,
