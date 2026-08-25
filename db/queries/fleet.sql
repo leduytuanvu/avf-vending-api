@@ -255,11 +255,11 @@ INSERT INTO sites (
     status
 )
 VALUES (
-    $1,
-    $2,
-    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
-    $4,
-    $5,
+    sqlc.arg('region_id'),
+    sqlc.arg('name'),
+    COALESCE(NULLIF(sqlc.arg('address')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('timezone'),
+    sqlc.arg('code'),
     'active'
 )
 RETURNING *;
@@ -303,15 +303,15 @@ WHERE
 -- name: AdminUpdateSiteRow :one
 UPDATE sites
 SET
-    region_id = $1,
-    name = $2,
-    address = COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
-    timezone = $4,
-    code = $5,
-    status = $6,
+    region_id = sqlc.arg('region_id'),
+    name = sqlc.arg('name'),
+    address = COALESCE(NULLIF(sqlc.arg('address')::text, '')::jsonb, '{}'::jsonb),
+    timezone = sqlc.arg('timezone'),
+    code = sqlc.arg('code'),
+    status = sqlc.arg('status'),
     updated_at = now()
 WHERE
-    id = $7
+    id = sqlc.arg('id')
     AND TRUE
 RETURNING *;
 

@@ -3,7 +3,6 @@ package postgres_test
 import (
 	"context"
 	"strconv"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"testing"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
