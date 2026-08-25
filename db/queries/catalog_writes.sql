@@ -13,38 +13,38 @@ INSERT INTO products (
     allergen_codes,
     nutritional_note
 ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12
+    sqlc.arg('sku'),
+    sqlc.arg('barcode'),
+    sqlc.arg('name'),
+    sqlc.arg('description'),
+    COALESCE(NULLIF(sqlc.arg('attrs')::text, ''), '{}')::jsonb,
+    sqlc.arg('active'),
+    sqlc.arg('category_id'),
+    sqlc.arg('brand_id'),
+    sqlc.arg('country_of_origin'),
+    sqlc.arg('age_restricted'),
+    sqlc.arg('allergen_codes'),
+    sqlc.arg('nutritional_note')
 )
 RETURNING *;
 
 -- name: CatalogWriteUpdateProduct :one
 UPDATE products p
 SET
-    sku = $1,
-    barcode = $2,
-    name = $3,
-    description = $4,
-    attrs = $5,
-    active = $6,
-    category_id = $7,
-    brand_id = $8,
-    country_of_origin = $9,
-    age_restricted = $10,
-    allergen_codes = $11,
-    nutritional_note = $12,
+    sku = sqlc.arg('sku'),
+    barcode = sqlc.arg('barcode'),
+    name = sqlc.arg('name'),
+    description = sqlc.arg('description'),
+    attrs = COALESCE(NULLIF(sqlc.arg('attrs')::text, ''), '{}')::jsonb,
+    active = sqlc.arg('active'),
+    category_id = sqlc.arg('category_id'),
+    brand_id = sqlc.arg('brand_id'),
+    country_of_origin = sqlc.arg('country_of_origin'),
+    age_restricted = sqlc.arg('age_restricted'),
+    allergen_codes = sqlc.arg('allergen_codes'),
+    nutritional_note = sqlc.arg('nutritional_note'),
     updated_at = now()
-WHERE p.id = $13
+WHERE p.id = sqlc.arg('id')
 RETURNING *;
 
 -- name: CatalogWriteSetProductActive :one

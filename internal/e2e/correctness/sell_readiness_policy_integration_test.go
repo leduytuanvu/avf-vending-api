@@ -86,7 +86,7 @@ func TestP06_SellReadiness_runtimePrimaryMediaReady_falseWithoutPrimary(t *testi
 		Sku:           "sql-" + uuid.NewString(),
 		Name:          "SQL Insert",
 		Description:   "",
-		Attrs:         []byte(`{}`),
+		Attrs:         "{}",
 		Active:        true,
 		AgeRestricted: false,
 		AllergenCodes: []string{},

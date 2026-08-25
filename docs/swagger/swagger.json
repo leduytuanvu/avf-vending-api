@@ -29822,7 +29822,7 @@
         ]
       },
       "post": {
-        "description": "Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags.",
+        "description": "Creates a product in the company. **Idempotency-Key** required. SKU unique per org; barcode unique when set. Optional **tagIds** (UUID[]): duplicates removed; unknown IDs return **400** `invalid_argument`. Omit **tagIds** to create without tags. **primaryImageUrl** registers an external HTTPS image when **primaryMediaId** is omitted. Active products require primary media.",
         "operationId": "DocOpV1AdminProductCreate",
         "parameters": [
           {
@@ -30470,7 +30470,7 @@
         ]
       },
       "patch": {
-        "description": "Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces.",
+        "description": "Same semantics as PUT. **Idempotency-Key** required. **tagIds**: omit to keep tags; **[]** clears; non-empty replaces. **primaryImageUrl** is honored when **primaryMediaId** is omitted.",
         "operationId": "DocOpV1AdminProductPatch",
         "parameters": [
           {
@@ -30738,7 +30738,7 @@
         ]
       },
       "put": {
-        "description": "Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`.",
+        "description": "Updates mutable fields. **Idempotency-Key** required. **tagIds**: omit to keep existing product tags; send **[]** to clear all; send UUIDs to replace the linked set. Unknown tag IDs return **400** `invalid_argument`. **primaryMediaId** replaces primary media. If **primaryMediaId** is omitted, **primaryImageUrl** registers an external HTTPS image and binds it (same as create). Omit both to leave the current primary image.",
         "operationId": "DocOpV1AdminProductReplace",
         "parameters": [
           {

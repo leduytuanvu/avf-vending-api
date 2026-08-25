@@ -9,6 +9,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -161,7 +162,7 @@ func (s *Service) CreateProduct(ctx context.Context, in CreateProductInput) (db.
 		Barcode:         barcode,
 		Name:            name,
 		Description:     strings.TrimSpace(in.Description),
-		Attrs:           attrs,
+		Attrs:           pgjson.RequiredString(attrs),
 		Active:          in.Active,
 		CategoryID:      cat,
 		BrandID:         brand,
@@ -289,7 +290,7 @@ func (s *Service) UpdateProduct(ctx context.Context, in UpdateProductInput) (db.
 		Barcode:         barcode,
 		Name:            name,
 		Description:     strings.TrimSpace(in.Description),
-		Attrs:           attrs,
+		Attrs:           pgjson.RequiredString(attrs),
 		Active:          in.Active,
 		CategoryID:      cat,
 		BrandID:         brand,
