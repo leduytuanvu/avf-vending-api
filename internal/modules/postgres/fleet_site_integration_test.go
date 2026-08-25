@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
@@ -9,6 +10,37 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func TestFleetAdminSites_CreateWithAddress_QueryExecModeExec(t *testing.T) {
+	pool := execModePool(t)
+	ctx := context.Background()
+	svc := appfleet.NewService(postgres.NewFleetRepository(pool))
+
+	address := []byte(`{"line1":"68B Đường 21","houseNumber":"68B","street":"Đường 21","ward":"Hiệp Bình","district":"Quận Thủ Đức","districtCode":"762","city":"Thành phố Hồ Chí Minh","provinceCode":"79","region":"Miền Nam","country":"VN"}`)
+	code := "addr-site-" + uuid.NewString()[:8]
+	created, err := svc.CreateSite(ctx, appfleet.CreateSiteInput{
+		Name:     "Miền Nam",
+		Timezone: "Asia/Ho_Chi_Minh",
+		Code:     code,
+		Address:  address,
+	})
+	require.NoError(t, err)
+	require.True(t, json.Valid(created.Address))
+	require.JSONEq(t, string(address), string(created.Address))
+
+	got, err := svc.GetSite(ctx, uuid.Nil, created.ID)
+	require.NoError(t, err)
+	require.JSONEq(t, string(address), string(got.Address))
+
+	emptyCode := "addr-empty-" + uuid.NewString()[:8]
+	emptyCreated, err := svc.CreateSite(ctx, appfleet.CreateSiteInput{
+		Name:     "No Address",
+		Timezone: "UTC",
+		Code:     emptyCode,
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, "{}", string(emptyCreated.Address))
+}
 
 // Regression: admin sites CRUD must work without company / scope identifiers (single-tenant).
 func TestFleetAdminSites_CreateGetListPatchDeactivate_withoutCompanyScope(t *testing.T) {

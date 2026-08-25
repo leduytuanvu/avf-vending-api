@@ -191,7 +191,7 @@ INSERT INTO sites (
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     $4,
     $5,
     'active'
@@ -202,7 +202,7 @@ RETURNING id, region_id, name, address, timezone, code, contact_info, status, cr
 type AdminInsertSiteParams struct {
 	RegionID pgtype.UUID
 	Name     string
-	Address  []byte
+	Address  string
 	Timezone string
 	Code     string
 }
@@ -532,7 +532,7 @@ UPDATE sites
 SET
     region_id = $1,
     name = $2,
-    address = $3,
+    address = COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     timezone = $4,
     code = $5,
     status = $6,
@@ -546,7 +546,7 @@ RETURNING id, region_id, name, address, timezone, code, contact_info, status, cr
 type AdminUpdateSiteRowParams struct {
 	RegionID pgtype.UUID
 	Name     string
-	Address  []byte
+	Address  string
 	Timezone string
 	Code     string
 	Status   string

@@ -257,7 +257,7 @@ INSERT INTO sites (
 VALUES (
     $1,
     $2,
-    $3,
+    COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     $4,
     $5,
     'active'
@@ -305,7 +305,7 @@ UPDATE sites
 SET
     region_id = $1,
     name = $2,
-    address = $3,
+    address = COALESCE(NULLIF($3::text, '')::jsonb, '{}'::jsonb),
     timezone = $4,
     code = $5,
     status = $6,

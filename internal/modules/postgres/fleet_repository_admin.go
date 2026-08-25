@@ -8,6 +8,7 @@ import (
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,7 +19,7 @@ func (r *fleetRepository) InsertSite(ctx context.Context, p appfleet.InsertSiteP
 	row, err := q.AdminInsertSite(ctx, db.AdminInsertSiteParams{
 		RegionID: optionalUUIDToPg(p.RegionID),
 		Name:     strings.TrimSpace(p.Name),
-		Address:  p.Address,
+		Address:  pgjson.RequiredString(p.Address),
 		Timezone: strings.TrimSpace(p.Timezone),
 		Code:     strings.TrimSpace(p.Code),
 	})
@@ -95,7 +96,7 @@ func (r *fleetRepository) UpdateSite(ctx context.Context, p appfleet.UpdateSiteP
 	q := db.New(r.pool)
 	row, err := q.AdminUpdateSiteRow(ctx, db.AdminUpdateSiteRowParams{RegionID: optionalUUIDToPg(p.RegionID),
 		Name:     strings.TrimSpace(p.Name),
-		Address:  p.Address,
+		Address:  pgjson.RequiredString(p.Address),
 		Timezone: strings.TrimSpace(p.Timezone),
 		Code:     strings.TrimSpace(p.Code),
 		Status:   strings.TrimSpace(p.Status),
