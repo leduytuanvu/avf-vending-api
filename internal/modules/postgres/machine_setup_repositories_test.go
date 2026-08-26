@@ -43,6 +43,69 @@ WHERE machine_id = $1
 	require.NoError(t, err)
 }
 
+func TestSetupRepository_UpsertMachineTopology_QueryExecModeExec(t *testing.T) {
+	pool := execModePool(t)
+	ctx := context.Background()
+	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
+
+	repo := postgres.NewSetupRepository(pool)
+	metadata := []byte("{}")
+	layoutSpec := []byte(`{"rows":6,"cols":10}`)
+	err := repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Cabinet A",
+			SortOrder: 1,
+			Metadata:  metadata,
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "grid-10x6",
+			Revision:    1,
+			LayoutSpec:  layoutSpec,
+			Status:      "active",
+		}},
+	)
+	require.NoError(t, err)
+
+	q := db.New(pool)
+	cabs, err := q.FleetAdminListMachineCabinets(ctx, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	require.Len(t, cabs, 1)
+	require.JSONEq(t, string(metadata), string(cabs[0].Metadata))
+
+	layout, err := q.FleetAdminGetMachineSlotLayoutByKey(ctx, db.FleetAdminGetMachineSlotLayoutByKeyParams{
+		MachineID:        testfixtures.DevMachineID,
+		MachineCabinetID: cabs[0].ID,
+		LayoutKey:        "grid-10x6",
+		Revision:         1,
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, string(layoutSpec), string(layout.LayoutSpec))
+
+	err = repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Cabinet A Updated",
+			SortOrder: 1,
+			Metadata:  metadata,
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "grid-10x6",
+			Revision:    1,
+			LayoutSpec:  layoutSpec,
+			Status:      "active",
+		}},
+	)
+	require.NoError(t, err)
+
+	cabs, err = q.FleetAdminListMachineCabinets(ctx, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	require.Equal(t, "Cabinet A Updated", cabs[0].Title)
+	require.JSONEq(t, string(metadata), string(cabs[0].Metadata))
+}
+
 func TestSetupRepository_UpsertMachineTopology(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()

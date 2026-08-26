@@ -292,14 +292,14 @@ INSERT INTO machine_cabinets (
     metadata
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
+    sqlc.arg('machine_id'),
+    sqlc.arg('cabinet_code'),
+    sqlc.arg('title'),
+    sqlc.arg('sort_order'),
+    sqlc.arg('cabinet_index'),
+    sqlc.arg('slot_capacity'),
+    sqlc.arg('status'),
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
@@ -333,12 +333,12 @@ INSERT INTO machine_slot_layouts (
     status
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
+    sqlc.arg('machine_id'),
+    sqlc.arg('machine_cabinet_id'),
+    sqlc.arg('layout_key'),
+    sqlc.arg('revision'),
+    COALESCE(NULLIF(sqlc.arg('layout_spec')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('status')
 )
 ON CONFLICT (machine_id, machine_cabinet_id, layout_key, revision) DO UPDATE
 SET

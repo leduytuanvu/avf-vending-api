@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -69,7 +70,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 			CabinetIndex: c.SortOrder,
 			SlotCapacity: pgtype.Int4{}, // unset; optional per-cabinet capacity for slot-range mapping on reads
 			Status:       "active",
-			Metadata:     defaultJSONB(c.Metadata),
+			Metadata:     pgjson.RequiredString(c.Metadata),
 		})
 		if err != nil {
 			return err
@@ -96,7 +97,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 			MachineCabinetID: cabRow.ID,
 			LayoutKey:        strings.TrimSpace(lay.LayoutKey),
 			Revision:         lay.Revision,
-			LayoutSpec:       defaultJSONB(lay.LayoutSpec),
+			LayoutSpec:       pgjson.RequiredString(lay.LayoutSpec),
 			Status:           lay.Status,
 		})
 		if err != nil {
