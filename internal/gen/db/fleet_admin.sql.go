@@ -1610,7 +1610,7 @@ VALUES (
     $5,
     $6,
     $7,
-    $8
+    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
@@ -1643,7 +1643,7 @@ type FleetAdminUpsertMachineCabinetParams struct {
 	CabinetIndex int32
 	SlotCapacity pgtype.Int4
 	Status       string
-	Metadata     []byte
+	Metadata     string
 }
 
 func (q *Queries) FleetAdminUpsertMachineCabinet(ctx context.Context, arg FleetAdminUpsertMachineCabinetParams) (MachineCabinet, error) {
@@ -1688,7 +1688,7 @@ VALUES (
     $2,
     $3,
     $4,
-    $5,
+    COALESCE(NULLIF($5::text, '')::jsonb, '{}'::jsonb),
     $6
 )
 ON CONFLICT (machine_id, machine_cabinet_id, layout_key, revision) DO UPDATE
@@ -1711,7 +1711,7 @@ type FleetAdminUpsertMachineSlotLayoutParams struct {
 	MachineCabinetID uuid.UUID
 	LayoutKey        string
 	Revision         int32
-	LayoutSpec       []byte
+	LayoutSpec       string
 	Status           string
 }
 
