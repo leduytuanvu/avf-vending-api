@@ -169,7 +169,8 @@ INSERT INTO machine_device_attachments (
     metadata
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-    $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
+    $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32,
+    COALESCE(NULLIF($33::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING id, machine_id, previous_attachment_id, status, reason, attached_at, detached_at, attached_by_account_id, operator_session_id, correlation_id, android_id, android_serial, board_serial, device_serial, sim_serial, sim_iccid, sim_operator, sim_country_iso, manufacturer, brand, model, device_model, hardware, product, android_release, sdk_int, package_name, version_name, version_code, app_build_sha, boot_id, network_type, network_state, ip_address, user_agent, metadata, created_at, updated_at
 `
@@ -207,7 +208,7 @@ type InsertMachineDeviceAttachmentParams struct {
 	NetworkState         pgtype.Text
 	IpAddress            *netip.Addr
 	UserAgent            pgtype.Text
-	Metadata             []byte
+	Metadata             string
 }
 
 func (q *Queries) InsertMachineDeviceAttachment(ctx context.Context, arg InsertMachineDeviceAttachmentParams) (MachineDeviceAttachment, error) {

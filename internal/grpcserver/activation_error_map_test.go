@@ -66,6 +66,28 @@ func TestMapActivationErrorMachineNotEligible(t *testing.T) {
 	}
 }
 
+func TestMapActivationErrorJSONBindFailedPrecondition(t *testing.T) {
+	t.Parallel()
+	pgErr := &pgconn.PgError{
+		Code:    "22P02",
+		Message: "invalid input syntax for type json",
+	}
+	got := mapActivationError(pgErr)
+	st, ok := status.FromError(got)
+	if !ok {
+		t.Fatal("expected grpc status")
+	}
+	if st.Code() != codes.FailedPrecondition {
+		t.Fatalf("code=%s", st.Code())
+	}
+	if st.Message() != "activation_storage_json_invalid" {
+		t.Fatalf("message=%q", st.Message())
+	}
+	if strings.Contains(st.Message(), "invalid input") {
+		t.Fatal("public status must not include the original postgres message")
+	}
+}
+
 func TestMapActivationErrorUnknownRemainsInternal(t *testing.T) {
 	t.Parallel()
 	original := errors.New("db exploded")
