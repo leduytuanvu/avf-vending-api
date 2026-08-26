@@ -299,7 +299,7 @@ VALUES (
     $5,
     $6,
     $7,
-    $8
+    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, cabinet_code) DO UPDATE
 SET
@@ -337,7 +337,7 @@ VALUES (
     $2,
     $3,
     $4,
-    $5,
+    COALESCE(NULLIF($5::text, '')::jsonb, '{}'::jsonb),
     $6
 )
 ON CONFLICT (machine_id, machine_cabinet_id, layout_key, revision) DO UPDATE
