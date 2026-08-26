@@ -33,6 +33,7 @@ RUN mkdir -p /out && \
 
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates tzdata curl \
+    && apk upgrade --no-cache libcrypto3 libssl3 openssl \
     && addgroup -S avf && adduser -S avf -G avf
 
 WORKDIR /app
