@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -286,7 +287,7 @@ func (s *Service) attachOrReplaceDeviceTx(ctx context.Context, qtx *db.Queries, 
 		NetworkState:         pgText(in.Identity.NetworkState),
 		IpAddress:            ip,
 		UserAgent:            pgText(in.Identity.UserAgent),
-		Metadata:             meta,
+		Metadata:             pgjson.RequiredString(meta),
 	})
 	if err != nil {
 		return db.MachineDeviceAttachment{}, err

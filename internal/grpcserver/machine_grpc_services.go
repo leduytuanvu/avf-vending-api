@@ -206,6 +206,10 @@ func mapActivationError(err error) error {
 		slog.Warn("activation_claim_mqtt_provisioning_failed", "err", err)
 		return status.Error(codes.Unavailable, "mqtt_provisioning_failed")
 	default:
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr != nil && pgErr.Code == "22P02" {
+			return status.Error(codes.FailedPrecondition, "activation_storage_json_invalid")
+		}
 		return status.Error(codes.Internal, "internal")
 	}
 }

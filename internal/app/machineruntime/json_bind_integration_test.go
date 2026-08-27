@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
@@ -218,4 +219,66 @@ func TestHeartbeatRuntimeAppSession_RejectsMalformedJSON(t *testing.T) {
 	require.Error(t, err)
 	require.NotEqual(t, "22P02", pgSQLState(err))
 	require.ErrorIs(t, err, ErrInvalidRuntimeJSON)
+}
+
+// Uncast jsonb INSERT matching production sqlc before the device-attachment metadata text→jsonb cast.
+const uncastInsertMachineDeviceAttachmentSQL = `
+INSERT INTO machine_device_attachments (
+    machine_id, previous_attachment_id, status, reason,
+    attached_by_account_id, operator_session_id, correlation_id,
+    android_id, android_serial, board_serial, device_serial,
+    sim_serial, sim_iccid, sim_operator, sim_country_iso,
+    manufacturer, brand, model, device_model, hardware, product,
+    android_release, sdk_int, package_name, version_name, version_code,
+    app_build_sha, boot_id, network_type, network_state, ip_address, user_agent,
+    metadata
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+    $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
+)
+RETURNING id
+`
+
+func TestPgxExecMode_UncastDeviceAttachmentMetadata_Returns22P02(t *testing.T) {
+	pool := runtimeSessionPool(t, pgx.QueryExecModeExec)
+	ctx := context.Background()
+	machineID := insertRuntimeSessionTestMachine(t, pool)
+	emptyUUID := pgtype.UUID{}
+	emptyText := pgtype.Text{}
+	err := pool.QueryRow(ctx, uncastInsertMachineDeviceAttachmentSQL,
+		machineID,
+		emptyUUID,
+		"active",
+		"first_install",
+		emptyUUID,
+		emptyUUID,
+		emptyUUID,
+		emptyText, emptyText, emptyText, emptyText,
+		emptyText, emptyText, emptyText, emptyText,
+		emptyText, emptyText, emptyText, emptyText, emptyText, emptyText,
+		emptyText, pgtype.Int4{}, emptyText, emptyText, pgtype.Int8{},
+		emptyText, emptyText, emptyText, emptyText, nil, emptyText,
+		[]byte(`{"activation_source":"activation_code"}`),
+	).Scan(new(uuid.UUID))
+	require.Error(t, err, "[]byte jsonb under QueryExecModeExec must fail")
+	require.Equal(t, "22P02", pgSQLState(err), "got %v", err)
+	require.Contains(t, err.Error(), "json")
+}
+
+func TestEnsureActivationDeviceAttachment_QueryExecModeExec(t *testing.T) {
+	pool := runtimeSessionPool(t, pgx.QueryExecModeExec)
+	ctx := context.Background()
+	machineID := insertRuntimeSessionTestMachine(t, pool)
+	svc, err := NewService(Deps{Pool: pool})
+	require.NoError(t, err)
+	q := db.New(pool)
+	row, err := svc.EnsureActivationDeviceAttachmentInTx(ctx, q, ActivationAttachInput{
+		MachineID:        machineID,
+		FingerprintJSON:  json.RawMessage(`{"android_id":"aid-jsonb","board_serial":"board-jsonb"}`),
+		Reason:           "first_install",
+		ActivationSource: "activation_code",
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, uuid.Nil, row.ID)
+	require.JSONEq(t, `{"activation_source":"activation_code"}`, string(row.Metadata))
 }
