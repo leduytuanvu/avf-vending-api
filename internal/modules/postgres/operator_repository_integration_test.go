@@ -2,15 +2,18 @@ package postgres_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/operator"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/id"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -498,4 +501,31 @@ func TestOperatorRepository_EndOperatorSession_revokedForcedClose(t *testing.T) 
 	require.Equal(t, domainoperator.SessionStatusRevoked, ended.Status)
 	require.NotNil(t, ended.EndedReason)
 	require.Equal(t, reason, *ended.EndedReason)
+}
+
+func TestInsertMachineActionAttribution_QueryExecModeExec(t *testing.T) {
+	pool := execModePool(t)
+	ctx := context.Background()
+	q := db.New(pool)
+
+	meta, err := json.Marshal(map[string]any{
+		"action_origin": "api",
+		"action_domain": "setup",
+		"action_type":   "setup.topology_upsert",
+		"resource_type": "machine_cabinets",
+		"note":          "json bind regression",
+	})
+	require.NoError(t, err)
+
+	row, err := q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
+		OccurredAt:       time.Now().UTC(),
+		MachineID:        testfixtures.DevMachineID,
+		ActionOriginType: domainoperator.ActionOriginAPI,
+		ResourceType:     "machine_cabinets",
+		ResourceID:       testfixtures.DevMachineID.String(),
+		Metadata:         pgjson.RequiredString(meta),
+	})
+	require.NoError(t, err)
+	require.Greater(t, row.ID, int64(0))
+	require.True(t, json.Valid(row.Metadata))
 }

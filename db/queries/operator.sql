@@ -292,14 +292,14 @@ INSERT INTO machine_action_attributions (
     metadata,
     correlation_id
 ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    COALESCE($6::timestamptz, now()),
-    $7,
-    $8
+    sqlc.narg('operator_session_id'),
+    sqlc.arg('machine_id'),
+    sqlc.arg('action_origin_type'),
+    sqlc.arg('resource_type'),
+    sqlc.arg('resource_id'),
+    COALESCE(sqlc.arg('occurred_at')::timestamptz, now()),
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.narg('correlation_id')
 )
 RETURNING
     id,
