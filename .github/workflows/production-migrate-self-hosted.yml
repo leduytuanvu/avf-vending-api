@@ -127,8 +127,20 @@ jobs:
           compose_file="${deploy_root}/deployments/prod/app-node/docker-compose.app-node.yml"
           env_file="${deploy_root}/deployments/prod/app-node/.env.app-node"
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "test -f '${compose_file}' && test -f '${env_file}' && \
-             cd '${deploy_root}' && GITHUB_ACTIONS=true bash scripts/deploy/production-migrate.sh \
+            "set -Eeuo pipefail
+             test -f '${compose_file}' && test -f '${env_file}'
+             api_container=\$(docker ps --format '{{.Names}}' | grep -E 'api' | head -n1)
+             database_url=\$(docker inspect \"\${api_container}\" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^DATABASE_URL=' | tail -n1 | cut -d= -f2- | tr -d '\r')
+             backup_url=\$(python3 - \"\${database_url}\" <<'PY'
+          import sys
+          from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+          u = urlparse(sys.argv[1])
+          drop = {'default_query_exec_mode', 'pgbouncer'}
+          q = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True) if k not in drop]
+          print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(q), u.fragment)))
+          PY
+          )
+             cd '${deploy_root}' && GITHUB_ACTIONS=true BACKUP_DATABASE_URL=\"\${backup_url}\" bash scripts/deploy/production-migrate.sh \
                --compose-file '${compose_file}' \
                --env-file '${env_file}'"
 
