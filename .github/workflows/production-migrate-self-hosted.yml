@@ -14,6 +14,9 @@ on:
         default: false
         type: boolean
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: read
 
@@ -25,8 +28,10 @@ jobs:
   migrate-on-app-node:
     name: Migrate on app-node A
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
     steps:
       - name: Validate confirmation
         shell: bash
@@ -38,49 +43,104 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
       - name: Sync migration scripts to deploy root
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          sudo mkdir -p "${deploy_root}"
-          sudo tar -cf - migrations scripts/deploy/production-migrate.sh \
-            scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
-            scripts/ops/verify-production-payment-validation-status.sh \
-            deployments/prod/shared/scripts/lib_release.sh \
-            | sudo tar -xf - -C "${deploy_root}"
-          sudo chmod +x \
-            "${deploy_root}/scripts/deploy/production-migrate.sh" \
-            "${deploy_root}/scripts/verify_database_environment.sh" \
-            "${deploy_root}/scripts/db/verify_database_environment.sh" \
-            "${deploy_root}/scripts/ops/verify-production-payment-validation-status.sh"
+          sync_tar="$(mktemp)"
+          tar -cf "${sync_tar}" migrations \
+            scripts/deploy/production-migrate.sh \
+            scripts/verify_database_environment.sh \
+            scripts/db/verify_database_environment.sh \
+            scripts/ops/verify-production-payment-validation-status.sh
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+              '${deploy_root}/scripts/deploy/production-migrate.sh' \
+              '${deploy_root}/scripts/verify_database_environment.sh' \
+              '${deploy_root}/scripts/db/verify_database_environment.sh' \
+              '${deploy_root}/scripts/ops/verify-production-payment-validation-status.sh'"
+          rm -f "${sync_tar}"
 
-      - name: Run production migration
+      - name: Log in to GHCR for image pull
         if: ${{ github.event.inputs.verify_only != true }}
         shell: bash
         env:
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${GHCR_PULL_USERNAME}" && -n "${GHCR_PULL_TOKEN}" ]] || {
+            echo "error: GHCR_PULL_USERNAME / GHCR_PULL_TOKEN required for image pull" >&2
+            exit 1
+          }
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "echo '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
+
+      - name: Run production migration
+        if: ${{ github.event.inputs.verify_only != true }}
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          app_dir="${deploy_root}/deployments/prod/app-node"
-          compose_file="${app_dir}/docker-compose.app-node.yml"
-          env_file="${app_dir}/.env.app-node"
-          [[ -f "${compose_file}" ]] || { echo "error: missing ${compose_file}"; exit 1; }
-          [[ -f "${env_file}" ]] || { echo "error: missing ${env_file}"; exit 1; }
-          if [[ -n "${GHCR_PULL_USERNAME:-}" && -n "${GHCR_PULL_TOKEN:-}" ]]; then
-            echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
-          fi
-          bash "${deploy_root}/scripts/deploy/production-migrate.sh" \
-            --compose-file "${compose_file}" \
-            --env-file "${env_file}"
+          compose_file="${deploy_root}/deployments/prod/app-node/docker-compose.app-node.yml"
+          env_file="${deploy_root}/deployments/prod/app-node/.env.app-node"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "test -f '${compose_file}' && test -f '${env_file}' && \
+             cd '${deploy_root}' && GITHUB_ACTIONS=true bash scripts/deploy/production-migrate.sh \
+               --compose-file '${compose_file}' \
+               --env-file '${env_file}'"
 
       - name: Verify payment validation_status constraint
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          bash "${PRODUCTION_DEPLOY_ROOT}/scripts/ops/verify-production-payment-validation-status.sh"
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/verify-production-payment-validation-status.sh"
 
       - name: Public health check
         shell: bash
