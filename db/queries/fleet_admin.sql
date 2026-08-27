@@ -411,7 +411,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    COALESCE(NULLIF(sqlc.arg('meta')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -425,13 +425,13 @@ RETURNING
 -- name: FleetAdminUpdateAssortment :one
 UPDATE assortments
 SET
-    name = $1,
-    status = $2,
-    description = $3,
-    meta = $4,
+    name = sqlc.arg('name'),
+    status = sqlc.arg('status'),
+    description = sqlc.arg('description'),
+    meta = COALESCE(NULLIF(sqlc.arg('meta')::text, '')::jsonb, '{}'::jsonb),
     updated_at = now()
 WHERE
-    id = $5
+    id = sqlc.arg('id')
     AND TRUE
 RETURNING
     id,
@@ -453,7 +453,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    COALESCE(NULLIF(sqlc.arg('notes')::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (assortment_id, product_id) DO UPDATE
 SET
@@ -561,7 +561,7 @@ VALUES (
     $8,
     $9,
     TRUE,
-    $10
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -671,7 +671,7 @@ VALUES (
     $8,
     $9,
     FALSE,
-    $10
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,

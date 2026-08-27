@@ -48,7 +48,7 @@ func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 		Name:        "pricing-promo-e2e-" + uuid.NewString(),
 		Status:      "published",
 		Description: "",
-		Meta:        []byte(`{}`),
+		Meta:        `{}`,
 	})
 	require.NoError(t, err)
 	assortmentID := assRow.ID
@@ -58,7 +58,7 @@ func TestPricingPromotion_catalogOrderPaymentAmountAlignment(t *testing.T) {
 		AssortmentID: assortmentID,
 		ProductID:    testfixtures.DevProductWater,
 		SortOrder:    1,
-		Notes:        []byte(`{}`),
+		Notes:        `{}`,
 	})
 	require.NoError(t, err)
 	arepo := postgres.NewAssortmentRepository(pool)

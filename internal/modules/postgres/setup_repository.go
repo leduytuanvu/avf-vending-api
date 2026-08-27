@@ -141,7 +141,7 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 			Name:        fmt.Sprintf("Published slots — machine %s", machineID.String()),
 			Status:      "published",
 			Description: "Auto-created when admin publishes machine slot configs so commerce can resolve primary assortment.",
-			Meta:        []byte(`{}`),
+			Meta:        pgjson.RequiredString([]byte(`{}`)),
 		})
 		if err != nil {
 			return err
@@ -166,7 +166,7 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 			AssortmentID: assortmentID,
 			ProductID:    pid,
 			SortOrder:    int32(i),
-			Notes:        []byte(`{}`),
+			Notes:        pgjson.RequiredString([]byte(`{}`)),
 		}); err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 		}
 
 		eff := effectiveFromOrNow(it.EffectiveFrom)
-		meta := defaultJSONB(it.Metadata)
+		meta := pgjson.RequiredString(it.Metadata)
 
 		if in.PublishAsCurrent {
 			_, err = q.FleetAdminApplyMachineSlotConfigCurrent(ctx, db.FleetAdminApplyMachineSlotConfigCurrentParams{

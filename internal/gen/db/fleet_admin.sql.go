@@ -49,7 +49,7 @@ VALUES (
     $8,
     $9,
     TRUE,
-    $10
+    COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -79,7 +79,7 @@ type FleetAdminApplyMachineSlotConfigCurrentParams struct {
 	MaxQuantity         int32
 	PriceMinor          int64
 	EffectiveFrom       time.Time
-	Metadata            []byte
+	Metadata            string
 }
 
 func (q *Queries) FleetAdminApplyMachineSlotConfigCurrent(ctx context.Context, arg FleetAdminApplyMachineSlotConfigCurrentParams) (MachineSlotConfig, error) {
@@ -562,7 +562,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -578,7 +578,7 @@ type FleetAdminInsertAssortmentParams struct {
 	Name        string
 	Status      string
 	Description string
-	Meta        []byte
+	Meta        string
 }
 
 func (q *Queries) FleetAdminInsertAssortment(ctx context.Context, arg FleetAdminInsertAssortmentParams) (Assortment, error) {
@@ -626,7 +626,7 @@ VALUES (
     $8,
     $9,
     FALSE,
-    $10
+    COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -656,7 +656,7 @@ type FleetAdminInsertMachineSlotConfigDraftParams struct {
 	MaxQuantity         int32
 	PriceMinor          int64
 	EffectiveFrom       time.Time
-	Metadata            []byte
+	Metadata            string
 }
 
 func (q *Queries) FleetAdminInsertMachineSlotConfigDraft(ctx context.Context, arg FleetAdminInsertMachineSlotConfigDraftParams) (MachineSlotConfig, error) {
@@ -1495,7 +1495,7 @@ SET
     name = $1,
     status = $2,
     description = $3,
-    meta = $4,
+    meta = COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb),
     updated_at = now()
 WHERE
     id = $5
@@ -1514,7 +1514,7 @@ type FleetAdminUpdateAssortmentParams struct {
 	Name        string
 	Status      string
 	Description string
-	Meta        []byte
+	Meta        string
 	ID          uuid.UUID
 }
 
@@ -1550,7 +1550,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (assortment_id, product_id) DO UPDATE
 SET
@@ -1569,7 +1569,7 @@ type FleetAdminUpsertAssortmentItemParams struct {
 	AssortmentID uuid.UUID
 	ProductID    uuid.UUID
 	SortOrder    int32
-	Notes        []byte
+	Notes        string
 }
 
 func (q *Queries) FleetAdminUpsertAssortmentItem(ctx context.Context, arg FleetAdminUpsertAssortmentItemParams) (AssortmentItem, error) {

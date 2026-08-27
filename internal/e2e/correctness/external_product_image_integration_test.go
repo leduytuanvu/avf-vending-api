@@ -95,7 +95,7 @@ func TestExternalProductImage_registerBindMachineCatalog(t *testing.T) {
 	assRow, err := q.FleetAdminInsertAssortment(ctx, db.FleetAdminInsertAssortmentParams{
 		Name:   "ext-img-" + uuid.NewString(),
 		Status: "published",
-		Meta:   []byte(`{}`),
+		Meta:   `{}`,
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() {
@@ -107,7 +107,7 @@ func TestExternalProductImage_registerBindMachineCatalog(t *testing.T) {
 		AssortmentID: assRow.ID,
 		ProductID:    prod.ID,
 		SortOrder:    1,
-		Notes:        []byte(`{}`),
+		Notes:        `{}`,
 	})
 	require.NoError(t, err)
 	arepo := postgres.NewAssortmentRepository(pool)

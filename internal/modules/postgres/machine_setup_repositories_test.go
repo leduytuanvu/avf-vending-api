@@ -106,6 +106,85 @@ func TestSetupRepository_UpsertMachineTopology_QueryExecModeExec(t *testing.T) {
 	require.JSONEq(t, string(metadata), string(cabs[0].Metadata))
 }
 
+func TestSetupRepository_SaveDraftOrCurrentSlotConfigs_QueryExecModeExec(t *testing.T) {
+	pool := execModePool(t)
+	ctx := context.Background()
+	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, uuid.Nil)
+
+	repo := postgres.NewSetupRepository(pool)
+	metadata := []byte("{}")
+	require.NoError(t, repo.UpsertMachineTopology(ctx, testfixtures.DevMachineID,
+		[]setupapp.CabinetUpsert{{
+			Code:      "A",
+			Title:     "Cabinet A",
+			SortOrder: 1,
+			Metadata:  metadata,
+		}},
+		[]setupapp.TopologyLayoutUpsert{{
+			CabinetCode: "A",
+			LayoutKey:   "default",
+			Revision:    1,
+			LayoutSpec:  []byte(`{"rows":6,"cols":10}`),
+			Status:      "published",
+		}},
+	))
+
+	slotIdx := int32(1)
+	prod := testfixtures.DevProductCola
+	require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+		PlanogramID:       testfixtures.DevPlanogramID,
+		PlanogramRevision: 1,
+		PublishAsCurrent:  false,
+		Items: []setupapp.SlotConfigSaveItem{{
+			CabinetCode:     "A",
+			LayoutKey:       "default",
+			LayoutRevision:  1,
+			SlotCode:        "S1",
+			LegacySlotIndex: &slotIdx,
+			MaxQuantity:     10,
+			PriceMinor:      100,
+			Metadata:        metadata,
+		}},
+	}))
+
+	q := db.New(pool)
+	var draftMeta []byte
+	err := pool.QueryRow(ctx,
+		`SELECT metadata FROM machine_slot_configs WHERE machine_id = $1 AND is_current = false LIMIT 1`,
+		testfixtures.DevMachineID,
+	).Scan(&draftMeta)
+	require.NoError(t, err)
+	require.JSONEq(t, string(metadata), string(draftMeta))
+
+	require.NoError(t, repo.SaveDraftOrCurrentSlotConfigs(ctx, testfixtures.DevMachineID, setupapp.SlotConfigSaveInput{
+		PlanogramID:         testfixtures.DevPlanogramID,
+		PlanogramRevision:   1,
+		PublishAsCurrent:    true,
+		SyncLegacyReadModel: true,
+		Items: []setupapp.SlotConfigSaveItem{{
+			CabinetCode:     "A",
+			LayoutKey:       "default",
+			LayoutRevision:  1,
+			SlotCode:        "S1",
+			LegacySlotIndex: &slotIdx,
+			ProductID:       &prod,
+			MaxQuantity:     10,
+			PriceMinor:      100,
+			Metadata:        metadata,
+		}},
+	}))
+
+	current, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	require.NotEmpty(t, current)
+	require.JSONEq(t, string(metadata), string(current[0].Metadata))
+
+	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	require.NotEmpty(t, arows)
+	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, arows[0].AssortmentID)
+}
+
 func TestSetupRepository_UpsertMachineTopology(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
@@ -150,7 +229,7 @@ func TestAssortmentRepository_BindMachineAssortment(t *testing.T) {
 		Name:        "test-assort-" + uuid.NewString(),
 		Status:      "published",
 		Description: "",
-		Meta:        []byte(`{}`),
+		Meta:        `{}`,
 	})
 	require.NoError(t, err)
 	assortmentID := assRow.ID
@@ -160,7 +239,7 @@ func TestAssortmentRepository_BindMachineAssortment(t *testing.T) {
 		AssortmentID: assortmentID,
 		ProductID:    testfixtures.DevProductCola,
 		SortOrder:    1,
-		Notes:        []byte(`{}`),
+		Notes:        `{}`,
 	})
 	require.NoError(t, err)
 
