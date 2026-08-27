@@ -202,7 +202,7 @@ WHERE
 
             AND e.ingress_status = 'applied'
 
-            AND e.validation_status IN ('hmac_verified', 'unsigned_development')
+            AND e.validation_status IN ('hmac_verified', 'unsigned_development', 'provider_native_verified')
 
     )
 

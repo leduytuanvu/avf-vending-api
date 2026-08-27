@@ -1064,7 +1064,8 @@ CREATE TABLE payment_provider_events (
             validation_status IN (
                 'hmac_verified',
                 'unsigned_development',
-                'invalid_signature'
+                'invalid_signature',
+                'provider_native_verified'
             )
         ),
     provider_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,

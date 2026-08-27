@@ -19,7 +19,8 @@ type ApplyPaymentProviderWebhookInput struct {
 	Payload                []byte
 	ProviderAmountMinor    *int64
 	Currency               *string
-	// WebhookValidationStatus is persisted on payment_provider_events.validation_status (hmac_verified | unsigned_development).
+	// WebhookValidationStatus is persisted on payment_provider_events.validation_status
+	// (hmac_verified | unsigned_development | provider_native_verified).
 	WebhookValidationStatus string
 	// ProviderMetadata is optional non-secret JSON metadata stored on payment_provider_events.provider_metadata.
 	ProviderMetadata []byte
