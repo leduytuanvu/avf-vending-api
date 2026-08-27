@@ -2164,7 +2164,7 @@ func DocOpV1SetupActivationClaimPost() {}
 // @Accept json
 // @Produce json
 // @Param machineId path string true "Machine UUID"
-// @Param body body object true "optional operator_session_id, cabinets[], layouts[]"
+// @Param body body object true "optional operator_session_id, cabinets[], layouts[] (layouts[].status: draft|published|archived; omitted defaults to published)"
 // @Success 204 {string} string "No Content"
 // @Failure 400 {object} V1StandardError
 // @Failure 401 {object} V1BearerAuthError

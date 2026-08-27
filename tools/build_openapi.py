@@ -3788,10 +3788,10 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "layouts": [
             {
                 "cabinetCode": "A",
-                "layoutKey": "grid-4x6",
+                "layoutKey": "grid-10x6",
                 "revision": 1,
-                "layoutSpec": {"rows": 4, "cols": 6},
-                "status": "active",
+                "layoutSpec": {"rows": 6, "cols": 10},
+                "status": "published",
             }
         ],
     }

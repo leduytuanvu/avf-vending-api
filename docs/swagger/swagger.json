@@ -21843,13 +21843,13 @@
                 "layouts": [
                   {
                     "cabinetCode": "A",
-                    "layoutKey": "grid-4x6",
+                    "layoutKey": "grid-10x6",
                     "layoutSpec": {
-                      "cols": 6,
-                      "rows": 4
+                      "cols": 10,
+                      "rows": 6
                     },
                     "revision": 1,
-                    "status": "active"
+                    "status": "published"
                   }
                 ],
                 "operator_session_id": "dddddddd-eeee-ffff-0000-111111111111"
@@ -21859,7 +21859,7 @@
               }
             }
           },
-          "description": "optional operator_session_id, cabinets[], layouts[]",
+          "description": "optional operator_session_id, cabinets[], layouts[] (layouts[].status: draft|published|archived; omitted defaults to published)",
           "required": true
         },
         "responses": {
