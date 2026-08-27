@@ -206,3 +206,56 @@ func TestApplyPaymentProviderWebhook_redactsSensitivePaymentPayload(t *testing.T
 		t.Fatalf("metadata not redacted: %s", string(persist.got.ProviderMetadata))
 	}
 }
+
+func TestApplyPaymentProviderWebhook_acceptsProviderNativeVerified(t *testing.T) {
+	persist := &captureWebhookPersistence{}
+	s := &Service{
+		orders:    stubOrderVend{},
+		payments:  stubPaymentOutbox{},
+		life:      stubLifecycle{},
+		webhook:   persist,
+		saleLines: stubSaleLines{},
+	}
+	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
+		OrderID:                 id.NewUUIDV7(),
+		PaymentID:               id.NewUUIDV7(),
+		Provider:                "momo",
+		ProviderReference:       "momo-native-ref",
+		WebhookEventID:          "wh_evt_native",
+		EventType:               "provider.native",
+		NormalizedPaymentState:  "captured",
+		Payload:                 []byte(`{"resultCode":0}`),
+		WebhookValidationStatus: "provider_native_verified",
+		ProviderMetadata:        []byte(`{"delivery":{"mode":"provider_native"}}`),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persist.got.WebhookValidationStatus != "provider_native_verified" {
+		t.Fatalf("got validation %q want provider_native_verified", persist.got.WebhookValidationStatus)
+	}
+}
+
+func TestApplyPaymentProviderWebhook_rejectsUnknownValidationStatus(t *testing.T) {
+	s := &Service{
+		orders:    stubOrderVend{},
+		payments:  stubPaymentOutbox{},
+		life:      stubLifecycle{},
+		webhook:   &captureWebhookPersistence{},
+		saleLines: stubSaleLines{},
+	}
+	_, err := s.ApplyPaymentProviderWebhook(context.Background(), ApplyPaymentProviderWebhookInput{
+		OrderID:                 id.NewUUIDV7(),
+		PaymentID:               id.NewUUIDV7(),
+		Provider:                "momo",
+		ProviderReference:       "momo-bad-ref",
+		WebhookEventID:          "wh_evt_bad_validation",
+		EventType:               "provider.native",
+		NormalizedPaymentState:  "captured",
+		Payload:                 []byte(`{}`),
+		WebhookValidationStatus: "totally_invalid",
+	})
+	if !errors.Is(err, ErrInvalidArgument) {
+		t.Fatalf("got %v want ErrInvalidArgument", err)
+	}
+}

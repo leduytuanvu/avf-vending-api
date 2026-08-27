@@ -231,7 +231,7 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	if len(meta) == 0 {
 		meta = []byte(`{}`)
 	}
-	sigOK := vstat == "hmac_verified" || vstat == "unsigned_development"
+	sigOK := vstat == "hmac_verified" || vstat == "unsigned_development" || vstat == "provider_native_verified"
 	now := time.Now().UTC()
 	applied := pgtype.Timestamptz{Time: now, Valid: true}
 

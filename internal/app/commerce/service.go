@@ -748,7 +748,7 @@ func (s *Service) ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPayme
 	payload = compliance.SanitizeJSONBytes(payload)
 	vstat := strings.TrimSpace(in.WebhookValidationStatus)
 	switch vstat {
-	case "", "hmac_verified", "unsigned_development":
+	case "", "hmac_verified", "unsigned_development", "provider_native_verified":
 	default:
 		return ApplyPaymentProviderWebhookResult{}, errors.Join(ErrInvalidArgument, errors.New("invalid webhook validation_status"))
 	}

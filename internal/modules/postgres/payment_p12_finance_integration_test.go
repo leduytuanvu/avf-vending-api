@@ -83,6 +83,69 @@ func TestPaymentP12_webhookStoresIngressAndOrg(t *testing.T) {
 	require.NotContains(t, string(row.Payload), "4242424242424242")
 }
 
+func TestPaymentP12_webhookProviderNativeVerified_capturedMarksPaid(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+
+	orderIDem := "p12-native-" + uuid.NewString()
+	orderRes, err := store.CreateOrderWithVendSession(ctx, commerce.CreateOrderVendInput{
+		MachineID:      testfixtures.DevMachineID,
+		ProductID:      testfixtures.DevProductWater,
+		SlotIndex:      2,
+		Currency:       "VND",
+		SubtotalMinor:  1000,
+		TaxMinor:       0,
+		TotalMinor:     1000,
+		IdempotencyKey: orderIDem,
+		OrderStatus:    "created",
+		VendState:      "pending",
+	})
+	require.NoError(t, err)
+
+	payIDem := orderIDem + ":pay"
+	outIDem := orderIDem + ":out:" + orderRes.Order.ID.String()
+	payRes, err := store.CreatePaymentWithOutbox(ctx, commerce.PaymentOutboxInput{
+		OrderID:              orderRes.Order.ID,
+		Provider:             "momo",
+		PaymentState:         "created",
+		AmountMinor:          1000,
+		Currency:             "VND",
+		IdempotencyKey:       payIDem,
+		OutboxTopic:          "commerce.payments",
+		OutboxEventType:      "payment.session_started",
+		OutboxPayload:        []byte(`{}`),
+		OutboxAggregateType:  "payment",
+		OutboxAggregateID:    orderRes.Order.ID,
+		OutboxIdempotencyKey: outIDem,
+	})
+	require.NoError(t, err)
+
+	evID := "evt-native-" + uuid.NewString()
+	provRef := "prov-native-" + uuid.NewString()
+	_, err = store.ApplyPaymentProviderWebhook(ctx, appcommerce.ApplyPaymentProviderWebhookInput{
+		OrderID:                 orderRes.Order.ID,
+		PaymentID:               payRes.Payment.ID,
+		Provider:                "momo",
+		ProviderReference:       provRef,
+		WebhookEventID:          evID,
+		EventType:               "provider.native",
+		NormalizedPaymentState:  "captured",
+		Payload:                 []byte(`{"resultCode":0}`),
+		WebhookValidationStatus: "provider_native_verified",
+		ProviderMetadata:        []byte(`{"delivery":{"mode":"provider_native"}}`),
+	})
+	require.NoError(t, err)
+
+	ord, err := store.GetOrderByID(ctx, orderRes.Order.ID)
+	require.NoError(t, err)
+	require.Equal(t, "paid", ord.Status)
+
+	pay, err := store.GetPaymentByID(ctx, payRes.Payment.ID)
+	require.NoError(t, err)
+	require.Equal(t, "captured", pay.State)
+}
+
 func TestPaymentP12_settlementImport_idempotentAndMismatch(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()
