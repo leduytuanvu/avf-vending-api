@@ -140,7 +140,7 @@ jobs:
           print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(q), u.fragment)))
           PY
           )
-             cd '${deploy_root}' && GITHUB_ACTIONS=true DATABASE_URL=\"\${backup_url}\" BACKUP_DATABASE_URL=\"\${backup_url}\" bash scripts/deploy/production-migrate.sh \
+             cd '${deploy_root}' && GITHUB_ACTIONS=true BACKUP_DATABASE_URL=\"\${backup_url}\" bash scripts/deploy/production-migrate.sh \
                --compose-file '${compose_file}' \
                --env-file '${env_file}'"
 
