@@ -101,7 +101,7 @@ jobs:
           rm -f "${sync_tar}"
 
       - name: Log in to GHCR for image pull
-        if: ${{ github.event.inputs.verify_only != true }}
+        if: ${{ github.event.inputs.verify_only != 'true' }}
         shell: bash
         env:
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
@@ -117,7 +117,7 @@ jobs:
             "echo '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
 
       - name: Run production migration
-        if: ${{ github.event.inputs.verify_only != true }}
+        if: ${{ github.event.inputs.verify_only != 'true' }}
         shell: bash
         env:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
