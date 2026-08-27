@@ -319,7 +319,7 @@ INSERT INTO machine_action_attributions (
     $4,
     $5,
     COALESCE($6::timestamptz, now()),
-    $7,
+    COALESCE(NULLIF($7::text, '')::jsonb, '{}'::jsonb),
     $8
 )
 RETURNING
@@ -340,8 +340,8 @@ type InsertMachineActionAttributionParams struct {
 	ActionOriginType  string
 	ResourceType      string
 	ResourceID        string
-	Column6           time.Time
-	Metadata          []byte
+	OccurredAt        time.Time
+	Metadata          string
 	CorrelationID     pgtype.UUID
 }
 
@@ -352,7 +352,7 @@ func (q *Queries) InsertMachineActionAttribution(ctx context.Context, arg Insert
 		arg.ActionOriginType,
 		arg.ResourceType,
 		arg.ResourceID,
-		arg.Column6,
+		arg.OccurredAt,
 		arg.Metadata,
 		arg.CorrelationID,
 	)

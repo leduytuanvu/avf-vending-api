@@ -7,6 +7,7 @@ import (
 
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -365,14 +366,14 @@ func (r *OperatorRepository) InsertAuthEvent(ctx context.Context, in domainopera
 }
 
 func (r *OperatorRepository) InsertActionAttribution(ctx context.Context, in domainoperator.InsertActionAttributionParams) (domainoperator.ActionAttribution, error) {
-	row, err := db.New(r.pool).InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{Column6: ptrTimeOrNow(in.OccurredAt),
-
+	row, err := db.New(r.pool).InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
+		OccurredAt:        ptrTimeOrNow(in.OccurredAt),
 		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
 		MachineID:         in.MachineID,
 		ActionOriginType:  in.ActionOriginType,
 		ResourceType:      in.ResourceType,
 		ResourceID:        in.ResourceID,
-		Metadata:          defaultJSONB(in.Metadata),
+		Metadata:          pgjson.RequiredString(in.Metadata),
 		CorrelationID:     optionalUUIDToPg(in.CorrelationID),
 	})
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 )
 
@@ -75,13 +76,13 @@ func insertOperatorSessionAttribution(ctx context.Context, q *db.Queries, spec o
 	occAt := ptrTimeOrNow(spec.OccurredAt)
 
 	_, err = q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
-		Column6:           occAt,
+		OccurredAt:        occAt,
 		OperatorSessionID: optionalUUIDToPg(spec.OperatorSessionID),
 		MachineID:         spec.MachineID,
 		ActionOriginType:  domainoperator.ActionOriginOperatorSession,
 		ResourceType:      spec.ResourceTable,
 		ResourceID:        spec.ResourceID,
-		Metadata:          metaBytes,
+		Metadata:          pgjson.RequiredString(metaBytes),
 		CorrelationID:     optionalUUIDToPg(spec.CorrelationID),
 	})
 	if err != nil {

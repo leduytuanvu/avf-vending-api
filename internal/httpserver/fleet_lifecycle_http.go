@@ -14,6 +14,7 @@ import (
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -147,13 +148,13 @@ func recordLifecycleAuditAndAttribution(ctx context.Context, app *api.HTTPApplic
 		"reason":          out.Result.Reason,
 	})
 	_, _ = q.InsertMachineActionAttribution(ctx, db.InsertMachineActionAttributionParams{
-		Column6:           out.Result.OccurredAt,
+		OccurredAt:        out.Result.OccurredAt,
 		OperatorSessionID: pgtype.UUID{Bytes: *in.OperatorSessionID, Valid: true},
 		MachineID:         machineID,
 		ActionOriginType:  domainoperator.ActionOriginOperatorSession,
 		ResourceType:      "fleet.machine",
 		ResourceID:        machineID.String(),
-		Metadata:          metaBytes,
+		Metadata:          pgjson.RequiredString(metaBytes),
 		CorrelationID:     optionalUUIDPg(out.Result.CorrelationID),
 	})
 }
