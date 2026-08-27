@@ -127,6 +127,39 @@ read_env_value_from_file() {
 	printf '%s' "${line}"
 }
 
+find_running_api_container() {
+	docker ps --format '{{.Names}}' | grep -E 'api' | head -n1
+}
+
+read_database_url_from_running_api_container() {
+	local container="$1"
+	local val
+	[[ -n "${container}" ]] || return 1
+	val="$(docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' \
+		| grep -E '^DATABASE_URL=' | tail -n1 | cut -d= -f2- | tr -d '\r')"
+	[[ -n "${val}" ]] || return 1
+	printf '%s' "${val}"
+}
+
+resolve_database_url() {
+	local container val
+	if [[ -n "${DATABASE_URL:-}" ]]; then
+		return 0
+	fi
+	load_env_file "${COMPOSE_ENV_FILE}"
+	if [[ -n "${DATABASE_URL:-}" ]]; then
+		return 0
+	fi
+	container="$(find_running_api_container)"
+	if val="$(read_database_url_from_running_api_container "${container}")"; then
+		DATABASE_URL="${val}"
+		export DATABASE_URL
+		note "resolved DATABASE_URL from running api container (${container})"
+		return 0
+	fi
+	return 1
+}
+
 run_psql() {
 	local sql="$1"
 	docker run --rm \
@@ -259,10 +292,9 @@ if [[ -n "${COMPOSE_PROJECT_NAME}" ]]; then
 	COMPOSE+=(--project-name "${COMPOSE_PROJECT_NAME}")
 fi
 
-if [[ -z "${DATABASE_URL:-}" ]]; then
-	load_env_file "${COMPOSE_ENV_FILE}"
+if ! resolve_database_url; then
+	fail "DATABASE_URL is empty (not in env, ${COMPOSE_ENV_FILE}, or running api container)"
 fi
-[[ -n "${DATABASE_URL:-}" ]] || fail "DATABASE_URL is empty"
 
 if [[ -z "${BACKUP_DATABASE_URL:-}" ]]; then
 	BACKUP_DATABASE_URL="$(read_env_value_from_file "${COMPOSE_ENV_FILE}" "BACKUP_DATABASE_URL" || true)"
