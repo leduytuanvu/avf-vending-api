@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -48,7 +49,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	q := db.New(tx)
+	q := pgxutil.NewQueries(tx)
 	_, err = q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
@@ -112,7 +113,7 @@ func (r *SetupRepository) UpsertMachineTopology(ctx context.Context, machineID u
 // products on current slot configs after a publish: planogram routes write cabinet slots but checkout/pricing
 // also require assortment_items under the machine primary binding.
 func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, scopeID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
-	q := db.New(tx)
+	q := pgxutil.NewQueries(tx)
 
 	pidSeen := map[uuid.UUID]struct{}{}
 	for _, it := range in.Items {
@@ -175,7 +176,7 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 }
 
 func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
-	q := db.New(tx)
+	q := pgxutil.NewQueries(tx)
 	_, err := q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
@@ -340,7 +341,7 @@ func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, mac
 
 // GetMachineBootstrap loads machine, cabinets, primary assortment products, and current cabinet slot configs.
 func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uuid.UUID) (setupapp.MachineBootstrap, error) {
-	q := db.New(r.pool)
+	q := pgxutil.NewQueries(r.pool)
 	m, err := q.GetMachineByID(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
@@ -424,7 +425,7 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 
 // GetMachineSlotView returns legacy planogram slot rows plus current cabinet slot config rows.
 func (r *SetupRepository) GetMachineSlotView(ctx context.Context, machineID uuid.UUID) (setupapp.MachineSlotView, error) {
-	q := db.New(r.pool)
+	q := pgxutil.NewQueries(r.pool)
 	legacy, err := q.InventoryAdminListMachineSlots(ctx, machineID)
 	if err != nil {
 		return setupapp.MachineSlotView{}, err
