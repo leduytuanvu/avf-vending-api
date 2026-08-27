@@ -26,6 +26,21 @@ func TestPlanogramPublishPayload_roundtripJSON(t *testing.T) {
 	}
 }
 
+func TestTopologyLayoutStatusForWrite(t *testing.T) {
+	t.Parallel()
+	st, ok := topologyLayoutStatusForWrite("")
+	if !ok || st != "published" {
+		t.Fatalf("empty status: got %q ok=%v", st, ok)
+	}
+	st, ok = topologyLayoutStatusForWrite("published")
+	if !ok || st != "published" {
+		t.Fatalf("published: got %q ok=%v", st, ok)
+	}
+	if _, ok = topologyLayoutStatusForWrite("active"); ok {
+		t.Fatal("active must be rejected")
+	}
+}
+
 func TestAdminMachinePlanogramPublishCommandType_constant(t *testing.T) {
 	if adminMachinePlanogramPublishCommandType != "machine_planogram_publish" {
 		t.Fatalf("got %q", adminMachinePlanogramPublishCommandType)

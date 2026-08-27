@@ -801,6 +801,21 @@ type topologyLayoutJSON struct {
 	Status      string          `json:"status"`
 }
 
+// topologyLayoutStatusForWrite normalizes machine_slot_layouts.status for topology PUT.
+// Omitted/empty status defaults to published; invalid values are rejected before DB write.
+func topologyLayoutStatusForWrite(raw string) (string, bool) {
+	st := strings.TrimSpace(raw)
+	if st == "" {
+		return "published", true
+	}
+	switch st {
+	case "draft", "published", "archived":
+		return st, true
+	default:
+		return "", false
+	}
+}
+
 type planogramSlotBody struct {
 	OperatorSessionID   string                 `json:"operator_session_id"`
 	PlanogramID         string                 `json:"planogramId"`
@@ -888,12 +903,17 @@ func putAdminMachineTopology(app *api.HTTPApplication) http.HandlerFunc {
 				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_layout_spec", "layout layoutSpec must be JSON")
 				return
 			}
+			status, ok := topologyLayoutStatusForWrite(lay.Status)
+			if !ok {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_layout_status", "layout status must be draft, published, or archived")
+				return
+			}
 			layouts = append(layouts, setupapp.TopologyLayoutUpsert{
 				CabinetCode: strings.TrimSpace(lay.CabinetCode),
 				LayoutKey:   strings.TrimSpace(lay.LayoutKey),
 				Revision:    lay.Revision,
 				LayoutSpec:  spec,
-				Status:      strings.TrimSpace(lay.Status),
+				Status:      status,
 			})
 		}
 		if err := repo.UpsertMachineTopology(r.Context(), machineID, cabs, layouts); err != nil {
