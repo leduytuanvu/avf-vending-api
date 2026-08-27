@@ -103,6 +103,20 @@ print(urlunsplit((u.scheme, netloc, path, u.query, u.fragment)))
 PY
 }
 
+# pg_dump rejects some pooler-only query params (e.g. Supabase simple_protocol on :6543).
+sanitize_url_for_pg_tools() {
+	local url="$1"
+	python3 - "${url}" <<'PY'
+import sys
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+u = urlparse(sys.argv[1])
+drop = {"default_query_exec_mode", "pgbouncer"}
+query = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True) if k not in drop]
+print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(query), u.fragment)))
+PY
+}
+
 load_env_file() {
 	local path="$1"
 	[[ -f "${path}" ]] || fail "env file not found: ${path}"
@@ -301,11 +315,13 @@ if [[ -z "${BACKUP_DATABASE_URL:-}" ]]; then
 fi
 
 resolve_backup_database_url() {
+	local url
 	if [[ -n "${BACKUP_DATABASE_URL:-}" ]]; then
-		printf '%s' "${BACKUP_DATABASE_URL}"
+		url="${BACKUP_DATABASE_URL}"
 	else
-		printf '%s' "${DATABASE_URL}"
+		url="${DATABASE_URL}"
 	fi
+	sanitize_url_for_pg_tools "${url}"
 }
 
 is_pg_pool_exhausted() {
