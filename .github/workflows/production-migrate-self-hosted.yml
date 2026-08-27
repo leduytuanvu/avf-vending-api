@@ -38,23 +38,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Sync migration scripts to deploy root
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          sudo mkdir -p "${deploy_root}"
-          sudo tar -cf - migrations scripts/deploy/production-migrate.sh \
-            scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
-            scripts/ops/verify-production-payment-validation-status.sh \
-            deployments/prod/shared/scripts/lib_release.sh \
-            | sudo tar -xf - -C "${deploy_root}"
-          sudo chmod +x \
-            "${deploy_root}/scripts/deploy/production-migrate.sh" \
-            "${deploy_root}/scripts/verify_database_environment.sh" \
-            "${deploy_root}/scripts/db/verify_database_environment.sh" \
-            "${deploy_root}/scripts/ops/verify-production-payment-validation-status.sh"
-
       - name: Run production migration
         if: ${{ github.event.inputs.verify_only != true }}
         shell: bash
@@ -64,15 +47,18 @@ jobs:
         run: |
           set -Eeuo pipefail
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          app_dir="${deploy_root}/deployments/prod/app-node"
-          compose_file="${app_dir}/docker-compose.app-node.yml"
-          env_file="${app_dir}/.env.app-node"
+          checkout="${GITHUB_WORKSPACE}"
+          compose_file="${deploy_root}/deployments/prod/app-node/docker-compose.app-node.yml"
+          env_file="${deploy_root}/deployments/prod/app-node/.env.app-node"
           [[ -f "${compose_file}" ]] || { echo "error: missing ${compose_file}"; exit 1; }
           [[ -f "${env_file}" ]] || { echo "error: missing ${env_file}"; exit 1; }
+          chmod +x "${checkout}/scripts/deploy/production-migrate.sh"
           if [[ -n "${GHCR_PULL_USERNAME:-}" && -n "${GHCR_PULL_TOKEN:-}" ]]; then
             echo "${GHCR_PULL_TOKEN}" | docker login ghcr.io -u "${GHCR_PULL_USERNAME}" --password-stdin
           fi
-          bash "${deploy_root}/scripts/deploy/production-migrate.sh" \
+          export MIGRATION_LOG_DIR="${checkout}/.migration-logs"
+          mkdir -p "${MIGRATION_LOG_DIR}"
+          bash "${checkout}/scripts/deploy/production-migrate.sh" \
             --compose-file "${compose_file}" \
             --env-file "${env_file}"
 
@@ -80,7 +66,8 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          bash "${PRODUCTION_DEPLOY_ROOT}/scripts/ops/verify-production-payment-validation-status.sh"
+          chmod +x "${GITHUB_WORKSPACE}/scripts/ops/verify-production-payment-validation-status.sh"
+          bash "${GITHUB_WORKSPACE}/scripts/ops/verify-production-payment-validation-status.sh"
 
       - name: Public health check
         shell: bash
