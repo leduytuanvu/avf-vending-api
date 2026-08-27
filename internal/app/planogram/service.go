@@ -16,6 +16,7 @@ import (
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -124,7 +125,7 @@ func (s *Service) auditRecord(ctx context.Context, scopeID uuid.UUID, action str
 
 // GetSummary returns published pointer (if any) and drafts for the machine.
 func (s *Service) GetSummary(ctx context.Context, scopeID, machineID uuid.UUID) (*Summary, error) {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	meta, err := q.PlanogramGetPublishedMetaForMachine(ctx, machineID)
 	if err != nil {
 		return nil, err
@@ -169,7 +170,7 @@ func (s *Service) CreateDraft(ctx context.Context, scopeID, machineID uuid.UUID,
 	if _, err := snapshotBytesToSaveInput(snapshot, false); err != nil {
 		return uuid.Nil, err
 	}
-	row, err := db.New(s.pool).PlanogramInsertDraft(ctx, db.PlanogramInsertDraftParams{
+	row, err := pgxutil.NewQueries(s.pool).PlanogramInsertDraft(ctx, db.PlanogramInsertDraftParams{
 		MachineID: machineID,
 		Status:    draftStatusEditing,
 		Snapshot:  []byte(snapshot),
@@ -182,7 +183,7 @@ func (s *Service) CreateDraft(ctx context.Context, scopeID, machineID uuid.UUID,
 
 // PatchDraft replaces draft snapshot and optionally status.
 func (s *Service) PatchDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID, snapshot json.RawMessage, status *string) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	prev, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
 		ID:        draftID,
 		MachineID: machineID,
@@ -221,7 +222,7 @@ func (s *Service) PatchDraft(ctx context.Context, scopeID, machineID, draftID uu
 
 // ValidateDraft runs validation rules and marks the draft validated.
 func (s *Service) ValidateDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID) error {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	dr, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
 		ID:        draftID,
 		MachineID: machineID,
@@ -312,7 +313,7 @@ func validatePublishSnapshot(ctx context.Context, q *db.Queries, scopeID, machin
 
 // PublishDraft validates, writes an immutable version, applies runtime configs, snapshots machine_configs, and dispatches MQTT.
 func (s *Service) PublishDraft(ctx context.Context, scopeID, machineID, draftID uuid.UUID, idempotencyKey string, actorAccountID *uuid.UUID) (PublishResult, error) {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	dr, err := q.PlanogramGetMachineDraftByID(ctx, db.PlanogramGetMachineDraftByIDParams{
 		ID:        draftID,
 		MachineID: machineID,
@@ -340,7 +341,7 @@ func (s *Service) PublishDraft(ctx context.Context, scopeID, machineID, draftID 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	seq, err := qtx.PlanogramNextMachineVersionNo(ctx, machineID)
 	if err != nil {
 		return PublishResult{}, err
@@ -445,7 +446,7 @@ func insertVersionSlots(ctx context.Context, q *db.Queries, versionID uuid.UUID,
 
 // ListVersions returns immutable versions newest first.
 func (s *Service) ListVersions(ctx context.Context, scopeID, machineID uuid.UUID) ([]VersionListItem, error) {
-	rows, err := db.New(s.pool).PlanogramListVersionsForMachine(ctx, machineID)
+	rows, err := pgxutil.NewQueries(s.pool).PlanogramListVersionsForMachine(ctx, machineID)
 	if err != nil {
 		return nil, err
 	}
@@ -469,7 +470,7 @@ func (s *Service) ListVersions(ctx context.Context, scopeID, machineID uuid.UUID
 
 // Rollback repoints the published pointer to a prior immutable version and reapplies runtime configs.
 func (s *Service) Rollback(ctx context.Context, scopeID, machineID, versionID uuid.UUID, idempotencyKey string) (PublishResult, error) {
-	q := db.New(s.pool)
+	q := pgxutil.NewQueries(s.pool)
 	vrow, err := q.PlanogramGetVersionByIDForMachine(ctx, db.PlanogramGetVersionByIDForMachineParams{
 		ID:        versionID,
 		MachineID: machineID,
@@ -495,7 +496,7 @@ func (s *Service) Rollback(ctx context.Context, scopeID, machineID, versionID uu
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := db.New(tx)
+	qtx := pgxutil.NewQueries(tx)
 	if err := qtx.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{PublishedPlanogramVersionID: pgtype.UUID{Bytes: vrow.ID, Valid: true},
 
 		ID: machineID,

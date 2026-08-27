@@ -104,6 +104,24 @@ func TestUUIDArray_codecOnly_noWrap(t *testing.T) {
 	require.NoError(t, err, "codec-only uuid[] media readiness")
 }
 
+func TestRuntimeProductPrimaryMediaReady_uuidArrayRewrite_queryExecMode(t *testing.T) {
+	modes := []pgx.QueryExecMode{pgx.QueryExecModeExec, pgx.QueryExecModeSimpleProtocol}
+	ctx := context.Background()
+	for _, mode := range modes {
+		t.Run(mode.String(), func(t *testing.T) {
+			pool := testPoolWithQueryExecMode(t, mode)
+			pid := testfixtures.DevProductWater
+
+			_, err := db.New(pool).RuntimeProductPrimaryMediaReady(ctx, []uuid.UUID{pid})
+			require.Error(t, err, "unwrapped []uuid.UUID must fail under pooler-like query exec mode")
+			require.Contains(t, err.Error(), "encode")
+
+			_, err = pgxutil.NewQueries(pool).RuntimeProductPrimaryMediaReady(ctx, []uuid.UUID{pid})
+			require.NoError(t, err, "pgxutil.NewQueries uuid[] rewrite must succeed")
+		})
+	}
+}
+
 func TestFleetAdminListMachines_uuidArrayEnrichment_queryExecMode(t *testing.T) {
 	modes := []pgx.QueryExecMode{pgx.QueryExecModeExec, pgx.QueryExecModeSimpleProtocol}
 	ctx := context.Background()
