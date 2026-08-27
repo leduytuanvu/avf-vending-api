@@ -176,11 +176,13 @@ resolve_database_url() {
 
 run_psql() {
 	local sql="$1"
+	local psql_url
+	psql_url="$(sanitize_url_for_pg_tools "${DATABASE_URL}")"
 	docker run --rm \
 		--env-file "${COMPOSE_ENV_FILE}" \
-		-e "DATABASE_URL=${DATABASE_URL}" \
+		-e "DATABASE_URL=${psql_url}" \
 		"${POSTGRES_TOOLS_IMAGE}" \
-		psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -c "${sql}"
+		psql "${psql_url}" -v ON_ERROR_STOP=1 -c "${sql}"
 }
 
 run_compose_migrate_cmd() {
