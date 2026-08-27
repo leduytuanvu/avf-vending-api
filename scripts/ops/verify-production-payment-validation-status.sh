@@ -22,12 +22,21 @@ API_CONTAINER="$(find_api_container)"
 [[ -n "${API_CONTAINER}" ]] || fail "api container not found"
 DATABASE_URL="$(container_env "${API_CONTAINER}" DATABASE_URL)"
 [[ -n "${DATABASE_URL}" ]] || fail "DATABASE_URL missing in ${API_CONTAINER}"
+PSQL_DATABASE_URL="$(python3 - "${DATABASE_URL}" <<'PY'
+import sys
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+u = urlparse(sys.argv[1])
+drop = {"default_query_exec_mode", "pgbouncer"}
+q = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True) if k not in drop]
+print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(q), u.fragment)))
+PY
+)"
 note "api container=${API_CONTAINER}"
 
 constraint_def="$(docker run --rm \
-	-e "DATABASE_URL=${DATABASE_URL}" \
+	-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
 	"${POSTGRES_TOOLS_IMAGE}" \
-	psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
+	psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
 	"SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'chk_payment_provider_events_validation_status';")"
 [[ -n "${constraint_def}" ]] || fail "constraint chk_payment_provider_events_validation_status not found"
 
@@ -37,9 +46,9 @@ fi
 note "constraint OK (contains provider_native_verified)"
 
 goose_row="$(docker run --rm \
-	-e "DATABASE_URL=${DATABASE_URL}" \
+	-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
 	"${POSTGRES_TOOLS_IMAGE}" \
-	psql "${DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
+	psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
 	"SELECT version FROM goose_db_version WHERE version_id = 21 OR version = 21 LIMIT 1;" 2>/dev/null || true)"
 if [[ "${goose_row}" == "21" ]]; then
 	note "goose_db_version includes migration 21"
