@@ -146,9 +146,9 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb),
     $5,
-    $6
+    COALESCE(NULLIF($6::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -165,9 +165,9 @@ type InsertMachineConfigApplicationParams struct {
 	MachineID         uuid.UUID
 	AppliedAt         time.Time
 	ConfigRevision    int32
-	ConfigPayload     []byte
+	ConfigPayload     string
 	OperatorSessionID pgtype.UUID
-	Metadata          []byte
+	Metadata          string
 }
 
 func (q *Queries) InsertMachineConfigApplication(ctx context.Context, arg InsertMachineConfigApplicationParams) (MachineConfig, error) {

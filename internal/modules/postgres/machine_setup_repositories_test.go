@@ -182,7 +182,30 @@ func TestSetupRepository_SaveDraftOrCurrentSlotConfigs_QueryExecModeExec(t *test
 	arows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, testfixtures.DevMachineID)
 	require.NoError(t, err)
 	require.NotEmpty(t, arows)
+
+	tx, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	mc, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, uuid.Nil, testfixtures.DevMachineID, pgtype.UUID{}, testfixtures.DevPlanogramID.String(), 1, nil)
+	require.NoError(t, err, "planogram publish handler path must snapshot machine_configs under QueryExecModeExec")
+	require.Greater(t, cfgRev, int32(0))
+	require.Equal(t, testfixtures.DevMachineID, mc.MachineID)
+	require.NoError(t, tx.Commit(ctx))
+
 	defer cleanupMachineSetupArtifacts(ctx, t, pool, testfixtures.DevMachineID, arows[0].AssortmentID)
+}
+
+func TestInsertMachineConfigSnapshot_QueryExecModeExec(t *testing.T) {
+	pool := execModePool(t)
+	ctx := context.Background()
+
+	tx, err := pool.Begin(ctx)
+	require.NoError(t, err)
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	_, cfgRev, err := postgres.InsertMachineConfigSnapshotTx(ctx, tx, uuid.Nil, testfixtures.DevMachineID, pgtype.UUID{}, testfixtures.DevPlanogramID.String(), 2, nil)
+	require.NoError(t, err)
+	require.Greater(t, cfgRev, int32(0))
+	require.NoError(t, tx.Commit(ctx))
 }
 
 func TestSetupRepository_UpsertMachineTopology(t *testing.T) {

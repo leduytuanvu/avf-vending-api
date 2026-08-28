@@ -218,9 +218,9 @@ func postMachineConfigApply(app *api.HTTPApplication) http.HandlerFunc {
 			MachineID:         machineID,
 			AppliedAt:         appliedAt.UTC(),
 			ConfigRevision:    body.ConfigVersion,
-			ConfigPayload:     payload,
+			ConfigPayload:     pgjson.RequiredString(payload),
 			OperatorSessionID: op,
-			Metadata:          metaBytes,
+			Metadata:          pgjson.RequiredString(metaBytes),
 		})
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "insert_failed", err.Error())
