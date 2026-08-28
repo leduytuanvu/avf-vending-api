@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -105,9 +106,19 @@ type PlanogramGetVersionByIDForMachineParams struct {
 	MachineID uuid.UUID
 }
 
-func (q *Queries) PlanogramGetVersionByIDForMachine(ctx context.Context, arg PlanogramGetVersionByIDForMachineParams) (MachinePlanogramVersion, error) {
+type PlanogramGetVersionByIDForMachineRow struct {
+	ID            uuid.UUID
+	MachineID     uuid.UUID
+	VersionNo     int32
+	Snapshot      []byte
+	SourceDraftID pgtype.UUID
+	PublishedAt   time.Time
+	PublishedBy   pgtype.UUID
+}
+
+func (q *Queries) PlanogramGetVersionByIDForMachine(ctx context.Context, arg PlanogramGetVersionByIDForMachineParams) (PlanogramGetVersionByIDForMachineRow, error) {
 	row := q.db.QueryRow(ctx, PlanogramGetVersionByIDForMachine, arg.ID, arg.MachineID)
-	var i MachinePlanogramVersion
+	var i PlanogramGetVersionByIDForMachineRow
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
@@ -317,7 +328,17 @@ type PlanogramInsertVersionParams struct {
 	PublishedBy   pgtype.UUID
 }
 
-func (q *Queries) PlanogramInsertVersion(ctx context.Context, arg PlanogramInsertVersionParams) (MachinePlanogramVersion, error) {
+type PlanogramInsertVersionRow struct {
+	ID            uuid.UUID
+	MachineID     uuid.UUID
+	VersionNo     int32
+	Snapshot      []byte
+	SourceDraftID pgtype.UUID
+	PublishedAt   time.Time
+	PublishedBy   pgtype.UUID
+}
+
+func (q *Queries) PlanogramInsertVersion(ctx context.Context, arg PlanogramInsertVersionParams) (PlanogramInsertVersionRow, error) {
 	row := q.db.QueryRow(ctx, PlanogramInsertVersion,
 		arg.MachineID,
 		arg.VersionNo,
@@ -325,7 +346,7 @@ func (q *Queries) PlanogramInsertVersion(ctx context.Context, arg PlanogramInser
 		arg.SourceDraftID,
 		arg.PublishedBy,
 	)
-	var i MachinePlanogramVersion
+	var i PlanogramInsertVersionRow
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
@@ -507,15 +528,25 @@ ORDER BY
     version_no DESC
 `
 
-func (q *Queries) PlanogramListVersionsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachinePlanogramVersion, error) {
+type PlanogramListVersionsForMachineRow struct {
+	ID            uuid.UUID
+	MachineID     uuid.UUID
+	VersionNo     int32
+	Snapshot      []byte
+	SourceDraftID pgtype.UUID
+	PublishedAt   time.Time
+	PublishedBy   pgtype.UUID
+}
+
+func (q *Queries) PlanogramListVersionsForMachine(ctx context.Context, machineID uuid.UUID) ([]PlanogramListVersionsForMachineRow, error) {
 	rows, err := q.db.Query(ctx, PlanogramListVersionsForMachine, machineID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []MachinePlanogramVersion{}
+	items := []PlanogramListVersionsForMachineRow{}
 	for rows.Next() {
-		var i MachinePlanogramVersion
+		var i PlanogramListVersionsForMachineRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.MachineID,

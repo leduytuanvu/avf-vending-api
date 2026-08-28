@@ -14,6 +14,25 @@ service MachineBootstrapService {
   rpc CheckIn(MachineBootstrapServiceCheckInRequest) returns (MachineBootstrapServiceCheckInResponse);
   rpc AckConfigVersion(AckConfigVersionRequest) returns (AckConfigVersionResponse);
   rpc CheckForUpdates(CheckForUpdatesRequest) returns (CheckForUpdatesResponse);
+  rpc ReportLocalLayout(ReportLocalLayoutRequest) returns (ReportLocalLayoutResponse);
+}
+
+enum LayoutSource {
+  LAYOUT_SOURCE_UNSPECIFIED = 0;
+  LAYOUT_SOURCE_SERVER = 1;
+  LAYOUT_SOURCE_LOCAL = 2;
+}
+
+message MachineLayoutAssignment {
+  LayoutSource source = 1;
+  string assignment_id = 2;
+  string layout_id = 3;
+  string layout_version_id = 4;
+  int32 revision = 5;
+  int32 grid_rows = 6;
+  int32 grid_cols = 7;
+  string fingerprint = 8;
+  google.protobuf.Timestamp published_at = 9;
 }
 
 message GetBootstrapRequest {
@@ -58,6 +77,9 @@ message BootstrapSlot {
   string effective_from_rfc3339 = 9;
   bool is_current = 10;
   string machine_slot_layout_id = 11;
+  int32 slot_ordinal = 12;
+  string logical_coordinate = 13;
+  int32 physical_lane = 14;
 }
 
 message BootstrapCabinet {
@@ -67,6 +89,10 @@ message BootstrapCabinet {
   int32 sort_order = 4;
   google.protobuf.Struct metadata = 5;
   repeated BootstrapSlot slots = 6;
+  int32 grid_rows = 7;
+  int32 grid_cols = 8;
+  string layout_key = 9;
+  int32 layout_revision = 10;
 }
 
 message BootstrapTopology {
@@ -140,6 +166,10 @@ message GetBootstrapResponse {
   string published_planogram_version_id = 12;
   int32 published_planogram_version_no = 13;
   PaymentMethodsConfig payment_methods = 14;
+  MachineLayoutAssignment server_layout = 15;
+  MachineLayoutAssignment local_layout = 16;
+  LayoutSource desired_source = 17;
+  string layout_fingerprint = 18;
 }
 
 message MachineBootstrapServiceCheckInRequest {
@@ -161,6 +191,13 @@ message AckConfigVersionRequest {
   google.protobuf.Struct effective_device_config = 4;
   // Per-field apply ACK map (field path -> status token, e.g. "applied", "pending", "failed").
   map<string, string> field_ack = 5;
+  LayoutSource applied_source = 6;
+  string applied_assignment_id = 7;
+  int32 applied_revision = 8;
+  int32 applied_rows = 9;
+  int32 applied_cols = 10;
+  string applied_fingerprint = 11;
+  string apply_failure_reason = 12;
 }
 
 message AckConfigVersionResponse {
@@ -168,10 +205,11 @@ message AckConfigVersionResponse {
 }
 
 message CheckForUpdatesRequest {
-  string catalog_fingerprint = 1;
-  string pricing_fingerprint = 2;
-  string planogram_fingerprint = 3;
-  string media_fingerprint = 4;
+  MachineRequestMeta meta = 1;
+  string catalog_fingerprint = 2;
+  string pricing_fingerprint = 3;
+  string planogram_fingerprint = 4;
+  string media_fingerprint = 5;
 }
 
 message CheckForUpdatesResponse {
@@ -184,4 +222,32 @@ message CheckForUpdatesResponse {
   string server_pricing_fingerprint = 7;
   string server_planogram_fingerprint = 8;
   string server_media_fingerprint = 9;
+  bool layout_changed = 10;
+}
+
+message ReportLocalLayoutSlot {
+  string slot_code = 1;
+  int32 slot_ordinal = 2;
+  string logical_coordinate = 3;
+  int32 physical_lane = 4;
+  string product_id = 5;
+  int32 max_quantity = 6;
+  int64 price_minor = 7;
+}
+
+message ReportLocalLayoutRequest {
+  MachineRequestMeta meta = 1;
+  string local_layout_id = 2;
+  int32 revision = 3;
+  int32 rows = 4;
+  int32 columns = 5;
+  repeated ReportLocalLayoutSlot slots = 6;
+  string fingerprint = 7;
+  string device_instance_id = 8;
+}
+
+message ReportLocalLayoutResponse {
+  MachineResponseMeta meta = 1;
+  bool accepted = 2;
+  int32 stored_revision = 3;
 }

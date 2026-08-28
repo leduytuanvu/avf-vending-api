@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -30,15 +31,26 @@ ORDER BY
     revision
 `
 
-func (q *Queries) TopologyListSlotLayoutsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineSlotLayout, error) {
+type TopologyListSlotLayoutsForMachineRow struct {
+	ID               uuid.UUID
+	MachineID        uuid.UUID
+	MachineCabinetID uuid.UUID
+	LayoutKey        string
+	Revision         int32
+	LayoutSpec       []byte
+	Status           string
+	CreatedAt        time.Time
+}
+
+func (q *Queries) TopologyListSlotLayoutsForMachine(ctx context.Context, machineID uuid.UUID) ([]TopologyListSlotLayoutsForMachineRow, error) {
 	rows, err := q.db.Query(ctx, TopologyListSlotLayoutsForMachine, machineID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []MachineSlotLayout{}
+	items := []TopologyListSlotLayoutsForMachineRow{}
 	for rows.Next() {
-		var i MachineSlotLayout
+		var i TopologyListSlotLayoutsForMachineRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.MachineID,

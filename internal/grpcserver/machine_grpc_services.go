@@ -12,6 +12,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/activation"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
+	"github.com/avf/avf-vending-api/internal/app/layoutassignment"
 	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -524,6 +525,8 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			SortOrder: c.SortOrder,
 			Metadata:  meta,
 			Slots:     sk,
+			GridRows:  bootstrapGridRows(deps, machineID, b),
+			GridCols:  bootstrapGridCols(deps, machineID, b),
 		})
 	}
 	products := make([]*machinev1.BootstrapCatalogProduct, 0, len(b.AssortmentProducts))
@@ -641,4 +644,34 @@ func mapRuntimeHintsProto(h *featureflags.RuntimeHints) *machinev1.RuntimeHints 
 		})
 	}
 	return out
+}
+
+func bootstrapGridRows(deps MachineGRPCServicesDeps, machineID uuid.UUID, b setupapp.MachineBootstrap) int32 {
+	if deps.Pool != nil {
+		q := pgxutil.NewQueries(deps.Pool)
+		if row, err := q.GetCurrentMachineLayoutAssignment(context.Background(), db.GetCurrentMachineLayoutAssignmentParams{
+			MachineID: machineID,
+			Source:    layoutassignment.SourceServer,
+		}); err == nil {
+			return row.GridRows
+		}
+	}
+	rows, _ := layoutassignment.DefaultCreationDimensions()
+	_ = b
+	return rows
+}
+
+func bootstrapGridCols(deps MachineGRPCServicesDeps, machineID uuid.UUID, b setupapp.MachineBootstrap) int32 {
+	if deps.Pool != nil {
+		q := pgxutil.NewQueries(deps.Pool)
+		if row, err := q.GetCurrentMachineLayoutAssignment(context.Background(), db.GetCurrentMachineLayoutAssignmentParams{
+			MachineID: machineID,
+			Source:    layoutassignment.SourceServer,
+		}); err == nil {
+			return row.GridCols
+		}
+	}
+	_, cols := layoutassignment.DefaultCreationDimensions()
+	_ = b
+	return cols
 }

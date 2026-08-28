@@ -332,11 +332,19 @@ func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, mac
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if err := applySlotConfigSaveTx(ctx, tx, machineID, in); err != nil {
+	if err := r.SaveDraftOrCurrentSlotConfigsInTx(ctx, tx, machineID, in); err != nil {
 		return err
 	}
 
 	return tx.Commit(ctx)
+}
+
+// SaveDraftOrCurrentSlotConfigsInTx applies slot config save within an existing transaction.
+func (r *SetupRepository) SaveDraftOrCurrentSlotConfigsInTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
+	if len(in.Items) == 0 {
+		return nil
+	}
+	return applySlotConfigSaveTx(ctx, tx, machineID, in)
 }
 
 // GetMachineBootstrap loads machine, cabinets, primary assortment products, and current cabinet slot configs.

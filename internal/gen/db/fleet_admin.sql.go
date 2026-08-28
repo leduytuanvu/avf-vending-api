@@ -530,14 +530,25 @@ type FleetAdminGetMachineSlotLayoutByKeyParams struct {
 	Revision         int32
 }
 
-func (q *Queries) FleetAdminGetMachineSlotLayoutByKey(ctx context.Context, arg FleetAdminGetMachineSlotLayoutByKeyParams) (MachineSlotLayout, error) {
+type FleetAdminGetMachineSlotLayoutByKeyRow struct {
+	ID               uuid.UUID
+	MachineID        uuid.UUID
+	MachineCabinetID uuid.UUID
+	LayoutKey        string
+	Revision         int32
+	LayoutSpec       []byte
+	Status           string
+	CreatedAt        time.Time
+}
+
+func (q *Queries) FleetAdminGetMachineSlotLayoutByKey(ctx context.Context, arg FleetAdminGetMachineSlotLayoutByKeyParams) (FleetAdminGetMachineSlotLayoutByKeyRow, error) {
 	row := q.db.QueryRow(ctx, FleetAdminGetMachineSlotLayoutByKey,
 		arg.MachineID,
 		arg.MachineCabinetID,
 		arg.LayoutKey,
 		arg.Revision,
 	)
-	var i MachineSlotLayout
+	var i FleetAdminGetMachineSlotLayoutByKeyRow
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
@@ -1079,7 +1090,7 @@ FROM
     machine_cabinets mc
     LEFT JOIN LATERAL (
         SELECT
-            l.id, l.machine_id, l.machine_cabinet_id, l.layout_key, l.revision, l.layout_spec, l.status, l.created_at
+            l.id, l.machine_id, l.machine_cabinet_id, l.layout_key, l.revision, l.layout_spec, l.grid_rows, l.grid_cols, l.status, l.created_at
         FROM
             machine_slot_layouts l
         WHERE
@@ -1715,7 +1726,18 @@ type FleetAdminUpsertMachineSlotLayoutParams struct {
 	Status           string
 }
 
-func (q *Queries) FleetAdminUpsertMachineSlotLayout(ctx context.Context, arg FleetAdminUpsertMachineSlotLayoutParams) (MachineSlotLayout, error) {
+type FleetAdminUpsertMachineSlotLayoutRow struct {
+	ID               uuid.UUID
+	MachineID        uuid.UUID
+	MachineCabinetID uuid.UUID
+	LayoutKey        string
+	Revision         int32
+	LayoutSpec       []byte
+	Status           string
+	CreatedAt        time.Time
+}
+
+func (q *Queries) FleetAdminUpsertMachineSlotLayout(ctx context.Context, arg FleetAdminUpsertMachineSlotLayoutParams) (FleetAdminUpsertMachineSlotLayoutRow, error) {
 	row := q.db.QueryRow(ctx, FleetAdminUpsertMachineSlotLayout,
 		arg.MachineID,
 		arg.MachineCabinetID,
@@ -1724,7 +1746,7 @@ func (q *Queries) FleetAdminUpsertMachineSlotLayout(ctx context.Context, arg Fle
 		arg.LayoutSpec,
 		arg.Status,
 	)
-	var i MachineSlotLayout
+	var i FleetAdminUpsertMachineSlotLayoutRow
 	err := row.Scan(
 		&i.ID,
 		&i.MachineID,
