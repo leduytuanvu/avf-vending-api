@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -157,7 +159,7 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 		return db.MachineConfig{}, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	q := db.New(tx)
+	q := pgxutil.NewQueries(tx)
 
 	_, err = q.GetMachineByIDForUpdate(ctx, in.MachineID)
 	if err != nil {
@@ -168,9 +170,9 @@ func (s *Store) RecordMachineConfigApplicationWithAttribution(ctx context.Contex
 		MachineID:         in.MachineID,
 		AppliedAt:         in.AppliedAt,
 		ConfigRevision:    in.ConfigRevision,
-		ConfigPayload:     payload,
+		ConfigPayload:     pgjson.RequiredString(payload),
 		OperatorSessionID: optionalUUIDToPg(in.OperatorSessionID),
-		Metadata:          meta,
+		Metadata:          pgjson.RequiredString(meta),
 	})
 	if err != nil {
 		return db.MachineConfig{}, err

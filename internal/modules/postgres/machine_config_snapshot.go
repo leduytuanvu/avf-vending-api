@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -38,14 +40,14 @@ func InsertMachineConfigSnapshotTx(ctx context.Context, tx pgx.Tx, scopeID, mach
 	}
 	cfgBytes, _ := json.Marshal(cfgPayload)
 
-	q := db.New(tx)
+	q := pgxutil.NewQueries(tx)
 	row, err := q.InsertMachineConfigApplication(ctx, db.InsertMachineConfigApplicationParams{
 		MachineID:         machineID,
 		AppliedAt:         time.Now().UTC(),
 		ConfigRevision:    next,
-		ConfigPayload:     cfgBytes,
+		ConfigPayload:     pgjson.RequiredString(cfgBytes),
 		OperatorSessionID: operatorSessionID,
-		Metadata:          metaBytes,
+		Metadata:          pgjson.RequiredString(metaBytes),
 	})
 	if err != nil {
 		return db.MachineConfig{}, 0, err
