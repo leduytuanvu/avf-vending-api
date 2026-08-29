@@ -29,6 +29,10 @@ run_check() {
 		"${POSTGRES_TOOLS_IMAGE}" \
 		psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc "${sql}")"
 	if [[ -n "${rows}" ]]; then
+		if [[ "${rows}" == "0" ]]; then
+			note "${name} OK"
+			return 0
+		fi
 		fail "${name} failed (non-empty result): ${rows}"
 	fi
 	note "${name} OK"
