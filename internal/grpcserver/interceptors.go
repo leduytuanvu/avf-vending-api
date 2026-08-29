@@ -701,6 +701,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 	case machinev1.MachineBootstrapService_GetBootstrap_FullMethodName,
 		machinev1.MachineBootstrapService_CheckIn_FullMethodName,
 		machinev1.MachineBootstrapService_AckConfigVersion_FullMethodName,
+		machinev1.MachineBootstrapService_ReportLocalLayout_FullMethodName,
 		machinev1.MachineBootstrapService_CheckForUpdates_FullMethodName,
 		machinev1.MachineCatalogService_SyncSaleCatalog_FullMethodName,
 		machinev1.MachineCatalogService_GetSaleCatalog_FullMethodName,

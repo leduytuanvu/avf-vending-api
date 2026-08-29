@@ -105,6 +105,35 @@ func (s *machineBootstrapServer) AckConfigVersion(ctx context.Context, req *mach
 				})
 			}
 		}
+		if src := layoutSourceFromProto(req.GetAppliedSource()); src != "" && req.GetAppliedRevision() > 0 {
+			var assignmentID pgtype.UUID
+			if aid := strings.TrimSpace(req.GetAppliedAssignmentId()); aid != "" {
+				if uid, perr := uuid.Parse(aid); perr == nil && uid != uuid.Nil {
+					assignmentID = pgtype.UUID{Bytes: uid, Valid: true}
+				}
+			}
+			fp := strings.TrimSpace(req.GetAppliedFingerprint())
+			failReason := strings.TrimSpace(req.GetApplyFailureReason())
+			applyFail := pgtype.Text{}
+			if failReason != "" {
+				applyFail = pgtype.Text{String: failReason, Valid: true}
+			}
+			reportedFP := pgtype.Text{}
+			if fp != "" {
+				reportedFP = pgtype.Text{String: fp, Valid: true}
+			}
+			_, _ = q.UpdateMachineLayoutStateReported(ctx, db.UpdateMachineLayoutStateReportedParams{
+				ReportedSource:           pgtype.Text{String: src, Valid: true},
+				ReportedAssignmentID:     assignmentID,
+				ReportedLayoutVersionID:  pgtype.UUID{},
+				ReportedRevision:         pgtype.Int4{Int32: req.GetAppliedRevision(), Valid: true},
+				ReportedFingerprint:      reportedFP,
+				ReportedAt:               pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+				ReportedDeviceInstanceID: pgtype.Text{},
+				ApplyFailureReason:       applyFail,
+				MachineID:                claims.MachineID,
+			})
+		}
 	}
 	var rid string
 	if req != nil && req.GetMeta() != nil {

@@ -14937,6 +14937,121 @@
         ]
       }
     },
+    "/v1/admin/layout-dimension-migration-audit": {
+      "get": {
+        "description": "Read-only classification coverage for legacy `machine_slot_layouts` dimensions (PROVEN / INFERRED_SAFE / REQUIRES_REVIEW). Does not mutate layouts.",
+        "operationId": "DocOpV1AdminLayoutDimensionMigrationAuditGet",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Legacy layout dimension migration audit report"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Legacy layout dimension migration audit report",
+        "tags": [
+          "Machine Layout"
+        ]
+      }
+    },
     "/v1/admin/machine-codes/{machineCode}/activation-codes": {
       "get": {
         "description": "Canonical machineCode path for activation code list. Returns metadata only (no plaintext code).",
@@ -19217,6 +19332,757 @@
         "summary": "Post machine inventory reconcile adjustment",
         "tags": [
           "Inventory"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/layout-assignments/server": {
+      "put": {
+        "description": "Single transactional SERVER layout assignment: slot configs, published planogram version, layout assignment row, desired state, and config snapshot. **Idempotency-Key** header is required.",
+        "operationId": "DocOpV1AdminMachineServerLayoutAssignmentPut",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Idempotency key",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "status": "ok"
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "layoutVersionId, optional orgLayoutVersionId, expectedCurrentRevision, operatorSessionId",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Atomically assign SERVER layout to a machine"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "illegal_transition",
+                    "details": {},
+                    "message": "request conflicts with current state",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "details": {
+                      "retry_after_seconds": 60
+                    },
+                    "message": "too many requests",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Atomically assign SERVER layout to a machine",
+        "tags": [
+          "Machine Layout"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/layout-assignments/server:bulk": {
+      "post": {
+        "description": "Per-machine atomic assignment; partial success is allowed. **Idempotency-Key** header is required (suffixed per machine internally).",
+        "operationId": "DocOpV1AdminMachineServerLayoutBulkPost",
+        "parameters": [
+          {
+            "description": "Idempotency key",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "status": "ok"
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "machineIds[], layoutVersionId",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bulk assign SERVER layout to many machines"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "rate_limited",
+                    "details": {
+                      "retry_after_seconds": 60
+                    },
+                    "message": "too many requests",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Bulk assign SERVER layout to many machines",
+        "tags": [
+          "Machine Layout"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/layout-desired-source": {
+      "put": {
+        "description": "Updates desired active layout source for a machine. Device applies and reports actual state separately.",
+        "operationId": "DocOpV1AdminMachineLayoutDesiredSourcePut",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "status": "ok"
+              },
+              "schema": {
+                "type": "object"
+              }
+            }
+          },
+          "description": "source (SERVER|LOCAL), optional expectedCurrentRevision",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Set desired active layout source (SERVER or LOCAL)"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Set desired active layout source (SERVER or LOCAL)",
+        "tags": [
+          "Machine Layout"
+        ]
+      }
+    },
+    "/v1/admin/machines/{machineId}/layout-state": {
+      "get": {
+        "description": "Returns SERVER assignment, LOCAL mirror, desired/reported source, revision, fingerprint, and sync status for dual-source layout management.",
+        "operationId": "DocOpV1AdminMachineLayoutStateGet",
+        "parameters": [
+          {
+            "description": "Machine UUID",
+            "in": "path",
+            "name": "machineId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Get machine layout desired vs reported state"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get machine layout desired vs reported state",
+        "tags": [
+          "Machine Layout"
         ]
       }
     },

@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MachineBootstrapService_GetBootstrap_FullMethodName     = "/avf.machine.v1.MachineBootstrapService/GetBootstrap"
-	MachineBootstrapService_CheckIn_FullMethodName          = "/avf.machine.v1.MachineBootstrapService/CheckIn"
-	MachineBootstrapService_AckConfigVersion_FullMethodName = "/avf.machine.v1.MachineBootstrapService/AckConfigVersion"
-	MachineBootstrapService_CheckForUpdates_FullMethodName  = "/avf.machine.v1.MachineBootstrapService/CheckForUpdates"
+	MachineBootstrapService_GetBootstrap_FullMethodName      = "/avf.machine.v1.MachineBootstrapService/GetBootstrap"
+	MachineBootstrapService_CheckIn_FullMethodName           = "/avf.machine.v1.MachineBootstrapService/CheckIn"
+	MachineBootstrapService_AckConfigVersion_FullMethodName  = "/avf.machine.v1.MachineBootstrapService/AckConfigVersion"
+	MachineBootstrapService_CheckForUpdates_FullMethodName   = "/avf.machine.v1.MachineBootstrapService/CheckForUpdates"
+	MachineBootstrapService_ReportLocalLayout_FullMethodName = "/avf.machine.v1.MachineBootstrapService/ReportLocalLayout"
 )
 
 // MachineBootstrapServiceClient is the client API for MachineBootstrapService service.
@@ -35,6 +36,7 @@ type MachineBootstrapServiceClient interface {
 	CheckIn(ctx context.Context, in *MachineBootstrapServiceCheckInRequest, opts ...grpc.CallOption) (*MachineBootstrapServiceCheckInResponse, error)
 	AckConfigVersion(ctx context.Context, in *AckConfigVersionRequest, opts ...grpc.CallOption) (*AckConfigVersionResponse, error)
 	CheckForUpdates(ctx context.Context, in *CheckForUpdatesRequest, opts ...grpc.CallOption) (*CheckForUpdatesResponse, error)
+	ReportLocalLayout(ctx context.Context, in *ReportLocalLayoutRequest, opts ...grpc.CallOption) (*ReportLocalLayoutResponse, error)
 }
 
 type machineBootstrapServiceClient struct {
@@ -85,6 +87,16 @@ func (c *machineBootstrapServiceClient) CheckForUpdates(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *machineBootstrapServiceClient) ReportLocalLayout(ctx context.Context, in *ReportLocalLayoutRequest, opts ...grpc.CallOption) (*ReportLocalLayoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportLocalLayoutResponse)
+	err := c.cc.Invoke(ctx, MachineBootstrapService_ReportLocalLayout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineBootstrapServiceServer is the server API for MachineBootstrapService service.
 // All implementations must embed UnimplementedMachineBootstrapServiceServer
 // for forward compatibility.
@@ -95,6 +107,7 @@ type MachineBootstrapServiceServer interface {
 	CheckIn(context.Context, *MachineBootstrapServiceCheckInRequest) (*MachineBootstrapServiceCheckInResponse, error)
 	AckConfigVersion(context.Context, *AckConfigVersionRequest) (*AckConfigVersionResponse, error)
 	CheckForUpdates(context.Context, *CheckForUpdatesRequest) (*CheckForUpdatesResponse, error)
+	ReportLocalLayout(context.Context, *ReportLocalLayoutRequest) (*ReportLocalLayoutResponse, error)
 	mustEmbedUnimplementedMachineBootstrapServiceServer()
 }
 
@@ -116,6 +129,9 @@ func (UnimplementedMachineBootstrapServiceServer) AckConfigVersion(context.Conte
 }
 func (UnimplementedMachineBootstrapServiceServer) CheckForUpdates(context.Context, *CheckForUpdatesRequest) (*CheckForUpdatesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CheckForUpdates not implemented")
+}
+func (UnimplementedMachineBootstrapServiceServer) ReportLocalLayout(context.Context, *ReportLocalLayoutRequest) (*ReportLocalLayoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReportLocalLayout not implemented")
 }
 func (UnimplementedMachineBootstrapServiceServer) mustEmbedUnimplementedMachineBootstrapServiceServer() {
 }
@@ -211,6 +227,24 @@ func _MachineBootstrapService_CheckForUpdates_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineBootstrapService_ReportLocalLayout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportLocalLayoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineBootstrapServiceServer).ReportLocalLayout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineBootstrapService_ReportLocalLayout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineBootstrapServiceServer).ReportLocalLayout(ctx, req.(*ReportLocalLayoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineBootstrapService_ServiceDesc is the grpc.ServiceDesc for MachineBootstrapService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -233,6 +267,10 @@ var MachineBootstrapService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CheckForUpdates",
 			Handler:    _MachineBootstrapService_CheckForUpdates_Handler,
+		},
+		{
+			MethodName: "ReportLocalLayout",
+			Handler:    _MachineBootstrapService_ReportLocalLayout_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

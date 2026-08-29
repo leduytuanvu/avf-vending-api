@@ -63,6 +63,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 		r.With(writeRL).Post("/machines/{machineId}/planograms/publish", postAdminMachinePlanogramPublish(app))
 		r.With(writeRL).Post("/machines/{machineId}/sync", postAdminMachineSetupSync(app))
 	})
+	mountAdminLayoutRoutes(r, app, writeRL)
 	mountPlanogramMergePairRoutes(r, app, writeRL)
 }
 

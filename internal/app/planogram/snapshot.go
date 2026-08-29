@@ -30,6 +30,10 @@ type snapshotSlotItem struct {
 	Metadata        json.RawMessage `json:"metadata,omitempty"`
 }
 
+func SnapshotBytesToSaveInput(snapshot []byte, publish bool) (setupapp.SlotConfigSaveInput, error) {
+	return snapshotBytesToSaveInput(snapshot, publish)
+}
+
 func snapshotBytesToSaveInput(snapshot []byte, publish bool) (setupapp.SlotConfigSaveInput, error) {
 	var body snapshotBody
 	if err := json.Unmarshal(snapshot, &body); err != nil {

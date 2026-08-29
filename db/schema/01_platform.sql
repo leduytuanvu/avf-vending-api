@@ -2535,6 +2535,8 @@ CREATE TABLE machine_slot_layouts (
     layout_key text NOT NULL,
     revision int NOT NULL DEFAULT 1,
     layout_spec jsonb NOT NULL DEFAULT '{}'::jsonb,
+    grid_rows int,
+    grid_cols int,
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_machine_slot_layouts_layout_key_nonempty CHECK (btrim(layout_key) <> ''),
@@ -2620,8 +2622,98 @@ CREATE TABLE machine_planogram_versions (
     source_draft_id uuid REFERENCES machine_planogram_drafts (id) ON DELETE SET NULL,
     published_at timestamptz NOT NULL DEFAULT now (),
     published_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
+    layout_source text NOT NULL DEFAULT 'SERVER',
+    grid_rows int,
+    grid_cols int,
+    fingerprint text,
+    org_layout_version_id uuid,
     CONSTRAINT ux_machine_planogram_versions_machine_version UNIQUE (machine_id, version_no)
 );
+
+CREATE TABLE planogram_template_versions (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    template_id uuid NOT NULL REFERENCES planogram_templates (id) ON DELETE CASCADE,
+    version_no int NOT NULL,
+    grid_rows int NOT NULL,
+    grid_cols int NOT NULL,
+    snapshot jsonb NOT NULL,
+    fingerprint text NOT NULL,
+    published_at timestamptz NOT NULL DEFAULT now(),
+    published_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL,
+    CONSTRAINT ux_planogram_template_versions_template_version UNIQUE (template_id, version_no)
+);
+
+CREATE TABLE machine_layout_assignments (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    source text NOT NULL,
+    layout_id uuid,
+    layout_version_id uuid REFERENCES machine_planogram_versions (id) ON DELETE SET NULL,
+    org_layout_version_id uuid REFERENCES planogram_template_versions (id) ON DELETE SET NULL,
+    revision int NOT NULL,
+    grid_rows int NOT NULL,
+    grid_cols int NOT NULL,
+    fingerprint text NOT NULL,
+    is_current boolean NOT NULL DEFAULT true,
+    effective_from timestamptz NOT NULL DEFAULT now(),
+    effective_to timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    created_by uuid REFERENCES platform_auth_accounts (id) ON DELETE SET NULL
+);
+
+CREATE UNIQUE INDEX ux_mla_current_machine_source ON machine_layout_assignments (machine_id, source)
+WHERE
+    is_current;
+
+CREATE TABLE machine_layout_state (
+    machine_id uuid PRIMARY KEY REFERENCES machines (id) ON DELETE CASCADE,
+    desired_source text,
+    desired_assignment_id uuid REFERENCES machine_layout_assignments (id) ON DELETE SET NULL,
+    desired_layout_version_id uuid REFERENCES machine_planogram_versions (id) ON DELETE SET NULL,
+    desired_revision int,
+    desired_fingerprint text,
+    desired_updated_at timestamptz,
+    reported_source text,
+    reported_assignment_id uuid REFERENCES machine_layout_assignments (id) ON DELETE SET NULL,
+    reported_layout_version_id uuid REFERENCES machine_planogram_versions (id) ON DELETE SET NULL,
+    reported_revision int,
+    reported_fingerprint text,
+    reported_at timestamptz,
+    reported_device_instance_id text,
+    apply_failure_reason text,
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE machine_local_layout_mirror (
+    machine_id uuid PRIMARY KEY REFERENCES machines (id) ON DELETE CASCADE,
+    local_layout_id uuid NOT NULL,
+    revision int NOT NULL,
+    grid_rows int NOT NULL,
+    grid_cols int NOT NULL,
+    slots jsonb NOT NULL DEFAULT '[]'::jsonb,
+    fingerprint text NOT NULL,
+    reported_at timestamptz NOT NULL DEFAULT now(),
+    device_instance_id text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE layout_dimension_migration_audit (
+    machine_slot_layout_id uuid PRIMARY KEY REFERENCES machine_slot_layouts (id) ON DELETE CASCADE,
+    class text NOT NULL,
+    evidence jsonb NOT NULL DEFAULT '{}'::jsonb,
+    audited_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE layout_assignment_idempotency (
+    scope_id text NOT NULL,
+    idempotency_key text NOT NULL,
+    request_hash text NOT NULL,
+    response_json jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_layout_assignment_idempotency_scope_key UNIQUE (scope_id, idempotency_key)
+);
+
+CREATE INDEX ix_layout_assignment_idempotency_created_at ON layout_assignment_idempotency (created_at DESC);
 
 CREATE INDEX ix_machine_planogram_versions_machine_published ON machine_planogram_versions (machine_id, published_at DESC);
 

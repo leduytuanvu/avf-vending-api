@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/activation"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
+	"github.com/avf/avf-vending-api/internal/app/layoutassignment"
 	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -370,11 +372,14 @@ func (s *machineBootstrapServer) CheckForUpdates(ctx context.Context, req *machi
 	if req == nil {
 		req = &machinev1.CheckForUpdatesRequest{}
 	}
+	layoutBundle := loadBootstrapLayoutBundle(ctx, s.deps, claims.MachineID)
+	desiredFP := desiredLayoutFingerprint(layoutBundle)
 	return &machinev1.CheckForUpdatesResponse{
 		CatalogChanged:               req.GetCatalogFingerprint() != cat,
 		PricingChanged:               req.GetPricingFingerprint() != pr,
 		PlanogramChanged:             req.GetPlanogramFingerprint() != pl,
 		MediaChanged:                 req.GetMediaFingerprint() != med,
+		LayoutChanged:                layoutChangedSinceClient(desiredFP, ""),
 		FirmwareOrAppUpdateAvailable: ota,
 		ServerCatalogFingerprint:     cat,
 		ServerPricingFingerprint:     pr,
@@ -446,6 +451,97 @@ func (s *machineBootstrapServer) CheckIn(ctx context.Context, req *machinev1.Mac
 	}, nil
 }
 
+func (s *machineBootstrapServer) ReportLocalLayout(ctx context.Context, req *machinev1.ReportLocalLayoutRequest) (*machinev1.ReportLocalLayoutResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	if s.deps.Pool == nil {
+		return nil, status.Error(codes.Unavailable, "database_not_configured")
+	}
+	q := db.New(s.deps.Pool)
+	if err := machineCredentialGate(ctx, q, claims); err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	localLayoutID, err := uuid.Parse(strings.TrimSpace(req.GetLocalLayoutId()))
+	if err != nil || localLayoutID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid_local_layout_id")
+	}
+	slotsJSON, err := marshalReportLocalLayoutSlots(req.GetSlots())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid_slots")
+	}
+	svc := &layoutassignment.Service{Pool: s.deps.Pool}
+	out, rerr := svc.ReportLocalLayout(ctx, layoutassignment.MachineAuthContext{MachineID: claims.MachineID}, layoutassignment.ReportLocalLayoutInput{
+		MachineID:        claims.MachineID,
+		LocalLayoutID:    localLayoutID,
+		Revision:         req.GetRevision(),
+		Rows:             req.GetRows(),
+		Columns:          req.GetColumns(),
+		SlotsJSON:        slotsJSON,
+		Fingerprint:      req.GetFingerprint(),
+		DeviceInstanceID: req.GetDeviceInstanceId(),
+		IdempotencyKey:   req.GetMeta().GetIdempotencyKey(),
+	})
+	if rerr != nil {
+		return nil, mapReportLocalLayoutError(rerr)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.ReportLocalLayoutResponse{
+		Meta:           responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Accepted:       out.Accepted,
+		StoredRevision: out.StoredRevision,
+	}, nil
+}
+
+func marshalReportLocalLayoutSlots(slots []*machinev1.ReportLocalLayoutSlot) ([]byte, error) {
+	if len(slots) == 0 {
+		return nil, fmt.Errorf("slots required")
+	}
+	type slotJSON struct {
+		SlotCode          string `json:"slotCode"`
+		SlotOrdinal       int32  `json:"slotOrdinal,omitempty"`
+		LogicalCoordinate string `json:"logicalCoordinate,omitempty"`
+		PhysicalLane      int32  `json:"physicalLane,omitempty"`
+		ProductID         string `json:"productId,omitempty"`
+		MaxQuantity       int32  `json:"maxQuantity,omitempty"`
+		PriceMinor        int64  `json:"priceMinor,omitempty"`
+	}
+	out := make([]slotJSON, 0, len(slots))
+	for _, sl := range slots {
+		if sl == nil {
+			return nil, fmt.Errorf("slot entry required")
+		}
+		out = append(out, slotJSON{
+			SlotCode:          strings.TrimSpace(sl.GetSlotCode()),
+			SlotOrdinal:       sl.GetSlotOrdinal(),
+			LogicalCoordinate: strings.TrimSpace(sl.GetLogicalCoordinate()),
+			PhysicalLane:      sl.GetPhysicalLane(),
+			ProductID:         strings.TrimSpace(sl.GetProductId()),
+			MaxQuantity:       sl.GetMaxQuantity(),
+			PriceMinor:        sl.GetPriceMinor(),
+		})
+	}
+	return json.Marshal(out)
+}
+
+func mapReportLocalLayoutError(err error) error {
+	switch {
+	case errors.Is(err, layoutassignment.ErrLayoutRevisionConflict):
+		return status.Error(codes.FailedPrecondition, "layout_revision_conflict")
+	case errors.Is(err, layoutassignment.ErrInvalidDimensions):
+		return status.Error(codes.InvalidArgument, "invalid_dimensions")
+	default:
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+}
+
 func mapBootstrapError(err error) error {
 	switch {
 	case err == nil:
@@ -476,6 +572,7 @@ func recordMachineBootstrapAudit(ctx context.Context, deps MachineGRPCServicesDe
 
 func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, machineID uuid.UUID, b setupapp.MachineBootstrap) (*machinev1.GetBootstrapResponse, error) {
 	m := b.Machine
+	layoutBundle := loadBootstrapLayoutBundle(ctx, deps, machineID)
 	var hw string
 	if m.HardwareProfileID != nil && *m.HardwareProfileID != uuid.Nil {
 		hw = m.HardwareProfileID.String()
@@ -524,6 +621,8 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 			SortOrder: c.SortOrder,
 			Metadata:  meta,
 			Slots:     sk,
+			GridRows:  layoutBundle.serverGridRows(),
+			GridCols:  layoutBundle.serverGridCols(),
 		})
 	}
 	products := make([]*machinev1.BootstrapCatalogProduct, 0, len(b.AssortmentProducts))
@@ -614,6 +713,7 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 		flags = resp.RuntimeHints.FeatureFlags
 	}
 	resp.PaymentMethods = mapPaymentMethodsProto(resolveMachinePaymentMethods(deps, flags))
+	applyBootstrapLayoutFields(resp, layoutBundle)
 	return resp, nil
 }
 

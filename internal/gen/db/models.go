@@ -493,6 +493,21 @@ type InventoryEvent struct {
 	Metadata                []byte
 }
 
+type LayoutAssignmentIdempotency struct {
+	ScopeID        string
+	IdempotencyKey string
+	RequestHash    string
+	ResponseJson   []byte
+	CreatedAt      time.Time
+}
+
+type LayoutDimensionMigrationAudit struct {
+	MachineSlotLayoutID uuid.UUID
+	Class               string
+	Evidence            []byte
+	AuditedAt           time.Time
+}
+
 type Machine struct {
 	ID                          uuid.UUID
 	SiteID                      uuid.UUID
@@ -865,12 +880,62 @@ type MachineLaneMergePair struct {
 	UpdatedAt         time.Time
 }
 
+type MachineLayoutAssignment struct {
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	Source             string
+	LayoutID           pgtype.UUID
+	LayoutVersionID    pgtype.UUID
+	OrgLayoutVersionID pgtype.UUID
+	Revision           int32
+	GridRows           int32
+	GridCols           int32
+	Fingerprint        string
+	IsCurrent          bool
+	EffectiveFrom      time.Time
+	EffectiveTo        pgtype.Timestamptz
+	CreatedAt          time.Time
+	CreatedBy          pgtype.UUID
+}
+
+type MachineLayoutState struct {
+	MachineID                uuid.UUID
+	DesiredSource            pgtype.Text
+	DesiredAssignmentID      pgtype.UUID
+	DesiredLayoutVersionID   pgtype.UUID
+	DesiredRevision          pgtype.Int4
+	DesiredFingerprint       pgtype.Text
+	DesiredUpdatedAt         pgtype.Timestamptz
+	ReportedSource           pgtype.Text
+	ReportedAssignmentID     pgtype.UUID
+	ReportedLayoutVersionID  pgtype.UUID
+	ReportedRevision         pgtype.Int4
+	ReportedFingerprint      pgtype.Text
+	ReportedAt               pgtype.Timestamptz
+	ReportedDeviceInstanceID pgtype.Text
+	ApplyFailureReason       pgtype.Text
+	UpdatedAt                time.Time
+}
+
 type MachineLineage struct {
 	ID                 uuid.UUID
 	PriorMachineID     uuid.UUID
 	SuccessorMachineID uuid.UUID
 	Reason             pgtype.Text
 	CreatedAt          time.Time
+}
+
+type MachineLocalLayoutMirror struct {
+	MachineID        uuid.UUID
+	LocalLayoutID    uuid.UUID
+	Revision         int32
+	GridRows         int32
+	GridCols         int32
+	Slots            []byte
+	Fingerprint      string
+	ReportedAt       time.Time
+	DeviceInstanceID string
+	UpdatedAt        time.Time
 }
 
 // Physical or logical sub-units on a machine (coin, motor bank, etc.).
@@ -965,13 +1030,18 @@ type MachinePlanogramSlot struct {
 }
 
 type MachinePlanogramVersion struct {
-	ID            uuid.UUID
-	MachineID     uuid.UUID
-	VersionNo     int32
-	Snapshot      []byte
-	SourceDraftID pgtype.UUID
-	PublishedAt   time.Time
-	PublishedBy   pgtype.UUID
+	ID                 uuid.UUID
+	MachineID          uuid.UUID
+	VersionNo          int32
+	Snapshot           []byte
+	SourceDraftID      pgtype.UUID
+	PublishedAt        time.Time
+	PublishedBy        pgtype.UUID
+	LayoutSource       string
+	GridRows           pgtype.Int4
+	GridCols           pgtype.Int4
+	Fingerprint        pgtype.Text
+	OrgLayoutVersionID pgtype.UUID
 }
 
 type MachinePriceOverride struct {
@@ -1122,6 +1192,8 @@ type MachineSlotLayout struct {
 	LayoutKey        string
 	Revision         int32
 	LayoutSpec       []byte
+	GridRows         pgtype.Int4
+	GridCols         pgtype.Int4
 	Status           string
 	CreatedAt        time.Time
 }
@@ -1511,6 +1583,18 @@ type PlanogramTemplate struct {
 	Snapshot    []byte
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+}
+
+type PlanogramTemplateVersion struct {
+	ID          uuid.UUID
+	TemplateID  uuid.UUID
+	VersionNo   int32
+	GridRows    int32
+	GridCols    int32
+	Snapshot    []byte
+	Fingerprint string
+	PublishedAt time.Time
+	PublishedBy pgtype.UUID
 }
 
 type PlatformAuthAccount struct {
