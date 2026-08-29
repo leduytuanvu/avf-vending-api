@@ -205,11 +205,11 @@ message AckConfigVersionResponse {
 }
 
 message CheckForUpdatesRequest {
-  MachineRequestMeta meta = 1;
-  string catalog_fingerprint = 2;
-  string pricing_fingerprint = 3;
-  string planogram_fingerprint = 4;
-  string media_fingerprint = 5;
+  string catalog_fingerprint = 1;
+  string pricing_fingerprint = 2;
+  string planogram_fingerprint = 3;
+  string media_fingerprint = 4;
+  MachineRequestMeta meta = 5;
 }
 
 message CheckForUpdatesResponse {

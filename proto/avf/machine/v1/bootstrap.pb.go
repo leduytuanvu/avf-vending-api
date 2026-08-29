@@ -1640,11 +1640,11 @@ func (x *AckConfigVersionResponse) GetMeta() *MachineResponseMeta {
 
 type CheckForUpdatesRequest struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
-	Meta                 *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	CatalogFingerprint   string                 `protobuf:"bytes,2,opt,name=catalog_fingerprint,json=catalogFingerprint,proto3" json:"catalog_fingerprint,omitempty"`
-	PricingFingerprint   string                 `protobuf:"bytes,3,opt,name=pricing_fingerprint,json=pricingFingerprint,proto3" json:"pricing_fingerprint,omitempty"`
-	PlanogramFingerprint string                 `protobuf:"bytes,4,opt,name=planogram_fingerprint,json=planogramFingerprint,proto3" json:"planogram_fingerprint,omitempty"`
-	MediaFingerprint     string                 `protobuf:"bytes,5,opt,name=media_fingerprint,json=mediaFingerprint,proto3" json:"media_fingerprint,omitempty"`
+	CatalogFingerprint   string                 `protobuf:"bytes,1,opt,name=catalog_fingerprint,json=catalogFingerprint,proto3" json:"catalog_fingerprint,omitempty"`
+	PricingFingerprint   string                 `protobuf:"bytes,2,opt,name=pricing_fingerprint,json=pricingFingerprint,proto3" json:"pricing_fingerprint,omitempty"`
+	PlanogramFingerprint string                 `protobuf:"bytes,3,opt,name=planogram_fingerprint,json=planogramFingerprint,proto3" json:"planogram_fingerprint,omitempty"`
+	MediaFingerprint     string                 `protobuf:"bytes,4,opt,name=media_fingerprint,json=mediaFingerprint,proto3" json:"media_fingerprint,omitempty"`
+	Meta                 *MachineRequestMeta    `protobuf:"bytes,5,opt,name=meta,proto3" json:"meta,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -1679,13 +1679,6 @@ func (*CheckForUpdatesRequest) Descriptor() ([]byte, []int) {
 	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{18}
 }
 
-func (x *CheckForUpdatesRequest) GetMeta() *MachineRequestMeta {
-	if x != nil {
-		return x.Meta
-	}
-	return nil
-}
-
 func (x *CheckForUpdatesRequest) GetCatalogFingerprint() string {
 	if x != nil {
 		return x.CatalogFingerprint
@@ -1712,6 +1705,13 @@ func (x *CheckForUpdatesRequest) GetMediaFingerprint() string {
 		return x.MediaFingerprint
 	}
 	return ""
+}
+
+func (x *CheckForUpdatesRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
 }
 
 type CheckForUpdatesResponse struct {
@@ -2249,12 +2249,12 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"S\n" +
 	"\x18AckConfigVersionResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\x94\x02\n" +
-	"\x16CheckForUpdatesRequest\x126\n" +
-	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12/\n" +
-	"\x13catalog_fingerprint\x18\x02 \x01(\tR\x12catalogFingerprint\x12/\n" +
-	"\x13pricing_fingerprint\x18\x03 \x01(\tR\x12pricingFingerprint\x123\n" +
-	"\x15planogram_fingerprint\x18\x04 \x01(\tR\x14planogramFingerprint\x12+\n" +
-	"\x11media_fingerprint\x18\x05 \x01(\tR\x10mediaFingerprint\"\xa4\x04\n" +
+	"\x16CheckForUpdatesRequest\x12/\n" +
+	"\x13catalog_fingerprint\x18\x01 \x01(\tR\x12catalogFingerprint\x12/\n" +
+	"\x13pricing_fingerprint\x18\x02 \x01(\tR\x12pricingFingerprint\x123\n" +
+	"\x15planogram_fingerprint\x18\x03 \x01(\tR\x14planogramFingerprint\x12+\n" +
+	"\x11media_fingerprint\x18\x04 \x01(\tR\x10mediaFingerprint\x126\n" +
+	"\x04meta\x18\x05 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\"\xa4\x04\n" +
 	"\x17CheckForUpdatesResponse\x12'\n" +
 	"\x0fcatalog_changed\x18\x01 \x01(\bR\x0ecatalogChanged\x12'\n" +
 	"\x0fpricing_changed\x18\x02 \x01(\bR\x0epricingChanged\x12+\n" +
