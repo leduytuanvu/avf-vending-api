@@ -34,6 +34,36 @@ func (q *Queries) CloseCurrentMachineLayoutAssignment(ctx context.Context, arg C
 	return err
 }
 
+const CountMachineSlotLayoutsMissingDimensionAudit = `-- name: CountMachineSlotLayoutsMissingDimensionAudit :one
+SELECT count(*)::bigint AS count
+FROM machine_slot_layouts l
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM layout_dimension_migration_audit a
+    WHERE a.machine_slot_layout_id = l.id
+)
+`
+
+func (q *Queries) CountMachineSlotLayoutsMissingDimensionAudit(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, CountMachineSlotLayoutsMissingDimensionAudit)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const CountMachineSlotLayoutsMissingDimensions = `-- name: CountMachineSlotLayoutsMissingDimensions :one
+SELECT count(*)::bigint AS count
+FROM machine_slot_layouts
+WHERE grid_rows IS NULL OR grid_cols IS NULL
+`
+
+func (q *Queries) CountMachineSlotLayoutsMissingDimensions(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, CountMachineSlotLayoutsMissingDimensions)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const GetCurrentMachineLayoutAssignment = `-- name: GetCurrentMachineLayoutAssignment :one
 SELECT id, machine_id, source, layout_id, layout_version_id, org_layout_version_id, revision, grid_rows, grid_cols, fingerprint, is_current, effective_from, effective_to, created_at, created_by
 FROM machine_layout_assignments
@@ -67,6 +97,32 @@ func (q *Queries) GetCurrentMachineLayoutAssignment(ctx context.Context, arg Get
 		&i.EffectiveTo,
 		&i.CreatedAt,
 		&i.CreatedBy,
+	)
+	return i, err
+}
+
+const GetLayoutAssignmentIdempotency = `-- name: GetLayoutAssignmentIdempotency :one
+SELECT scope_id, idempotency_key, request_hash, response_json, created_at
+FROM layout_assignment_idempotency
+WHERE
+    scope_id = $1
+    AND idempotency_key = $2
+`
+
+type GetLayoutAssignmentIdempotencyParams struct {
+	ScopeID        string
+	IdempotencyKey string
+}
+
+func (q *Queries) GetLayoutAssignmentIdempotency(ctx context.Context, arg GetLayoutAssignmentIdempotencyParams) (LayoutAssignmentIdempotency, error) {
+	row := q.db.QueryRow(ctx, GetLayoutAssignmentIdempotency, arg.ScopeID, arg.IdempotencyKey)
+	var i LayoutAssignmentIdempotency
+	err := row.Scan(
+		&i.ScopeID,
+		&i.IdempotencyKey,
+		&i.RequestHash,
+		&i.ResponseJson,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -167,6 +223,33 @@ func (q *Queries) GetMachinePlanogramVersionByID(ctx context.Context, id uuid.UU
 	return i, err
 }
 
+const InsertLayoutAssignmentIdempotency = `-- name: InsertLayoutAssignmentIdempotency :exec
+INSERT INTO layout_assignment_idempotency (scope_id, idempotency_key, request_hash, response_json)
+VALUES (
+    $1,
+    $2,
+    $3,
+    $4
+)
+`
+
+type InsertLayoutAssignmentIdempotencyParams struct {
+	ScopeID        string
+	IdempotencyKey string
+	RequestHash    string
+	ResponseJson   []byte
+}
+
+func (q *Queries) InsertLayoutAssignmentIdempotency(ctx context.Context, arg InsertLayoutAssignmentIdempotencyParams) error {
+	_, err := q.db.Exec(ctx, InsertLayoutAssignmentIdempotency,
+		arg.ScopeID,
+		arg.IdempotencyKey,
+		arg.RequestHash,
+		arg.ResponseJson,
+	)
+	return err
+}
+
 const InsertLayoutDimensionAudit = `-- name: InsertLayoutDimensionAudit :exec
 INSERT INTO layout_dimension_migration_audit (machine_slot_layout_id, class, evidence)
 VALUES ($1, $2, $3)
@@ -261,6 +344,91 @@ func (q *Queries) InsertMachineLayoutAssignment(ctx context.Context, arg InsertM
 		&i.CreatedBy,
 	)
 	return i, err
+}
+
+const ListLayoutDimensionMigrationAuditRequiresReview = `-- name: ListLayoutDimensionMigrationAuditRequiresReview :many
+SELECT
+    a.machine_slot_layout_id,
+    a.class,
+    a.evidence,
+    a.audited_at,
+    l.layout_key,
+    l.grid_rows,
+    l.grid_cols
+FROM layout_dimension_migration_audit a
+JOIN machine_slot_layouts l ON l.id = a.machine_slot_layout_id
+WHERE a.class = 'REQUIRES_REVIEW'
+ORDER BY a.audited_at DESC
+`
+
+type ListLayoutDimensionMigrationAuditRequiresReviewRow struct {
+	MachineSlotLayoutID uuid.UUID
+	Class               string
+	Evidence            []byte
+	AuditedAt           time.Time
+	LayoutKey           string
+	GridRows            pgtype.Int4
+	GridCols            pgtype.Int4
+}
+
+func (q *Queries) ListLayoutDimensionMigrationAuditRequiresReview(ctx context.Context) ([]ListLayoutDimensionMigrationAuditRequiresReviewRow, error) {
+	rows, err := q.db.Query(ctx, ListLayoutDimensionMigrationAuditRequiresReview)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLayoutDimensionMigrationAuditRequiresReviewRow{}
+	for rows.Next() {
+		var i ListLayoutDimensionMigrationAuditRequiresReviewRow
+		if err := rows.Scan(
+			&i.MachineSlotLayoutID,
+			&i.Class,
+			&i.Evidence,
+			&i.AuditedAt,
+			&i.LayoutKey,
+			&i.GridRows,
+			&i.GridCols,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const ListLayoutDimensionMigrationAuditSummary = `-- name: ListLayoutDimensionMigrationAuditSummary :many
+SELECT class, count(*)::bigint AS count
+FROM layout_dimension_migration_audit
+GROUP BY class
+ORDER BY class
+`
+
+type ListLayoutDimensionMigrationAuditSummaryRow struct {
+	Class string
+	Count int64
+}
+
+func (q *Queries) ListLayoutDimensionMigrationAuditSummary(ctx context.Context) ([]ListLayoutDimensionMigrationAuditSummaryRow, error) {
+	rows, err := q.db.Query(ctx, ListLayoutDimensionMigrationAuditSummary)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListLayoutDimensionMigrationAuditSummaryRow{}
+	for rows.Next() {
+		var i ListLayoutDimensionMigrationAuditSummaryRow
+		if err := rows.Scan(&i.Class, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const ListMachineSlotLayoutsForDimensionAudit = `-- name: ListMachineSlotLayoutsForDimensionAudit :many

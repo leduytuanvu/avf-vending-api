@@ -2240,6 +2240,99 @@ func DocOpV1AdminMachinePlanogramPublishPost() {}
 // @Router /v1/admin/machines/{machineId}/sync [post]
 func DocOpV1AdminMachineSetupSyncPost() {}
 
+// DocOpV1AdminMachineLayoutStateGet godoc
+// @Summary Get machine layout desired vs reported state
+// @Description Returns SERVER assignment, LOCAL mirror, desired/reported source, revision, fingerprint, and sync status for dual-source layout management.
+// @Tags Machine Layout
+// @Security BearerAuth
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/layout-state [get]
+func DocOpV1AdminMachineLayoutStateGet() {}
+
+// DocOpV1AdminLayoutDimensionMigrationAuditGet godoc
+// @Summary Legacy layout dimension migration audit report
+// @Description Read-only classification coverage for legacy `machine_slot_layouts` dimensions (PROVEN / INFERRED_SAFE / REQUIRES_REVIEW). Does not mutate layouts.
+// @Tags Machine Layout
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} object
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/layout-dimension-migration-audit [get]
+func DocOpV1AdminLayoutDimensionMigrationAuditGet() {}
+
+// DocOpV1AdminMachineServerLayoutAssignmentPut godoc
+// @Summary Atomically assign SERVER layout to a machine
+// @Description Single transactional SERVER layout assignment: slot configs, published planogram version, layout assignment row, desired state, and config snapshot. **Idempotency-Key** header is required.
+// @Tags Machine Layout
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param Idempotency-Key header string true "Idempotency key"
+// @Param body body object true "layoutVersionId, optional orgLayoutVersionId, expectedCurrentRevision, operatorSessionId"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 409 {object} V1StandardError "revision_conflict / idempotency_key_conflict"
+// @Failure 422 {object} V1StandardError "layout_dimensions_unknown / layout_exceeds_hardware_lane_capacity"
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/layout-assignments/server [put]
+func DocOpV1AdminMachineServerLayoutAssignmentPut() {}
+
+// DocOpV1AdminMachineLayoutDesiredSourcePut godoc
+// @Summary Set desired active layout source (SERVER or LOCAL)
+// @Description Updates desired active layout source for a machine. Device applies and reports actual state separately.
+// @Tags Machine Layout
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param machineId path string true "Machine UUID"
+// @Param body body object true "source (SERVER|LOCAL), optional expectedCurrentRevision"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 501 {object} V1StandardError "not_implemented until device reporting is live"
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/layout-desired-source [put]
+func DocOpV1AdminMachineLayoutDesiredSourcePut() {}
+
+// DocOpV1AdminMachineServerLayoutBulkPost godoc
+// @Summary Bulk assign SERVER layout to many machines
+// @Description Per-machine atomic assignment; partial success is allowed. **Idempotency-Key** header is required (suffixed per machine internally).
+// @Tags Machine Layout
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param Idempotency-Key header string true "Idempotency key"
+// @Param body body object true "machineIds[], layoutVersionId"
+// @Success 200 {object} object
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 429 {object} V1StandardError
+// @Failure 503 {object} V1CapabilityNotConfiguredError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/machines/{machineId}/layout-assignments/server:bulk [post]
+func DocOpV1AdminMachineServerLayoutBulkPost() {}
+
 // --- Reporting (read-only analytics) ---
 
 // DocOpV1ReportsSalesSummary godoc

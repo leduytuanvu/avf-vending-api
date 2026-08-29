@@ -493,6 +493,14 @@ type InventoryEvent struct {
 	Metadata                []byte
 }
 
+type LayoutAssignmentIdempotency struct {
+	ScopeID        string
+	IdempotencyKey string
+	RequestHash    string
+	ResponseJson   []byte
+	CreatedAt      time.Time
+}
+
 type LayoutDimensionMigrationAudit struct {
 	MachineSlotLayoutID uuid.UUID
 	Class               string

@@ -10,6 +10,8 @@ var (
 	ErrInvalidDimensions           = errors.New("layout dimensions out of range")
 	ErrExceedsHardwareLaneCapacity = errors.New("layout exceeds hardware lane capacity")
 	ErrRevisionConflict            = errors.New("expected revision conflict")
+	ErrLayoutRevisionConflict      = errors.New("layout revision fingerprint conflict")
+	ErrLayoutAssignmentNotFound    = errors.New("layout assignment not found for source")
 	ErrLayoutVersionNotFound       = errors.New("layout version not found")
 	ErrMachineMismatch             = errors.New("layout version machine mismatch")
 	ErrUnknownDimensions           = errors.New("layout dimensions unknown")

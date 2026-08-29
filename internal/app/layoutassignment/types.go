@@ -99,6 +99,11 @@ type BulkAssignResult struct {
 	RequestID    string
 }
 
+// MachineAuthContext is the authenticated machine identity propagated from gRPC.
+type MachineAuthContext struct {
+	MachineID uuid.UUID
+}
+
 // ReportLocalLayoutInput is device-authored LOCAL layout reporting.
 type ReportLocalLayoutInput struct {
 	MachineID          uuid.UUID
@@ -110,4 +115,25 @@ type ReportLocalLayoutInput struct {
 	Fingerprint        string
 	DeviceInstanceID   string
 	IdempotencyKey     string
+}
+
+// ReportLocalLayoutResult is returned after a device LOCAL layout report.
+type ReportLocalLayoutResult struct {
+	Accepted       bool
+	StoredRevision int32
+}
+
+// SetDesiredSourceInput switches the desired active layout source for a machine.
+type SetDesiredSourceInput struct {
+	MachineID               uuid.UUID
+	Source                  string
+	ExpectedCurrentRevision *int32
+}
+
+// SetDesiredSourceResult is returned after a successful desired-source update.
+type SetDesiredSourceResult struct {
+	DesiredSource      string
+	DesiredRevision    int32
+	DesiredFingerprint string
+	SyncStatus         string
 }

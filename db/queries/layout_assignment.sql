@@ -186,3 +186,53 @@ ON CONFLICT (machine_slot_layout_id) DO UPDATE SET
     class = EXCLUDED.class,
     evidence = EXCLUDED.evidence,
     audited_at = now();
+
+-- name: GetLayoutAssignmentIdempotency :one
+SELECT scope_id, idempotency_key, request_hash, response_json, created_at
+FROM layout_assignment_idempotency
+WHERE
+    scope_id = sqlc.arg(scope_id)
+    AND idempotency_key = sqlc.arg(idempotency_key);
+
+-- name: InsertLayoutAssignmentIdempotency :exec
+INSERT INTO layout_assignment_idempotency (scope_id, idempotency_key, request_hash, response_json)
+VALUES (
+    sqlc.arg(scope_id),
+    sqlc.arg(idempotency_key),
+    sqlc.arg(request_hash),
+    sqlc.arg(response_json)
+);
+
+-- name: ListLayoutDimensionMigrationAuditSummary :many
+SELECT class, count(*)::bigint AS count
+FROM layout_dimension_migration_audit
+GROUP BY class
+ORDER BY class;
+
+-- name: ListLayoutDimensionMigrationAuditRequiresReview :many
+SELECT
+    a.machine_slot_layout_id,
+    a.class,
+    a.evidence,
+    a.audited_at,
+    l.layout_key,
+    l.grid_rows,
+    l.grid_cols
+FROM layout_dimension_migration_audit a
+JOIN machine_slot_layouts l ON l.id = a.machine_slot_layout_id
+WHERE a.class = 'REQUIRES_REVIEW'
+ORDER BY a.audited_at DESC;
+
+-- name: CountMachineSlotLayoutsMissingDimensionAudit :one
+SELECT count(*)::bigint AS count
+FROM machine_slot_layouts l
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM layout_dimension_migration_audit a
+    WHERE a.machine_slot_layout_id = l.id
+);
+
+-- name: CountMachineSlotLayoutsMissingDimensions :one
+SELECT count(*)::bigint AS count
+FROM machine_slot_layouts
+WHERE grid_rows IS NULL OR grid_cols IS NULL;

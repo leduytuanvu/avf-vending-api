@@ -16,7 +16,7 @@ import (
 )
 
 func mountAdminLayoutRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
-	if app == nil || app.TelemetryStore == nil {
+	if app == nil || app.InventoryAdmin == nil || app.TelemetryStore == nil {
 		return
 	}
 	if writeRL == nil {
@@ -25,6 +25,7 @@ func mountAdminLayoutRoutes(r chi.Router, app *api.HTTPApplication, writeRL func
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermInventoryRead))
 		r.Get("/machines/{machineId}/layout-state", getAdminMachineLayoutState(app))
+		r.Get("/layout-dimension-migration-audit", getAdminLayoutDimensionMigrationAudit(app))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermInventoryWrite))
@@ -114,7 +115,6 @@ func putAdminMachineServerLayoutAssignment(app *api.HTTPApplication) http.Handle
 		if !ok {
 			return
 		}
-		_ = idem // idempotency replay wired in follow-up; key required per contract
 		var actorID *uuid.UUID
 		if aid, ok := principalAccountID(r); ok {
 			actorID = &aid
@@ -175,14 +175,37 @@ func getAdminMachineLayoutState(app *api.HTTPApplication) http.HandlerFunc {
 	}
 }
 
+func getAdminLayoutDimensionMigrationAudit(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		report, err := svc.GetLayoutDimensionMigrationAuditReport(r.Context())
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, report)
+	}
+}
+
 type desiredSourceBody struct {
 	Source                  string `json:"source"`
 	ExpectedCurrentRevision *int32 `json:"expectedCurrentRevision,omitempty"`
 }
 
+type desiredSourceResponse struct {
+	DesiredSource      string `json:"desiredSource"`
+	DesiredRevision    int32  `json:"desiredRevision"`
+	DesiredFingerprint string `json:"desiredFingerprint"`
+	SyncStatus         string `json:"syncStatus"`
+}
+
 func putAdminMachineLayoutDesiredSource(app *api.HTTPApplication) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		_, ok := layoutService(app)
+		svc, ok := layoutService(app)
 		if !ok {
 			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
 			return
@@ -205,7 +228,21 @@ func putAdminMachineLayoutDesiredSource(app *api.HTTPApplication) http.HandlerFu
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_source", "source must be SERVER or LOCAL")
 			return
 		}
-		writeAPIError(w, r.Context(), http.StatusNotImplemented, "not_implemented", "desired source update is not yet available")
+		out, derr := svc.SetDesiredSource(r.Context(), layoutassignment.SetDesiredSourceInput{
+			MachineID:               machineID,
+			Source:                  src,
+			ExpectedCurrentRevision: body.ExpectedCurrentRevision,
+		})
+		if derr != nil {
+			writeLayoutAssignmentError(w, r, derr)
+			return
+		}
+		writeJSON(w, http.StatusOK, desiredSourceResponse{
+			DesiredSource:      out.DesiredSource,
+			DesiredRevision:    out.DesiredRevision,
+			DesiredFingerprint: out.DesiredFingerprint,
+			SyncStatus:         out.SyncStatus,
+		})
 	}
 }
 
@@ -290,12 +327,18 @@ func writeLayoutAssignmentError(w http.ResponseWriter, r *http.Request, err erro
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "machine_mismatch", err.Error())
 	case errors.Is(err, layoutassignment.ErrRevisionConflict):
 		writeAPIError(w, r.Context(), http.StatusConflict, "revision_conflict", err.Error())
+	case errors.Is(err, layoutassignment.ErrLayoutRevisionConflict):
+		writeAPIError(w, r.Context(), http.StatusConflict, "layout_revision_conflict", err.Error())
+	case errors.Is(err, layoutassignment.ErrLayoutAssignmentNotFound):
+		writeAPIError(w, r.Context(), http.StatusNotFound, "layout_assignment_not_found", err.Error())
 	case errors.Is(err, layoutassignment.ErrUnknownDimensions):
 		writeAPIError(w, r.Context(), http.StatusUnprocessableEntity, "layout_dimensions_unknown", err.Error())
 	case errors.Is(err, layoutassignment.ErrExceedsHardwareLaneCapacity):
 		writeAPIError(w, r.Context(), http.StatusUnprocessableEntity, "layout_exceeds_hardware_lane_capacity", err.Error())
 	case errors.Is(err, layoutassignment.ErrInvalidDimensions):
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_dimensions", err.Error())
+	case errors.Is(err, layoutassignment.ErrIdempotencyKeyConflict):
+		writeAPIError(w, r.Context(), http.StatusConflict, "idempotency_key_conflict", err.Error())
 	default:
 		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 	}

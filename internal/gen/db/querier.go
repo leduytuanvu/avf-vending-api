@@ -217,6 +217,8 @@ type Querier interface {
 	CountFinanceDailyCloses(ctx context.Context) (int64, error)
 	CountMachineActivationCodesAll(ctx context.Context) (int64, error)
 	CountMachineCommandAttemptsByCommandID(ctx context.Context, commandID uuid.UUID) (int64, error)
+	CountMachineSlotLayoutsMissingDimensionAudit(ctx context.Context) (int64, error)
+	CountMachineSlotLayoutsMissingDimensions(ctx context.Context) (int64, error)
 	CountPaymentDisputesForOrg(ctx context.Context) (int64, error)
 	CountPaymentProviderEventsForOrgAdmin(ctx context.Context) (int64, error)
 	CountPaymentProviderSettlementsForOrg(ctx context.Context) (int64, error)
@@ -316,6 +318,7 @@ type Querier interface {
 	GetLatestMachineCommandAttemptByCommandID(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
 	GetLatestOpenMachineCommandAttemptForCommand(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (Payment, error)
+	GetLayoutAssignmentIdempotency(ctx context.Context, arg GetLayoutAssignmentIdempotencyParams) (LayoutAssignmentIdempotency, error)
 	GetMachineActivationCodeByHashForUpdate(ctx context.Context, codeHash []byte) (MachineActivationCode, error)
 	GetMachineActivationCodeByIDForOrg(ctx context.Context, id uuid.UUID) (MachineActivationCode, error)
 	GetMachineByCode(ctx context.Context, dollar_1 string) (Machine, error)
@@ -378,6 +381,7 @@ type Querier interface {
 	InsertFinancialLedgerEntry(ctx context.Context, arg InsertFinancialLedgerEntryParams) (InsertFinancialLedgerEntryRow, error)
 	InsertIncident(ctx context.Context, arg InsertIncidentParams) (Incident, error)
 	InsertInventoryCountSession(ctx context.Context, arg InsertInventoryCountSessionParams) (InventoryCountSession, error)
+	InsertLayoutAssignmentIdempotency(ctx context.Context, arg InsertLayoutAssignmentIdempotencyParams) error
 	InsertLayoutDimensionAudit(ctx context.Context, arg InsertLayoutDimensionAuditParams) error
 	InsertMachine(ctx context.Context, arg InsertMachineParams) (Machine, error)
 	InsertMachineActionAttribution(ctx context.Context, arg InsertMachineActionAttributionParams) (MachineActionAttribution, error)
@@ -437,6 +441,8 @@ type Querier interface {
 	ListCheckoutQuoteLines(ctx context.Context, quoteID uuid.UUID) ([]CheckoutQuoteLine, error)
 	ListDeviceCommandReceiptsByMachine(ctx context.Context, arg ListDeviceCommandReceiptsByMachineParams) ([]DeviceCommandReceipt, error)
 	ListFinanceDailyCloses(ctx context.Context, arg ListFinanceDailyClosesParams) ([]FinanceDailyClose, error)
+	ListLayoutDimensionMigrationAuditRequiresReview(ctx context.Context) ([]ListLayoutDimensionMigrationAuditRequiresReviewRow, error)
+	ListLayoutDimensionMigrationAuditSummary(ctx context.Context) ([]ListLayoutDimensionMigrationAuditSummaryRow, error)
 	ListMachineActionAttributionsByMachineAndResource(ctx context.Context, arg ListMachineActionAttributionsByMachineAndResourceParams) ([]MachineActionAttribution, error)
 	ListMachineActionAttributionsByMachineID(ctx context.Context, arg ListMachineActionAttributionsByMachineIDParams) ([]MachineActionAttribution, error)
 	ListMachineActionAttributionsForTechnician(ctx context.Context, arg ListMachineActionAttributionsForTechnicianParams) ([]MachineActionAttribution, error)

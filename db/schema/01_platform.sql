@@ -2704,6 +2704,17 @@ CREATE TABLE layout_dimension_migration_audit (
     audited_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE layout_assignment_idempotency (
+    scope_id text NOT NULL,
+    idempotency_key text NOT NULL,
+    request_hash text NOT NULL,
+    response_json jsonb NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_layout_assignment_idempotency_scope_key UNIQUE (scope_id, idempotency_key)
+);
+
+CREATE INDEX ix_layout_assignment_idempotency_created_at ON layout_assignment_idempotency (created_at DESC);
+
 CREATE INDEX ix_machine_planogram_versions_machine_published ON machine_planogram_versions (machine_id, published_at DESC);
 
 CREATE TABLE machine_planogram_slots (

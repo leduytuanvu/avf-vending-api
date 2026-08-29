@@ -35,6 +35,12 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 		return AssignServerLayoutResult{}, fmt.Errorf("machineId and layoutVersionId are required")
 	}
 
+	if replay, ok, idemErr := s.beginAssignServerLayoutIdempotency(ctx, in); idemErr != nil {
+		return AssignServerLayoutResult{}, idemErr
+	} else if ok {
+		return replay, nil
+	}
+
 	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return AssignServerLayoutResult{}, err
@@ -108,7 +114,6 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 	}
 
 	slotParts := fingerprintPartsFromSaveInput(saveIn)
-	fp := AssignmentFingerprint(SourceServer, vRow.ID.String(), 0, rows, cols, slotParts)
 
 	nextRev, err := q.NextMachineLayoutAssignmentRevision(ctx, db.NextMachineLayoutAssignmentRevisionParams{
 		MachineID: in.MachineID,
@@ -117,7 +122,7 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 	if err != nil {
 		return AssignServerLayoutResult{}, err
 	}
-	fp = AssignmentFingerprint(SourceServer, vRow.ID.String(), nextRev, rows, cols, slotParts)
+	fp := AssignmentFingerprint(SourceServer, vRow.ID.String(), nextRev, rows, cols, slotParts)
 
 	if err := q.CloseCurrentMachineLayoutAssignment(ctx, db.CloseCurrentMachineLayoutAssignmentParams{
 		MachineID: in.MachineID,
@@ -182,7 +187,7 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 		syncStatus = state.SyncStatus
 	}
 
-	return AssignServerLayoutResult{
+	out := AssignServerLayoutResult{
 		AssignmentID:  assignRow.ID,
 		Source:        SourceServer,
 		Revision:      nextRev,
@@ -191,7 +196,11 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 		Fingerprint:   fp,
 		DesiredSource: &desiredSource,
 		SyncStatus:    syncStatus,
-	}, nil
+	}
+	if err := s.storeAssignServerLayoutIdempotency(ctx, in, out); err != nil {
+		return AssignServerLayoutResult{}, err
+	}
+	return out, nil
 }
 
 // GetLayoutState returns desired/reported layout state for admin display.
