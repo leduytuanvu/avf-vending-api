@@ -32,12 +32,12 @@ INSERT INTO machine_configs (
     metadata
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6
+    sqlc.arg('machine_id'),
+    sqlc.arg('applied_at'),
+    sqlc.arg('config_revision'),
+    COALESCE(NULLIF(sqlc.arg('config_payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('operator_session_id'),
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
