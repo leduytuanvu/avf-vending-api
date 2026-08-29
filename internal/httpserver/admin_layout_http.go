@@ -9,8 +9,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/layoutassignment"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
-	"github.com/avf/avf-vending-api/internal/platform/auth"
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
+	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )

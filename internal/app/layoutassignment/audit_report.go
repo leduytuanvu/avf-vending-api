@@ -28,10 +28,10 @@ type LayoutDimensionAuditItem struct {
 
 // LayoutDimensionMigrationAuditReport is the read model for the admin audit endpoint.
 type LayoutDimensionMigrationAuditReport struct {
-	Summary            []LayoutDimensionAuditSummary `json:"summary"`
-	RequiresReview     []LayoutDimensionAuditItem    `json:"requiresReview"`
-	UnauditedCount     int64                         `json:"unauditedCount"`
-	MissingDimensions  int64                         `json:"missingDimensions"`
+	Summary           []LayoutDimensionAuditSummary `json:"summary"`
+	RequiresReview    []LayoutDimensionAuditItem    `json:"requiresReview"`
+	UnauditedCount    int64                         `json:"unauditedCount"`
+	MissingDimensions int64                         `json:"missingDimensions"`
 }
 
 // GetLayoutDimensionMigrationAuditReport returns classification coverage for legacy layouts.

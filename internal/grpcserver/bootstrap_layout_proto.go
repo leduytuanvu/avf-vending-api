@@ -15,14 +15,14 @@ import (
 )
 
 type bootstrapLayoutBundle struct {
-	serverRow       db.MachineLayoutAssignment
-	hasServer       bool
-	localRow        db.MachineLayoutAssignment
-	hasLocal        bool
-	state           db.MachineLayoutState
-	hasState        bool
-	localMirror     db.MachineLocalLayoutMirror
-	hasLocalMirror  bool
+	serverRow      db.MachineLayoutAssignment
+	hasServer      bool
+	localRow       db.MachineLayoutAssignment
+	hasLocal       bool
+	state          db.MachineLayoutState
+	hasState       bool
+	localMirror    db.MachineLocalLayoutMirror
+	hasLocalMirror bool
 }
 
 func loadBootstrapLayoutBundle(ctx context.Context, deps MachineGRPCServicesDeps, machineID uuid.UUID) bootstrapLayoutBundle {

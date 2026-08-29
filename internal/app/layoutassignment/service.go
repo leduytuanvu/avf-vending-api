@@ -22,8 +22,8 @@ var layoutKeyPattern = regexp.MustCompile(`^grid-(\d+)x(\d+)$`)
 
 // Service implements atomic SERVER layout assignment and layout state reads.
 type Service struct {
-	Pool   *pgxpool.Pool
-	Setup  *postgres.SetupRepository
+	Pool  *pgxpool.Pool
+	Setup *postgres.SetupRepository
 }
 
 // AssignServerLayout atomically assigns a published planogram version as the current SERVER layout.
@@ -140,16 +140,16 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 		orgVer = pgtype.UUID{Bytes: *in.OrgLayoutVersionID, Valid: true}
 	}
 	assignRow, err := q.InsertMachineLayoutAssignment(ctx, db.InsertMachineLayoutAssignmentParams{
-		MachineID:           in.MachineID,
-		Source:              SourceServer,
-		LayoutID:            pgtype.UUID{},
-		LayoutVersionID:     pgtype.UUID{Bytes: vRow.ID, Valid: true},
-		OrgLayoutVersionID:  orgVer,
-		Revision:            nextRev,
-		GridRows:            rows,
-		GridCols:            cols,
-		Fingerprint:         fp,
-		CreatedBy:           createdBy,
+		MachineID:          in.MachineID,
+		Source:             SourceServer,
+		LayoutID:           pgtype.UUID{},
+		LayoutVersionID:    pgtype.UUID{Bytes: vRow.ID, Valid: true},
+		OrgLayoutVersionID: orgVer,
+		Revision:           nextRev,
+		GridRows:           rows,
+		GridCols:           cols,
+		Fingerprint:        fp,
+		CreatedBy:          createdBy,
 	})
 	if err != nil {
 		return AssignServerLayoutResult{}, err
@@ -284,12 +284,12 @@ func (s *Service) GetLayoutState(ctx context.Context, machineID uuid.UUID) (*Lay
 
 func mapAssignmentRow(row db.MachineLayoutAssignment) *AssignmentView {
 	v := &AssignmentView{
-		AssignmentID: row.ID,
-		Source:       row.Source,
-		Revision:     row.Revision,
-		Rows:         row.GridRows,
-		Columns:      row.GridCols,
-		Fingerprint:  row.Fingerprint,
+		AssignmentID:  row.ID,
+		Source:        row.Source,
+		Revision:      row.Revision,
+		Rows:          row.GridRows,
+		Columns:       row.GridCols,
+		Fingerprint:   row.Fingerprint,
 		EffectiveFrom: row.EffectiveFrom,
 	}
 	if row.LayoutVersionID.Valid {

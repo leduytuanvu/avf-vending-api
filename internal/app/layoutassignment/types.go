@@ -10,11 +10,11 @@ const (
 	SourceServer = "SERVER"
 	SourceLocal  = "LOCAL"
 
-	SyncStatusInSync          = "IN_SYNC"
-	SyncStatusPending         = "PENDING"
-	SyncStatusDrift           = "DRIFT"
-	SyncStatusApplyFailed     = "APPLY_FAILED"
-	SyncStatusOfflineUnknown  = "OFFLINE_OR_UNKNOWN"
+	SyncStatusInSync         = "IN_SYNC"
+	SyncStatusPending        = "PENDING"
+	SyncStatusDrift          = "DRIFT"
+	SyncStatusApplyFailed    = "APPLY_FAILED"
+	SyncStatusOfflineUnknown = "OFFLINE_OR_UNKNOWN"
 
 	DefaultGridRows = 6
 	DefaultGridCols = 10
@@ -26,66 +26,66 @@ const (
 
 // AssignServerLayoutInput is the atomic SERVER layout assignment command.
 type AssignServerLayoutInput struct {
-	MachineID              uuid.UUID
-	LayoutVersionID        uuid.UUID
-	OrgLayoutVersionID     *uuid.UUID
+	MachineID               uuid.UUID
+	LayoutVersionID         uuid.UUID
+	OrgLayoutVersionID      *uuid.UUID
 	ExpectedCurrentRevision *int32
-	IdempotencyKey         string
-	ActorAccountID         *uuid.UUID
-	OperatorSessionID      *uuid.UUID
+	IdempotencyKey          string
+	ActorAccountID          *uuid.UUID
+	OperatorSessionID       *uuid.UUID
 }
 
 // AssignServerLayoutResult is returned after a successful assignment.
 type AssignServerLayoutResult struct {
-	AssignmentID       uuid.UUID
-	Source             string
-	Revision           int32
-	Rows               int32
-	Columns            int32
-	Fingerprint        string
-	DesiredSource      *string
-	SyncStatus         string
-	RequestID          string
+	AssignmentID  uuid.UUID
+	Source        string
+	Revision      int32
+	Rows          int32
+	Columns       int32
+	Fingerprint   string
+	DesiredSource *string
+	SyncStatus    string
+	RequestID     string
 }
 
 // LayoutStateView is the admin read model for desired vs reported layout.
 type LayoutStateView struct {
-	MachineID              uuid.UUID
-	ServerAssignment       *AssignmentView
-	LocalAssignment        *AssignmentView
-	LocalMirror            *LocalMirrorView
-	DesiredSource          *string
-	DesiredRevision        *int32
-	DesiredFingerprint     *string
-	ReportedSource         *string
-	ReportedRevision       *int32
-	ReportedFingerprint    *string
-	ReportedAt             *time.Time
-	SyncStatus             string
-	ApplyFailureReason     *string
+	MachineID           uuid.UUID
+	ServerAssignment    *AssignmentView
+	LocalAssignment     *AssignmentView
+	LocalMirror         *LocalMirrorView
+	DesiredSource       *string
+	DesiredRevision     *int32
+	DesiredFingerprint  *string
+	ReportedSource      *string
+	ReportedRevision    *int32
+	ReportedFingerprint *string
+	ReportedAt          *time.Time
+	SyncStatus          string
+	ApplyFailureReason  *string
 }
 
 // AssignmentView is one current or historical assignment row.
 type AssignmentView struct {
-	AssignmentID       uuid.UUID
-	Source             string
-	LayoutVersionID    *uuid.UUID
-	Revision           int32
-	Rows               int32
-	Columns            int32
-	Fingerprint        string
-	EffectiveFrom      time.Time
+	AssignmentID    uuid.UUID
+	Source          string
+	LayoutVersionID *uuid.UUID
+	Revision        int32
+	Rows            int32
+	Columns         int32
+	Fingerprint     string
+	EffectiveFrom   time.Time
 }
 
 // LocalMirrorView is the device-reported LOCAL snapshot mirror.
 type LocalMirrorView struct {
-	LocalLayoutID      uuid.UUID
-	Revision           int32
-	Rows               int32
-	Columns            int32
-	Fingerprint        string
-	ReportedAt         time.Time
-	DeviceInstanceID   string
+	LocalLayoutID    uuid.UUID
+	Revision         int32
+	Rows             int32
+	Columns          int32
+	Fingerprint      string
+	ReportedAt       time.Time
+	DeviceInstanceID string
 }
 
 // BulkAssignResult is per-machine outcome for bulk assignment.
@@ -106,15 +106,15 @@ type MachineAuthContext struct {
 
 // ReportLocalLayoutInput is device-authored LOCAL layout reporting.
 type ReportLocalLayoutInput struct {
-	MachineID          uuid.UUID
-	LocalLayoutID      uuid.UUID
-	Revision           int32
-	Rows               int32
-	Columns            int32
-	SlotsJSON          []byte
-	Fingerprint        string
-	DeviceInstanceID   string
-	IdempotencyKey     string
+	MachineID        uuid.UUID
+	LocalLayoutID    uuid.UUID
+	Revision         int32
+	Rows             int32
+	Columns          int32
+	SlotsJSON        []byte
+	Fingerprint      string
+	DeviceInstanceID string
+	IdempotencyKey   string
 }
 
 // ReportLocalLayoutResult is returned after a device LOCAL layout report.
