@@ -53,8 +53,12 @@ goose_row="$(docker run --rm \
 	-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
 	"${POSTGRES_TOOLS_IMAGE}" \
 	psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
-	"SELECT version FROM goose_db_version WHERE version_id >= 22 ORDER BY version_id DESC LIMIT 1;" 2>/dev/null || true)"
-[[ "${goose_row}" == "23" || "${goose_row}" == "22" ]] || fail "expected goose migration >= 22, got: ${goose_row:-none}"
+	"SELECT COALESCE(
+		NULLIF((SELECT MAX(version_id)::text FROM goose_db_version), ''),
+		NULLIF((SELECT MAX(version)::text FROM goose_db_version), '')
+	);" 2>/dev/null || true)"
+[[ "${goose_row}" =~ ^(2[2-9]|[3-9][0-9]+)$ ]] \
+	|| fail "expected goose migration >= 22, got: ${goose_row:-none}"
 note "goose_db_version at layout migration (${goose_row})"
 
 run_check "wrongly_defaulted" \
