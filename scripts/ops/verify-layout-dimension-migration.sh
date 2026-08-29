@@ -49,17 +49,43 @@ PY
 )"
 note "api container=${API_CONTAINER}"
 
-goose_row="$(docker run --rm \
-	-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
-	"${POSTGRES_TOOLS_IMAGE}" \
-	psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
-	"SELECT COALESCE(
-		NULLIF((SELECT MAX(version_id)::text FROM goose_db_version), ''),
-		NULLIF((SELECT MAX(version)::text FROM goose_db_version), '')
-	);" 2>/dev/null || true)"
-[[ "${goose_row}" =~ ^(2[2-9]|[3-9][0-9]+)$ ]] \
-	|| fail "expected goose migration >= 22, got: ${goose_row:-none}"
-note "goose_db_version at layout migration (${goose_row})"
+resolve_goose_version() {
+	local compose_file="${REPO_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml"
+	local env_file="${REPO_ROOT}/deployments/prod/app-node/.env.app-node"
+	if [[ -f "${compose_file}" && -f "${env_file}" ]]; then
+		local out
+		out="$(docker compose --env-file "${env_file}" -f "${compose_file}" --profile migration run --rm --no-TTY migrate version 2>/dev/null | tail -n1 || true)"
+		out="${out//$'\r'/}"
+		if [[ "${out}" =~ ^[0-9]+$ ]]; then
+			printf '%s' "${out}"
+			return 0
+		fi
+	fi
+	docker run --rm \
+		-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
+		"${POSTGRES_TOOLS_IMAGE}" \
+		psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
+		"SELECT COALESCE(
+			(SELECT MAX(version_id)::text FROM goose_db_version),
+			(SELECT MAX(version)::text FROM goose_db_version)
+		);" 2>/dev/null || true
+}
+
+goose_row="$(resolve_goose_version)"
+goose_row="${goose_row//$'\n'/}"
+if [[ -z "${goose_row}" ]]; then
+	layout_ready="$(docker run --rm \
+		-e "DATABASE_URL=${PSQL_DATABASE_URL}" \
+		"${POSTGRES_TOOLS_IMAGE}" \
+		psql "${PSQL_DATABASE_URL}" -v ON_ERROR_STOP=1 -Atqc \
+		"SELECT CASE WHEN to_regclass('public.machine_layout_assignments') IS NOT NULL THEN 1 ELSE 0 END;" 2>/dev/null || echo 0)"
+	[[ "${layout_ready}" == "1" ]] || fail "expected goose migration >= 22, got: none (layout tables missing)"
+	note "goose_db_version unreadable via pooler; machine_layout_assignments present (00022+ applied)"
+else
+	[[ "${goose_row}" =~ ^(2[2-9]|[3-9][0-9]+)$ ]] \
+		|| fail "expected goose migration >= 22, got: ${goose_row}"
+	note "goose_db_version at layout migration (${goose_row})"
+fi
 
 run_check "wrongly_defaulted" \
 	"SELECT count(*) FROM machine_slot_layouts l JOIN layout_dimension_migration_audit a ON a.machine_slot_layout_id = l.id WHERE a.class = 'REQUIRES_REVIEW' AND (l.grid_rows IS NOT NULL OR l.grid_cols IS NOT NULL);"
