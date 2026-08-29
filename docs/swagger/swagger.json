@@ -14937,6 +14937,121 @@
         ]
       }
     },
+    "/v1/admin/layout-dimension-migration-audit": {
+      "get": {
+        "description": "Read-only classification coverage for legacy `machine_slot_layouts` dimensions (PROVEN / INFERRED_SAFE / REQUIRES_REVIEW). Does not mutate layouts.",
+        "operationId": "DocOpV1AdminLayoutDimensionMigrationAuditGet",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "ok"
+                },
+                "schema": {
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Legacy layout dimension migration audit report"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "capability_not_configured",
+                    "details": {
+                      "capability": "example_capability"
+                    },
+                    "message": "optional capability is not configured for this process",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1CapabilityNotConfiguredError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Legacy layout dimension migration audit report",
+        "tags": [
+          "Machine Layout"
+        ]
+      }
+    },
     "/v1/admin/machine-codes/{machineCode}/activation-codes": {
       "get": {
         "description": "Canonical machineCode path for activation code list. Returns metadata only (no plaintext code).",
