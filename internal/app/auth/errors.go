@@ -12,9 +12,11 @@ var (
 	ErrInvalidResetToken   = errors.New("invalid reset token")
 
 	ErrInvalidEmail           = errors.New("invalid email address")
+	ErrInvalidUsername        = errors.New("invalid username")
 	ErrWeakPassword           = errors.New("password must be at least 10 characters")
 	ErrInvalidRole            = errors.New("invalid role")
 	ErrConflictDuplicateEmail = errors.New("email already registered for this company")
+	ErrConflictDuplicateUsername = errors.New("username already registered")
 	ErrAccountNotFound        = errors.New("account not found")
 	ErrForbiddenLastOrgAdmin  = errors.New("cannot remove or deactivate the last company administrator")
 

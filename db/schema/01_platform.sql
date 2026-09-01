@@ -41,7 +41,7 @@ CREATE TABLE sites (
     region_id uuid REFERENCES regions (id) ON DELETE SET NULL,
     name text NOT NULL,
     address jsonb NOT NULL DEFAULT '{}'::jsonb,
-    timezone text NOT NULL DEFAULT 'UTC',
+    timezone text NOT NULL DEFAULT 'Asia/Ho_Chi_Minh',
     code text NOT NULL DEFAULT '',
     contact_info jsonb NOT NULL DEFAULT '{}'::jsonb,
     status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived')),
@@ -135,7 +135,8 @@ CREATE INDEX ix_machine_sessions_credential ON machine_sessions (credential_id);
 
 CREATE TABLE platform_auth_accounts (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
-    email text NOT NULL,
+    username text NOT NULL,
+    email text,
     password_hash text NOT NULL,
     roles text[] NOT NULL DEFAULT '{}'::text[],
     status text NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'locked', 'invited')),
@@ -144,8 +145,13 @@ CREATE TABLE platform_auth_accounts (
     last_login_at timestamptz,
     invited_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT platform_auth_accounts_username_format
+        CHECK (username ~ '^[A-Za-z0-9][A-Za-z0-9._-]{1,30}[A-Za-z0-9]$')
 );
+
+CREATE UNIQUE INDEX uniq_platform_auth_accounts_username_lower
+    ON platform_auth_accounts (lower(username));
 
 CREATE TABLE auth_refresh_tokens (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),

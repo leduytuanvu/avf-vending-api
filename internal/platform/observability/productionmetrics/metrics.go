@@ -76,6 +76,15 @@ var (
 		Help:    "Wall-clock lag between offline event occurred_at and server processing time.",
 		Buckets: prometheus.ExponentialBuckets(0.05, 2, 18),
 	})
+	deviceOccurredAtDriftSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name:    "device_occurred_at_drift_seconds",
+		Help:    "Server received_at minus device occurred_at (positive when event is in the past).",
+		Buckets: prometheus.ExponentialBuckets(1, 2, 20),
+	})
+	deviceOccurredAtRejectionsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "device_occurred_at_rejections_total",
+		Help: "Device-supplied timestamps rejected for clock skew or implausible values.",
+	}, []string{"reason"})
 
 	// Commerce / payment
 	ordersCreatedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -272,6 +281,19 @@ func ObserveMachineSyncLag(lag time.Duration) {
 		lag = 0
 	}
 	machineSyncLagSeconds.Observe(lag.Seconds())
+}
+
+// ObserveDeviceOccurredAtDrift records device_occurred_at_drift_seconds.
+func ObserveDeviceOccurredAtDrift(seconds float64) {
+	deviceOccurredAtDriftSeconds.Observe(seconds)
+}
+
+// RecordDeviceOccurredAtRejection increments device_occurred_at_rejections_total{reason}.
+func RecordDeviceOccurredAtRejection(reason string) {
+	if reason == "" {
+		reason = "unknown"
+	}
+	deviceOccurredAtRejectionsTotal.WithLabelValues(reason).Inc()
 }
 
 // RecordOrderCreated increments orders_created_total{channel}.

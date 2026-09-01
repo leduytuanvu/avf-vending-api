@@ -1599,7 +1599,8 @@ type PlanogramTemplateVersion struct {
 
 type PlatformAuthAccount struct {
 	ID               uuid.UUID
-	Email            string
+	Username         string
+	Email            pgtype.Text
 	PasswordHash     string
 	Roles            []string
 	Status           string

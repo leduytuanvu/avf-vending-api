@@ -29,7 +29,8 @@ RUN mkdir -p /out && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/mqtt-ingest ./cmd/mqtt-ingest && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/reconciler ./cmd/reconciler && \
     CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/temporal-worker ./cmd/temporal-worker && \
-    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/migrate ./cmd/migrate
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/migrate ./cmd/migrate && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="${LDFLAGS}" -o /out/bootstrap-admin ./cmd/bootstrap-admin
 
 FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
 RUN apk add --no-cache ca-certificates tzdata curl \
@@ -44,6 +45,7 @@ COPY --from=build /out/mqtt-ingest /app/mqtt-ingest
 COPY --from=build /out/reconciler /app/reconciler
 COPY --from=build /out/temporal-worker /app/temporal-worker
 COPY --from=build /out/migrate /app/migrate
+COPY --from=build /out/bootstrap-admin /app/bootstrap-admin
 
 USER avf
 EXPOSE 8080

@@ -2,13 +2,16 @@ package httpserver
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appfeatureflags "github.com/avf/avf-vending-api/internal/app/featureflags"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/clockskew"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/go-chi/chi/v5"
@@ -64,6 +67,18 @@ func postMachineCheckIn(app *api.HTTPApplication) http.HandlerFunc {
 		occurredAt, err := parseAPITimeRFC3339(body.OccurredAt)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_time", "occurred_at must be RFC3339 with timezone offset")
+			return
+		}
+		receivedAt := time.Now().UTC()
+		if skewErr := clockskew.ValidateCheckIn(occurredAt, receivedAt, app.DeviceClockSkew); skewErr != nil {
+			reason := clockskew.ReasonPast
+			var v clockskew.Violation
+			if errors.As(skewErr, &v) {
+				reason = v.Reason
+			}
+			productionmetrics.RecordDeviceOccurredAtRejection(reason)
+			productionmetrics.ObserveDeviceOccurredAtDrift(clockskew.DriftSeconds(occurredAt, receivedAt))
+			writeAPIError(w, r.Context(), http.StatusBadRequest, reason, clockskew.FormatViolation(clockskew.Violation{Reason: reason}))
 			return
 		}
 		meta := []byte(body.Metadata)
@@ -176,6 +191,18 @@ func postMachineConfigApply(app *api.HTTPApplication) http.HandlerFunc {
 		appliedAt, err := parseAPITimeRFC3339(body.AppliedAt)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_time", "applied_at must be RFC3339 with timezone offset")
+			return
+		}
+		receivedAt := time.Now().UTC()
+		if skewErr := clockskew.ValidateConfigApply(appliedAt, receivedAt, app.DeviceClockSkew); skewErr != nil {
+			reason := clockskew.ReasonPast
+			var v clockskew.Violation
+			if errors.As(skewErr, &v) {
+				reason = v.Reason
+			}
+			productionmetrics.RecordDeviceOccurredAtRejection(reason)
+			productionmetrics.ObserveDeviceOccurredAtDrift(clockskew.DriftSeconds(appliedAt, receivedAt))
+			writeAPIError(w, r.Context(), http.StatusBadRequest, reason, clockskew.FormatViolation(clockskew.Violation{Reason: reason}))
 			return
 		}
 		if body.ConfigVersion <= 0 {

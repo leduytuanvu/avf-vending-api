@@ -126,10 +126,12 @@ type V1ListMeta struct {
 
 // --- Auth session (POST /v1/auth/login, /v1/auth/refresh; GET /v1/auth/me; POST /v1/auth/logout) ---
 
-// V1AuthLoginRequest is documented in tools/build_openapi.py (email + password only).
+// V1AuthLoginRequest is documented in tools/build_openapi.py (username + password).
 type V1AuthLoginRequest struct {
-	Email    string `json:"email" example:"admin@example.com"`
+	Username string `json:"username" example:"admin"`
 	Password string `json:"password" example:"••••••••"`
+	// Deprecated: legacy email login when AUTH_ALLOW_EMAIL_LOGIN is enabled.
+	Email string `json:"email,omitempty" example:"admin@example.com"`
 }
 
 // V1AuthTokenPair is nested under login/refresh responses.
@@ -144,7 +146,8 @@ type V1AuthTokenPair struct {
 // V1AuthLoginResponse documents POST /v1/auth/login success.
 type V1AuthLoginResponse struct {
 	AccountID             string          `json:"accountId"`
-	Email                 string          `json:"email"`
+	Username              string          `json:"username"`
+	Email                 string          `json:"email,omitempty"`
 	Roles                 []string        `json:"roles"`
 	Tokens                V1AuthTokenPair `json:"tokens"`
 	MFARequired           bool            `json:"mfaRequired,omitempty"`
@@ -156,7 +159,8 @@ type V1AuthLoginResponse struct {
 // V1AuthMeResponse documents GET /v1/auth/me success.
 type V1AuthMeResponse struct {
 	AccountID string   `json:"accountId"`
-	Email     string   `json:"email"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email,omitempty"`
 	Roles     []string `json:"roles"`
 }
 
@@ -241,7 +245,8 @@ type V1AdminAuthSessionsEnvelope struct {
 // V1AdminAuthAccount is one row under GET/PATCH /v1/admin/auth/users (no password fields).
 type V1AdminAuthAccount struct {
 	AccountID string   `json:"accountId"`
-	Email     string   `json:"email"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email,omitempty"`
 	Roles     []string `json:"roles"`
 	Status    string   `json:"status"`
 	CreatedAt string   `json:"createdAt"`
@@ -258,7 +263,8 @@ type V1AdminAuthUsersListEnvelope struct {
 
 // V1AdminAuthUsersCreateRequest is POST /v1/admin/auth/users.
 type V1AdminAuthUsersCreateRequest struct {
-	Email    string   `json:"email"`
+	Username string   `json:"username"`
+	Email    string   `json:"email,omitempty"`
 	Password string   `json:"password"`
 	Roles    []string `json:"roles"`
 	Status   string   `json:"status,omitempty"`
@@ -266,9 +272,10 @@ type V1AdminAuthUsersCreateRequest struct {
 
 // V1AdminAuthUsersPatchRequest is PATCH /v1/admin/auth/users/{accountId}.
 type V1AdminAuthUsersPatchRequest struct {
-	Email  *string   `json:"email,omitempty"`
-	Roles  *[]string `json:"roles,omitempty"`
-	Status *string   `json:"status,omitempty"`
+	Username *string   `json:"username,omitempty"`
+	Email    *string   `json:"email,omitempty"`
+	Roles    *[]string `json:"roles,omitempty"`
+	Status   *string   `json:"status,omitempty"`
 }
 
 // V1AdminAuthUsersStatusPatchRequest is PATCH .../users/{id}/status (status transitions without generic PATCH).
@@ -1370,8 +1377,9 @@ type V1OrderListItem struct {
 	TaxMinor       int64   `json:"taxMinor"`
 	TotalMinor     int64   `json:"totalMinor"`
 	IdempotencyKey *string `json:"idempotencyKey,omitempty"`
-	CreatedAt      string  `json:"createdAt"`
-	UpdatedAt      string  `json:"updatedAt"`
+	// CreatedAt is the canonical server-authoritative business order time (orders.created_at, RFC3339Nano UTC).
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 // V1OrdersListResponse is GET /v1/orders success body.

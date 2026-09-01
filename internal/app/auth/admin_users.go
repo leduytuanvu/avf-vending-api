@@ -16,7 +16,6 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -63,6 +62,7 @@ const (
 
 // AdminCreateUserRequest is the application payload for POST /v1/admin/auth/users.
 type AdminCreateUserRequest struct {
+	Username string
 	Email    string
 	Password string
 	Roles    []string
@@ -71,15 +71,17 @@ type AdminCreateUserRequest struct {
 
 // AdminPatchUserRequest carries optional updates for PATCH /v1/admin/auth/users/{accountId}.
 type AdminPatchUserRequest struct {
-	Email  *string
-	Roles  *[]string
-	Status *string
+	Username *string
+	Email    *string
+	Roles    *[]string
+	Status   *string
 }
 
 // AdminAccountView is a safe projection without credential material.
 type AdminAccountView struct {
 	AccountID string   `json:"accountId"`
-	Email     string   `json:"email"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email,omitempty"`
 	Roles     []string `json:"roles"`
 	Status    string   `json:"status"`
 	CreatedAt string   `json:"createdAt"`
@@ -126,7 +128,8 @@ func mapAcctPublic(a db.PlatformAuthAccount) AdminAccountView {
 	sort.Strings(roles)
 	return AdminAccountView{
 		AccountID: a.ID.String(),
-		Email:     a.Email,
+		Username:  a.Username,
+		Email:     emailStringFromPG(a.Email),
 		Roles:     roles,
 		Status:    a.Status,
 		CreatedAt: a.CreatedAt.UTC().Format(time.RFC3339Nano),
@@ -278,7 +281,11 @@ func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID,
 	if err := s.validatePassword(req.Password); err != nil {
 		return nil, err
 	}
-	email, err := normalizeEmail(req.Email)
+	username, err := normalizeUsername(req.Username)
+	if err != nil {
+		return nil, err
+	}
+	emailPG, err := emailPGFromOptional(req.Email)
 	if err != nil {
 		return nil, err
 	}
@@ -307,23 +314,20 @@ func (s *Service) AdminCreateUser(ctx context.Context, actorAccountID uuid.UUID,
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
 	row, err := qtx.AuthAdminInsertAccount(ctx, db.AuthAdminInsertAccountParams{
-		Email:        email,
+		Username:     username,
+		Email:        emailPG,
 		PasswordHash: string(hashBytes),
 		Roles:        roles,
 		Status:       status,
 	})
 	if err != nil {
-		var pe *pgconn.PgError
-		if errors.As(err, &pe) && pe.Code == "23505" {
-			return nil, ErrConflictDuplicateEmail
-		}
-		return nil, err
+		return nil, mapAuthUniqueViolation(err)
 	}
 	if err := s.emitAdminMutation(ctx, tx, AuthAdminMutationEvent{
 		Action:          authAuditCreateUser,
 		ActorAccountID:  actorAccountID,
 		TargetAccountID: row.ID,
-		Details:         map[string]any{"email": row.Email},
+		Details:         map[string]any{"username": row.Username},
 	}); err != nil {
 		return nil, fmt.Errorf("audit: %w", err)
 	}
@@ -364,11 +368,12 @@ func (s *Service) AdminReplaceUserRoles(ctx context.Context, actorAccountID uuid
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
-		Roles:  newRoles,
-		Status: cur.Status,
-
-		ID: accountID,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
+		Username: cur.Username,
+		Email:    cur.Email,
+		Roles:    newRoles,
+		Status:   cur.Status,
+		ID:       accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -453,11 +458,12 @@ func (s *Service) AdminRemoveUserRole(ctx context.Context, actorAccountID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
-		Roles:  newRoles,
-		Status: cur.Status,
-
-		ID: accountID,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
+		Username: cur.Username,
+		Email:    cur.Email,
+		Roles:    newRoles,
+		Status:   cur.Status,
+		ID:       accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -523,9 +529,16 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 	}
 	before := accountContributesOrgAdmin(cur.Status, cur.Roles)
 
-	email := cur.Email
+	username := cur.Username
+	if req.Username != nil {
+		username, err = normalizeUsername(*req.Username)
+		if err != nil {
+			return nil, err
+		}
+	}
+	emailPG := cur.Email
 	if req.Email != nil {
-		email, err = normalizeEmail(*req.Email)
+		emailPG, err = emailPGFromOptional(*req.Email)
 		if err != nil {
 			return nil, err
 		}
@@ -559,18 +572,15 @@ func (s *Service) AdminPatchUser(ctx context.Context, actorAccountID uuid.UUID, 
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: email,
-		Roles:  roles,
-		Status: status,
-
-		ID: accountID,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
+		Username: username,
+		Email:    emailPG,
+		Roles:    roles,
+		Status:   status,
+		ID:       accountID,
 	})
 	if err != nil {
-		var pe *pgconn.PgError
-		if errors.As(err, &pe) && pe.Code == "23505" {
-			return nil, ErrConflictDuplicateEmail
-		}
-		return nil, err
+		return nil, mapAuthUniqueViolation(err)
 	}
 	if req.Roles != nil {
 		if err := qtx.AuthRevokeAllRefreshForAccount(ctx, accountID); err != nil {
@@ -627,11 +637,12 @@ func (s *Service) AdminActivateUser(ctx context.Context, actorAccountID uuid.UUI
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
-		Roles:  append([]string(nil), cur.Roles...),
-		Status: "active",
-
-		ID: accountID,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
+		Username: cur.Username,
+		Email:    cur.Email,
+		Roles:    append([]string(nil), cur.Roles...),
+		Status:   "active",
+		ID:       accountID,
 	})
 	if err != nil {
 		return nil, err
@@ -675,11 +686,12 @@ func (s *Service) AdminDeactivateUser(ctx context.Context, actorAccountID uuid.U
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := s.q.WithTx(tx)
-	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{Email: cur.Email,
-		Roles:  append([]string(nil), cur.Roles...),
-		Status: "disabled",
-
-		ID: accountID,
+	row, err := qtx.AuthAdminUpdateAccount(ctx, db.AuthAdminUpdateAccountParams{
+		Username: cur.Username,
+		Email:    cur.Email,
+		Roles:    append([]string(nil), cur.Roles...),
+		Status:   "disabled",
+		ID:       accountID,
 	})
 	if err != nil {
 		return nil, err

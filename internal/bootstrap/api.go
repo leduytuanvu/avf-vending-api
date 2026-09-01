@@ -35,7 +35,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
-	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
+	platformtelegram 	"github.com/avf/avf-vending-api/internal/platform/telegram"
+	platformtimezone "github.com/avf/avf-vending-api/internal/platform/timezone"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -48,6 +49,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}
 	if cfg.NATS.Required && strings.TrimSpace(cfg.NATS.URL) == "" {
 		return fmt.Errorf("bootstrap: NATS_REQUIRED=true requires non-empty %s", platformnats.EnvNATSURL)
+	}
+	if err := platformtimezone.AssertRequired(); err != nil {
+		return fmt.Errorf("bootstrap: %w", err)
 	}
 
 	shutdownTracer, err := observability.InitTracer(ctx, cfg)
@@ -240,6 +244,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		MachineOnlineThreshold:                     cfg.MachineOnlineThreshold,
 		MachineStaleThreshold:                      cfg.MachineStaleThreshold,
 		IncidentAlertPolicy:                        alerts.Policy{Cooldown: cfg.Telegram.IncidentCooldown, RepeatMode: alerts.NormalizeRepeatMode(cfg.Telegram.RepeatMode)},
+		DeviceClockSkew:                            cfg.DeviceClockSkew,
 	})
 	if rt.Deps.PaymentProviders != nil {
 		if reg, ok := rt.Deps.PaymentProviders.(*platformpayments.Registry); ok {

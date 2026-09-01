@@ -11,6 +11,12 @@ FROM platform_auth_accounts
 WHERE TRUE
   AND lower(email) = lower($1);
 
+-- name: AuthLookupAccountByUsernameAnyStatus :one
+SELECT *
+FROM platform_auth_accounts
+WHERE TRUE
+  AND lower(username) = lower($1);
+
 -- name: AuthGetAccountByID :one
 SELECT *
 FROM platform_auth_accounts
@@ -78,6 +84,7 @@ WHERE TRUE;
 
 -- name: AuthAdminInsertAccount :one
 INSERT INTO platform_auth_accounts (
+    username,
     email,
     password_hash,
     roles,
@@ -87,18 +94,20 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    $4,
+    $5
 )
 RETURNING *;
 
 -- name: AuthAdminUpdateAccount :one
 UPDATE platform_auth_accounts
 SET
-    email = $1,
-    roles = $2,
-    status = $3,
+    username = $1,
+    email = $2,
+    roles = $3,
+    status = $4,
     updated_at = now()
-WHERE id = $4
+WHERE id = $5
   AND TRUE
 RETURNING *;
 

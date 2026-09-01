@@ -36,6 +36,10 @@ func testAuthServiceWithPool(t *testing.T, pool *pgxpool.Pool) *appauth.Service 
 	return svc
 }
 
+func testAuthUsername(accountID uuid.UUID) string {
+	return "u" + strings.ReplaceAll(accountID.String()[:8], "-", "")
+}
+
 func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, _ uuid.UUID, email string, password string, roles []string, status string) string {
 	t.Helper()
 	if !strings.HasPrefix(email, "auth-regression-") {
@@ -46,15 +50,20 @@ func insertAuthAccount(t *testing.T, pool *pgxpool.Pool, id uuid.UUID, _ uuid.UU
 		}
 		email = "auth-regression-" + local + "@" + domain
 	}
+	username := testAuthUsername(id)
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	require.NoError(t, err)
 	ctx := context.Background()
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5)
-`, id, email, string(hash), roles, status)
+INSERT INTO platform_auth_accounts (id, username, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,$5,$6)
+`, id, username, email, string(hash), roles, status)
 	require.NoError(t, err)
 	return email
+}
+
+func newTestUsername() string {
+	return "usr" + strings.ReplaceAll(uuid.NewString()[:8], "-", "")
 }
 
 func authTestPool(t *testing.T) *pgxpool.Pool {
@@ -76,7 +85,9 @@ func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "actor-create-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	email := "newuser-" + uuid.NewString()[:8] + "@test.example.com"
+	username := newTestUsername()
 	created, err := svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: username,
 		Email:    email,
 		Password: "password12345",
 		Roles:    []string{"viewer"},
@@ -86,6 +97,7 @@ func TestAuthAdmin_CreateUserAndDuplicateEmail(t *testing.T) {
 	require.NotNil(t, created)
 
 	_, err = svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: username,
 		Email:    email,
 		Password: "password12345",
 		Roles:    []string{"viewer"},
@@ -104,6 +116,7 @@ func TestAuthAdmin_InvalidRole(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "actor-badrole-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	_, err := svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: newTestUsername(),
 		Email:    "bad-" + uuid.NewString()[:8] + "@test.example.com",
 		Password: "password12345",
 		Roles:    []string{"not_a_real_role"},
@@ -122,6 +135,7 @@ func TestAuthAdmin_MachineRoleRejected(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "actor-machine-role-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	_, err := svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: newTestUsername(),
 		Email:    "machine-role-" + uuid.NewString()[:8] + "@test.example.com",
 		Password: "password12345",
 		Roles:    []string{plauth.RoleMachine},
@@ -139,6 +153,7 @@ func TestAuthAdmin_ActivateDeactivateAndLastOrgAdmin(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "solo-admin-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	created, err := svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: newTestUsername(),
 		Email:    "viewer-user-" + uuid.NewString()[:8] + "@test.example.com",
 		Password: "password12345",
 		Roles:    []string{"viewer"},
@@ -176,7 +191,9 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	insertAuthAccount(t, pool, actor, org, "actor-login-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	email := "login-subj-" + uuid.NewString()[:8] + "@test.example.com"
+	loginUsername := newTestUsername()
 	created, err := svc.AdminCreateUser(ctx, actor, org, appauth.AdminCreateUserRequest{
+		Username: loginUsername,
 		Email:    email,
 		Password: "originalpwd12",
 		Roles:    []string{"viewer"},
@@ -190,7 +207,7 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	require.NoError(t, err)
 
 	login, err := svc.Login(ctx, appauth.LoginRequest{
-		Email:    email,
+		Username: loginUsername,
 		Password: "newpassword12",
 	})
 	require.NoError(t, err)
@@ -200,7 +217,7 @@ func TestAuthAdmin_ResetPasswordAndLoginAndDisabledNoLogin(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = svc.Login(ctx, appauth.LoginRequest{
-		Email:    email,
+		Username: loginUsername,
 		Password: "newpassword12",
 	})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)

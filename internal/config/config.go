@@ -295,6 +295,8 @@ type Config struct {
 	HTTPAuth HTTPAuthConfig
 	// AdminAuthSecurity configures MFA policy, login lockout, and password validation for interactive admins.
 	AdminAuthSecurity AdminAuthSecurityConfig
+	// DeviceClockSkew bounds acceptance of device-supplied occurred_at timestamps.
+	DeviceClockSkew DeviceClockSkewConfig
 	// MachineJWT selects validation mode for machine-runtime access JWTs. Defaults preserve local HS256 compatibility.
 	MachineJWT MachineJWTConfig
 	// HTTPRateLimit configures optional abuse protection on mutating API routes.
@@ -2067,6 +2069,7 @@ func Load() (*Config, error) {
 		PlatformAuditCompanyUUID:       platformAuditCompanyID,
 		HTTPAuth:                       httpAuth,
 		AdminAuthSecurity:              adminAuthSecurity,
+		DeviceClockSkew:                loadDeviceClockSkewFromEnv(),
 		MachineJWT:                     machineJWT,
 		HTTPRateLimit:                  loadHTTPRateLimitConfig(),
 		Capacity:                       loadCapacityLimitsConfig(),

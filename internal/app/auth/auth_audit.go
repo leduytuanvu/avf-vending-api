@@ -41,12 +41,26 @@ func maskEmailForAudit(email string) string {
 	return string(local[0]) + "***@" + domain
 }
 
-func (s *Service) auditLoginFailure(ctx context.Context, companyID uuid.UUID, email string, reason string) {
+func maskLoginIdentityForAudit(identity string) string {
+	v := strings.TrimSpace(strings.ToLower(identity))
+	if v == "" {
+		return "***"
+	}
+	if strings.Contains(v, "@") {
+		return maskEmailForAudit(v)
+	}
+	if len(v) <= 2 {
+		return "***"
+	}
+	return string(v[0]) + "***" + string(v[len(v)-1])
+}
+
+func (s *Service) auditLoginFailure(ctx context.Context, companyID uuid.UUID, loginIdentity string, reason string) {
 	if s == nil || s.enterpriseAudit == nil {
 		return
 	}
 	meta := compliance.TransportMetaFromContext(ctx)
-	payload := map[string]any{"email": maskEmailForAudit(email)}
+	payload := map[string]any{"username": maskLoginIdentityForAudit(loginIdentity)}
 	if strings.TrimSpace(reason) != "" {
 		payload["reason"] = reason
 	}
@@ -71,7 +85,7 @@ func (s *Service) auditLoginSuccess(ctx context.Context, acct db.PlatformAuthAcc
 	}
 	meta := compliance.TransportMetaFromContext(ctx)
 	sub := acct.ID.String()
-	md, err := json.Marshal(map[string]any{"email": acct.Email})
+	md, err := json.Marshal(map[string]any{"username": accountLabel(acct)})
 	if err != nil {
 		return err
 	}
@@ -99,7 +113,7 @@ func (s *Service) auditLogout(ctx context.Context, accountID uuid.UUID) error {
 		return err
 	}
 	sub := accountID.String()
-	md, err := json.Marshal(map[string]any{"email": acct.Email})
+	md, err := json.Marshal(map[string]any{"username": accountLabel(acct)})
 	if err != nil {
 		return err
 	}
@@ -125,7 +139,7 @@ func (s *Service) auditRefreshSuccess(ctx context.Context, acct db.PlatformAuthA
 	}
 	sub := acct.ID.String()
 	meta := compliance.TransportMetaFromContext(ctx)
-	md, err := json.Marshal(map[string]any{"email": acct.Email})
+	md, err := json.Marshal(map[string]any{"username": accountLabel(acct)})
 	if err != nil {
 		return err
 	}
@@ -176,7 +190,7 @@ func (s *Service) auditMFATOTPFailure(ctx context.Context, acct db.PlatformAuthA
 	}
 	meta := compliance.TransportMetaFromContext(ctx)
 	sub := acct.ID.String()
-	md, _ := json.Marshal(map[string]any{"email": maskEmailForAudit(acct.Email), "reason": reason})
+	md, _ := json.Marshal(map[string]any{"username": maskLoginIdentityForAudit(accountLabel(acct)), "reason": reason})
 	md = compliance.SanitizeJSONBytes(md)
 	_ = s.enterpriseAudit.Record(ctx, compliance.EnterpriseAuditRecord{
 		ActorType:    compliance.ActorUser,

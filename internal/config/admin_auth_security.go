@@ -26,6 +26,9 @@ type AdminAuthSecurityConfig struct {
 
 	PasswordResetTTL time.Duration
 
+	// AllowEmailLogin permits legacy email-field login when username lookup misses.
+	AllowEmailLogin bool
+
 	MFAEncryptionKey []byte // AES-256 key material (32 bytes); never logged or returned.
 }
 
@@ -44,6 +47,8 @@ func loadAdminAuthSecurityConfig(appEnv AppEnvironment) (AdminAuthSecurityConfig
 		PasswordRejectCommonList: getenvBool("PASSWORD_REJECT_COMMON_DEFAULTS", true),
 
 		PasswordResetTTL: mustParseDuration("PASSWORD_RESET_TTL", getenv("PASSWORD_RESET_TTL", "15m")),
+
+		AllowEmailLogin: getenvBool("AUTH_ALLOW_EMAIL_LOGIN", true),
 	}
 
 	keyStr := strings.TrimSpace(os.Getenv("ADMIN_MFA_ENCRYPTION_KEY"))

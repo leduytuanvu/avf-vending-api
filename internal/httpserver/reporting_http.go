@@ -13,6 +13,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/reporting"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	platformtimezone "github.com/avf/avf-vending-api/internal/platform/timezone"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -138,7 +139,7 @@ func parseReportingCompany(r *http.Request, app *api.HTTPApplication) (listscope
 func parseReportingTimezone(q url.Values) string {
 	tz := strings.TrimSpace(q.Get("timezone"))
 	if tz == "" {
-		return "UTC"
+		return platformtimezone.VietnamBusiness
 	}
 	return tz
 }

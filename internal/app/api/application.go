@@ -71,6 +71,8 @@ type HTTPApplication struct {
 	TelemetryStore *postgres.Store
 	// IncidentAlertPolicy controls transactional Telegram alerting for direct machine incident ingest.
 	IncidentAlertPolicy alerts.Policy
+	// DeviceClockSkew bounds device-supplied occurred_at on HTTP machine runtime routes.
+	DeviceClockSkew config.DeviceClockSkewConfig
 	// SaleCatalog optional shared snapshot builder (e.g. Redis cache); nil uses an uncached builder in HTTP handlers.
 	SaleCatalog appsalecatalog.SnapshotBuilder
 	Reporting   ReportingService
@@ -169,6 +171,8 @@ type HTTPApplicationDeps struct {
 	MachineStaleThreshold time.Duration
 	// IncidentAlertPolicy controls cooldown and severity gating for direct machine incident ingest.
 	IncidentAlertPolicy alerts.Policy
+	// DeviceClockSkew bounds device-supplied occurred_at on HTTP machine runtime routes.
+	DeviceClockSkew config.DeviceClockSkewConfig
 }
 
 // NewHTTPApplication constructs HTTP ports backed by real adapters where they exist.
@@ -384,6 +388,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		Artifacts:              deps.Artifacts,
 		TelemetryStore:         deps.Store,
 		IncidentAlertPolicy:    deps.IncidentAlertPolicy,
+		DeviceClockSkew:        deps.DeviceClockSkew,
 		SaleCatalog:            deps.SaleCatalog,
 		Reporting:              reportingSvc,
 		ReportingSyncMaxSpan:   deps.ReportingSyncMaxSpan,
