@@ -7,7 +7,7 @@ ARG GO_VERSION=1.26.6
 ARG GIT_SHA=
 ARG BUILD_TIME=
 
-FROM golang:1.27-bookworm@sha256:4cdeb0986daca9cfb8b0485f762778a149206025d80ae4212fde9a8dacedca55 AS build
+FROM golang:1.27-bookworm@sha256:ded31c68586d2e49e760acc2e65a884b23d032e9bbbed0ae0c55abd3fcaf4452 AS build
 WORKDIR /src
 
 ARG GIT_SHA=
