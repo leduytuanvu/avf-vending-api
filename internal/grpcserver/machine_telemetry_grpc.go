@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/clockskew"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
@@ -78,6 +80,20 @@ func (s *machineTelemetryServer) CheckIn(ctx context.Context, req *machinev1.Che
 	}
 	now := time.Now().UTC()
 	if !dup {
+		skewCfg := config.DeviceClockSkewConfig{}
+		if s.deps.Config != nil {
+			skewCfg = s.deps.Config.DeviceClockSkew
+		}
+		if skewErr := clockskew.ValidateCheckIn(wctx.ClientCreatedAt, now, skewCfg); skewErr != nil {
+			reason := clockskew.ReasonPast
+			var v clockskew.Violation
+			if errors.As(skewErr, &v) {
+				reason = v.Reason
+			}
+			productionmetrics.RecordDeviceOccurredAtRejection(reason)
+			productionmetrics.ObserveDeviceOccurredAtDrift(clockskew.DriftSeconds(wctx.ClientCreatedAt, now))
+			return nil, status.Errorf(codes.InvalidArgument, "%s", reason)
+		}
 		meta, _ := json.Marshal(req.GetMetadata())
 		if len(meta) == 0 {
 			meta = []byte("{}")

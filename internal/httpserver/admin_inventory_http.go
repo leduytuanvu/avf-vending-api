@@ -25,6 +25,8 @@ import (
 	appmw "github.com/avf/avf-vending-api/internal/middleware"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/clockskew"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -405,6 +407,18 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 				return
 			}
 			tu := t.UTC()
+			receivedAt := time.Now().UTC()
+			if skewErr := clockskew.ValidateAdminInventory(tu, receivedAt, app.DeviceClockSkew); skewErr != nil {
+				reason := clockskew.ReasonPast
+				var v clockskew.Violation
+				if errors.As(skewErr, &v) {
+					reason = v.Reason
+				}
+				productionmetrics.RecordDeviceOccurredAtRejection(reason)
+				productionmetrics.ObserveDeviceOccurredAtDrift(clockskew.DriftSeconds(tu, receivedAt))
+				writeAPIError(w, r.Context(), http.StatusBadRequest, reason, clockskew.FormatViolation(clockskew.Violation{Reason: reason}))
+				return
+			}
 			occurredAt = &tu
 		}
 

@@ -11,9 +11,11 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/clockskew"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
@@ -319,6 +321,28 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		occAt := time.Now().UTC()
 		if ev.GetMeta().GetOccurredAt() != nil && ev.GetMeta().GetOccurredAt().IsValid() {
 			occAt = ev.GetMeta().GetOccurredAt().AsTime().UTC()
+		}
+		receivedAt := time.Now().UTC()
+		skewCfg := config.DeviceClockSkewConfig{}
+		if s.deps.Config != nil {
+			skewCfg = s.deps.Config.DeviceClockSkew
+		}
+		if skewErr := clockskew.ValidateOfflineEvent(occAt, receivedAt, time.Time{}, skewCfg); skewErr != nil {
+			reason := clockskew.ReasonImplausible
+			var v clockskew.Violation
+			if errors.As(skewErr, &v) {
+				reason = v.Reason
+			}
+			productionmetrics.RecordDeviceOccurredAtRejection(reason)
+			productionmetrics.ObserveDeviceOccurredAtDrift(clockskew.DriftSeconds(occAt, receivedAt))
+			productionmetrics.RecordOfflineEventResult("rejected_clock_skew")
+			results = append(results, &machinev1.OfflineEventResult{
+				OfflineSequence: seq,
+				IdempotencyKey:  ev.GetMeta().GetIdempotencyKey(),
+				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+				Reason:          reason,
+			})
+			break
 		}
 		result := s.processOfflineEvent(ctx, q, claims, ev)
 		if lag := time.Since(occAt); lag >= 0 {

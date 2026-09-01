@@ -120,6 +120,7 @@ func TestEnterpriseAudit_AdminCreateUser_emitsAuthUserCreated(t *testing.T) {
 	insertAuthAccount(t, pool, actor, deploymentKey, "actor-create-audit-"+actor.String()[:8]+"@test.example.com", "password12345", []string{plauth.RoleOrgAdmin}, "active")
 
 	_, err := svc.AdminCreateUser(context.Background(), actor, deploymentKey, appauth.AdminCreateUserRequest{
+		Username: newTestUsername(),
 		Email:    "new-audit-" + uuid.NewString()[:8] + "@test.example.com",
 		Password: "password12345",
 		Roles:    []string{"viewer"},

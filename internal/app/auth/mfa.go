@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/google/uuid"
@@ -83,7 +84,7 @@ func (s *Service) MFATOTPEnrollBegin(ctx context.Context, p plauth.Principal) (*
 	}
 	otpKey, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      "AVF Admin",
-		AccountName: strings.TrimSpace(acct.Email),
+		AccountName: accountLabel(acct),
 	})
 	if err != nil {
 		return nil, err
@@ -98,7 +99,7 @@ func (s *Service) MFATOTPEnrollBegin(ctx context.Context, p plauth.Principal) (*
 	}); err != nil {
 		return nil, err
 	}
-	if err := s.auditMFASecurity(ctx, auditActionMFATOTPEnrollBegin, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+	if err := s.auditMFASecurity(ctx, auditActionMFATOTPEnrollBegin, uuid.Nil, accountID, map[string]any{"username": acct.Username}, compliance.OutcomeSuccess); err != nil {
 		return nil, err
 	}
 	return &MFATOTPEnrollResponse{
@@ -139,7 +140,7 @@ func (s *Service) MFATOTPVerify(ctx context.Context, p plauth.Principal, req MFA
 		return nil, err
 	}
 	if strings.ToLower(strings.TrimSpace(acct.Status)) != "active" {
-		s.auditLoginFailure(ctx, uuid.Nil, acct.Email, "account_disabled")
+		s.auditLoginFailure(ctx, uuid.Nil, accountLabel(acct), "account_disabled")
 		return nil, ErrInvalidCredentials
 	}
 
@@ -207,19 +208,18 @@ func (s *Service) MFATOTPVerify(ctx context.Context, p plauth.Principal, req MFA
 		}); err != nil {
 			return nil, err
 		}
-		if err := s.auditMFASecurity(ctx, auditActionMFATOTPActivated, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+		if err := s.auditMFASecurity(ctx, auditActionMFATOTPActivated, uuid.Nil, accountID, map[string]any{"username": acct.Username}, compliance.OutcomeSuccess); err != nil {
 			return nil, err
 		}
 	} else {
-		if err := s.auditMFASecurity(ctx, auditActionMFALoginMFACompleted, uuid.Nil, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess); err != nil {
+		if err := s.auditMFASecurity(ctx, auditActionMFALoginMFACompleted, uuid.Nil, accountID, map[string]any{"username": acct.Username}, compliance.OutcomeSuccess); err != nil {
 			return nil, err
 		}
 	}
 
 	_ = s.q.AuthRecordLoginSuccess(ctx, accountID)
 	if s.loginFailures != nil {
-		email := strings.TrimSpace(strings.ToLower(acct.Email))
-		_ = s.loginFailures.ClearFailures(ctx, uuid.Nil, email)
+		_ = s.loginFailures.ClearFailures(ctx, org.DefaultCompanyID, accountLabel(acct))
 	}
 	out, err := s.issueLoginResponse(ctx, acct)
 	if err != nil {
@@ -291,5 +291,5 @@ func (s *Service) MFATOTPDisable(ctx context.Context, accountID uuid.UUID, req M
 			_ = s.accessRevocation.RevokeSubject(ctx, accountID.String(), ttl)
 		}
 	}
-	return s.auditMFASecurity(ctx, auditActionMFATOTPDisabled, scopeID, accountID, map[string]any{"email": acct.Email}, compliance.OutcomeSuccess)
+	return s.auditMFASecurity(ctx, auditActionMFATOTPDisabled, scopeID, accountID, map[string]any{"username": acct.Username}, compliance.OutcomeSuccess)
 }

@@ -58,7 +58,7 @@ func (q *Queries) AuthAdminCountActiveOrgAdminsExcluding(ctx context.Context, id
 }
 
 const AuthAdminGetAccountByOrgAndID = `-- name: AuthAdminGetAccountByOrgAndID :one
-SELECT id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE id = $1
   AND TRUE
@@ -69,6 +69,7 @@ func (q *Queries) AuthAdminGetAccountByOrgAndID(ctx context.Context, id uuid.UUI
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,
@@ -85,6 +86,7 @@ func (q *Queries) AuthAdminGetAccountByOrgAndID(ctx context.Context, id uuid.UUI
 
 const AuthAdminInsertAccount = `-- name: AuthAdminInsertAccount :one
 INSERT INTO platform_auth_accounts (
+    username,
     email,
     password_hash,
     roles,
@@ -94,13 +96,15 @@ VALUES (
     $1,
     $2,
     $3,
-    $4
+    $4,
+    $5
 )
-RETURNING id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+RETURNING id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 `
 
 type AuthAdminInsertAccountParams struct {
-	Email        string
+	Username     string
+	Email        pgtype.Text
 	PasswordHash string
 	Roles        []string
 	Status       string
@@ -108,6 +112,7 @@ type AuthAdminInsertAccountParams struct {
 
 func (q *Queries) AuthAdminInsertAccount(ctx context.Context, arg AuthAdminInsertAccountParams) (PlatformAuthAccount, error) {
 	row := q.db.QueryRow(ctx, AuthAdminInsertAccount,
+		arg.Username,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Roles,
@@ -116,6 +121,7 @@ func (q *Queries) AuthAdminInsertAccount(ctx context.Context, arg AuthAdminInser
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,
@@ -131,7 +137,7 @@ func (q *Queries) AuthAdminInsertAccount(ctx context.Context, arg AuthAdminInser
 }
 
 const AuthAdminListAccounts = `-- name: AuthAdminListAccounts :many
-SELECT id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE TRUE
 ORDER BY created_at DESC
@@ -154,6 +160,7 @@ func (q *Queries) AuthAdminListAccounts(ctx context.Context, arg AuthAdminListAc
 		var i PlatformAuthAccount
 		if err := rows.Scan(
 			&i.ID,
+			&i.Username,
 			&i.Email,
 			&i.PasswordHash,
 			&i.Roles,
@@ -195,24 +202,27 @@ func (q *Queries) AuthAdminSetPasswordHash(ctx context.Context, arg AuthAdminSet
 const AuthAdminUpdateAccount = `-- name: AuthAdminUpdateAccount :one
 UPDATE platform_auth_accounts
 SET
-    email = $1,
-    roles = $2,
-    status = $3,
+    username = $1,
+    email = $2,
+    roles = $3,
+    status = $4,
     updated_at = now()
-WHERE id = $4
+WHERE id = $5
   AND TRUE
-RETURNING id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+RETURNING id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 `
 
 type AuthAdminUpdateAccountParams struct {
-	Email  string
-	Roles  []string
-	Status string
-	ID     uuid.UUID
+	Username string
+	Email    pgtype.Text
+	Roles    []string
+	Status   string
+	ID       uuid.UUID
 }
 
 func (q *Queries) AuthAdminUpdateAccount(ctx context.Context, arg AuthAdminUpdateAccountParams) (PlatformAuthAccount, error) {
 	row := q.db.QueryRow(ctx, AuthAdminUpdateAccount,
+		arg.Username,
 		arg.Email,
 		arg.Roles,
 		arg.Status,
@@ -221,6 +231,7 @@ func (q *Queries) AuthAdminUpdateAccount(ctx context.Context, arg AuthAdminUpdat
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,
@@ -253,7 +264,7 @@ func (q *Queries) AuthClearExpiredLock(ctx context.Context, id uuid.UUID) error 
 }
 
 const AuthGetAccountByID = `-- name: AuthGetAccountByID :one
-SELECT id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE id = $1
   AND status = 'active'
@@ -264,6 +275,7 @@ func (q *Queries) AuthGetAccountByID(ctx context.Context, id uuid.UUID) (Platfor
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,
@@ -279,7 +291,7 @@ func (q *Queries) AuthGetAccountByID(ctx context.Context, id uuid.UUID) (Platfor
 }
 
 const AuthGetAccountByOrgEmail = `-- name: AuthGetAccountByOrgEmail :one
-SELECT id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE TRUE
   AND lower(email) = lower($1)
@@ -291,6 +303,7 @@ func (q *Queries) AuthGetAccountByOrgEmail(ctx context.Context, lower string) (P
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,
@@ -446,7 +459,7 @@ func (q *Queries) AuthInsertRefreshToken(ctx context.Context, arg AuthInsertRefr
 }
 
 const AuthLookupAccountByOrgEmailAnyStatus = `-- name: AuthLookupAccountByOrgEmailAnyStatus :one
-SELECT id, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
 FROM platform_auth_accounts
 WHERE TRUE
   AND lower(email) = lower($1)
@@ -457,6 +470,34 @@ func (q *Queries) AuthLookupAccountByOrgEmailAnyStatus(ctx context.Context, lowe
 	var i PlatformAuthAccount
 	err := row.Scan(
 		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Roles,
+		&i.Status,
+		&i.FailedLoginCount,
+		&i.LockedUntil,
+		&i.LastLoginAt,
+		&i.InvitedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const AuthLookupAccountByUsernameAnyStatus = `-- name: AuthLookupAccountByUsernameAnyStatus :one
+SELECT id, username, email, password_hash, roles, status, failed_login_count, locked_until, last_login_at, invited_at, created_at, updated_at
+FROM platform_auth_accounts
+WHERE TRUE
+  AND lower(username) = lower($1)
+`
+
+func (q *Queries) AuthLookupAccountByUsernameAnyStatus(ctx context.Context, lower string) (PlatformAuthAccount, error) {
+	row := q.db.QueryRow(ctx, AuthLookupAccountByUsernameAnyStatus, lower)
+	var i PlatformAuthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Roles,

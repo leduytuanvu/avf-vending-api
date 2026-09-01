@@ -50,7 +50,7 @@ func (a *AbuseProtection) window() time.Duration {
 
 func (a *AbuseProtection) noop(next http.Handler) http.Handler { return next }
 
-// LoginPOST limits POST /v1/auth/login by client IP + stable hash of normalized email (bucket auth_login:{ip}:{email_hash}).
+// LoginPOST limits POST /v1/auth/login by client IP + stable hash of normalized login identity (bucket auth_login:{ip}:{identity_hash}).
 func (a *AbuseProtection) LoginPOST() func(http.Handler) http.Handler {
 	if !a.enabled() {
 		return a.noop
@@ -64,13 +64,17 @@ func (a *AbuseProtection) LoginPOST() func(http.Handler) http.Handler {
 				return
 			}
 			var lr struct {
-				Email string `json:"email"`
+				Username string `json:"username"`
+				Email    string `json:"email"`
 			}
 			_ = json.Unmarshal(body, &lr)
-			email := strings.TrimSpace(strings.ToLower(lr.Email))
-			emailDig := sha256.Sum256([]byte(email))
-			emailH := hex.EncodeToString(emailDig[:])
-			key := ratelimit.StableKey("auth_login", clientIP(r), emailH)
+			identity := strings.TrimSpace(strings.ToLower(lr.Username))
+			if identity == "" {
+				identity = strings.TrimSpace(strings.ToLower(lr.Email))
+			}
+			idDig := sha256.Sum256([]byte(identity))
+			idH := hex.EncodeToString(idDig[:])
+			key := ratelimit.StableKey("auth_login", clientIP(r), idH)
 			a.apply(w, r, key, int64(a.cfg.LoginPerMinute), next)
 		})
 	}

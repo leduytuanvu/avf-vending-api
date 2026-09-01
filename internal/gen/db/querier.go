@@ -105,6 +105,7 @@ type Querier interface {
 	AuthInsertPasswordResetToken(ctx context.Context, arg AuthInsertPasswordResetTokenParams) error
 	AuthInsertRefreshToken(ctx context.Context, arg AuthInsertRefreshTokenParams) error
 	AuthLookupAccountByOrgEmailAnyStatus(ctx context.Context, lower string) (PlatformAuthAccount, error)
+	AuthLookupAccountByUsernameAnyStatus(ctx context.Context, lower string) (PlatformAuthAccount, error)
 	AuthMarkPasswordResetTokenUsed(ctx context.Context, id uuid.UUID) error
 	AuthRecordLoginFailure(ctx context.Context, arg AuthRecordLoginFailureParams) error
 	AuthRecordLoginSuccess(ctx context.Context, id uuid.UUID) error

@@ -86,6 +86,7 @@ func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 			return
 		}
 		var body struct {
+			Username string   `json:"username"`
 			Email    string   `json:"email"`
 			Password string   `json:"password"`
 			Roles    []string `json:"roles"`
@@ -96,6 +97,7 @@ func postAdminAuthUsersCreate(svc *appauth.Service) http.HandlerFunc {
 			return
 		}
 		out, err := svc.AdminCreateUser(r.Context(), actorID, scopeID, appauth.AdminCreateUserRequest{
+			Username: body.Username,
 			Email:    body.Email,
 			Password: body.Password,
 			Roles:    body.Roles,
@@ -438,6 +440,10 @@ func writeAuthAdminMutationError(w http.ResponseWriter, ctx context.Context, err
 		writeAPIError(w, ctx, http.StatusNotFound, "not_found", err.Error())
 	case errors.Is(err, appauth.ErrConflictDuplicateEmail):
 		writeAPIError(w, ctx, http.StatusConflict, "duplicate_email", err.Error())
+	case errors.Is(err, appauth.ErrConflictDuplicateUsername):
+		writeAPIError(w, ctx, http.StatusConflict, "duplicate_username", err.Error())
+	case errors.Is(err, appauth.ErrInvalidUsername):
+		writeAPIError(w, ctx, http.StatusBadRequest, "invalid_username", err.Error())
 	case errors.Is(err, appauth.ErrForbiddenLastOrgAdmin):
 		writeAPIError(w, ctx, http.StatusForbidden, "last_admin", err.Error())
 	default:

@@ -3,7 +3,7 @@ package correctness
 import (
 	"bytes"
 	"context"
-	"github.com/avf/avf-vending-api/internal/platform/id"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -32,15 +33,16 @@ func TestP06_E2E_Auth_DisabledUserCannotLogin(t *testing.T) {
 	svc, err := appauth.NewService(appauth.Deps{Queries: queries, Issuer: issuer, Pool: pool})
 	require.NoError(t, err)
 
-	id := id.NewUUIDV7()
-	email := "p06-disabled-" + id.String()[:8] + "@test.example.com"
+	accountID := id.NewUUIDV7()
+	email := "p06-disabled-" + accountID.String()[:8] + "@test.example.com"
+	username := "u" + strings.ReplaceAll(accountID.String()[:8], "-", "")
 	hash, err := bcrypt.GenerateFromPassword([]byte("password12345"), bcrypt.MinCost)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `
-INSERT INTO platform_auth_accounts (id, email, password_hash, roles, status)
-VALUES ($1,$2,$3,$4,$5)`, id, email, string(hash), []string{"viewer"}, "disabled")
+INSERT INTO platform_auth_accounts (id, username, email, password_hash, roles, status)
+VALUES ($1,$2,$3,$4,$5,$6)`, accountID, username, email, string(hash), []string{"viewer"}, "disabled")
 	require.NoError(t, err)
 
-	_, err = svc.Login(ctx, appauth.LoginRequest{Email: email, Password: "password12345"})
+	_, err = svc.Login(ctx, appauth.LoginRequest{Username: username, Password: "password12345"})
 	require.ErrorIs(t, err, appauth.ErrInvalidCredentials)
 }
