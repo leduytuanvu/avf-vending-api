@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
+	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/config"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/clockskew"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"

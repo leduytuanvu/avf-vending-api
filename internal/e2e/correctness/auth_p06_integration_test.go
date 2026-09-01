@@ -10,8 +10,8 @@ import (
 	appauth "github.com/avf/avf-vending-api/internal/app/auth"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/gen/db"
-	"github.com/avf/avf-vending-api/internal/platform/id"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )

@@ -35,7 +35,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/objectstore"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
-	platformtelegram 	"github.com/avf/avf-vending-api/internal/platform/telegram"
+	platformtelegram "github.com/avf/avf-vending-api/internal/platform/telegram"
 	platformtimezone "github.com/avf/avf-vending-api/internal/platform/timezone"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
