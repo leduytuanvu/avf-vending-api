@@ -121,7 +121,7 @@ ALTER TABLE commerce_reconciliation_cases ADD CONSTRAINT commerce_reconciliation
 
 -- Backfill single-captured-payment winners; ambiguous orders left null for manual review.
 WITH single_captured AS (
-    SELECT order_id, min(id) AS payment_id, max(updated_at) AS claimed_at
+    SELECT order_id, min(id::text)::uuid AS payment_id, max(updated_at) AS claimed_at
     FROM payments
     WHERE state = 'captured'
     GROUP BY order_id
@@ -162,7 +162,7 @@ SELECT
     'financial_correctness:ambiguous_winner:' || dup.order_id::text,
     jsonb_build_object('captured_count', dup.cnt)
 FROM (
-    SELECT order_id, min(id) AS payment_id, count(*) AS cnt
+    SELECT order_id, min(id::text)::uuid AS payment_id, count(*) AS cnt
     FROM payments
     WHERE state = 'captured'
     GROUP BY order_id
