@@ -69,6 +69,7 @@ type OTAAdminService interface {
 // PaymentsService is the application port for payment operations exposed on the public versioned API.
 type PaymentsService interface {
 	ListPayments(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.PaymentsListResponse, error)
+	GetPayment(ctx context.Context, paymentID uuid.UUID) (appcommerceadmin.PaymentDetailItem, error)
 }
 
 // OrdersService is the application port for order operations exposed on the public versioned API.
@@ -85,6 +86,7 @@ type ReconciliationAdminService interface {
 	GetRefundRequest(ctx context.Context, refundRequestID uuid.UUID) (appcommerceadmin.RefundRequestItem, error)
 	CreateOrderRefund(ctx context.Context, in appcommerceadmin.CreateOrderRefundInput) (appcommerceadmin.CreateOrderRefundResult, error)
 	RefundFromReconciliationCase(ctx context.Context, in appcommerceadmin.RefundFromReconciliationCaseInput) (appcommerceadmin.CreateOrderRefundResult, error)
+	GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (appcommerceadmin.OrderMoneyViewResponse, error)
 }
 
 // MachineShadowService reads machine shadow state for a device.

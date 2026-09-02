@@ -148,6 +148,8 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		ScheduleVendFailureFollowUp: cfg.Temporal.ScheduleVendFailureFollowUp,
 		EnterpriseAudit:             auditSvc,
 		PaymentSessionRegistry:      rt.Deps.PaymentProviders,
+		FinancialCorrectness:        store,
+		WinnerArbitrationEnabled:    cfg.Commerce.WinnerArbitrationEnabled,
 	})
 	var artifactSvc *appartifacts.Service
 	var machineMediaStore objectstore.Store

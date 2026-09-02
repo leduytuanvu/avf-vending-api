@@ -22,22 +22,28 @@ type CommerceRefundDeps interface {
 	CreateRefund(ctx context.Context, in appcommerce.CreateRefundInput) (appcommerce.RefundRowView, error)
 }
 
+// CommerceMoneyViewReader loads the admin money read model for an order.
+type CommerceMoneyViewReader interface {
+	GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (appcommerce.OrderMoneyView, error)
+}
+
 // Service provides operational commerce lists (orders, payments) and reconciliation admin flows.
 type Service struct {
-	q       *db.Queries
-	pool    *pgxpool.Pool
-	refunds CommerceRefundDeps
+	q         *db.Queries
+	pool      *pgxpool.Pool
+	refunds   CommerceRefundDeps
+	moneyView CommerceMoneyViewReader
 }
 
 // NewService returns a commerce admin service backed by sqlc queries and optional refund execution.
-func NewService(pool *pgxpool.Pool, q *db.Queries, refunds CommerceRefundDeps) (*Service, error) {
+func NewService(pool *pgxpool.Pool, q *db.Queries, refunds CommerceRefundDeps, moneyView CommerceMoneyViewReader) (*Service, error) {
 	if pool == nil {
 		return nil, errors.New("commerceadmin: nil pool")
 	}
 	if q == nil {
 		return nil, errors.New("commerceadmin: nil queries")
 	}
-	return &Service{pool: pool, q: q, refunds: refunds}, nil
+	return &Service{pool: pool, q: q, refunds: refunds, moneyView: moneyView}, nil
 }
 
 func isPGUniqueViolation(err error) bool {
@@ -655,4 +661,102 @@ func mapReconciliationCase(row db.CommerceReconciliationCase) ReconciliationCase
 		ResolvedBy:      pgUUIDStringPtr(row.ResolvedBy),
 		ResolutionNote:  pgTextToStringPtr(row.ResolutionNote),
 	}
+}
+
+// GetPayment returns one payment row by id.
+func (s *Service) GetPayment(ctx context.Context, paymentID uuid.UUID) (PaymentDetailItem, error) {
+	if s == nil || s.q == nil {
+		return PaymentDetailItem{}, errors.New("commerceadmin: nil service")
+	}
+	pay, err := s.q.GetPaymentByID(ctx, paymentID)
+	if err != nil {
+		return PaymentDetailItem{}, err
+	}
+	ord, err := s.q.GetOrderByID(ctx, pay.OrderID)
+	if err != nil {
+		return PaymentDetailItem{}, err
+	}
+	isWinner := ord.WinningPaymentID.Valid && uuid.UUID(ord.WinningPaymentID.Bytes) == pay.ID
+	item := PaymentDetailItem{
+		PaymentListItem: PaymentListItem{
+			PaymentID:            pay.ID.String(),
+			OrderID:              pay.OrderID.String(),
+			MachineID:            ord.MachineID.String(),
+			Provider:             pay.Provider,
+			PaymentState:         pay.State,
+			OrderStatus:          ord.Status,
+			AmountMinor:          pay.AmountMinor,
+			Currency:             pay.Currency,
+			ReconciliationStatus: pay.ReconciliationStatus,
+			SettlementStatus:     pay.SettlementStatus,
+			CreatedAt:            pay.CreatedAt.UTC(),
+			UpdatedAt:            pay.UpdatedAt.UTC(),
+		},
+		Outcome:          pay.Outcome,
+		AttemptSeq:       pay.AttemptSeq,
+		IsWinningPayment: isWinner,
+	}
+	if pay.SupersedesPaymentID.Valid {
+		sid := uuid.UUID(pay.SupersedesPaymentID.Bytes).String()
+		item.SupersedesPaymentID = &sid
+	}
+	return item, nil
+}
+
+// GetOrderMoneyView returns the admin money read model for an order.
+func (s *Service) GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (OrderMoneyViewResponse, error) {
+	if s == nil || s.moneyView == nil {
+		return OrderMoneyViewResponse{}, errors.New("commerceadmin: money view not configured")
+	}
+	view, err := s.moneyView.GetOrderMoneyView(ctx, orderID)
+	if err != nil {
+		return OrderMoneyViewResponse{}, err
+	}
+	out := OrderMoneyViewResponse{
+		OrderID:              orderID.String(),
+		OutstandingLiability: view.OutstandingLiability,
+		AcceptanceEvents:     make([]OrderMoneyAcceptanceEvent, 0, len(view.AcceptanceEvents)),
+		Payments:             make([]OrderMoneyPaymentItem, 0, len(view.Payments)),
+	}
+	if view.WinningPaymentID != nil {
+		s := view.WinningPaymentID.String()
+		out.WinningPaymentID = &s
+	}
+	for _, p := range view.Payments {
+		out.Payments = append(out.Payments, OrderMoneyPaymentItem{
+			PaymentID:       p.Payment.ID.String(),
+			Provider:        p.Payment.Provider,
+			State:           p.Payment.State,
+			Outcome:         p.Payment.Outcome,
+			AmountMinor:     p.Payment.AmountMinor,
+			Currency:        p.Payment.Currency,
+			IsWinner:        p.IsWinner,
+			IsLosingCapture: p.IsLosingCapture,
+		})
+	}
+	if view.CashAllocation != nil {
+		out.CashAllocation = &OrderMoneyCashAllocation{
+			AmountMinor:            view.CashAllocation.AmountMinor,
+			PreOrderCreditMinor:    view.CashAllocation.PreOrderCreditMinor,
+			PostOrderInsertedMinor: view.CashAllocation.PostOrderInsertedMinor,
+			ConsentSource:          view.CashAllocation.ConsentSource,
+		}
+	}
+	if view.CashChange != nil {
+		out.CashChange = &OrderMoneyCashChange{
+			ChangeDueMinor:       view.CashChange.ChangeDueMinor,
+			ChangeDispensedMinor: view.CashChange.ChangeDispensedMinor,
+			Outcome:              view.CashChange.Outcome,
+			LiabilityMinor:       view.CashChange.LiabilityMinor,
+		}
+	}
+	for _, ev := range view.AcceptanceEvents {
+		out.AcceptanceEvents = append(out.AcceptanceEvents, OrderMoneyAcceptanceEvent{
+			DeviceEventID:     ev.DeviceEventID,
+			DenominationMinor: ev.DenominationMinor,
+			CreditSource:      ev.CreditSource,
+			AcceptedAt:        ev.AcceptedAt.UTC(),
+		})
+	}
+	return out, nil
 }

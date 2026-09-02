@@ -197,17 +197,28 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 	}
 
 	target := strings.TrimSpace(strings.ToLower(in.NormalizedPaymentState))
+	lateCaptured := false
 	if !paymentTransitionAllowed(pay.State, target) {
-		if webhookLateDeliveryAgainstTerminalState(ord, pay) {
+		if target == "captured" && webhookLateDeliveryAgainstTerminalState(ord, pay) {
+			lateCaptured = true
+		} else if webhookLateDeliveryAgainstTerminalState(ord, pay) {
 			return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrWebhookAfterTerminalOrder
+		} else if !lateCaptured {
+			return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrIllegalTransition
 		}
-		return appcommerce.ApplyPaymentProviderWebhookResult{}, appcommerce.ErrIllegalTransition
 	}
 
 	if pay.State != target {
-		pay, err = q.UpdatePaymentState(ctx, db.UpdatePaymentStateParams{ID: pay.ID, State: target})
-		if err != nil {
-			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+		if lateCaptured && target == "captured" {
+			pay, err = q.ForceUpdatePaymentStateCaptured(ctx, pay.ID)
+			if err != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+			}
+		} else {
+			pay, err = q.UpdatePaymentState(ctx, db.UpdatePaymentStateParams{ID: pay.ID, State: target})
+			if err != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+			}
 		}
 	}
 
@@ -269,13 +280,47 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
 
-	if target == "captured" && (ord.Status == "created" || ord.Status == "quoted") {
-		ord, err = q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "paid",
-
-			ID: ord.ID,
+	if target == "captured" && (ord.Status == "created" || ord.Status == "quoted") && !lateCaptured {
+		claimed, cerr := q.ClaimWinningPayment(ctx, db.ClaimWinningPaymentParams{
+			WinningPaymentID: uuidToPg(pay.ID),
+			ID:               ord.ID,
 		})
-		if err != nil {
-			return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+		if cerr == nil {
+			ord = claimed
+			_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+		} else {
+			ord, err = q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "paid", ID: ord.ID})
+			if err != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+			}
+		}
+	}
+	if lateCaptured && target == "captured" {
+		if ord.WinningPaymentID.Valid && uuid.UUID(ord.WinningPaymentID.Bytes) != pay.ID {
+			if _, oerr := q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "refund_required"}); oerr != nil {
+				return appcommerce.ApplyPaymentProviderWebhookResult{}, oerr
+			}
+			orderIDCopy := ord.ID
+			paymentIDCopy := pay.ID
+			machineID := ord.MachineID
+			_, _ = q.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
+				CaseType:       "late_capture_refund_required",
+				Severity:       "critical",
+				Reason:         "Late capture after order already has winning payment",
+				OrderID:        optionalUUIDToPg(&orderIDCopy),
+				PaymentID:      optionalUUIDToPg(&paymentIDCopy),
+				MachineID:      optionalUUIDToPg(&machineID),
+				CorrelationKey: pgtype.Text{String: "financial_correctness:late_capture:" + pay.ID.String(), Valid: true},
+			})
+		} else if !ord.WinningPaymentID.Valid {
+			claimed, cerr := q.ClaimWinningPayment(ctx, db.ClaimWinningPaymentParams{
+				WinningPaymentID: uuidToPg(pay.ID),
+				ID:               ord.ID,
+			})
+			if cerr == nil {
+				ord = claimed
+				_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+			}
 		}
 	}
 	if shouldInsertWebhookOutbox(in) {

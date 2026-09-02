@@ -1410,6 +1410,62 @@ type V1PaymentsListResponse struct {
 	Meta  V1CollectionListMeta `json:"meta"`
 }
 
+// V1PaymentDetailItem is GET /v1/payments/{paymentId} success body.
+type V1PaymentDetailItem struct {
+	V1PaymentListItem
+	Outcome             string  `json:"outcome,omitempty"`
+	AttemptSeq          int32   `json:"attemptSeq,omitempty"`
+	SupersedesPaymentID *string `json:"supersedesPaymentId,omitempty"`
+	IsWinningPayment    bool    `json:"isWinningPayment"`
+}
+
+// V1OrderMoneyPaymentItem is one payment row in the order money view.
+type V1OrderMoneyPaymentItem struct {
+	PaymentID       string `json:"paymentId"`
+	Provider        string `json:"provider"`
+	State           string `json:"state"`
+	Outcome         string `json:"outcome,omitempty"`
+	AmountMinor     int64  `json:"amountMinor"`
+	Currency        string `json:"currency"`
+	IsWinner        bool   `json:"isWinner"`
+	IsLosingCapture bool   `json:"isLosingCapture"`
+}
+
+// V1OrderMoneyCashAllocation is cash applied to an order in the money view.
+type V1OrderMoneyCashAllocation struct {
+	AmountMinor            int64  `json:"amountMinor"`
+	PreOrderCreditMinor    int64  `json:"preOrderCreditMinor"`
+	PostOrderInsertedMinor int64  `json:"postOrderInsertedMinor"`
+	ConsentSource          string `json:"consentSource"`
+}
+
+// V1OrderMoneyCashChange is change-dispense outcome for a cash order.
+type V1OrderMoneyCashChange struct {
+	ChangeDueMinor       int64  `json:"changeDueMinor"`
+	ChangeDispensedMinor int64  `json:"changeDispensedMinor"`
+	Outcome              string `json:"outcome"`
+	LiabilityMinor       int64  `json:"liabilityMinor"`
+}
+
+// V1OrderMoneyAcceptanceEvent is one bill/coin acceptance event on a cash order.
+type V1OrderMoneyAcceptanceEvent struct {
+	DeviceEventID     string `json:"deviceEventId"`
+	DenominationMinor int64  `json:"denominationMinor"`
+	CreditSource      string `json:"creditSource"`
+	AcceptedAt        string `json:"acceptedAt"`
+}
+
+// V1OrderMoneyViewResponse is GET /v1/admin/orders/{orderId}/money success body.
+type V1OrderMoneyViewResponse struct {
+	OrderID              string                        `json:"orderId"`
+	WinningPaymentID     *string                       `json:"winningPaymentId,omitempty"`
+	OutstandingLiability int64                         `json:"outstandingLiabilityMinor"`
+	Payments             []V1OrderMoneyPaymentItem     `json:"payments"`
+	CashAllocation       *V1OrderMoneyCashAllocation   `json:"cashAllocation,omitempty"`
+	CashChange           *V1OrderMoneyCashChange       `json:"cashChange,omitempty"`
+	AcceptanceEvents     []V1OrderMoneyAcceptanceEvent `json:"acceptanceEvents"`
+}
+
 // V1CommerceReconciliationCase is an operator-visible payment/vend/refund review row.
 type V1CommerceReconciliationCase struct {
 	ID              string         `json:"id"`

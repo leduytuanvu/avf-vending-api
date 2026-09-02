@@ -127,6 +127,48 @@ type Brand struct {
 	UpdatedAt time.Time
 }
 
+type CashAcceptanceEvent struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	OrderID           pgtype.UUID
+	DeviceEventID     string
+	DenominationMinor int64
+	CreditSource      string
+	Currency          string
+	AcceptedAt        time.Time
+	RawMetadata       []byte
+	CreatedAt         time.Time
+}
+
+type CashAllocation struct {
+	ID                     uuid.UUID
+	OrderID                uuid.UUID
+	PaymentID              pgtype.UUID
+	MachineID              uuid.UUID
+	AmountMinor            int64
+	PreOrderCreditMinor    int64
+	PostOrderInsertedMinor int64
+	ConsentSource          string
+	ConsentedAt            pgtype.Timestamptz
+	Currency               string
+	IdempotencyKey         pgtype.Text
+	CreatedAt              time.Time
+}
+
+type CashChangeEvent struct {
+	ID                   uuid.UUID
+	OrderID              uuid.UUID
+	PaymentID            pgtype.UUID
+	MachineID            uuid.UUID
+	ChangeDueMinor       int64
+	ChangeDispensedMinor int64
+	Outcome              string
+	LiabilityMinor       int64
+	Currency             string
+	IdempotencyKey       pgtype.Text
+	CreatedAt            time.Time
+}
+
 // Field cash collection sessions: open then close with counted vs expected (commerce cash, no hardware payout).
 type CashCollection struct {
 	ID          uuid.UUID
@@ -1330,6 +1372,8 @@ type Order struct {
 	FakeBill           bool
 	FakeBoard          bool
 	SimulationMetadata []byte
+	WinningPaymentID   pgtype.UUID
+	WinningClaimedAt   pgtype.Timestamptz
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -1453,14 +1497,17 @@ type Payment struct {
 	// Provider vs internal ledger alignment; use payment_reconciliations for detail.
 	ReconciliationStatus string
 	// PSP settlement lifecycle; settlement_batch_id when batched.
-	SettlementStatus   string
-	SettlementBatchID  pgtype.UUID
-	Simulated          bool
-	SimulationRunID    pgtype.Text
-	SimulationScenario pgtype.Text
-	FakeBill           bool
-	FakeBoard          bool
-	SimulationMetadata []byte
+	SettlementStatus    string
+	SettlementBatchID   pgtype.UUID
+	Simulated           bool
+	SimulationRunID     pgtype.Text
+	SimulationScenario  pgtype.Text
+	FakeBill            bool
+	FakeBoard           bool
+	SimulationMetadata  []byte
+	Outcome             string
+	AttemptSeq          int32
+	SupersedesPaymentID pgtype.UUID
 }
 
 type PaymentAttempt struct {

@@ -740,6 +740,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCommerceService_CreateOrderFromQuote_FullMethodName,
 		machinev1.MachineCommerceService_CreateOrder_FullMethodName,
 		machinev1.MachineCommerceService_CreatePaymentSession_FullMethodName,
+		machinev1.MachineCommerceService_CancelPaymentSession_FullMethodName,
 		machinev1.MachineCommerceService_AttachPaymentResult_FullMethodName,
 		machinev1.MachineCommerceService_ConfirmCashPayment_FullMethodName,
 		machinev1.MachineCommerceService_CreateCashCheckout_FullMethodName,

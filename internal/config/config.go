@@ -74,6 +74,8 @@ type CommerceHTTPConfig struct {
 	VendOutboxEventTypeReconciliation string
 	// VendOutboxAggregateType defaults to "order" for vend outbox rows.
 	VendOutboxAggregateType string
+	// WinnerArbitrationEnabled enables atomic winning_payment_id claims (COMMERCE_WINNER_ARBITRATION_ENABLED).
+	WinnerArbitrationEnabled bool
 }
 
 // RestrictsUnsignedCommercePaymentWebhooks reports whether APP_ENV rejects unsigned callbacks unless the unsafe escape hatch is enabled.
@@ -1998,6 +2000,7 @@ func Load() (*Config, error) {
 			VendOutboxEventTypeFailed:                   strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_FAILED", "vend.failed")),
 			VendOutboxEventTypeReconciliation:           strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_EVENT_RECONCILIATION", "reconciliation.required")),
 			VendOutboxAggregateType:                     strings.TrimSpace(getenv("COMMERCE_VEND_OUTBOX_AGGREGATE_TYPE", "order")),
+			WinnerArbitrationEnabled:                    getenvBool("COMMERCE_WINNER_ARBITRATION_ENABLED", appEnv != AppEnvProduction),
 		},
 		PSP: loadPSPCredentials(),
 		CashSettlement: CashSettlementConfig{

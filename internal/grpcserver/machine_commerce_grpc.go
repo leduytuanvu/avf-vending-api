@@ -514,10 +514,6 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		return nil, status.Error(codes.Unavailable, "commerce outbox not configured")
 	}
 
-	idem := wctx.IdempotencyKey
-	payKey := idem + ":cash:payment"
-	outboxIdem := idem + ":cash:payment:outbox:" + orderID.String()
-
 	simMeta := parseSimulationContext(req.GetSimulation())
 	if simMeta.Simulated {
 		if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
@@ -527,54 +523,114 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		simMeta = simulationMetaFromOrder(o.Simulated, o.SimulationRunID, o.SimulationScenario, o.FakeBill, o.FakeBoard)
 	}
 
-	payRes, err := svc.StartPaymentWithOutbox(ctx, appcommerce.StartPaymentInput{
-		OrderID:              orderID,
-		Provider:             "cash",
-		PaymentState:         "captured",
-		AmountMinor:          o.TotalMinor,
-		Currency:             o.Currency,
-		IdempotencyKey:       payKey,
-		OutboxTopic:          topic,
-		OutboxEventType:      evType,
-		OutboxPayload:        []byte(`{"source":"machine_grpc_cash"}`),
-		OutboxAggregateType:  aggType,
-		OutboxAggregateID:    orderID,
-		OutboxIdempotencyKey: outboxIdem,
-		Simulated:            simMeta.Simulated,
-		SimulationRunID:      simMeta.SimulationRunID,
-		SimulationScenario:   simMeta.SimulationScenario,
-		FakeBill:             simMeta.FakeBill,
-		FakeBoard:            simMeta.FakeBoard,
+	var consentedAt *time.Time
+	if req.GetConsentedAt() != nil {
+		t := req.GetConsentedAt().AsTime().UTC()
+		consentedAt = &t
+	}
+	acceptance := make([]appcommerce.CashAcceptanceEventInput, 0, len(req.GetCashAcceptanceEvents()))
+	for _, ev := range req.GetCashAcceptanceEvents() {
+		at := time.Now().UTC()
+		if ev.GetAcceptedAt() != nil {
+			at = ev.GetAcceptedAt().AsTime().UTC()
+		}
+		acceptance = append(acceptance, appcommerce.CashAcceptanceEventInput{
+			DeviceEventID:     strings.TrimSpace(ev.GetDeviceEventId()),
+			DenominationMinor: ev.GetDenominationMinor(),
+			CreditSource:      strings.TrimSpace(ev.GetCreditSource()),
+			AcceptedAt:        at,
+		})
+	}
+
+	res, err := svc.ConfirmCashPayment(ctx, appcommerce.ConfirmCashPaymentInput{
+		OrderID:                orderID,
+		MachineID:              claims.MachineID,
+		IdempotencyKey:         wctx.IdempotencyKey,
+		GrossAcceptedMinor:     req.GetGrossAcceptedMinor(),
+		AllocatedMinor:         req.GetAllocatedMinor(),
+		PreOrderCreditMinor:    req.GetPreOrderCreditMinor(),
+		PostOrderInsertedMinor: req.GetPostOrderInsertedMinor(),
+		ChangeDueMinor:         req.GetChangeDueMinor(),
+		ChangeDispensedMinor:   req.GetChangeDispensedMinor(),
+		ChangeOutcome:          req.GetChangeOutcome(),
+		ConsentSource:          req.GetConsentSource(),
+		ConsentedAt:            consentedAt,
+		Currency:               req.GetCurrency(),
+		AcceptanceEvents:       acceptance,
+		Simulated:              simMeta.Simulated,
+		SimulationRunID:        simMeta.SimulationRunID,
+		SimulationScenario:     simMeta.SimulationScenario,
+		FakeBill:               simMeta.FakeBill,
+		FakeBoard:              simMeta.FakeBoard,
+		OutboxTopic:            topic,
+		OutboxEventType:        evType,
+		OutboxAggregateType:    aggType,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if payRes.Replay {
-		if payRes.Payment.AmountMinor != o.TotalMinor ||
-			strings.ToUpper(strings.TrimSpace(payRes.Payment.Currency)) != strings.ToUpper(strings.TrimSpace(o.Currency)) ||
-			payRes.Payment.State != "captured" {
-			return nil, mapCommerceGRPCErr(appcommerce.ErrIdempotencyPayloadConflict)
-		}
-	}
-
-	paid, err := svc.MarkOrderPaidAfterPaymentCapture(ctx, uuid.Nil, orderID)
-	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
-	}
-	replay := payRes.Replay
-	if !payRes.Replay {
+	if !res.Replay {
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceCashPaymentConfirmed, map[string]any{
 			"order_id":        orderID.String(),
-			"payment_id":      payRes.Payment.ID.String(),
-			"idempotency_key": idem,
+			"payment_id":      res.Payment.ID.String(),
+			"idempotency_key": wctx.IdempotencyKey,
+			"consent_source":  req.GetConsentSource(),
 		})
 	}
 	return &machinev1.ConfirmCashPaymentResponse{
-		Replay:       replay,
-		PaymentId:    payRes.Payment.ID.String(),
-		OrderStatus:  paid.Status,
-		PaymentState: payRes.Payment.State,
+		Replay:       res.Replay,
+		PaymentId:    res.Payment.ID.String(),
+		OrderStatus:  res.Order.Status,
+		PaymentState: res.Payment.State,
 	}, nil
+}
+
+func (s *machineCommerceServer) CancelPaymentSession(ctx context.Context, req *machinev1.CancelPaymentSessionRequest) (*machinev1.CancelPaymentSessionResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	wctx, err := parseMachineMutationContext(ctx, req.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	claims, svc, store, err := s.requireCommerce(ctx)
+	if err != nil {
+		return nil, err
+	}
+	orderID, err := uuid.Parse(strings.TrimSpace(req.GetOrderId()))
+	if err != nil || orderID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
+	}
+	principal := machinePrincipalFromAccessClaims(claims)
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	o, err := store.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	if o.MachineID != claims.MachineID {
+		return nil, status.Error(codes.PermissionDenied, "order machine mismatch")
+	}
+	res, err := svc.CancelPaymentSession(ctx, appcommerce.CancelPaymentSessionInput{
+		OrderID:        orderID,
+		MachineID:      claims.MachineID,
+		IdempotencyKey: wctx.IdempotencyKey,
+		Reason:         strings.TrimSpace(req.GetReason()),
+	})
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	out := &machinev1.CancelPaymentSessionResponse{
+		Replay:      res.Replay,
+		OrderId:     res.Order.ID.String(),
+		OrderStatus: res.Order.Status,
+	}
+	if res.PaymentFound {
+		out.PaymentId = res.Payment.ID.String()
+		out.PaymentState = res.Payment.State
+	}
+	return out, nil
 }
 
 func (s *machineCommerceServer) CreateCashCheckout(ctx context.Context, req *machinev1.ConfirmCashPaymentRequest) (*machinev1.ConfirmCashPaymentResponse, error) {

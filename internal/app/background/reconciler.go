@@ -128,6 +128,7 @@ type ReconcilerDeps struct {
 	VendStuckTick                  time.Duration
 	DuplicatePaymentTick           time.Duration
 	RefundReviewTick               time.Duration
+	FinancialCorrectnessTick       time.Duration
 	ScheduleRefundOrchestration    bool
 	ScheduleManualReviewEscalation bool
 
@@ -787,6 +788,7 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 		deps.Log = zap.NewNop()
 	}
 	u, pp, v, d, r := deps.UnresolvedOrdersTick, deps.PaymentProbeTick, deps.VendStuckTick, deps.DuplicatePaymentTick, deps.RefundReviewTick
+	fc := deps.FinancialCorrectnessTick
 	if u <= 0 || pp <= 0 || v <= 0 || d <= 0 || r <= 0 {
 		du, dpp, dv, dd, dr := DefaultReconcilerTickSchedule()
 		if u <= 0 {
@@ -805,6 +807,9 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 			r = dr
 		}
 	}
+	if fc <= 0 {
+		fc = 2 * time.Minute
+	}
 
 	stableAge := deps.StableAge
 	if stableAge <= 0 {
@@ -819,6 +824,7 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 		zap.Duration("tick_vend_stuck", v),
 		zap.Duration("tick_duplicate_payments", d),
 		zap.Duration("tick_refund_review", r),
+		zap.Duration("tick_financial_correctness", fc),
 		zap.Bool("reader_configured", deps.Reader != nil),
 		zap.Bool("payment_gateway_configured", deps.Gateway != nil),
 		zap.Bool("refund_pipeline_configured", deps.RefundSink != nil && deps.OrderRead != nil),
@@ -886,6 +892,11 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 	startTickerGoroutine(&wg, ctx, deps.Log, "refund_review", r, cto, 0, cycleHook, func(c context.Context) error {
 		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_refund_review", reconcilerLockTTL(r), func(c context.Context) error {
 			return RefundReviewDecisionTick(c, deps)
+		})
+	})
+	startTickerGoroutine(&wg, ctx, deps.Log, "financial_correctness", fc, cto, 0, cycleHook, func(c context.Context) error {
+		return platformredis.RunExclusive(c, deps.DistributedLocker, "reconciler_financial_correctness", reconcilerLockTTL(fc), func(c context.Context) error {
+			return FinancialCorrectnessReconcileTick(c, deps)
 		})
 	})
 

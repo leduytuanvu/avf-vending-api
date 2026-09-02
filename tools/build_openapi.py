@@ -347,6 +347,97 @@ def operational_collection_component_schemas() -> dict[str, Any]:
             },
             "required": ["items", "meta"],
         },
+        "V1PaymentDetailItem": {
+            "allOf": [
+                {"$ref": "#/components/schemas/V1PaymentListItem"},
+                {
+                    "type": "object",
+                    "properties": {
+                        "outcome": {"type": "string"},
+                        "attemptSeq": {"type": "integer", "format": "int32"},
+                        "supersedesPaymentId": uuid_s,
+                        "isWinningPayment": {"type": "boolean"},
+                    },
+                    "required": ["isWinningPayment"],
+                },
+            ],
+        },
+        "V1OrderMoneyPaymentItem": {
+            "type": "object",
+            "properties": {
+                "paymentId": uuid_s,
+                "provider": {"type": "string"},
+                "state": {"$ref": "#/components/schemas/V1PaymentState"},
+                "outcome": {"type": "string"},
+                "amountMinor": {"type": "integer", "format": "int64"},
+                "currency": {"type": "string"},
+                "isWinner": {"type": "boolean"},
+                "isLosingCapture": {"type": "boolean"},
+            },
+            "required": [
+                "paymentId",
+                "provider",
+                "state",
+                "amountMinor",
+                "currency",
+                "isWinner",
+                "isLosingCapture",
+            ],
+        },
+        "V1OrderMoneyCashAllocation": {
+            "type": "object",
+            "properties": {
+                "amountMinor": {"type": "integer", "format": "int64"},
+                "preOrderCreditMinor": {"type": "integer", "format": "int64"},
+                "postOrderInsertedMinor": {"type": "integer", "format": "int64"},
+                "consentSource": {"type": "string"},
+            },
+            "required": [
+                "amountMinor",
+                "preOrderCreditMinor",
+                "postOrderInsertedMinor",
+                "consentSource",
+            ],
+        },
+        "V1OrderMoneyCashChange": {
+            "type": "object",
+            "properties": {
+                "changeDueMinor": {"type": "integer", "format": "int64"},
+                "changeDispensedMinor": {"type": "integer", "format": "int64"},
+                "outcome": {"type": "string"},
+                "liabilityMinor": {"type": "integer", "format": "int64"},
+            },
+            "required": ["changeDueMinor", "changeDispensedMinor", "outcome", "liabilityMinor"],
+        },
+        "V1OrderMoneyAcceptanceEvent": {
+            "type": "object",
+            "properties": {
+                "deviceEventId": {"type": "string"},
+                "denominationMinor": {"type": "integer", "format": "int64"},
+                "creditSource": {"type": "string"},
+                "acceptedAt": ts,
+            },
+            "required": ["deviceEventId", "denominationMinor", "creditSource", "acceptedAt"],
+        },
+        "V1OrderMoneyViewResponse": {
+            "type": "object",
+            "properties": {
+                "orderId": uuid_s,
+                "winningPaymentId": uuid_s,
+                "outstandingLiabilityMinor": {"type": "integer", "format": "int64"},
+                "payments": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1OrderMoneyPaymentItem"},
+                },
+                "cashAllocation": {"$ref": "#/components/schemas/V1OrderMoneyCashAllocation"},
+                "cashChange": {"$ref": "#/components/schemas/V1OrderMoneyCashChange"},
+                "acceptanceEvents": {
+                    "type": "array",
+                    "items": {"$ref": "#/components/schemas/V1OrderMoneyAcceptanceEvent"},
+                },
+            },
+            "required": ["orderId", "outstandingLiabilityMinor", "payments", "acceptanceEvents"],
+        },
         "V1CommerceReconciliationCase": {
             "type": "object",
             "properties": {
@@ -3374,6 +3465,30 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         "createdAt": "2026-04-19T12:04:00Z",
         "updatedAt": "2026-04-19T12:04:01Z",
     }
+    pay_detail = {
+        **pay_item,
+        "outcome": "captured",
+        "attemptSeq": 1,
+        "isWinningPayment": True,
+    }
+    order_money_view = {
+        "orderId": _U,
+        "winningPaymentId": pay_item["paymentId"],
+        "outstandingLiabilityMinor": 0,
+        "payments": [
+            {
+                "paymentId": pay_item["paymentId"],
+                "provider": "stripe",
+                "state": "captured",
+                "outcome": "captured",
+                "amountMinor": 100,
+                "currency": "USD",
+                "isWinner": True,
+                "isLosingCapture": False,
+            }
+        ],
+        "acceptanceEvents": [],
+    }
     recon_case = {
         "id": "99999999-8888-7777-6666-555555555555",
         "caseType": "payment_paid_vend_failed",
@@ -5471,6 +5586,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ),
         ("get", "/v1/orders"): ex(resp={"200": ({"items": [ord_item], "meta": cmeta}, None)}),
         ("get", "/v1/payments"): ex(resp={"200": ({"items": [pay_item], "meta": cmeta}, None)}),
+        ("get", "/v1/payments/{paymentId}"): ex(resp={"200": (pay_detail, None)}),
         ("get", "/v1/admin/commerce/reconciliation"): ex(
             resp={"200": ({"items": [recon_case], "meta": cmeta}, None)}
         ),
@@ -5486,6 +5602,7 @@ def operation_examples() -> dict[tuple[str, str], dict[str, Any]]:
         ("get", "/v1/admin/orders/{orderId}/timeline"): ex(
             resp={"200": ({"items": [], "meta": cmeta}, None)},
         ),
+        ("get", "/v1/admin/orders/{orderId}/money"): ex(resp={"200": (order_money_view, None)}),
         ("get", "/v1/admin/refunds"): ex(
             resp={"200": ({"items": [], "meta": cmeta}, None)},
         ),
@@ -6486,6 +6603,7 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/operator-insights/technicians/{technicianId}/action-attributions"),
     ("get", "/v1/operator-insights/users/action-attributions"),
     ("get", "/v1/payments"),
+    ("get", "/v1/payments/{paymentId}"),
     ("get", "/v1/orders"),
     ("get", "/v1/machines/{machineId}/shadow"),
     ("get", "/v1/machines/{machineId}/telemetry/snapshot"),
@@ -6544,6 +6662,7 @@ REQUIRED_OPERATIONS: list[tuple[str, str]] = [
     ("get", "/v1/admin/machines/{machineId}/timeline"),
     ("get", "/v1/admin/operations/machines/health"),
     ("get", "/v1/admin/orders/{orderId}/timeline"),
+    ("get", "/v1/admin/orders/{orderId}/money"),
     ("get", "/v1/admin/provisioning/batches/{batchId}"),
     ("get", "/v1/admin/refunds"),
     ("get", "/v1/admin/refunds/{refundId}"),

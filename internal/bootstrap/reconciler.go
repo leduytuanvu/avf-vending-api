@@ -49,6 +49,7 @@ func BuildReconcilerDeps(ctx context.Context, cfg *config.Config, pool *pgxpool.
 		VendStuckTick:              0,
 		DuplicatePaymentTick:       0,
 		RefundReviewTick:           0,
+		FinancialCorrectnessTick:   0,
 		ActionsEnabled:             cfg.Reconciler.ActionsEnabled,
 		DryRun:                     cfg.Reconciler.DryRun,
 		PaymentOutboxTopic:         cfg.Commerce.PaymentOutboxTopic,
@@ -111,12 +112,14 @@ func BuildReconcilerDeps(ctx context.Context, cfg *config.Config, pool *pgxpool.
 	deps.RefundSink = sink
 
 	commerceSvc := appcommerce.NewService(appcommerce.Deps{
-		OrderVend:              store,
-		PaymentOutbox:          store,
-		Lifecycle:              store,
-		WebhookPersist:         store,
-		SaleLines:              store,
-		PaymentSessionRegistry: reg,
+		OrderVend:                store,
+		PaymentOutbox:            store,
+		Lifecycle:                store,
+		WebhookPersist:           store,
+		SaleLines:                store,
+		PaymentSessionRegistry:   reg,
+		FinancialCorrectness:     store,
+		WinnerArbitrationEnabled: cfg.Commerce.WinnerArbitrationEnabled,
 	})
 	deps.MarkOrderPaid = commerceSvc
 	deps.PaymentApplier = store

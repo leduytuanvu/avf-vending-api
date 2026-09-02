@@ -4383,6 +4383,22 @@ func DocOpV1OperatorInsightsUserAttributions() {}
 // @Router /v1/payments [get]
 func DocOpV1PaymentsList() {}
 
+// DocOpV1PaymentGet godoc
+// @Summary Get payment by id
+// @Description Read-only payment detail for support and reconciliation. Extends the list row with attempt sequencing, outcome, supersession, and whether this payment is the order's winning capture. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped to the payment's company.
+// @Tags Commerce
+// @Security BearerAuth
+// @Produce json
+// @Param paymentId path string true "Payment UUID"
+// @Success 200 {object} V1PaymentDetailItem
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/payments/{paymentId} [get]
+func DocOpV1PaymentGet() {}
+
 // DocOpV1OrdersList godoc
 // @Summary List orders for company
 // @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** (UUID), **search** (substring on order id or idempotency key), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
@@ -4510,6 +4526,22 @@ func DocOpV1AdminCommerceReconciliationRequestRefund() {}
 // @Failure 500 {object} V1StandardError
 // @Router /v1/admin/orders/{orderId}/timeline [get]
 func DocOpV1AdminCommerceOrderTimelineGet() {}
+
+// DocOpV1AdminCommerceOrderMoneyGet godoc
+// @Summary Get order money view
+// @Description Authoritative financial snapshot for one order: winning payment, all payment attempts with winner/losing-capture flags, cash allocation/change, and acceptance events. Used by admin order detail and reconciliation workflows. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped.
+// @Tags Commerce
+// @Security BearerAuth
+// @Produce json
+// @Param orderId path string true "Order UUID"
+// @Success 200 {object} V1OrderMoneyViewResponse
+// @Failure 400 {object} V1StandardError
+// @Failure 401 {object} V1BearerAuthError
+// @Failure 403 {object} V1BearerAuthError
+// @Failure 404 {object} V1StandardError
+// @Failure 500 {object} V1StandardError
+// @Router /v1/admin/orders/{orderId}/money [get]
+func DocOpV1AdminCommerceOrderMoneyGet() {}
 
 // DocOpV1AdminCommerceRefundRequestsList godoc
 // @Summary List refund requests for company

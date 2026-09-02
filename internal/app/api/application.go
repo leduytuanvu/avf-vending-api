@@ -261,7 +261,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 	if err != nil {
 		panic("api.NewHTTPApplication: ota admin: " + err.Error())
 	}
-	commerceAdm, err := appcommerceadmin.NewService(pool, queries, deps.Commerce)
+	commerceAdm, err := appcommerceadmin.NewService(pool, queries, deps.Commerce, deps.Commerce)
 	if err != nil {
 		panic("api.NewHTTPApplication: commerce admin: " + err.Error())
 	}

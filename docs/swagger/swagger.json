@@ -5953,6 +5953,165 @@
         ],
         "type": "object"
       },
+      "V1OrderMoneyAcceptanceEvent": {
+        "properties": {
+          "acceptedAt": {
+            "description": "RFC3339 with fractional seconds and explicit timezone offset (RFC3339Nano). Responses use UTC (Z).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "creditSource": {
+            "type": "string"
+          },
+          "denominationMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "deviceEventId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceEventId",
+          "denominationMinor",
+          "creditSource",
+          "acceptedAt"
+        ],
+        "type": "object"
+      },
+      "V1OrderMoneyCashAllocation": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "consentSource": {
+            "type": "string"
+          },
+          "postOrderInsertedMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "preOrderCreditMinor": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "amountMinor",
+          "preOrderCreditMinor",
+          "postOrderInsertedMinor",
+          "consentSource"
+        ],
+        "type": "object"
+      },
+      "V1OrderMoneyCashChange": {
+        "properties": {
+          "changeDispensedMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "changeDueMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "liabilityMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "changeDueMinor",
+          "changeDispensedMinor",
+          "outcome",
+          "liabilityMinor"
+        ],
+        "type": "object"
+      },
+      "V1OrderMoneyPaymentItem": {
+        "properties": {
+          "amountMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "isLosingCapture": {
+            "type": "boolean"
+          },
+          "isWinner": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "paymentId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/V1PaymentState"
+          }
+        },
+        "required": [
+          "paymentId",
+          "provider",
+          "state",
+          "amountMinor",
+          "currency",
+          "isWinner",
+          "isLosingCapture"
+        ],
+        "type": "object"
+      },
+      "V1OrderMoneyViewResponse": {
+        "properties": {
+          "acceptanceEvents": {
+            "items": {
+              "$ref": "#/components/schemas/V1OrderMoneyAcceptanceEvent"
+            },
+            "type": "array"
+          },
+          "cashAllocation": {
+            "$ref": "#/components/schemas/V1OrderMoneyCashAllocation"
+          },
+          "cashChange": {
+            "$ref": "#/components/schemas/V1OrderMoneyCashChange"
+          },
+          "orderId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "outstandingLiabilityMinor": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/V1OrderMoneyPaymentItem"
+            },
+            "type": "array"
+          },
+          "winningPaymentId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "orderId",
+          "outstandingLiabilityMinor",
+          "payments",
+          "acceptanceEvents"
+        ],
+        "type": "object"
+      },
       "V1OrderTimelineEvent": {
         "properties": {
           "actorId": {
@@ -6028,6 +6187,35 @@
           "meta"
         ],
         "type": "object"
+      },
+      "V1PaymentDetailItem": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/V1PaymentListItem"
+          },
+          {
+            "properties": {
+              "attemptSeq": {
+                "format": "int32",
+                "type": "integer"
+              },
+              "isWinningPayment": {
+                "type": "boolean"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "supersedesPaymentId": {
+                "format": "uuid",
+                "type": "string"
+              }
+            },
+            "required": [
+              "isWinningPayment"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "V1PaymentListItem": {
         "properties": {
@@ -24808,6 +24996,161 @@
         "summary": "Show retention table visibility",
         "tags": [
           "Platform Ops"
+        ]
+      }
+    },
+    "/v1/admin/orders/{orderId}/money": {
+      "get": {
+        "description": "Authoritative financial snapshot for one order: winning payment, all payment attempts with winner/losing-capture flags, cash allocation/change, and acceptance events. Used by admin order detail and reconciliation workflows. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped.",
+        "operationId": "DocOpV1AdminCommerceOrderMoneyGet",
+        "parameters": [
+          {
+            "description": "Order UUID",
+            "in": "path",
+            "name": "orderId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "acceptanceEvents": [],
+                  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "outstandingLiabilityMinor": 0,
+                  "payments": [
+                    {
+                      "amountMinor": 100,
+                      "currency": "USD",
+                      "isLosingCapture": false,
+                      "isWinner": true,
+                      "outcome": "captured",
+                      "paymentId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                      "provider": "stripe",
+                      "state": "captured"
+                    }
+                  ],
+                  "winningPaymentId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1OrderMoneyViewResponse"
+                }
+              }
+            },
+            "description": "Get order money view"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get order money view",
+        "tags": [
+          "Commerce"
         ]
       }
     },
@@ -51237,6 +51580,160 @@
           }
         ],
         "summary": "List payments for company",
+        "tags": [
+          "Commerce"
+        ]
+      }
+    },
+    "/v1/payments/{paymentId}": {
+      "get": {
+        "description": "Read-only payment detail for support and reconciliation. Extends the list row with attempt sequencing, outcome, supersession, and whether this payment is the order's winning capture. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped to the payment's company.",
+        "operationId": "DocOpV1PaymentGet",
+        "parameters": [
+          {
+            "description": "Payment UUID",
+            "in": "path",
+            "name": "paymentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/AuthorizationHeader"
+          },
+          {
+            "$ref": "#/components/parameters/XRequestID"
+          },
+          {
+            "$ref": "#/components/parameters/XCorrelationID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "amountMinor": 100,
+                  "attemptSeq": 1,
+                  "createdAt": "2026-04-19T12:04:00Z",
+                  "currency": "USD",
+                  "isWinningPayment": true,
+                  "machineId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+                  "orderId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                  "orderStatus": "paid",
+                  "outcome": "captured",
+                  "paymentId": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+                  "paymentState": "captured",
+                  "provider": "stripe",
+                  "reconciliationStatus": "pending",
+                  "settlementStatus": "unsettled",
+                  "updatedAt": "2026-04-19T12:04:01Z"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1PaymentDetailItem"
+                }
+              }
+            },
+            "description": "Get payment by id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "invalid_request",
+                    "details": {},
+                    "message": "request could not be validated",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "unauthenticated",
+                    "details": {},
+                    "message": "missing or invalid bearer token",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "forbidden",
+                    "details": {},
+                    "message": "caller lacks permission for this resource",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1BearerAuthError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "not_found",
+                    "details": {},
+                    "message": "resource was not found",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "code": "internal",
+                    "details": {},
+                    "message": "unexpected server error",
+                    "requestId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/V1StandardError"
+                }
+              }
+            },
+            "description": "error"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Get payment by id",
         "tags": [
           "Commerce"
         ]
