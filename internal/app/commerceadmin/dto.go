@@ -53,10 +53,10 @@ type PaymentsListResponse struct {
 // PaymentDetailItem is returned by GET /v1/payments/{paymentId}.
 type PaymentDetailItem struct {
 	PaymentListItem
-	Outcome            string  `json:"outcome,omitempty"`
-	AttemptSeq         int32   `json:"attemptSeq,omitempty"`
+	Outcome             string  `json:"outcome,omitempty"`
+	AttemptSeq          int32   `json:"attemptSeq,omitempty"`
 	SupersedesPaymentID *string `json:"supersedesPaymentId,omitempty"`
-	IsWinningPayment   bool    `json:"isWinningPayment"`
+	IsWinningPayment    bool    `json:"isWinningPayment"`
 }
 
 // OrderMoneyViewResponse is returned by GET /v1/admin/orders/{orderId}/money.

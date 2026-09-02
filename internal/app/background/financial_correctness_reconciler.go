@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/avf/avf-vending-api/internal/gen/db"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"go.uber.org/zap"
 )
 
@@ -84,9 +84,9 @@ func FinancialCorrectnessReconcileTick(ctx context.Context, deps ReconcilerDeps)
 			CorrelationKey: fmt.Sprintf("change_liability:%s", chg.ID.String()),
 			Reason:         "change liability remains unresolved",
 			Metadata: reconciliationCaseMetadata(map[string]any{
-				"order_id":         orderID.String(),
-				"liability_minor":  chg.LiabilityMinor,
-				"change_outcome":   chg.Outcome,
+				"order_id":        orderID.String(),
+				"liability_minor": chg.LiabilityMinor,
+				"change_outcome":  chg.Outcome,
 			}),
 		})
 		recordCommerceReconciliationCase("change_liability_unresolved")

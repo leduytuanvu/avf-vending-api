@@ -315,7 +315,7 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		} else if !ord.WinningPaymentID.Valid {
 			claimed, cerr := q.ClaimWinningPayment(ctx, db.ClaimWinningPaymentParams{
 				WinningPaymentID: uuidToPg(pay.ID),
-				ID:             ord.ID,
+				ID:               ord.ID,
 			})
 			if cerr == nil {
 				ord = claimed

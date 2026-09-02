@@ -57,15 +57,15 @@ type RecordCashAllocationInput struct {
 }
 
 type RecordCashChangeEventInput struct {
-	OrderID             uuid.UUID
-	PaymentID           uuid.UUID
-	MachineID           uuid.UUID
-	ChangeDueMinor      int64
+	OrderID              uuid.UUID
+	PaymentID            uuid.UUID
+	MachineID            uuid.UUID
+	ChangeDueMinor       int64
 	ChangeDispensedMinor int64
-	Outcome             string
-	LiabilityMinor      int64
-	Currency            string
-	IdempotencyKey      string
+	Outcome              string
+	LiabilityMinor       int64
+	Currency             string
+	IdempotencyKey       string
 }
 
 type CashAllocationView struct {
@@ -98,18 +98,18 @@ type LedgerEntryInput struct {
 
 // OrderMoneyView is the admin read model for all money on an order.
 type OrderMoneyView struct {
-	OrderID            uuid.UUID
-	WinningPaymentID   *uuid.UUID
-	Payments           []PaymentMoneyView
-	CashAllocation     *CashAllocationView
-	CashChange         *CashChangeEventView
-	AcceptanceEvents   []CashAcceptanceEventView
+	OrderID              uuid.UUID
+	WinningPaymentID     *uuid.UUID
+	Payments             []PaymentMoneyView
+	CashAllocation       *CashAllocationView
+	CashChange           *CashChangeEventView
+	AcceptanceEvents     []CashAcceptanceEventView
 	OutstandingLiability int64
 }
 
 type PaymentMoneyView struct {
-	Payment       domaincommerce.Payment
-	IsWinner      bool
+	Payment         domaincommerce.Payment
+	IsWinner        bool
 	IsLosingCapture bool
 }
 
@@ -147,11 +147,11 @@ type ConfirmCashPaymentInput struct {
 }
 
 type ConfirmCashPaymentResult struct {
-	Replay       bool
-	Payment      domaincommerce.Payment
-	Order        domaincommerce.Order
-	Allocation   CashAllocationView
-	ChangeEvent  *CashChangeEventView
+	Replay      bool
+	Payment     domaincommerce.Payment
+	Order       domaincommerce.Order
+	Allocation  CashAllocationView
+	ChangeEvent *CashChangeEventView
 }
 
 // CancelPaymentSessionInput cancels the latest non-captured payment on an order.
@@ -243,11 +243,11 @@ func (s *Service) AttemptWinningPaymentClaim(ctx context.Context, paymentID, ord
 	orderIDCopy := orderID
 	paymentIDCopy := paymentID
 	_, _ = s.financial.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
-		CaseType:      "late_capture_refund_required",
-		Severity:      "critical",
-		OrderID:       &orderIDCopy,
-		PaymentID:     &paymentIDCopy,
-		Reason:        "Payment captured but order already has a winning payment",
+		CaseType:       "late_capture_refund_required",
+		Severity:       "critical",
+		OrderID:        &orderIDCopy,
+		PaymentID:      &paymentIDCopy,
+		Reason:         "Payment captured but order already has a winning payment",
 		CorrelationKey: "financial_correctness:losing_capture:" + paymentID.String(),
 	})
 	return ArbitrationResult{Won: false, Order: ord, ExistingWinner: existing}, nil

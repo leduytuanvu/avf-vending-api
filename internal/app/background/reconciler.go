@@ -128,7 +128,7 @@ type ReconcilerDeps struct {
 	VendStuckTick                  time.Duration
 	DuplicatePaymentTick           time.Duration
 	RefundReviewTick               time.Duration
-	FinancialCorrectnessTick         time.Duration
+	FinancialCorrectnessTick       time.Duration
 	ScheduleRefundOrchestration    bool
 	ScheduleManualReviewEscalation bool
 

@@ -1433,10 +1433,10 @@ type V1OrderMoneyPaymentItem struct {
 
 // V1OrderMoneyCashAllocation is cash applied to an order in the money view.
 type V1OrderMoneyCashAllocation struct {
-	AmountMinor              int64  `json:"amountMinor"`
-	PreOrderCreditMinor      int64  `json:"preOrderCreditMinor"`
-	PostOrderInsertedMinor   int64  `json:"postOrderInsertedMinor"`
-	ConsentSource            string `json:"consentSource"`
+	AmountMinor            int64  `json:"amountMinor"`
+	PreOrderCreditMinor    int64  `json:"preOrderCreditMinor"`
+	PostOrderInsertedMinor int64  `json:"postOrderInsertedMinor"`
+	ConsentSource          string `json:"consentSource"`
 }
 
 // V1OrderMoneyCashChange is change-dispense outcome for a cash order.
