@@ -62,6 +62,10 @@ type Deps struct {
 	WebhookAppliedHook func(ctx context.Context, evt PaymentWebhookAppliedEvent)
 	// PaymentSessionRegistry resolves PSP adapters for machine/API card sessions (nil disables CreateMachinePaymentSession).
 	PaymentSessionRegistry PaymentSessionRegistry
+	// FinancialCorrectness optional store for winner arbitration and cash evidence (nil falls back to legacy latest-payment).
+	FinancialCorrectness FinancialCorrectnessStore
+	// WinnerArbitrationEnabled gates atomic winner claim (COMMERCE_WINNER_ARBITRATION_ENABLED).
+	WinnerArbitrationEnabled bool
 }
 
 // Orchestrator is the application surface for HTTP/workers.
@@ -85,6 +89,9 @@ type Orchestrator interface {
 
 	EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error
 	CancelOrder(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)
+	ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentInput) (ConfirmCashPaymentResult, error)
+	CancelPaymentSession(ctx context.Context, in CancelPaymentSessionInput) (CancelPaymentSessionResult, error)
+	GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (OrderMoneyView, error)
 	CreateRefund(ctx context.Context, in CreateRefundInput) (RefundRowView, error)
 	ListRefundsForOrder(ctx context.Context, companyID, orderID uuid.UUID) ([]RefundRowView, error)
 	GetRefundForOrder(ctx context.Context, companyID, orderID, refundID uuid.UUID) (RefundRowView, error)

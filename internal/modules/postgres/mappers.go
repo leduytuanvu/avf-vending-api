@@ -24,6 +24,8 @@ func mapOrder(row db.Order) commerce.Order {
 		SimulationScenario: pgTextToStringPtr(row.SimulationScenario),
 		FakeBill:           row.FakeBill,
 		FakeBoard:          row.FakeBoard,
+		WinningPaymentID:   pgUUIDToPtr(row.WinningPaymentID),
+		WinningClaimedAt:   pgTimestamptzToTimePtr(row.WinningClaimedAt),
 		CreatedAt:          row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,
 	}
@@ -149,6 +151,9 @@ func mapPayment(row db.Payment) commerce.Payment {
 		SimulationScenario:   pgTextToStringPtr(row.SimulationScenario),
 		FakeBill:             row.FakeBill,
 		FakeBoard:            row.FakeBoard,
+		Outcome:              row.Outcome,
+		AttemptSeq:           int32(row.AttemptSeq),
+		SupersedesPaymentID:  pgUUIDToPtr(row.SupersedesPaymentID),
 		CreatedAt:            row.CreatedAt,
 	}
 }

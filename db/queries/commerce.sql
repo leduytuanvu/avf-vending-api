@@ -116,7 +116,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     order_id = $1
@@ -138,6 +141,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -160,6 +165,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -183,11 +190,19 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
 WHERE
     id = $1;
+
+-- name: GetWinningPaymentForOrder :one
+SELECT p.*
+FROM payments p
+INNER JOIN orders o ON o.winning_payment_id = p.id
+WHERE o.id = $1;
 
 -- name: LockOrderByIDAndOrgForUpdate :one
 SELECT
@@ -205,6 +220,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -304,7 +321,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     state IN ('created', 'authorized')
@@ -329,6 +349,8 @@ SELECT DISTINCT
     o.fake_bill,
     o.fake_board,
     o.simulation_metadata,
+    o.winning_payment_id,
+    o.winning_claimed_at,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -389,7 +411,10 @@ SELECT
     p.simulation_scenario,
     p.fake_bill,
     p.fake_board,
-    p.simulation_metadata
+    p.simulation_metadata,
+    p.outcome,
+    p.attempt_seq,
+    p.supersedes_payment_id
 FROM payments p
 WHERE
     EXISTS (
@@ -426,7 +451,10 @@ SELECT
     p.simulation_scenario,
     p.fake_bill,
     p.fake_board,
-    p.simulation_metadata
+    p.simulation_metadata,
+    p.outcome,
+    p.attempt_seq,
+    p.supersedes_payment_id
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
@@ -550,6 +578,8 @@ RETURNING
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at;
 
@@ -588,6 +618,12 @@ RETURNING
     simulation_metadata,
     created_at;
 
+-- name: ForceUpdatePaymentStateCaptured :one
+UPDATE payments
+SET state = 'captured', updated_at = now()
+WHERE id = $1
+RETURNING *;
+
 -- name: GetLatestPaymentForOrder :one
 SELECT
     id,
@@ -607,7 +643,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     order_id = $1
@@ -634,7 +673,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     id = $1;
@@ -685,7 +727,10 @@ RETURNING
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata;
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id;
 
 -- name: UpdatePaymentState :one
 UPDATE payments
@@ -712,7 +757,10 @@ RETURNING
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata;
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id;
 
 -- name: GetPaymentProviderEventByProviderRef :one
 SELECT

@@ -36,6 +36,8 @@ type Service struct {
 	enterpriseAudit             compliance.EnterpriseRecorder
 	webhookAppliedHook          func(context.Context, PaymentWebhookAppliedEvent)
 	paymentSessionReg           PaymentSessionRegistry
+	financial                   FinancialCorrectnessStore
+	winnerArbitrationEnabled    bool
 }
 
 // NewService returns a commerce orchestrator. OrderVend workflow is required.
@@ -61,6 +63,8 @@ func NewService(d Deps) *Service {
 		enterpriseAudit:             d.EnterpriseAudit,
 		webhookAppliedHook:          d.WebhookAppliedHook,
 		paymentSessionReg:           d.PaymentSessionRegistry,
+		financial:                   d.FinancialCorrectness,
+		winnerArbitrationEnabled:    d.WinnerArbitrationEnabled,
 	}
 }
 
@@ -191,7 +195,7 @@ func (s *Service) BindPaymentAttempt(ctx context.Context, in InsertPaymentAttemp
 	return s.life.InsertPaymentAttempt(ctx, in)
 }
 
-// MarkOrderPaidAfterPaymentCapture moves the order to "paid" when the latest payment is captured.
+// MarkOrderPaidAfterPaymentCapture moves the order to "paid" when the winning (or latest) payment is captured.
 func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyID, orderID uuid.UUID) (domaincommerce.Order, error) {
 	if s.life == nil {
 		return domaincommerce.Order{}, ErrNotConfigured
@@ -206,7 +210,7 @@ func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyI
 	if uuid.Nil != companyID {
 		return domaincommerce.Order{}, ErrOrgMismatch
 	}
-	pay, err := s.life.GetLatestPaymentForOrder(ctx, orderID)
+	pay, err := s.resolveAuthoritativePayment(ctx, orderID)
 	if err != nil {
 		return domaincommerce.Order{}, err
 	}
@@ -218,6 +222,15 @@ func (s *Service) MarkOrderPaidAfterPaymentCapture(ctx context.Context, companyI
 	}
 	if o.Status != "created" && o.Status != "quoted" {
 		return domaincommerce.Order{}, errors.Join(ErrIllegalTransition, errors.New("order cannot move to paid from current status"))
+	}
+	if s.winnerArbitrationEnabled && s.financial != nil && o.WinningPaymentID == nil {
+		arb, aerr := s.AttemptWinningPaymentClaim(ctx, pay.ID, orderID)
+		if aerr != nil {
+			return domaincommerce.Order{}, aerr
+		}
+		if arb.Won {
+			return arb.Order, nil
+		}
 	}
 	return s.life.UpdateOrderStatus(ctx, orderID, companyID, "paid")
 }
@@ -246,7 +259,7 @@ func (s *Service) AdvanceVend(ctx context.Context, in AdvanceVendInput) (domainc
 		return domaincommerce.VendSession{}, ErrIllegalTransition
 	}
 	if in.ToState == "in_progress" {
-		pay, perr := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
+		pay, perr := s.resolveAuthoritativePayment(ctx, in.OrderID)
 		if perr != nil && !errors.Is(perr, ErrNotFound) {
 			return domaincommerce.VendSession{}, perr
 		}
@@ -361,7 +374,7 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 		return FinalizeOutcome{}, err
 	}
 
-	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
+	pay, pErr := s.resolveAuthoritativePayment(ctx, in.OrderID)
 	if pErr != nil && !errors.Is(pErr, ErrNotFound) {
 		return FinalizeOutcome{}, pErr
 	}
@@ -435,7 +448,7 @@ func (s *Service) EvaluateRefundEligibility(ctx context.Context, orderID uuid.UU
 	if err != nil {
 		return RefundEligibilityAssessment{}, err
 	}
-	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, orderID)
+	pay, pErr := s.resolveAuthoritativePayment(ctx, orderID)
 	if pErr != nil {
 		if errors.Is(pErr, ErrNotFound) {
 			return RefundEligibilityAssessment{
@@ -535,7 +548,7 @@ func (s *Service) CancelOrder(ctx context.Context, companyID, orderID uuid.UUID,
 	if o.Status != "created" && o.Status != "quoted" {
 		return domaincommerce.Order{}, ErrCancelNotAllowed
 	}
-	pay, pErr := s.life.GetLatestPaymentForOrder(ctx, orderID)
+	pay, pErr := s.resolveAuthoritativePayment(ctx, orderID)
 	if pErr == nil && (pay.State == "captured" || pay.State == "partially_refunded") {
 		return domaincommerce.Order{}, ErrCancelNotAllowed
 	}
@@ -568,7 +581,7 @@ func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (Refun
 	if err != nil {
 		return RefundRowView{}, err
 	}
-	pay, err := s.life.GetLatestPaymentForOrder(ctx, in.OrderID)
+	pay, err := s.resolveAuthoritativePayment(ctx, in.OrderID)
 	if err != nil {
 		return RefundRowView{}, err
 	}
@@ -696,7 +709,7 @@ func (s *Service) getCheckoutStatus(ctx context.Context, companyID, orderID uuid
 		return CheckoutStatusView{}, err
 	}
 	out := CheckoutStatusView{Order: o, Vend: v}
-	pay, err := s.life.GetLatestPaymentForOrder(ctx, orderID)
+	pay, err := s.resolveAuthoritativePayment(ctx, orderID)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return out, nil

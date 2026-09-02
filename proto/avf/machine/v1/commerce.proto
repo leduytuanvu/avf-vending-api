@@ -26,6 +26,8 @@ service MachineCommerceService {
   rpc ReportVendSuccess(ReportVendSuccessRequest) returns (ReportVendSuccessResponse);
   rpc ReportVendFailure(ReportVendFailureRequest) returns (ReportVendFailureResponse);
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+  // Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
+  rpc CancelPaymentSession(CancelPaymentSessionRequest) returns (CancelPaymentSessionResponse);
 }
 
 // MachineSaleService is the native vending machine runtime sale API (Machine JWT).
@@ -190,6 +192,10 @@ message CreatePaymentSessionRequest {
   // JSON payload for outbox fan-out (e.g. PSP hints). Must be valid JSON when non-empty.
   string outbox_payload_json = 7;
   optional SimulationContext simulation = 8;
+  // Monotonic attempt sequence per order+provider; new QR generation must increment.
+  int32 attempt_seq = 9;
+  // Payment id superseded by this session when regenerating QR.
+  optional string supersedes_payment_id = 10;
 }
 
 message CreatePaymentSessionResponse {
@@ -201,10 +207,30 @@ message CreatePaymentSessionResponse {
   string qr_payload_or_url = 5;
 }
 
+message CashAcceptanceEvent {
+  string device_event_id = 1;
+  int64 denomination_minor = 2;
+  string credit_source = 3;
+  google.protobuf.Timestamp accepted_at = 4;
+}
+
 message ConfirmCashPaymentRequest {
   IdempotencyContext context = 1;
   string order_id = 2;
   optional SimulationContext simulation = 3;
+  int64 gross_accepted_minor = 4;
+  int64 allocated_minor = 5;
+  int64 pre_order_credit_minor = 6;
+  int64 post_order_inserted_minor = 7;
+  int64 change_due_minor = 8;
+  int64 change_dispensed_minor = 9;
+  // delivered | delivered_after_fault | not_delivered | ambiguous | none
+  string change_outcome = 10;
+  // explicit_confirm | implicit_post_order | operator | unknown
+  string consent_source = 11;
+  google.protobuf.Timestamp consented_at = 12;
+  string currency = 13;
+  repeated CashAcceptanceEvent cash_acceptance_events = 14;
 }
 
 message ConfirmCashPaymentResponse {
@@ -360,4 +386,18 @@ message CancelOrderResponse {
   bool replay = 1;
   string order_id = 2;
   string order_status = 3;
+}
+
+message CancelPaymentSessionRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  string reason = 3;
+}
+
+message CancelPaymentSessionResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string order_status = 3;
+  string payment_id = 4;
+  string payment_state = 5;
 }

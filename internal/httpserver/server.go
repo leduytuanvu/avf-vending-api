@@ -21,6 +21,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	goredis "github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -334,6 +335,23 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 					}
 					out, err := app.Payments.ListPayments(r.Context(), scope)
 					writeV1Collection(w, r.Context(), out, err)
+				})
+				r.Get("/payments/{paymentId}", func(w http.ResponseWriter, r *http.Request) {
+					paymentID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "paymentId")))
+					if err != nil || paymentID == uuid.Nil {
+						writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_payment_id", "invalid payment id")
+						return
+					}
+					out, err := app.Payments.GetPayment(r.Context(), paymentID)
+					if errors.Is(err, pgx.ErrNoRows) {
+						writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "payment not found")
+						return
+					}
+					if err != nil {
+						writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+						return
+					}
+					writeJSON(w, http.StatusOK, out)
 				})
 				r.Get("/orders", func(w http.ResponseWriter, r *http.Request) {
 					scope, err := parseCompanyCommerceListScope(r)

@@ -5,7 +5,7 @@ package commerceadmin
 import "testing"
 
 func TestNewService_nilDeps(t *testing.T) {
-	_, err := NewService(nil, nil, nil)
+	_, err := NewService(nil, nil, nil, nil)
 	if err == nil {
 		t.Fatal("expected error")
 	}

@@ -50,6 +50,58 @@ type PaymentsListResponse struct {
 	Meta  listscope.CollectionMeta `json:"meta"`
 }
 
+// PaymentDetailItem is returned by GET /v1/payments/{paymentId}.
+type PaymentDetailItem struct {
+	PaymentListItem
+	Outcome            string  `json:"outcome,omitempty"`
+	AttemptSeq         int32   `json:"attemptSeq,omitempty"`
+	SupersedesPaymentID *string `json:"supersedesPaymentId,omitempty"`
+	IsWinningPayment   bool    `json:"isWinningPayment"`
+}
+
+// OrderMoneyViewResponse is returned by GET /v1/admin/orders/{orderId}/money.
+type OrderMoneyViewResponse struct {
+	OrderID              string                      `json:"orderId"`
+	WinningPaymentID     *string                     `json:"winningPaymentId,omitempty"`
+	OutstandingLiability int64                       `json:"outstandingLiabilityMinor"`
+	Payments             []OrderMoneyPaymentItem     `json:"payments"`
+	CashAllocation       *OrderMoneyCashAllocation   `json:"cashAllocation,omitempty"`
+	CashChange           *OrderMoneyCashChange       `json:"cashChange,omitempty"`
+	AcceptanceEvents     []OrderMoneyAcceptanceEvent `json:"acceptanceEvents"`
+}
+
+type OrderMoneyPaymentItem struct {
+	PaymentID       string `json:"paymentId"`
+	Provider        string `json:"provider"`
+	State           string `json:"state"`
+	Outcome         string `json:"outcome,omitempty"`
+	AmountMinor     int64  `json:"amountMinor"`
+	Currency        string `json:"currency"`
+	IsWinner        bool   `json:"isWinner"`
+	IsLosingCapture bool   `json:"isLosingCapture"`
+}
+
+type OrderMoneyCashAllocation struct {
+	AmountMinor            int64  `json:"amountMinor"`
+	PreOrderCreditMinor    int64  `json:"preOrderCreditMinor"`
+	PostOrderInsertedMinor int64  `json:"postOrderInsertedMinor"`
+	ConsentSource          string `json:"consentSource"`
+}
+
+type OrderMoneyCashChange struct {
+	ChangeDueMinor       int64  `json:"changeDueMinor"`
+	ChangeDispensedMinor int64  `json:"changeDispensedMinor"`
+	Outcome              string `json:"outcome"`
+	LiabilityMinor       int64  `json:"liabilityMinor"`
+}
+
+type OrderMoneyAcceptanceEvent struct {
+	DeviceEventID     string    `json:"deviceEventId"`
+	DenominationMinor int64     `json:"denominationMinor"`
+	CreditSource      string    `json:"creditSource"`
+	AcceptedAt        time.Time `json:"acceptedAt"`
+}
+
 type ReconciliationCaseItem struct {
 	ID              string     `json:"id"`
 	CaseType        string     `json:"caseType"`

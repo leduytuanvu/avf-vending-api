@@ -33,6 +33,7 @@ const (
 	MachineCommerceService_ReportVendSuccess_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportVendSuccess"
 	MachineCommerceService_ReportVendFailure_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportVendFailure"
 	MachineCommerceService_CancelOrder_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CancelOrder"
+	MachineCommerceService_CancelPaymentSession_FullMethodName = "/avf.machine.v1.MachineCommerceService/CancelPaymentSession"
 )
 
 // MachineCommerceServiceClient is the client API for MachineCommerceService service.
@@ -58,6 +59,8 @@ type MachineCommerceServiceClient interface {
 	ReportVendSuccess(ctx context.Context, in *ReportVendSuccessRequest, opts ...grpc.CallOption) (*ReportVendSuccessResponse, error)
 	ReportVendFailure(ctx context.Context, in *ReportVendFailureRequest, opts ...grpc.CallOption) (*ReportVendFailureResponse, error)
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderResponse, error)
+	// Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
+	CancelPaymentSession(ctx context.Context, in *CancelPaymentSessionRequest, opts ...grpc.CallOption) (*CancelPaymentSessionResponse, error)
 }
 
 type machineCommerceServiceClient struct {
@@ -208,6 +211,16 @@ func (c *machineCommerceServiceClient) CancelOrder(ctx context.Context, in *Canc
 	return out, nil
 }
 
+func (c *machineCommerceServiceClient) CancelPaymentSession(ctx context.Context, in *CancelPaymentSessionRequest, opts ...grpc.CallOption) (*CancelPaymentSessionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelPaymentSessionResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_CancelPaymentSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineCommerceServiceServer is the server API for MachineCommerceService service.
 // All implementations must embed UnimplementedMachineCommerceServiceServer
 // for forward compatibility.
@@ -231,6 +244,8 @@ type MachineCommerceServiceServer interface {
 	ReportVendSuccess(context.Context, *ReportVendSuccessRequest) (*ReportVendSuccessResponse, error)
 	ReportVendFailure(context.Context, *ReportVendFailureRequest) (*ReportVendFailureResponse, error)
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderResponse, error)
+	// Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
+	CancelPaymentSession(context.Context, *CancelPaymentSessionRequest) (*CancelPaymentSessionResponse, error)
 	mustEmbedUnimplementedMachineCommerceServiceServer()
 }
 
@@ -282,6 +297,9 @@ func (UnimplementedMachineCommerceServiceServer) ReportVendFailure(context.Conte
 }
 func (UnimplementedMachineCommerceServiceServer) CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelOrder not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) CancelPaymentSession(context.Context, *CancelPaymentSessionRequest) (*CancelPaymentSessionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelPaymentSession not implemented")
 }
 func (UnimplementedMachineCommerceServiceServer) mustEmbedUnimplementedMachineCommerceServiceServer() {
 }
@@ -557,6 +575,24 @@ func _MachineCommerceService_CancelOrder_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineCommerceService_CancelPaymentSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelPaymentSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).CancelPaymentSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_CancelPaymentSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).CancelPaymentSession(ctx, req.(*CancelPaymentSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineCommerceService_ServiceDesc is the grpc.ServiceDesc for MachineCommerceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -619,6 +655,10 @@ var MachineCommerceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelOrder",
 			Handler:    _MachineCommerceService_CancelOrder_Handler,
+		},
+		{
+			MethodName: "CancelPaymentSession",
+			Handler:    _MachineCommerceService_CancelPaymentSession_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

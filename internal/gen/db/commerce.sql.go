@@ -48,6 +48,42 @@ func (q *Queries) CommerceIsProductInMachinePublishedAssortment(ctx context.Cont
 	return ok, err
 }
 
+const ForceUpdatePaymentStateCaptured = `-- name: ForceUpdatePaymentStateCaptured :one
+UPDATE payments
+SET state = 'captured', updated_at = now()
+WHERE id = $1
+RETURNING id, order_id, provider, state, amount_minor, currency, idempotency_key, created_at, updated_at, reconciliation_status, settlement_status, settlement_batch_id, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, outcome, attempt_seq, supersedes_payment_id
+`
+
+func (q *Queries) ForceUpdatePaymentStateCaptured(ctx context.Context, id uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, ForceUpdatePaymentStateCaptured, id)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Provider,
+		&i.State,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReconciliationStatus,
+		&i.SettlementStatus,
+		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
+	)
+	return i, err
+}
+
 const GetFirstVendSessionByOrder = `-- name: GetFirstVendSessionByOrder :one
 SELECT
     id,
@@ -136,7 +172,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     order_id = $1
@@ -167,6 +206,9 @@ func (q *Queries) GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUI
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }
@@ -187,6 +229,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -212,6 +256,8 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -234,6 +280,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -259,6 +307,8 @@ func (q *Queries) GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey p
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -281,6 +331,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -312,6 +364,8 @@ func (q *Queries) GetOrderByMachineAndIdempotencyKey(ctx context.Context, arg Ge
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -337,7 +391,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     id = $1
@@ -365,6 +422,9 @@ func (q *Queries) GetPaymentByID(ctx context.Context, id uuid.UUID) (Payment, er
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }
@@ -388,7 +448,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     order_id = $1
@@ -422,6 +485,9 @@ func (q *Queries) GetPaymentByOrderAndIdempotencyKey(ctx context.Context, arg Ge
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }
@@ -718,6 +784,42 @@ func (q *Queries) GetVendSessionByOrderAndSlot(ctx context.Context, arg GetVendS
 	return i, err
 }
 
+const GetWinningPaymentForOrder = `-- name: GetWinningPaymentForOrder :one
+SELECT p.id, p.order_id, p.provider, p.state, p.amount_minor, p.currency, p.idempotency_key, p.created_at, p.updated_at, p.reconciliation_status, p.settlement_status, p.settlement_batch_id, p.simulated, p.simulation_run_id, p.simulation_scenario, p.fake_bill, p.fake_board, p.simulation_metadata, p.outcome, p.attempt_seq, p.supersedes_payment_id
+FROM payments p
+INNER JOIN orders o ON o.winning_payment_id = p.id
+WHERE o.id = $1
+`
+
+func (q *Queries) GetWinningPaymentForOrder(ctx context.Context, id uuid.UUID) (Payment, error) {
+	row := q.db.QueryRow(ctx, GetWinningPaymentForOrder, id)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.Provider,
+		&i.State,
+		&i.AmountMinor,
+		&i.Currency,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ReconciliationStatus,
+		&i.SettlementStatus,
+		&i.SettlementBatchID,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.FakeBill,
+		&i.FakeBoard,
+		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
+	)
+	return i, err
+}
+
 const InsertOrder = `-- name: InsertOrder :one
 INSERT INTO orders (
     machine_id,
@@ -747,7 +849,7 @@ VALUES (
     $11,
     $12
 )
-RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, created_at, updated_at
+RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, created_at, updated_at
 `
 
 type InsertOrderParams struct {
@@ -796,6 +898,8 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -829,7 +933,7 @@ VALUES (
     $10,
     $11
 )
-RETURNING id, order_id, provider, state, amount_minor, currency, idempotency_key, created_at, updated_at, reconciliation_status, settlement_status, settlement_batch_id, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata
+RETURNING id, order_id, provider, state, amount_minor, currency, idempotency_key, created_at, updated_at, reconciliation_status, settlement_status, settlement_batch_id, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, outcome, attempt_seq, supersedes_payment_id
 `
 
 type InsertPaymentParams struct {
@@ -880,6 +984,9 @@ func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (P
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }
@@ -1243,6 +1350,8 @@ SELECT DISTINCT
     o.fake_bill,
     o.fake_board,
     o.simulation_metadata,
+    o.winning_payment_id,
+    o.winning_claimed_at,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -1285,6 +1394,8 @@ func (q *Queries) ListOrdersWithUnresolvedPayment(ctx context.Context, arg ListO
 			&i.FakeBill,
 			&i.FakeBoard,
 			&i.SimulationMetadata,
+			&i.WinningPaymentID,
+			&i.WinningClaimedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1453,7 +1564,10 @@ SELECT
     p.simulation_scenario,
     p.fake_bill,
     p.fake_board,
-    p.simulation_metadata
+    p.simulation_metadata,
+    p.outcome,
+    p.attempt_seq,
+    p.supersedes_payment_id
 FROM payments p
 INNER JOIN orders o ON o.id = p.order_id
 WHERE
@@ -1498,6 +1612,9 @@ func (q *Queries) ListPaymentsForRefundReview(ctx context.Context, arg ListPayme
 			&i.FakeBill,
 			&i.FakeBoard,
 			&i.SimulationMetadata,
+			&i.Outcome,
+			&i.AttemptSeq,
+			&i.SupersedesPaymentID,
 		); err != nil {
 			return nil, err
 		}
@@ -1528,7 +1645,10 @@ SELECT
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 FROM payments
 WHERE
     state IN ('created', 'authorized')
@@ -1571,6 +1691,9 @@ func (q *Queries) ListPaymentsPendingTimeout(ctx context.Context, arg ListPaymen
 			&i.FakeBill,
 			&i.FakeBoard,
 			&i.SimulationMetadata,
+			&i.Outcome,
+			&i.AttemptSeq,
+			&i.SupersedesPaymentID,
 		); err != nil {
 			return nil, err
 		}
@@ -1601,7 +1724,10 @@ SELECT
     p.simulation_scenario,
     p.fake_bill,
     p.fake_board,
-    p.simulation_metadata
+    p.simulation_metadata,
+    p.outcome,
+    p.attempt_seq,
+    p.supersedes_payment_id
 FROM payments p
 WHERE
     EXISTS (
@@ -1653,6 +1779,9 @@ func (q *Queries) ListPotentialDuplicatePayments(ctx context.Context, arg ListPo
 			&i.FakeBill,
 			&i.FakeBoard,
 			&i.SimulationMetadata,
+			&i.Outcome,
+			&i.AttemptSeq,
+			&i.SupersedesPaymentID,
 		); err != nil {
 			return nil, err
 		}
@@ -1993,6 +2122,8 @@ SELECT
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 FROM orders
@@ -2020,6 +2151,8 @@ func (q *Queries) LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -2221,6 +2354,8 @@ RETURNING
     fake_bill,
     fake_board,
     simulation_metadata,
+    winning_payment_id,
+    winning_claimed_at,
     created_at,
     updated_at
 `
@@ -2248,6 +2383,8 @@ func (q *Queries) UpdateOrderStatusByOrg(ctx context.Context, arg UpdateOrderSta
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.WinningPaymentID,
+		&i.WinningClaimedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -2279,7 +2416,10 @@ RETURNING
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 `
 
 type UpdatePaymentStateParams struct {
@@ -2309,6 +2449,9 @@ func (q *Queries) UpdatePaymentState(ctx context.Context, arg UpdatePaymentState
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }
@@ -2339,7 +2482,10 @@ RETURNING
     simulation_scenario,
     fake_bill,
     fake_board,
-    simulation_metadata
+    simulation_metadata,
+    outcome,
+    attempt_seq,
+    supersedes_payment_id
 `
 
 type UpdatePaymentStateForReconciliationParams struct {
@@ -2369,6 +2515,9 @@ func (q *Queries) UpdatePaymentStateForReconciliation(ctx context.Context, arg U
 		&i.FakeBill,
 		&i.FakeBoard,
 		&i.SimulationMetadata,
+		&i.Outcome,
+		&i.AttemptSeq,
+		&i.SupersedesPaymentID,
 	)
 	return i, err
 }

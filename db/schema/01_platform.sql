@@ -762,9 +762,14 @@ CREATE TABLE orders (
     fake_bill boolean NOT NULL DEFAULT false,
     fake_board boolean NOT NULL DEFAULT false,
     simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    winning_payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
+    winning_claimed_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+CREATE UNIQUE INDEX ux_orders_winning_payment_id ON orders (winning_payment_id)
+    WHERE winning_payment_id IS NOT NULL;
 
 CREATE INDEX ix_orders_machine_id ON orders (machine_id);
 CREATE INDEX ix_orders_simulated ON orders (simulated) WHERE simulated = true;
@@ -962,6 +967,62 @@ CREATE INDEX ix_cash_events_correlation ON cash_events (correlation_id, occurred
 
 COMMENT ON TABLE cash_events IS 'Append-only cash movement log; application INSERT-only. amount_minor semantics per event_type in metadata or ops runbook.';
 
+CREATE TABLE cash_acceptance_events (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
+    order_id uuid REFERENCES orders (id) ON DELETE SET NULL,
+    device_event_id text NOT NULL,
+    denomination_minor bigint NOT NULL CHECK (denomination_minor > 0),
+    credit_source text NOT NULL DEFAULT 'unknown',
+    currency char(3) NOT NULL,
+    accepted_at timestamptz NOT NULL,
+    raw_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_cash_acceptance_events_machine_device UNIQUE (machine_id, device_event_id)
+);
+
+CREATE INDEX ix_cash_acceptance_events_order ON cash_acceptance_events (order_id, accepted_at DESC)
+    WHERE order_id IS NOT NULL;
+
+CREATE TABLE cash_allocations (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
+    payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
+    amount_minor bigint NOT NULL CHECK (amount_minor >= 0),
+    pre_order_credit_minor bigint NOT NULL DEFAULT 0 CHECK (pre_order_credit_minor >= 0),
+    post_order_inserted_minor bigint NOT NULL DEFAULT 0 CHECK (post_order_inserted_minor >= 0),
+    consent_source text NOT NULL CHECK (
+        consent_source IN ('explicit_confirm', 'implicit_post_order', 'operator', 'unknown')
+    ),
+    consented_at timestamptz,
+    currency char(3) NOT NULL,
+    idempotency_key text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_cash_allocations_order_idempotency UNIQUE (order_id, idempotency_key)
+);
+
+CREATE INDEX ix_cash_allocations_order ON cash_allocations (order_id);
+
+CREATE TABLE cash_change_events (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
+    payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
+    change_due_minor bigint NOT NULL DEFAULT 0 CHECK (change_due_minor >= 0),
+    change_dispensed_minor bigint NOT NULL DEFAULT 0 CHECK (change_dispensed_minor >= 0),
+    outcome text NOT NULL CHECK (
+        outcome IN ('delivered', 'delivered_after_fault', 'not_delivered', 'ambiguous', 'none')
+    ),
+    liability_minor bigint NOT NULL DEFAULT 0 CHECK (liability_minor >= 0),
+    currency char(3) NOT NULL,
+    idempotency_key text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT ux_cash_change_events_order_idempotency UNIQUE (order_id, idempotency_key)
+);
+
+CREATE INDEX ix_cash_change_events_order ON cash_change_events (order_id);
+
 CREATE TABLE payments (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     order_id uuid NOT NULL REFERENCES orders (id) ON DELETE RESTRICT,
@@ -995,13 +1056,19 @@ CREATE TABLE payments (
     simulation_scenario text,
     fake_bill boolean NOT NULL DEFAULT false,
     fake_board boolean NOT NULL DEFAULT false,
-    simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb
+    simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    outcome text NOT NULL DEFAULT 'pending' CHECK (
+        outcome IN ('pending', 'winner', 'superseded', 'refund_required', 'refunded')
+    ),
+    attempt_seq int NOT NULL DEFAULT 1 CHECK (attempt_seq >= 1),
+    supersedes_payment_id uuid REFERENCES payments (id) ON DELETE SET NULL
 );
 
 CREATE UNIQUE INDEX ux_payments_order_idempotency ON payments (order_id, idempotency_key)
     WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';
 
 CREATE INDEX ix_payments_order_id ON payments (order_id);
+CREATE INDEX ix_payments_order_outcome ON payments (order_id, outcome);
 CREATE INDEX ix_payments_reconciliation_queue ON payments (provider, updated_at DESC)
     WHERE reconciliation_status <> 'matched';
 CREATE INDEX ix_payments_settlement_batch ON payments (settlement_batch_id)
@@ -1196,7 +1263,12 @@ CREATE TABLE commerce_reconciliation_cases (
             'duplicate_payment',
             'webhook_amount_currency_mismatch',
             'webhook_after_terminal_order',
-            'settlement_amount_mismatch'
+            'settlement_amount_mismatch',
+            'duplicate_payment_ambiguous_winner',
+            'late_capture_refund_required',
+            'legacy_cash_confirm_unknown_consent',
+            'cash_gross_mismatch',
+            'change_liability_unresolved'
         )
     ),
     status text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'reviewing', 'resolved', 'dismissed', 'ignored', 'escalated')),
@@ -1315,7 +1387,12 @@ CREATE TABLE financial_ledger_entries (
             'cash_collected',
             'variance_recorded',
             'adjustment',
-            'other'
+            'other',
+            'cash_accepted',
+            'cash_allocated',
+            'change_due',
+            'change_liability',
+            'capture_superseded'
         )
     ),
     signed_amount_minor bigint NOT NULL,

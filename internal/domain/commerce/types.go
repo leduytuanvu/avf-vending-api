@@ -21,6 +21,8 @@ type Order struct {
 	SimulationScenario *string
 	FakeBill           bool
 	FakeBoard          bool
+	WinningPaymentID   *uuid.UUID
+	WinningClaimedAt   *time.Time
 	CreatedAt          time.Time
 	UpdatedAt          time.Time
 }
@@ -57,6 +59,9 @@ type Payment struct {
 	SimulationScenario   *string
 	FakeBill             bool
 	FakeBoard            bool
+	Outcome              string
+	AttemptSeq           int32
+	SupersedesPaymentID  *uuid.UUID
 	CreatedAt            time.Time
 }
 
