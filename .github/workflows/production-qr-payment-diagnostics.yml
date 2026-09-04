@@ -1,0 +1,43 @@
+name: Production QR payment diagnostics
+
+# Read-only SQL diagnostics for MoMo / QR payment incidents.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-qr-payment-diagnostics
+  cancel-in-progress: false
+
+jobs:
+  diagnostics:
+    name: Run qr_payment_diagnostics.sql
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    timeout-minutes: 15
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Run read-only diagnostics on app node
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/run_qr_payment_diagnostics.sh"
+          if [[ -f "${script}" ]]; then
+            bash "${script}" | tee qr-payment-diagnostics.txt
+          else
+            bash scripts/ops/run_qr_payment_diagnostics.sh | tee qr-payment-diagnostics.txt
+          fi
+
+      - name: Upload diagnostics output
+        uses: actions/upload-artifact@ea1653718c4176ef837f0cf8abc0fe4d6089eef1 # v4
+        with:
+          name: qr-payment-diagnostics
+          path: qr-payment-diagnostics.txt
+          retention-days: 30
