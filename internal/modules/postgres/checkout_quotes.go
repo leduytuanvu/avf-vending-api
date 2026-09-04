@@ -198,6 +198,10 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		return appcommerce.PersistOrderFromQuoteResult{}, fmt.Errorf("postgres: quote expired")
 	}
 
+	pricingSource, err := validatePricingSourceForPersist(appcommerce.PricingSourceServerPriced)
+	if err != nil {
+		return appcommerce.PersistOrderFromQuoteResult{}, err
+	}
 	orderRow, err := q.InsertOrder(ctx, db.InsertOrderParams{
 		MachineID:          quote.MachineID,
 		Status:             "created",
@@ -211,6 +215,7 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
 		FakeBill:           in.FakeBill,
 		FakeBoard:          in.FakeBoard,
+		PricingSource:      pricingSource,
 	})
 	if err != nil {
 		return appcommerce.PersistOrderFromQuoteResult{}, err
