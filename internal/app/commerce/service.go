@@ -95,37 +95,92 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 		line := saleLineFromReplay(replay)
 		if disp, derr := s.saleLines.LookupSlotDisplay(ctx, uuid.Nil, replay.Order.MachineID, replay.Vend.ProductID, replay.Vend.SlotIndex); derr == nil {
 			line = disp
+			line.PriceMinor = replay.Order.SubtotalMinor
+			line.SubtotalMinor = replay.Order.SubtotalMinor
+			line.TaxMinor = replay.Order.TaxMinor
+			line.TotalMinor = replay.Order.TotalMinor
+		}
+		if in.PricingSnapshot != nil {
+			if err := validateReplayPricingSnapshot(in.PricingSnapshot, replay.Order); err != nil {
+				return CreateOrderResult{}, err
+			}
 		}
 		return CreateOrderResult{CreateOrderVendResult: replay, SaleLine: line}, nil
 	}
 
-	line, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
-		MachineID:   in.MachineID,
-		ProductID:   in.ProductID,
-		SlotID:      in.SlotID,
-		CabinetCode: in.CabinetCode,
-		SlotCode:    in.SlotCode,
-		SlotIndex:   in.SlotIndex,
-	})
-	if err != nil {
-		return CreateOrderResult{}, err
+	var line ResolvedSaleLine
+	pricingSource := PricingSourceServerPriced
+	var machinePricingRevision *int64
+	var machinePricingSnapshot []byte
+
+	if in.PricingSnapshot != nil {
+		snap := *in.PricingSnapshot
+		if err := validateMachinePricingSnapshot(snap); err != nil {
+			return CreateOrderResult{}, err
+		}
+		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+			MachineID:   in.MachineID,
+			ProductID:   in.ProductID,
+			SlotID:      in.SlotID,
+			CabinetCode: in.CabinetCode,
+			SlotCode:    in.SlotCode,
+			SlotIndex:   in.SlotIndex,
+		})
+		if err != nil {
+			return CreateOrderResult{}, err
+		}
+		pricingSource = classifyMachineLocalPricingSource(snap, identity)
+		line = ResolvedSaleLine{
+			SlotConfigID:       identity.SlotConfigID,
+			CabinetCode:        identity.CabinetCode,
+			SlotCode:           identity.SlotCode,
+			SlotIndex:          identity.SlotIndex,
+			PriceMinor:         snap.UnitPriceMinor,
+			SubtotalMinor:      snap.SubtotalMinor,
+			TaxMinor:           snap.TaxMinor,
+			TotalMinor:         snap.TotalMinor,
+			Currency:           strings.ToUpper(strings.TrimSpace(in.Currency)),
+			PricingFingerprint: snap.PricingFingerprint,
+		}
+		rev := snap.LocalPricingRevision
+		machinePricingRevision = &rev
+		machinePricingSnapshot, err = machinePricingSnapshotJSON(snap)
+		if err != nil {
+			return CreateOrderResult{}, err
+		}
+	} else {
+		resolved, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+			MachineID:   in.MachineID,
+			ProductID:   in.ProductID,
+			SlotID:      in.SlotID,
+			CabinetCode: in.CabinetCode,
+			SlotCode:    in.SlotCode,
+			SlotIndex:   in.SlotIndex,
+		})
+		if err != nil {
+			return CreateOrderResult{}, err
+		}
+		line = resolved
 	}
 	base, err := s.orders.CreateOrderWithVendSession(ctx, domaincommerce.CreateOrderVendInput{
-		MachineID:          in.MachineID,
-		ProductID:          in.ProductID,
-		SlotIndex:          line.SlotIndex,
-		Currency:           strings.ToUpper(strings.TrimSpace(in.Currency)),
-		SubtotalMinor:      line.SubtotalMinor,
-		TaxMinor:           line.TaxMinor,
-		TotalMinor:         line.TotalMinor,
-		IdempotencyKey:     strings.TrimSpace(in.IdempotencyKey),
-		OrderStatus:        "created",
-		VendState:          "pending",
-		Simulated:          in.Simulated,
-		SimulationRunID:    strings.TrimSpace(in.SimulationRunID),
-		SimulationScenario: strings.TrimSpace(in.SimulationScenario),
-		FakeBill:           in.FakeBill,
-		FakeBoard:          in.FakeBoard,
+		MachineID:              in.MachineID,
+		ProductID:              in.ProductID,
+		SlotIndex:              line.SlotIndex,
+		Currency:               strings.ToUpper(strings.TrimSpace(in.Currency)),
+		SubtotalMinor:          line.SubtotalMinor,
+		TaxMinor:               line.TaxMinor,
+		TotalMinor:             line.TotalMinor,
+		IdempotencyKey:         strings.TrimSpace(in.IdempotencyKey),
+		OrderStatus:            "created",
+		VendState:              "pending",
+		Simulated:              in.Simulated,
+		SimulationRunID:        strings.TrimSpace(in.SimulationRunID),
+		SimulationScenario:     strings.TrimSpace(in.SimulationScenario),
+		FakeBill:               in.FakeBill,
+		FakeBoard:              in.FakeBoard,
+		PricingSource:          pricingSource,
+		MachinePricingRevision: machinePricingRevision,
+		MachinePricingSnapshot: machinePricingSnapshot,
 	})
 	if err != nil {
 		return CreateOrderResult{}, err

@@ -42,6 +42,8 @@ func (s *Service) ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentI
 		consent = "unknown"
 	} else if allocated <= 0 {
 		return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("allocated_minor must be positive"))
+	} else if allocated != o.TotalMinor {
+		return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("allocated_minor must match order total"))
 	}
 	if in.PreOrderCreditMinor > 0 && consent != "explicit_confirm" && consent != "unknown" && consent != "operator" {
 		if consent == "implicit_post_order" && in.PreOrderCreditMinor > 0 && in.PostOrderInsertedMinor == 0 {

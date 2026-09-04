@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/observability"
+	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -181,6 +182,9 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 	}
 	row, err := app.TelemetryStore.GetPaymentByProviderReference(ctx, ref)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			productionmetrics.RecordPaymentWebhookLookupMiss(strings.TrimSpace(event.Provider))
+		}
 		return false, err
 	}
 	state := strings.ToLower(strings.TrimSpace(normalizedState))

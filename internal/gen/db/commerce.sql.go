@@ -267,6 +267,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -294,6 +297,9 @@ func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (Order, error)
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -318,6 +324,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -345,6 +354,9 @@ func (q *Queries) GetOrderByIdempotencyKey(ctx context.Context, idempotencyKey p
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -369,6 +381,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -402,6 +417,9 @@ func (q *Queries) GetOrderByMachineAndIdempotencyKey(ctx context.Context, arg Ge
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -869,7 +887,10 @@ INSERT INTO orders (
     simulation_run_id,
     simulation_scenario,
     fake_bill,
-    fake_board
+    fake_board,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot
 )
 VALUES (
     $1,
@@ -883,24 +904,30 @@ VALUES (
     $9,
     $10,
     $11,
-    $12
+    $12,
+    $13,
+    $14,
+    $15
 )
-RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, created_at, updated_at
+RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, created_at, updated_at
 `
 
 type InsertOrderParams struct {
-	MachineID          uuid.UUID
-	Status             string
-	Currency           string
-	SubtotalMinor      int64
-	TaxMinor           int64
-	TotalMinor         int64
-	IdempotencyKey     pgtype.Text
-	Simulated          bool
-	SimulationRunID    pgtype.Text
-	SimulationScenario pgtype.Text
-	FakeBill           bool
-	FakeBoard          bool
+	MachineID              uuid.UUID
+	Status                 string
+	Currency               string
+	SubtotalMinor          int64
+	TaxMinor               int64
+	TotalMinor             int64
+	IdempotencyKey         pgtype.Text
+	Simulated              bool
+	SimulationRunID        pgtype.Text
+	SimulationScenario     pgtype.Text
+	FakeBill               bool
+	FakeBoard              bool
+	PricingSource          string
+	MachinePricingRevision pgtype.Int8
+	MachinePricingSnapshot []byte
 }
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order, error) {
@@ -917,6 +944,9 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		arg.SimulationScenario,
 		arg.FakeBill,
 		arg.FakeBoard,
+		arg.PricingSource,
+		arg.MachinePricingRevision,
+		arg.MachinePricingSnapshot,
 	)
 	var i Order
 	err := row.Scan(
@@ -936,6 +966,9 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -1388,6 +1421,9 @@ SELECT DISTINCT
     o.simulation_metadata,
     o.winning_payment_id,
     o.winning_claimed_at,
+    o.pricing_source,
+    o.machine_pricing_revision,
+    o.machine_pricing_snapshot,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -1432,6 +1468,9 @@ func (q *Queries) ListOrdersWithUnresolvedPayment(ctx context.Context, arg ListO
 			&i.SimulationMetadata,
 			&i.WinningPaymentID,
 			&i.WinningClaimedAt,
+			&i.PricingSource,
+			&i.MachinePricingRevision,
+			&i.MachinePricingSnapshot,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -2160,6 +2199,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -2189,6 +2231,9 @@ func (q *Queries) LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -2392,6 +2437,9 @@ RETURNING
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 `
@@ -2421,6 +2469,9 @@ func (q *Queries) UpdateOrderStatusByOrg(ctx context.Context, arg UpdateOrderSta
 		&i.SimulationMetadata,
 		&i.WinningPaymentID,
 		&i.WinningClaimedAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

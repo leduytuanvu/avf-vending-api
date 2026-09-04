@@ -11,7 +11,10 @@ INSERT INTO orders (
     simulation_run_id,
     simulation_scenario,
     fake_bill,
-    fake_board
+    fake_board,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot
 )
 VALUES (
     $1,
@@ -25,7 +28,10 @@ VALUES (
     $9,
     $10,
     $11,
-    $12
+    $12,
+    $13,
+    $14,
+    $15
 )
 RETURNING *;
 
@@ -143,6 +149,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -167,6 +176,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -192,6 +204,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -222,6 +237,9 @@ SELECT
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at
 FROM orders
@@ -371,6 +389,9 @@ SELECT DISTINCT
     o.simulation_metadata,
     o.winning_payment_id,
     o.winning_claimed_at,
+    o.pricing_source,
+    o.machine_pricing_revision,
+    o.machine_pricing_snapshot,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -600,6 +621,9 @@ RETURNING
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at;
 

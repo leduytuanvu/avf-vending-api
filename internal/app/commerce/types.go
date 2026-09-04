@@ -27,6 +27,8 @@ type CreateOrderInput struct {
 	SimulationScenario string
 	FakeBill           bool
 	FakeBoard          bool
+	// PricingSnapshot, when set, preserves machine-declared amounts (offline replay) instead of server re-pricing.
+	PricingSnapshot *MachinePricingSnapshotInput
 }
 
 // StartPaymentInput binds a payment row and optional outbox fan-out; provider is an opaque label from the caller.

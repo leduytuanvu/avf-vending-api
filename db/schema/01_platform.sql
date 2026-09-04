@@ -764,6 +764,11 @@ CREATE TABLE orders (
     simulation_metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
     winning_payment_id uuid REFERENCES payments (id) ON DELETE SET NULL,
     winning_claimed_at timestamptz,
+    pricing_source text NOT NULL DEFAULT 'server_priced' CHECK (
+        pricing_source IN ('server_priced', 'machine_local_verified', 'machine_local_unverified')
+    ),
+    machine_pricing_revision bigint,
+    machine_pricing_snapshot jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );

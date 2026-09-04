@@ -30,6 +30,9 @@ RETURNING
     simulation_metadata,
     winning_payment_id,
     winning_claimed_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
     created_at,
     updated_at;
 
