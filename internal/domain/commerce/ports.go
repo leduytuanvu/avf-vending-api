@@ -20,14 +20,14 @@ type CreateOrderVendInput struct {
 	OrderStatus    string
 	VendState      string
 	// Simulation metadata (additive; never counted as real revenue when simulated=true).
-	Simulated          bool
-	SimulationRunID    string
-	SimulationScenario string
-	FakeBill           bool
-	FakeBoard          bool
-	PricingSource            string
-	MachinePricingRevision   *int64
-	MachinePricingSnapshot   []byte
+	Simulated              bool
+	SimulationRunID        string
+	SimulationScenario     string
+	FakeBill               bool
+	FakeBoard              bool
+	PricingSource          string
+	MachinePricingRevision *int64
+	MachinePricingSnapshot []byte
 }
 
 // CreateOrderVendResult is the outcome of CreateOrderWithVendSession.

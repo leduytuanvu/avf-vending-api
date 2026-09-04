@@ -238,15 +238,15 @@ func TestConfirmCashPayment_allocatedMustMatchOrderTotal(t *testing.T) {
 		SaleLines:     stubSaleLineResolver{},
 	})
 	_, err := svc.ConfirmCashPayment(t.Context(), ConfirmCashPaymentInput{
-		OrderID:        orderID,
-		MachineID:      machineID,
-		IdempotencyKey: "cash-1",
-		AllocatedMinor: 15000,
-		GrossAcceptedMinor: 15000,
-		ConsentSource:  "explicit_confirm",
-		Currency:       "VND",
-		OutboxTopic:    "commerce",
-		OutboxEventType: "cash",
+		OrderID:             orderID,
+		MachineID:           machineID,
+		IdempotencyKey:      "cash-1",
+		AllocatedMinor:      15000,
+		GrossAcceptedMinor:  15000,
+		ConsentSource:       "explicit_confirm",
+		Currency:            "VND",
+		OutboxTopic:         "commerce",
+		OutboxEventType:     "cash",
 		OutboxAggregateType: "order",
 	})
 	require.Error(t, err)
@@ -269,15 +269,15 @@ func TestConfirmCashPayment_acceptsMatchingAllocatedForMachineLocalOrder(t *test
 	})
 	life.payments = payments
 	res, err := svc.ConfirmCashPayment(t.Context(), ConfirmCashPaymentInput{
-		OrderID:        orderID,
-		MachineID:      machineID,
-		IdempotencyKey: "cash-2",
-		AllocatedMinor: 2000,
-		GrossAcceptedMinor: 2000,
-		ConsentSource:  "explicit_confirm",
-		Currency:       "VND",
-		OutboxTopic:    "commerce",
-		OutboxEventType: "cash",
+		OrderID:             orderID,
+		MachineID:           machineID,
+		IdempotencyKey:      "cash-2",
+		AllocatedMinor:      2000,
+		GrossAcceptedMinor:  2000,
+		ConsentSource:       "explicit_confirm",
+		Currency:            "VND",
+		OutboxTopic:         "commerce",
+		OutboxEventType:     "cash",
 		OutboxAggregateType: "order",
 	})
 	require.NoError(t, err)
