@@ -115,6 +115,14 @@ var (
 		Name: "payment_provider_probe_stale_pending_queue",
 		Help: "Count of payments selected by the reconciler payment_provider_probe as past pending-timeout (last tick snapshot; 0 when none).",
 	})
+	paymentQueryRefreshTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "payment_query_refresh_total",
+		Help: "Provider query refresh attempts grouped by terminal outcome.",
+	}, []string{"result"})
+	paymentWebhookLookupMissTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "payment_webhook_lookup_miss_total",
+		Help: "PSP webhooks that could not resolve a payment row by provider_reference.",
+	}, []string{"provider"})
 	reconciliationCasesOpenTotal = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "reconciliation_cases_open_total",
 		Help: "Current count of commerce reconciliation cases in open status.",
@@ -337,6 +345,22 @@ func SetPaymentProviderProbeStalePendingQueue(n int) {
 		n = 0
 	}
 	paymentProviderProbeStalePendingQueue.Set(float64(n))
+}
+
+// RecordPaymentQueryRefresh increments payment_query_refresh_total{result}.
+func RecordPaymentQueryRefresh(result string) {
+	if result == "" {
+		result = "unknown"
+	}
+	paymentQueryRefreshTotal.WithLabelValues(result).Inc()
+}
+
+// RecordPaymentWebhookLookupMiss increments payment_webhook_lookup_miss_total{provider}.
+func RecordPaymentWebhookLookupMiss(provider string) {
+	if provider == "" {
+		provider = "unknown"
+	}
+	paymentWebhookLookupMissTotal.WithLabelValues(provider).Inc()
 }
 
 // SetReconciliationCasesOpen sets reconciliation_cases_open_total gauge.

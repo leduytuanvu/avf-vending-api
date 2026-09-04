@@ -82,6 +82,18 @@ message SimulationContext {
   bool fake_board = 5;
 }
 
+// MachinePricingSnapshot seals the customer-approved price at checkout for offline replay.
+// When set, the server persists declared amounts and skips server-side re-pricing.
+message MachinePricingSnapshot {
+  int64 subtotal_minor = 1;
+  int64 tax_minor = 2;
+  int64 total_minor = 3;
+  int64 unit_price_minor = 4;
+  int64 local_pricing_revision = 5;
+  string pricing_fingerprint = 6;
+  google.protobuf.Timestamp captured_at = 7;
+}
+
 message CreateOrderRequest {
   IdempotencyContext context = 1;
   // Optional echo of machine_id; must equal the Machine JWT machine when set.
@@ -91,6 +103,8 @@ message CreateOrderRequest {
   string currency = 5;
   MachineRequestMeta meta = 6;
   optional SimulationContext simulation = 7;
+  // When present (offline replay), order totals are taken from this snapshot instead of server pricing.
+  optional MachinePricingSnapshot pricing_snapshot = 8;
 }
 
 message CreateOrderResponse {

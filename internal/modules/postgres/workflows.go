@@ -101,19 +101,26 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		orderRow = existingOrder
 		orderInserted = false
 	case isNoRows(err):
+		pricingSource := strings.TrimSpace(in.PricingSource)
+		if pricingSource == "" {
+			pricingSource = "server_priced"
+		}
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
-			MachineID:          in.MachineID,
-			Status:             in.OrderStatus,
-			Currency:           in.Currency,
-			SubtotalMinor:      in.SubtotalMinor,
-			TaxMinor:           in.TaxMinor,
-			TotalMinor:         in.TotalMinor,
-			IdempotencyKey:     optionalStringToPgText(in.IdempotencyKey),
-			Simulated:          in.Simulated,
-			SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
-			SimulationScenario: optionalStringToPgText(in.SimulationScenario),
-			FakeBill:           in.FakeBill,
-			FakeBoard:          in.FakeBoard,
+			MachineID:              in.MachineID,
+			Status:                 in.OrderStatus,
+			Currency:               in.Currency,
+			SubtotalMinor:          in.SubtotalMinor,
+			TaxMinor:               in.TaxMinor,
+			TotalMinor:             in.TotalMinor,
+			IdempotencyKey:         optionalStringToPgText(in.IdempotencyKey),
+			Simulated:              in.Simulated,
+			SimulationRunID:        optionalStringToPgText(in.SimulationRunID),
+			SimulationScenario:     optionalStringToPgText(in.SimulationScenario),
+			FakeBill:               in.FakeBill,
+			FakeBoard:              in.FakeBoard,
+			PricingSource:          pricingSource,
+			MachinePricingRevision: optionalInt64ToPgInt8(in.MachinePricingRevision),
+			MachinePricingSnapshot: in.MachinePricingSnapshot,
 		})
 		if err != nil {
 			if isUniqueViolation(err) {

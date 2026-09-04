@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
+	"github.com/avf/avf-vending-api/internal/platform/payments/psp/ref"
 	"github.com/google/uuid"
 )
 
@@ -136,6 +137,23 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		return out, nil
 	}
 
+	providerRef := strings.TrimSpace(in.ProviderReference)
+	if providerRef == "" {
+		providerRef = ref.GenerateFromUUID(payRes.Payment.ID)
+	}
+	preCreatePayload, _ := json.Marshal(map[string]any{
+		"provider_reference": providerRef,
+		"bind_phase":         "pre_create",
+	})
+	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
+		PaymentID:         payRes.Payment.ID,
+		State:             "created",
+		ProviderReference: &providerRef,
+		Payload:           preCreatePayload,
+	}); err != nil {
+		return out, err
+	}
+
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{
 		OrderID:             in.OrderID,
 		PaymentID:           payRes.Payment.ID,
@@ -144,20 +162,23 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		IdempotencyKey:      key,
 		MachineExternalCode: strings.TrimSpace(in.MachineExternalCode),
 		StoreID:             strings.TrimSpace(in.StoreID),
-		ProviderReference:   strings.TrimSpace(in.ProviderReference),
+		ProviderReference:   providerRef,
 		PreferredMethod:     strings.TrimSpace(in.PreferredMethod),
 	})
 	if err != nil {
 		return out, err
 	}
-	ref := strings.TrimSpace(sess.ProviderReference)
-	if ref == "" {
+	boundRef := strings.TrimSpace(sess.ProviderReference)
+	if boundRef == "" {
+		boundRef = providerRef
+	}
+	if boundRef == "" {
 		return out, errors.Join(ErrNotConfigured, errors.New("payment provider returned empty provider_reference"))
 	}
 	attemptPayload := sess.ProviderDisplayJSON
 	if len(attemptPayload) == 0 {
 		attemptPayload, _ = json.Marshal(map[string]any{
-			"provider_reference":  sess.ProviderReference,
+			"provider_reference":  boundRef,
 			"provider_session_id": sess.ProviderSessionID,
 			"qr_url":              sess.QRPayloadOrURL,
 			"payment_url":         sess.PaymentURL,
@@ -170,7 +191,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
 		PaymentID:         payRes.Payment.ID,
 		State:             "created",
-		ProviderReference: &ref,
+		ProviderReference: &boundRef,
 		Payload:           attemptPayload,
 	}); err != nil {
 		return out, err

@@ -24,9 +24,12 @@ func mapOrder(row db.Order) commerce.Order {
 		SimulationScenario: pgTextToStringPtr(row.SimulationScenario),
 		FakeBill:           row.FakeBill,
 		FakeBoard:          row.FakeBoard,
-		WinningPaymentID:   pgUUIDToPtr(row.WinningPaymentID),
-		WinningClaimedAt:   pgTimestamptzToTimePtr(row.WinningClaimedAt),
-		CreatedAt:          row.CreatedAt,
+		WinningPaymentID:       pgUUIDToPtr(row.WinningPaymentID),
+		WinningClaimedAt:       pgTimestamptzToTimePtr(row.WinningClaimedAt),
+		PricingSource:          row.PricingSource,
+		MachinePricingRevision: pgInt8ToPtr(row.MachinePricingRevision),
+		MachinePricingSnapshot: row.MachinePricingSnapshot,
+		CreatedAt:              row.CreatedAt,
 		UpdatedAt:          row.UpdatedAt,
 	}
 }

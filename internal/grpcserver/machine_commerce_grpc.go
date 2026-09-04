@@ -277,7 +277,7 @@ func parseSlotProto(sel *machinev1.SlotSelection) (slotID *uuid.UUID, cab, slot 
 	return slotID, cab, slot, slotIdx, nil
 }
 
-func validateReplayCreateOrder(claims plauth.MachineAccessClaims, productID uuid.UUID, slotID *uuid.UUID, cab, slot string, slotIdx *int32, out appcommerce.CreateOrderResult) error {
+func validateReplayCreateOrder(claims plauth.MachineAccessClaims, productID uuid.UUID, slotID *uuid.UUID, cab, slot string, slotIdx *int32, pricingSnapshot *appcommerce.MachinePricingSnapshotInput, out appcommerce.CreateOrderResult) error {
 	if out.Order.MachineID != claims.MachineID {
 		return appcommerce.ErrIdempotencyPayloadConflict
 	}
@@ -296,6 +296,11 @@ func validateReplayCreateOrder(claims plauth.MachineAccessClaims, productID uuid
 	case slotIdx != nil:
 		if out.SaleLine.SlotIndex != *slotIdx {
 			return appcommerce.ErrIdempotencyPayloadConflict
+		}
+	}
+	if pricingSnapshot != nil {
+		if err := appcommerce.ValidateReplayPricingSnapshot(pricingSnapshot, out.Order); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -347,6 +352,15 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 	}
 	trace.checkpoint(ctx, "simulation_validate.done")
 
+	var pricingSnapshot *appcommerce.MachinePricingSnapshotInput
+	if req.GetPricingSnapshot() != nil {
+		snap, err := appcommerce.MachinePricingSnapshotFromProto(req.GetPricingSnapshot())
+		if err != nil {
+			return nil, mapCommerceGRPCErr(err)
+		}
+		pricingSnapshot = &snap
+	}
+
 	trace.checkpoint(ctx, "service_create_order.start")
 	out, err := svc.CreateOrder(ctx, appcommerce.CreateOrderInput{
 		MachineID:          claims.MachineID,
@@ -362,13 +376,14 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 		SimulationScenario: simMeta.SimulationScenario,
 		FakeBill:           simMeta.FakeBill,
 		FakeBoard:          simMeta.FakeBoard,
+		PricingSnapshot:    pricingSnapshot,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
 	trace.checkpoint(ctx, "service_create_order.done", zap.String("order_id", out.Order.ID.String()))
 	if out.Replay {
-		if err := validateReplayCreateOrder(claims, productID, slotID, cab, sc, slotIdx, out); err != nil {
+		if err := validateReplayCreateOrder(claims, productID, slotID, cab, sc, slotIdx, pricingSnapshot, out); err != nil {
 			return nil, mapCommerceGRPCErr(err)
 		}
 	} else {
@@ -810,7 +825,7 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	if st.PaymentPresent {
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
-			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID)
+			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
 			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {
 				return nil, mapCommerceGRPCErr(err)

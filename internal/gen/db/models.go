@@ -1358,24 +1358,27 @@ type MessagingConsumerDedupe struct {
 }
 
 type Order struct {
-	ID                 uuid.UUID
-	MachineID          uuid.UUID
-	Status             string
-	Currency           string
-	SubtotalMinor      int64
-	TaxMinor           int64
-	TotalMinor         int64
-	IdempotencyKey     pgtype.Text
-	Simulated          bool
-	SimulationRunID    pgtype.Text
-	SimulationScenario pgtype.Text
-	FakeBill           bool
-	FakeBoard          bool
-	SimulationMetadata []byte
-	WinningPaymentID   pgtype.UUID
-	WinningClaimedAt   pgtype.Timestamptz
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	ID                     uuid.UUID
+	MachineID              uuid.UUID
+	Status                 string
+	Currency               string
+	SubtotalMinor          int64
+	TaxMinor               int64
+	TotalMinor             int64
+	IdempotencyKey         pgtype.Text
+	Simulated              bool
+	SimulationRunID        pgtype.Text
+	SimulationScenario     pgtype.Text
+	FakeBill               bool
+	FakeBoard              bool
+	SimulationMetadata     []byte
+	WinningPaymentID       pgtype.UUID
+	WinningClaimedAt       pgtype.Timestamptz
+	PricingSource          string
+	MachinePricingRevision pgtype.Int8
+	MachinePricingSnapshot []byte
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
 }
 
 // Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).
