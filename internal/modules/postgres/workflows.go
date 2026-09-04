@@ -101,9 +101,12 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		orderRow = existingOrder
 		orderInserted = false
 	case isNoRows(err):
-		pricingSource := strings.TrimSpace(in.PricingSource)
-		if pricingSource == "" {
-			pricingSource = "server_priced"
+		pricingSource, perr := resolvePricingSourceForOrderPersist(
+			in.PricingSource,
+			hasMachinePricingEvidence(in.MachinePricingRevision, in.MachinePricingSnapshot),
+		)
+		if perr != nil {
+			return commerce.CreateOrderVendResult{}, perr
 		}
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
 			MachineID:              in.MachineID,
