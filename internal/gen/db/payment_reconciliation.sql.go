@@ -413,7 +413,7 @@ INSERT INTO commerce_reconciliation_cases (
     'open',
     $2,
     $3,
-    $4,
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb),
     $5::uuid,
     $6::uuid,
     $7::uuid,
@@ -461,7 +461,7 @@ type UpsertCommerceReconciliationCaseParams struct {
 	CaseType        string
 	Severity        string
 	Reason          string
-	Metadata        []byte
+	Metadata        string
 	OrderID         pgtype.UUID
 	PaymentID       pgtype.UUID
 	VendSessionID   pgtype.UUID

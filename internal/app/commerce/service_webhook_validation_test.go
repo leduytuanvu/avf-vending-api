@@ -51,6 +51,12 @@ func (stubLifecycle) GetLatestPaymentForOrder(ctx context.Context, orderID uuid.
 func (stubLifecycle) GetPaymentByID(ctx context.Context, paymentID uuid.UUID) (domaincommerce.Payment, error) {
 	return domaincommerce.Payment{}, ErrNotFound
 }
+func (stubLifecycle) GetLatestPaymentAttemptProviderReference(context.Context, uuid.UUID) (string, error) {
+	return "", nil
+}
+func (stubLifecycle) GetLatestPaymentAttemptPayload(context.Context, uuid.UUID) ([]byte, error) {
+	return nil, nil
+}
 func (stubLifecycle) InsertPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error) {
 	return PaymentAttemptView{}, errors.New("not implemented")
 }

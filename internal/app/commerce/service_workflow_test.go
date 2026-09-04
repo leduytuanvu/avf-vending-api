@@ -46,6 +46,14 @@ func (s *stubLifecycleForWorkflow) GetPaymentByID(context.Context, uuid.UUID) (d
 	return s.payment, nil
 }
 
+func (s *stubLifecycleForWorkflow) GetLatestPaymentAttemptProviderReference(context.Context, uuid.UUID) (string, error) {
+	return "", nil
+}
+
+func (s *stubLifecycleForWorkflow) GetLatestPaymentAttemptPayload(context.Context, uuid.UUID) ([]byte, error) {
+	return nil, nil
+}
+
 func (s *stubLifecycleForWorkflow) InsertPaymentAttempt(context.Context, InsertPaymentAttemptParams) (PaymentAttemptView, error) {
 	return PaymentAttemptView{}, nil
 }

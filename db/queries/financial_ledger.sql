@@ -28,6 +28,6 @@ INSERT INTO financial_ledger_entries (
     sqlc.narg('reference_type')::text,
     sqlc.narg('reference_id')::uuid,
     sqlc.narg('correlation_id')::uuid,
-    COALESCE(sqlc.narg('metadata')::jsonb, '{}'::jsonb)
+    COALESCE(NULLIF(sqlc.narg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING id, entry_type, signed_amount_minor, occurred_at;

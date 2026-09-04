@@ -254,9 +254,9 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		ProviderAmountMinor: amt,
 		Currency:            cur,
 		EventType:           in.EventType,
-		Payload:             compliance.SanitizeJSONBytes(in.Payload),
+		Payload:             pgjson.RequiredString(compliance.SanitizeJSONBytes(in.Payload)),
 		ValidationStatus:    vstat,
-		ProviderMetadata:    meta,
+		ProviderMetadata:    pgjson.RequiredString(meta),
 		SignatureValid:      sigOK,
 		AppliedAt:           applied,
 		IngressStatus:       "applied",
@@ -274,7 +274,7 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 		PaymentID:         in.PaymentID,
 		ProviderReference: pgtype.Text{String: in.ProviderReference, Valid: true},
 		State:             target,
-		Payload:           in.Payload,
+		Payload:           pgjson.RequiredString(in.Payload),
 	})
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err

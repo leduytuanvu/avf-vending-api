@@ -250,7 +250,7 @@ INSERT INTO cash_acceptance_events (
     $4,
     $5,
     $6,
-    COALESCE($8::jsonb, '{}'::jsonb)
+    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, device_event_id) DO UPDATE
 SET device_event_id = EXCLUDED.device_event_id
@@ -265,7 +265,7 @@ type InsertCashAcceptanceEventParams struct {
 	Currency          string
 	AcceptedAt        time.Time
 	OrderID           pgtype.UUID
-	RawMetadata       []byte
+	RawMetadata       pgtype.Text
 }
 
 func (q *Queries) InsertCashAcceptanceEvent(ctx context.Context, arg InsertCashAcceptanceEventParams) (CashAcceptanceEvent, error) {

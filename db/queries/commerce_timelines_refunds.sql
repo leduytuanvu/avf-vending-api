@@ -26,7 +26,7 @@ INSERT INTO order_timelines (
     sqlc.arg('event_type'),
     sqlc.arg('actor_type'),
     sqlc.arg('actor_id'),
-    COALESCE(sqlc.arg('payload')::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
     sqlc.arg('occurred_at')
 );
 

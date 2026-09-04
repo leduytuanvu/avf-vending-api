@@ -429,6 +429,9 @@ func (c *Config) validateLivePSPCredentials(provider string) error {
 		if !c.PSP.MoMo.MoMoWired() {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires MoMo credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
 		}
+		if !c.PSP.MoMo.MoMoCallbacksWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires MOMO_IPN_URL and MOMO_REDIRECT_URL (and TFO_MOMO_* when TFO tenant is wired) for COMMERCE_PAYMENT_PROVIDER=%q", k)
+		}
 	case "zalopay", "vietqr":
 		if !c.PSP.ZaloPay.ZaloPayWired() {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ZaloPay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)

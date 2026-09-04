@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -45,7 +46,7 @@ func emitVendSuccessFinancialLedgerTx(
 		OrderID:           pgtype.UUID{Bytes: orderID, Valid: true},
 		PaymentID:         pgtype.UUID{Bytes: paymentID, Valid: true},
 		CorrelationID:     corr,
-		Metadata:          meta,
+		Metadata:          pgjson.TextJSON(meta),
 	})
 	return err
 }

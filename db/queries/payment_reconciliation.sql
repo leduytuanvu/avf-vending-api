@@ -23,7 +23,7 @@ INSERT INTO commerce_reconciliation_cases (
     'open',
     $2,
     $3,
-    $4,
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb),
     sqlc.narg('order_id')::uuid,
     sqlc.narg('payment_id')::uuid,
     sqlc.narg('vend_session_id')::uuid,

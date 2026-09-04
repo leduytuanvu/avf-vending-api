@@ -325,6 +325,8 @@ type Querier interface {
 	GetLatestMachineCommandAttemptByCommandID(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
 	GetLatestNonCapturedPaymentForOrder(ctx context.Context, orderID uuid.UUID) (Payment, error)
 	GetLatestOpenMachineCommandAttemptForCommand(ctx context.Context, commandID uuid.UUID) (MachineCommandAttempt, error)
+	GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error)
+	GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (pgtype.Text, error)
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (Payment, error)
 	GetLayoutAssignmentIdempotency(ctx context.Context, arg GetLayoutAssignmentIdempotencyParams) (LayoutAssignmentIdempotency, error)
 	GetMachineActivationCodeByHashForUpdate(ctx context.Context, codeHash []byte) (MachineActivationCode, error)

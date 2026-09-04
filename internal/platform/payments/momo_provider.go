@@ -57,7 +57,7 @@ func (p *MoMoProvider) LivePaymentWired() bool {
 }
 
 func (p *MoMoProvider) VerifyWebhookSignature(secret string, tsHeader, sigHeader string, rawBody []byte, skew time.Duration) error {
-	return VerifyCommerceWebhookHMAC(secret, tsHeader, sigHeader, rawBody, skew)
+	return fmt.Errorf("momo: use VerifyAndParseIPN for native IPN callbacks, not header HMAC")
 }
 
 func (p *MoMoProvider) ParseWebhookEvent(rawBody []byte) (CommerceWebhookEventJSON, error) {
@@ -143,11 +143,7 @@ func (p *MoMoProvider) QueryPaymentStatus(ctx context.Context, lookup domaincomm
 	if orderID == "" {
 		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("momo query: provider_reference required")
 	}
-	// Without machine code on lookup, prefer AVF then fall back to TFO if AVF incomplete.
-	creds := p.keys.AVF
-	if strings.TrimSpace(creds.PartnerCode) == "" {
-		creds = p.keys.TFO
-	}
+	creds := p.credsForMachine(lookup.MachineExternalCode)
 	requestID := id.NewUUIDV7String()
 	sig := momo.SignQuery(creds.SecretKey, creds.AccessKey, orderID, creds.PartnerCode, requestID)
 	body := map[string]any{
@@ -243,9 +239,17 @@ func (p *MoMoProvider) VerifyAndParseIPN(raw []byte) (orderID, status, transID s
 		return "", "", "", CommerceWebhookEventJSON{}, err
 	}
 	partnerCode := asString(data["partnerCode"])
+	if partnerCode == "" {
+		return "", "", "", CommerceWebhookEventJSON{}, fmt.Errorf("momo ipn: missing partnerCode")
+	}
 	creds := p.keys.AVF
-	if partnerCode != "" && partnerCode == p.keys.TFO.PartnerCode {
+	switch {
+	case strings.TrimSpace(p.keys.TFO.PartnerCode) != "" && partnerCode == p.keys.TFO.PartnerCode:
 		creds = p.keys.TFO
+	case strings.TrimSpace(p.keys.AVF.PartnerCode) != "" && partnerCode == p.keys.AVF.PartnerCode:
+		creds = p.keys.AVF
+	default:
+		return "", "", "", CommerceWebhookEventJSON{}, fmt.Errorf("momo ipn: unknown partnerCode")
 	}
 	fields := momo.IPNFields{
 		AccessKey:    creds.AccessKey,

@@ -94,7 +94,7 @@ INSERT INTO cash_acceptance_events (
     $4,
     $5,
     $6,
-    COALESCE(sqlc.narg('raw_metadata')::jsonb, '{}'::jsonb)
+    COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, device_event_id) DO UPDATE
 SET device_event_id = EXCLUDED.device_event_id

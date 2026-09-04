@@ -43,7 +43,7 @@ func TestOrderTimeline_insertAndList(t *testing.T) {
 		EventType:  "test.event",
 		ActorType:  "system",
 		ActorID:    pgtype.Text{},
-		Payload:    payload,
+		Payload:    string(payload),
 		OccurredAt: time.Now().UTC(),
 	})
 	require.NoError(t, err)

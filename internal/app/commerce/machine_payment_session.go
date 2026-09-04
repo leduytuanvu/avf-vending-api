@@ -131,7 +131,11 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 			payRes.Payment.State != "created" {
 			return out, ErrIdempotencyPayloadConflict
 		}
+		qr := replayQRPayloadFromStoredAttempt(ctx, s.life, payRes.Payment.ID)
+		out.QRPayloadOrURL = qr
+		return out, nil
 	}
+
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{
 		OrderID:             in.OrderID,
 		PaymentID:           payRes.Payment.ID,
@@ -160,15 +164,16 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 			"checkout_url":        sess.CheckoutURL,
 		})
 	}
-	if !payRes.Replay {
-		if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
-			PaymentID:         payRes.Payment.ID,
-			State:             "created",
-			ProviderReference: &ref,
-			Payload:           attemptPayload,
-		}); err != nil {
-			return out, err
-		}
+	if !json.Valid(attemptPayload) {
+		return out, errors.Join(ErrNotConfigured, errors.New("payment provider returned invalid attempt payload json"))
+	}
+	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
+		PaymentID:         payRes.Payment.ID,
+		State:             "created",
+		ProviderReference: &ref,
+		Payload:           attemptPayload,
+	}); err != nil {
+		return out, err
 	}
 	qr := strings.TrimSpace(sess.QRPayloadOrURL)
 	if qr == "" {
@@ -188,4 +193,36 @@ func orderStatusTerminal(st string) bool {
 	default:
 		return false
 	}
+}
+
+func replayQRPayloadFromStoredAttempt(ctx context.Context, life CommerceLifecycleStore, paymentID uuid.UUID) string {
+	if life == nil || paymentID == uuid.Nil {
+		return ""
+	}
+	getter, ok := life.(interface {
+		GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error)
+	})
+	if !ok {
+		return ""
+	}
+	payload, err := getter.GetLatestPaymentAttemptPayload(ctx, paymentID)
+	if err != nil || len(payload) == 0 {
+		return ""
+	}
+	return qrFromAttemptPayload(payload)
+}
+
+func qrFromAttemptPayload(b []byte) string {
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		return ""
+	}
+	for _, k := range []string{"qr_code_url", "qr_url", "qr_payload_or_url"} {
+		if s, ok := m[k].(string); ok {
+			if v := strings.TrimSpace(s); v != "" {
+				return v
+			}
+		}
+	}
+	return ""
 }

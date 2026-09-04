@@ -11,7 +11,9 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/payments/psp/ref"
 	platformredis "github.com/avf/avf-vending-api/internal/platform/redis"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -244,10 +246,22 @@ func PaymentProviderReconcileTick(ctx context.Context, deps ReconcilerDeps) erro
 	productionmetrics.SetPaymentProviderProbeStalePendingQueue(len(payments))
 	var fetchOK, fetchFail, transitioned, noopClassify int
 	for _, p := range payments {
+		providerRef := ref.GenerateFromUUID(p.ID)
+		if getter, ok := deps.Reader.(interface {
+			GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error)
+		}); ok {
+			if stored, err := getter.GetLatestPaymentAttemptProviderReference(ctx, p.ID); err == nil && strings.TrimSpace(stored) != "" {
+				providerRef = strings.TrimSpace(stored)
+			}
+		}
+		machineCode := reconcilerMachineCode(ctx, deps, p.OrderID)
 		snap, err := deps.Gateway.FetchPaymentStatus(ctx, domaincommerce.PaymentProviderLookup{
-			Provider:  p.Provider,
-			PaymentID: p.ID,
-			OrderID:   p.OrderID,
+			Provider:            p.Provider,
+			PaymentID:           p.ID,
+			OrderID:             p.OrderID,
+			ProviderReference:   providerRef,
+			AmountMinor:         p.AmountMinor,
+			MachineExternalCode: machineCode,
 		})
 		if err != nil {
 			fetchFail++
@@ -905,4 +919,19 @@ func RunReconciler(ctx context.Context, deps ReconcilerDeps) error {
 	wg.Wait()
 	deps.Log.Info("reconciler_shutdown_complete")
 	return ctx.Err()
+}
+
+func reconcilerMachineCode(ctx context.Context, deps ReconcilerDeps, orderID uuid.UUID) string {
+	if deps.OrderRead == nil || deps.ObservabilityPool == nil || orderID == uuid.Nil {
+		return ""
+	}
+	ord, err := deps.OrderRead.GetOrderByID(ctx, orderID)
+	if err != nil || ord.MachineID == uuid.Nil {
+		return ""
+	}
+	row, err := db.New(deps.ObservabilityPool).GetMachineByID(ctx, ord.MachineID)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(row.Code)
 }
