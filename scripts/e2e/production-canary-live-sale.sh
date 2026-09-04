@@ -154,10 +154,6 @@ case "${TEST_PAYMENT_METHOD,,}" in
   *) abort_guard "TEST_PAYMENT_METHOD must be cash, qr, or card" ;;
 esac
 
-if e2e_is_production_canary_base_url "$BASE_URL" && [[ "${TEST_PAYMENT_METHOD,,}" != "cash" && "${BACKEND_ONLY_DRY_RUN,,}" != "true" ]]; then
-  abort_guard "production cash-only pilot requires TEST_PAYMENT_METHOD=cash (got ${TEST_PAYMENT_METHOD})"
-fi
-
 export TEST_MACHINE_ID TEST_SITE_ID MACHINE_ACCESS_TOKEN
 export GRPC_ADDR="${GRPC_ADDR:-${GRPC_TARGET:-}}"
 
@@ -192,6 +188,12 @@ if [[ "$_version_code" == "200" ]]; then
   pass_probe "guard.version_payment_runtime" "payment_mode=${version_pay_mode:-unknown}"
 else
   fail_probe "guard.version_payment_runtime" "GET /version failed code=${_version_code}"
+fi
+
+if e2e_is_production_canary_base_url "$BASE_URL" && [[ "${TEST_PAYMENT_METHOD,,}" != "cash" && "${BACKEND_ONLY_DRY_RUN,,}" != "true" ]]; then
+  if [[ "${version_pay_mode:-}" != "live_psp" ]]; then
+    abort_guard "production requires live_psp for TEST_PAYMENT_METHOD=${TEST_PAYMENT_METHOD} (payment_mode=${version_pay_mode:-unknown})"
+  fi
 fi
 
 meta="$(jq -nc --arg mid "${TEST_MACHINE_ID}" --arg rid "e2e-canary-${E2E_RUN_TS}" '{machineId:$mid,requestId:$rid}')"
