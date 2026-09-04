@@ -16,28 +16,61 @@ jobs:
     name: Run qr_payment_diagnostics.sql
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
     timeout-minutes: 15
-    environment: production
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Run read-only diagnostics on app node
+      - name: Configure privileged command helper
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/run_qr_payment_diagnostics.sh"
-          if [[ -f "${script}" ]]; then
-            bash "${script}" | tee qr-payment-diagnostics.txt
-          else
-            bash scripts/ops/run_qr_payment_diagnostics.sh | tee qr-payment-diagnostics.txt
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
           fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
 
-      - name: Upload diagnostics output
-        uses: actions/upload-artifact@ea1653718c4176ef837f0cf8abc0fe4d6089eef1 # v4
-        with:
-          name: qr-payment-diagnostics
-          path: qr-payment-diagnostics.txt
-          retention-days: 30
+      - name: Run read-only diagnostics on app node
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          script="${deploy_root}/scripts/ops/run_qr_payment_diagnostics.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/run_qr_payment_diagnostics.sh"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
+            | tee qr-payment-diagnostics.txt
+          echo "=== diagnostics output ==="
+          cat qr-payment-diagnostics.txt

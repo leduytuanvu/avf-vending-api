@@ -13,6 +13,11 @@ on:
         required: false
         default: false
         type: boolean
+      run_qr_payment_diagnostics:
+        description: "Run read-only scripts/ops/qr_payment_diagnostics.sql"
+        required: false
+        default: false
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -92,14 +97,18 @@ jobs:
             scripts/verify_database_environment.sh \
             scripts/db/verify_database_environment.sh \
             scripts/ops/verify-production-payment-validation-status.sh \
-            scripts/ops/verify-layout-dimension-migration.sh
+            scripts/ops/verify-layout-dimension-migration.sh \
+            scripts/ops/run_qr_payment_diagnostics.sh \
+            scripts/ops/qr_payment_diagnostics.sql
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
             "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
               '${deploy_root}/scripts/deploy/production-migrate.sh' \
               '${deploy_root}/scripts/verify_database_environment.sh' \
               '${deploy_root}/scripts/db/verify_database_environment.sh' \
               '${deploy_root}/scripts/ops/verify-production-payment-validation-status.sh' \
-              '${deploy_root}/scripts/ops/verify-layout-dimension-migration.sh'"
+              '${deploy_root}/scripts/ops/verify-layout-dimension-migration.sh' \
+              '${deploy_root}/scripts/ops/run_qr_payment_diagnostics.sh' \
+              '${deploy_root}/scripts/ops/qr_payment_diagnostics.sql'"
           rm -f "${sync_tar}"
 
       - name: Log in to GHCR for image pull
@@ -165,6 +174,17 @@ jobs:
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
             "cd '${deploy_root}' && bash scripts/ops/verify-layout-dimension-migration.sh"
+
+      - name: Run QR payment diagnostics
+        if: ${{ github.event.inputs.run_qr_payment_diagnostics == 'true' }}
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/run_qr_payment_diagnostics.sh"
 
       - name: Public health check
         shell: bash
