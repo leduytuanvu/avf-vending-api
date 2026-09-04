@@ -34,10 +34,5 @@ jobs:
           else
             bash scripts/ops/run_qr_payment_diagnostics.sh | tee qr-payment-diagnostics.txt
           fi
-
-      - name: Upload diagnostics output
-        uses: actions/upload-artifact@ea1653718c4176ef837f0cf8abc0fe4d6089eef1 # v4
-        with:
-          name: qr-payment-diagnostics
-          path: qr-payment-diagnostics.txt
-          retention-days: 30
+          echo "=== diagnostics output ==="
+          cat qr-payment-diagnostics.txt
