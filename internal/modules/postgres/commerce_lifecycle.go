@@ -7,6 +7,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -126,9 +127,6 @@ func (s *Store) GetPaymentByID(ctx context.Context, paymentID uuid.UUID) (domain
 }
 
 func (s *Store) InsertPaymentAttempt(ctx context.Context, in appcommerce.InsertPaymentAttemptParams) (appcommerce.PaymentAttemptView, error) {
-	if in.Payload == nil {
-		in.Payload = []byte("{}")
-	}
 	var pref pgtype.Text
 	if in.ProviderReference != nil {
 		pref = pgtype.Text{String: *in.ProviderReference, Valid: true}
@@ -137,12 +135,37 @@ func (s *Store) InsertPaymentAttempt(ctx context.Context, in appcommerce.InsertP
 		PaymentID:         in.PaymentID,
 		ProviderReference: pref,
 		State:             in.State,
-		Payload:           in.Payload,
+		Payload:           pgjson.RequiredString(in.Payload),
 	})
 	if err != nil {
 		return appcommerce.PaymentAttemptView{}, err
 	}
 	return mapPaymentAttemptView(row), nil
+}
+
+func (s *Store) GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error) {
+	row, err := db.New(s.pool).GetLatestPaymentAttemptPayload(ctx, paymentID)
+	if err != nil {
+		if isNoRows(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return []byte(row), nil
+}
+
+func (s *Store) GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error) {
+	row, err := db.New(s.pool).GetLatestPaymentAttemptProviderReference(ctx, paymentID)
+	if err != nil {
+		if isNoRows(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	if !row.Valid {
+		return "", nil
+	}
+	return strings.TrimSpace(row.String), nil
 }
 
 func mapPaymentAttemptView(row db.PaymentAttempt) appcommerce.PaymentAttemptView {
@@ -155,10 +178,6 @@ func mapPaymentAttemptView(row db.PaymentAttempt) appcommerce.PaymentAttemptView
 }
 
 func (s *Store) InsertRefundRow(ctx context.Context, in appcommerce.InsertRefundRowInput) (appcommerce.RefundRowView, error) {
-	meta := in.Metadata
-	if len(meta) == 0 {
-		meta = []byte("{}")
-	}
 	var reason pgtype.Text
 	if strings.TrimSpace(in.Reason) != "" {
 		reason = pgtype.Text{String: strings.TrimSpace(in.Reason), Valid: true}
@@ -175,7 +194,7 @@ func (s *Store) InsertRefundRow(ctx context.Context, in appcommerce.InsertRefund
 		State:          in.State,
 		Reason:         reason,
 		IdempotencyKey: idem,
-		Metadata:       meta,
+		Metadata:       pgjson.RequiredString(in.Metadata),
 	})
 	if err != nil {
 		return appcommerce.RefundRowView{}, err

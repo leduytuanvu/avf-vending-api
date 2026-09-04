@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -343,7 +344,7 @@ func (s *Service) ResolveReconciliationCase(ctx context.Context, in ResolveRecon
 			EventType:  "commerce.reconciliation.case_resolved",
 			ActorType:  "admin",
 			ActorID:    pgtype.Text{String: in.ResolvedBy.String(), Valid: in.ResolvedBy != uuid.Nil},
-			Payload:    compliance.SanitizeJSONBytes(payload),
+			Payload:    pgjson.RequiredString(compliance.SanitizeJSONBytes(payload)),
 			OccurredAt: time.Now().UTC(),
 		})
 		if tErr != nil {
@@ -562,7 +563,7 @@ func (s *Service) CreateOrderRefund(ctx context.Context, in CreateOrderRefundInp
 		EventType:  "commerce.refund.requested",
 		ActorType:  "admin",
 		ActorID:    pgtype.Text{String: in.RequestedBy.String(), Valid: in.RequestedBy != uuid.Nil},
-		Payload:    compliance.SanitizeJSONBytes(payload),
+		Payload:    pgjson.RequiredString(compliance.SanitizeJSONBytes(payload)),
 		OccurredAt: time.Now().UTC(),
 	})
 	return CreateOrderRefundResult{

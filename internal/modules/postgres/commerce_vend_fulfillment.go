@@ -11,6 +11,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -184,7 +185,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			EventType:  "commerce_vend_dispense_succeeded",
 			ActorType:  "system",
 			ActorID:    pgtype.Text{},
-			Payload:    payload,
+			Payload:    pgjson.RequiredString(payload),
 			OccurredAt: time.Now().UTC(),
 		}); err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -250,7 +251,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 				CaseType:       "vend_started_no_terminal_ack",
 				Severity:       "warning",
 				Reason:         "hardware_evidence_missing_or_unverified",
-				Metadata:       reconMeta,
+				Metadata:       pgjson.RequiredString(reconMeta),
 				OrderID:        pgtype.UUID{Bytes: in.OrderID, Valid: true},
 				VendSessionID:  pgtype.UUID{Bytes: vendRow.ID, Valid: true},
 				MachineID:      pgtype.UUID{Bytes: machineID, Valid: true},
@@ -428,7 +429,7 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		EventType:  "commerce_vend_dispense_failed",
 		ActorType:  "system",
 		ActorID:    pgtype.Text{},
-		Payload:    timelinePayload,
+		Payload:    pgjson.RequiredString(timelinePayload),
 		OccurredAt: time.Now().UTC(),
 	}); err != nil {
 		return appcommerce.FulfillFailedVendResult{}, err

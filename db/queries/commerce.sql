@@ -302,6 +302,26 @@ ORDER BY
     created_at ASC
 LIMIT 1;
 
+-- name: GetLatestPaymentAttemptProviderReference :one
+SELECT provider_reference
+FROM payment_attempts
+WHERE
+    payment_id = $1
+    AND provider_reference IS NOT NULL
+    AND trim(provider_reference) <> ''
+ORDER BY
+    created_at DESC
+LIMIT 1;
+
+-- name: GetLatestPaymentAttemptPayload :one
+SELECT payload
+FROM payment_attempts
+WHERE
+    payment_id = $1
+ORDER BY
+    created_at DESC
+LIMIT 1;
+
 -- name: ListPaymentsPendingTimeout :many
 SELECT
     id,
@@ -688,10 +708,10 @@ INSERT INTO payment_attempts (
     state,
     payload
 ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4
+    sqlc.arg('payment_id'),
+    sqlc.arg('provider_reference'),
+    sqlc.arg('state'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -827,20 +847,20 @@ INSERT INTO payment_provider_events (
     ingress_status,
     ingress_error
 ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13,
-    $14
+    sqlc.arg('payment_id'),
+    sqlc.arg('provider'),
+    sqlc.arg('provider_ref'),
+    sqlc.arg('webhook_event_id'),
+    sqlc.arg('provider_amount_minor'),
+    sqlc.arg('currency'),
+    sqlc.arg('event_type'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('validation_status'),
+    COALESCE(NULLIF(sqlc.arg('provider_metadata')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('signature_valid'),
+    sqlc.arg('applied_at'),
+    sqlc.arg('ingress_status'),
+    sqlc.arg('ingress_error')
 )
 RETURNING
     id,
@@ -926,14 +946,14 @@ INSERT INTO refunds (
     idempotency_key,
     metadata
 ) VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8
+    sqlc.arg('payment_id'),
+    sqlc.arg('order_id'),
+    sqlc.arg('amount_minor'),
+    sqlc.arg('currency'),
+    sqlc.arg('state'),
+    sqlc.arg('reason'),
+    sqlc.arg('idempotency_key'),
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,

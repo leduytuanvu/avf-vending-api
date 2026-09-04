@@ -30,6 +30,9 @@ type CommerceLifecycleStore interface {
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (domaincommerce.Payment, error)
 	GetPaymentByID(ctx context.Context, paymentID uuid.UUID) (domaincommerce.Payment, error)
 
+	GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error)
+	GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error)
+
 	InsertPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error)
 
 	InsertRefundRow(ctx context.Context, in InsertRefundRowInput) (RefundRowView, error)

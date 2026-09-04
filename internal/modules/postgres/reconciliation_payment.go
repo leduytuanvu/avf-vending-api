@@ -82,7 +82,7 @@ func (s *Store) ApplyReconciledPaymentTransition(ctx context.Context, in domainc
 		PaymentID:         in.PaymentID,
 		ProviderReference: pgtype.Text{String: ref, Valid: true},
 		State:             "reconciliation.probe." + to,
-		Payload:           attemptPayload,
+		Payload:           pgjson.RequiredString(attemptPayload),
 	}); err != nil {
 		return domaincommerce.Payment{}, err
 	}

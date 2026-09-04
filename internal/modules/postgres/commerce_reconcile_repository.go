@@ -8,6 +8,7 @@ import (
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -204,12 +205,16 @@ func (r *CommerceReconcileRepository) ListRefundsPendingTooLong(ctx context.Cont
 	return out, nil
 }
 
+func (r *CommerceReconcileRepository) GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error) {
+	return (&Store{pool: r.pool}).GetLatestPaymentAttemptProviderReference(ctx, paymentID)
+}
+
 func (r *CommerceReconcileRepository) UpsertReconciliationCase(ctx context.Context, in domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
 	row, err := db.New(r.pool).UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
 		CaseType:        in.CaseType,
 		Severity:        in.Severity,
 		Reason:          in.Reason,
-		Metadata:        coerceJSON(in.Metadata),
+		Metadata:        pgjson.RequiredString(coerceJSON(in.Metadata)),
 		OrderID:         optionalUUIDToPg(in.OrderID),
 		PaymentID:       optionalUUIDToPg(in.PaymentID),
 		VendSessionID:   optionalUUIDToPg(in.VendSessionID),

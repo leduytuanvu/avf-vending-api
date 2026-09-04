@@ -50,22 +50,32 @@ func MoMoNativeIPNHandler(app *api.HTTPApplication, cfg *config.Config) http.Han
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"message": "momo not configured", "resultCode": 1001})
 			return
 		}
+		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
+		log.Info("MOMO_IPN_RECEIVED", zap.Int("body_bytes", len(body)))
 		_, status, _, event, err := prov.VerifyAndParseIPN(body)
 		if err != nil {
+			log.Warn("MOMO_IPN_SIGNATURE_INVALID", zap.Error(err))
 			writeJSON(w, http.StatusBadRequest, map[string]any{"message": err.Error(), "resultCode": 1001})
 			return
 		}
+		log.Info("MOMO_IPN_RECEIVED",
+			zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)),
+			zap.String("normalized_state", status),
+			zap.Bool("signature_valid", true),
+		)
 		applied, applyErr := applyNativePSPWebhook(r.Context(), app, cfg, event, status)
 		if applyErr != nil {
 			if errors.Is(applyErr, pgx.ErrNoRows) {
 				writeJSON(w, http.StatusOK, map[string]any{"message": "order not found", "resultCode": 1001})
 				return
 			}
-			observability.LoggerFromContext(r.Context(), zap.NewNop()).Warn("momo native ipn apply failed", zap.Error(applyErr))
+			log.Error("MOMO_IPN_DB_ERROR", zap.Error(applyErr))
 			writeJSON(w, http.StatusOK, map[string]any{"message": "apply failed", "resultCode": 1001})
 			return
 		}
-		_ = applied
+		if applied {
+			log.Info("MOMO_IPN_APPLIED", zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)))
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"message": "Success", "resultCode": 0})
 	}
 }

@@ -41,7 +41,7 @@ INSERT INTO financial_ledger_entries (
     $10::text,
     $11::uuid,
     $12::uuid,
-    COALESCE($13::jsonb, '{}'::jsonb)
+    COALESCE(NULLIF($13::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING id, entry_type, signed_amount_minor, occurred_at
 `
@@ -59,7 +59,7 @@ type InsertFinancialLedgerEntryParams struct {
 	ReferenceType     pgtype.Text
 	ReferenceID       pgtype.UUID
 	CorrelationID     pgtype.UUID
-	Metadata          []byte
+	Metadata          pgtype.Text
 }
 
 type InsertFinancialLedgerEntryRow struct {

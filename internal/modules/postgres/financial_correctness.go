@@ -7,6 +7,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -93,10 +94,6 @@ func (s *Store) ListPaymentsForOrder(ctx context.Context, orderID uuid.UUID) ([]
 func (s *Store) RecordCashAcceptanceEvents(ctx context.Context, in appcommerce.RecordCashAcceptanceEventsInput) error {
 	q := db.New(s.pool)
 	for _, ev := range in.Events {
-		meta := ev.RawMetadata
-		if len(meta) == 0 {
-			meta = []byte("{}")
-		}
 		_, err := q.InsertCashAcceptanceEvent(ctx, db.InsertCashAcceptanceEventParams{
 			MachineID:         in.MachineID,
 			OrderID:           uuidToPg(in.OrderID),
@@ -105,7 +102,7 @@ func (s *Store) RecordCashAcceptanceEvents(ctx context.Context, in appcommerce.R
 			CreditSource:      ev.CreditSource,
 			Currency:          in.Currency,
 			AcceptedAt:        ev.AcceptedAt.UTC(),
-			RawMetadata:       meta,
+			RawMetadata:       pgjson.TextJSON(ev.RawMetadata),
 		})
 		if err != nil {
 			return err
@@ -207,10 +204,6 @@ func (s *Store) GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (appco
 }
 
 func (s *Store) InsertLedgerEntry(ctx context.Context, in appcommerce.LedgerEntryInput) error {
-	meta := in.Metadata
-	if len(meta) == 0 {
-		meta = []byte("{}")
-	}
 	_, err := db.New(s.pool).InsertFinancialLedgerEntry(ctx, db.InsertFinancialLedgerEntryParams{
 		EntryType:         in.EntryType,
 		SignedAmountMinor: in.SignedAmountMinor,
@@ -219,7 +212,7 @@ func (s *Store) InsertLedgerEntry(ctx context.Context, in appcommerce.LedgerEntr
 		MachineID:         optionalUUIDToPg(in.MachineID),
 		OrderID:           optionalUUIDToPg(in.OrderID),
 		PaymentID:         optionalUUIDToPg(in.PaymentID),
-		Metadata:          meta,
+		Metadata:          pgjson.TextJSON(in.Metadata),
 	})
 	return err
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -357,7 +358,7 @@ func (s *AdminService) ImportSettlements(ctx context.Context, companyID uuid.UUI
 					CaseType:       "settlement_amount_mismatch",
 					Severity:       "critical",
 					Reason:         "settlement gross amount does not match referenced internal payments",
-					Metadata:       md,
+					Metadata:       pgjson.RequiredString(md),
 					CorrelationKey: pgtype.Text{String: correlation, Valid: true},
 				})
 				if err != nil {
@@ -385,7 +386,7 @@ func (s *AdminService) ImportSettlements(ctx context.Context, companyID uuid.UUI
 				CaseType:       "settlement_amount_mismatch",
 				Severity:       "warning",
 				Reason:         "settlement import missing transaction references for non-zero gross amount",
-				Metadata:       md,
+				Metadata:       pgjson.RequiredString(md),
 				CorrelationKey: pgtype.Text{String: correlation, Valid: true},
 			})
 			if err != nil {

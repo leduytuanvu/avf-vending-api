@@ -83,6 +83,24 @@ func momoTenantWired(t MoMoTenantCredentials) bool {
 		strings.TrimSpace(t.Endpoint) != ""
 }
 
+func momoTenantCallbacksWired(t MoMoTenantCredentials) bool {
+	return strings.TrimSpace(t.IPNURL) != "" && strings.TrimSpace(t.RedirectURL) != ""
+}
+
+// MoMoCallbacksWired reports whether every configured MoMo tenant has callback URLs.
+func (c MoMoConfig) MoMoCallbacksWired() bool {
+	if !c.MoMoWired() {
+		return false
+	}
+	if momoTenantWired(c.AVF) && !momoTenantCallbacksWired(c.AVF) {
+		return false
+	}
+	if momoTenantWired(c.TFO) && !momoTenantCallbacksWired(c.TFO) {
+		return false
+	}
+	return true
+}
+
 // ZaloPayWired reports whether ZaloPay credentials are complete.
 func (c ZaloPayConfig) ZaloPayWired() bool {
 	return strings.TrimSpace(c.AppID) != "" &&

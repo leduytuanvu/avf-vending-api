@@ -153,6 +153,42 @@ func (q *Queries) GetFirstVendSessionByOrder(ctx context.Context, orderID uuid.U
 	return i, err
 }
 
+const GetLatestPaymentAttemptPayload = `-- name: GetLatestPaymentAttemptPayload :one
+SELECT payload
+FROM payment_attempts
+WHERE
+    payment_id = $1
+ORDER BY
+    created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, GetLatestPaymentAttemptPayload, paymentID)
+	var payload []byte
+	err := row.Scan(&payload)
+	return payload, err
+}
+
+const GetLatestPaymentAttemptProviderReference = `-- name: GetLatestPaymentAttemptProviderReference :one
+SELECT provider_reference
+FROM payment_attempts
+WHERE
+    payment_id = $1
+    AND provider_reference IS NOT NULL
+    AND trim(provider_reference) <> ''
+ORDER BY
+    created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, GetLatestPaymentAttemptProviderReference, paymentID)
+	var provider_reference pgtype.Text
+	err := row.Scan(&provider_reference)
+	return provider_reference, err
+}
+
 const GetLatestPaymentForOrder = `-- name: GetLatestPaymentForOrder :one
 SELECT
     id,
@@ -1001,7 +1037,7 @@ INSERT INTO payment_attempts (
     $1,
     $2,
     $3,
-    $4
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -1016,7 +1052,7 @@ type InsertPaymentAttemptParams struct {
 	PaymentID         uuid.UUID
 	ProviderReference pgtype.Text
 	State             string
-	Payload           []byte
+	Payload           string
 }
 
 func (q *Queries) InsertPaymentAttempt(ctx context.Context, arg InsertPaymentAttemptParams) (PaymentAttempt, error) {
@@ -1062,9 +1098,9 @@ INSERT INTO payment_provider_events (
     $5,
     $6,
     $7,
-    $8,
+    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb),
     $9,
-    $10,
+    COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb),
     $11,
     $12,
     $13,
@@ -1098,9 +1134,9 @@ type InsertPaymentProviderEventParams struct {
 	ProviderAmountMinor pgtype.Int8
 	Currency            pgtype.Text
 	EventType           string
-	Payload             []byte
+	Payload             string
 	ValidationStatus    string
-	ProviderMetadata    []byte
+	ProviderMetadata    string
 	SignatureValid      bool
 	AppliedAt           pgtype.Timestamptz
 	IngressStatus       string
@@ -1165,7 +1201,7 @@ INSERT INTO refunds (
     $5,
     $6,
     $7,
-    $8
+    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -1188,7 +1224,7 @@ type InsertRefundRowParams struct {
 	State          string
 	Reason         pgtype.Text
 	IdempotencyKey pgtype.Text
-	Metadata       []byte
+	Metadata       string
 }
 
 type InsertRefundRowRow struct {

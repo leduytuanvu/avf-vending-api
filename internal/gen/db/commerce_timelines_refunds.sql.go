@@ -353,7 +353,7 @@ INSERT INTO order_timelines (
     $2,
     $3,
     $4,
-    COALESCE($5::jsonb, '{}'::jsonb),
+    COALESCE(NULLIF($5::text, '')::jsonb, '{}'::jsonb),
     $6
 )
 `
@@ -363,7 +363,7 @@ type InsertOrderTimelineEventParams struct {
 	EventType  string
 	ActorType  string
 	ActorID    pgtype.Text
-	Payload    []byte
+	Payload    string
 	OccurredAt time.Time
 }
 

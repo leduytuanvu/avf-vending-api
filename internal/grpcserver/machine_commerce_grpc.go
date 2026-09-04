@@ -2,6 +2,8 @@ package grpcserver
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -13,10 +15,12 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -132,8 +136,35 @@ func mapCommercePaymentSessionErr(err error) error {
 	case errors.Is(err, platformpayments.ErrInvalidCardSessionProvider):
 		return status.Error(codes.InvalidArgument, err.Error())
 	default:
+		if mapped := mapCommercePersistenceErr(err); mapped != nil {
+			return mapped
+		}
+		if msg := err.Error(); strings.Contains(msg, "momo create failed") || strings.Contains(msg, "empty provider_reference") {
+			return status.Error(codes.FailedPrecondition, "provider_rejected")
+		}
+		if strings.Contains(err.Error(), "momo create:") || strings.Contains(err.Error(), "timeout") {
+			return status.Error(codes.Unavailable, "provider_timeout")
+		}
 		return mapCommerceGRPCErr(err)
 	}
+}
+
+func mapCommercePersistenceErr(err error) error {
+	var pgErr *pgconn.PgError
+	if !errors.As(err, &pgErr) {
+		return nil
+	}
+	switch pgErr.Code {
+	case "22P02", "22023":
+		return status.Error(codes.Internal, "payment_session_persistence_failed")
+	case "23505":
+		return status.Error(codes.FailedPrecondition, "payment_conflict")
+	default:
+		if strings.HasPrefix(pgErr.Code, "08") || pgErr.Code == "57P03" {
+			return status.Error(codes.Unavailable, "payment_backend_unavailable")
+		}
+	}
+	return nil
 }
 
 func mapCommerceGRPCErr(err error) error {
@@ -165,6 +196,9 @@ func mapCommerceGRPCErr(err error) error {
 	case errors.Is(err, domaincommerce.ErrVendEvidenceInvalid):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
+		if mapped := mapCommercePersistenceErr(err); mapped != nil {
+			return mapped
+		}
 		if strings.Contains(err.Error(), "insufficient stock") {
 			return status.Error(codes.ResourceExhausted, err.Error())
 		}
@@ -373,6 +407,7 @@ func (s *machineCommerceServer) CreateOrder(ctx context.Context, req *machinev1.
 }
 
 func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *machinev1.CreatePaymentSessionRequest) (*machinev1.CreatePaymentSessionResponse, error) {
+	started := time.Now()
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -380,6 +415,13 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	if err != nil {
 		return nil, err
 	}
+	provider := strings.TrimSpace(req.GetProvider())
+	log := observability.LoggerFromContext(ctx, zap.NewNop())
+	log.Info("CREATE_PAYMENT_SESSION_START",
+		zap.String("order_id", strings.TrimSpace(req.GetOrderId())),
+		zap.String("provider", provider),
+		zap.String("idempotency_key_fingerprint", idempotencyKeyFingerprint(wctx.IdempotencyKey)),
+	)
 	claims, svc, store, err := s.requireCommerce(ctx)
 	if err != nil {
 		return nil, err
@@ -445,6 +487,15 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		MachineExternalCode: machineExternalCode(ctx, s.deps, claims.MachineID),
 	})
 	if err != nil {
+		if st, ok := status.FromError(mapCommercePaymentSessionErr(err)); ok {
+			log.Error("CREATE_PAYMENT_SESSION_DB_ERROR",
+				zap.String("order_id", orderID.String()),
+				zap.String("provider", provider),
+				zap.String("grpc_code", st.Code().String()),
+				zap.String("reason", st.Message()),
+				zap.Error(err),
+			)
+		}
 		return nil, mapCommercePaymentSessionErr(err)
 	}
 	if !res.Replay {
@@ -456,6 +507,14 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 			"payment_state":   "created",
 		})
 	}
+
+	log.Info("CREATE_PAYMENT_SESSION_SUCCESS",
+		zap.String("order_id", orderID.String()),
+		zap.String("payment_id", res.Payment.ID.String()),
+		zap.String("provider", res.ProviderKey),
+		zap.Bool("replay", res.Replay),
+		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+	)
 
 	return &machinev1.CreatePaymentSessionResponse{
 		Replay:         res.Replay,
@@ -1147,4 +1206,9 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 		"reason":          reason,
 	})
 	return &machinev1.CancelOrderResponse{Replay: false, OrderId: o2.ID.String(), OrderStatus: o2.Status}, nil
+}
+
+func idempotencyKeyFingerprint(key string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(key)))
+	return hex.EncodeToString(sum[:])[:12]
 }

@@ -91,6 +91,13 @@ jobs:
           chmod +x scripts/ci/validate-production-deploy.sh
           bash scripts/ci/validate-production-deploy.sh
 
+      - name: Check commerce jsonb SQL binds
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          chmod +x scripts/ci/check_jsonb_sql_binds.sh
+          bash scripts/ci/check_jsonb_sql_binds.sh
+
       - name: Lint workflow YAML with yamllint
         shell: bash
         run: |

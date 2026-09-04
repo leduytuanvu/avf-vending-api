@@ -67,6 +67,14 @@ func (s *refundLifecycleStub) GetPaymentByID(context.Context, uuid.UUID) (domain
 	return s.payment, nil
 }
 
+func (s *refundLifecycleStub) GetLatestPaymentAttemptProviderReference(context.Context, uuid.UUID) (string, error) {
+	return "", nil
+}
+
+func (s *refundLifecycleStub) GetLatestPaymentAttemptPayload(context.Context, uuid.UUID) ([]byte, error) {
+	return nil, nil
+}
+
 func (s *refundLifecycleStub) InsertPaymentAttempt(context.Context, InsertPaymentAttemptParams) (PaymentAttemptView, error) {
 	return PaymentAttemptView{}, ErrNotConfigured
 }

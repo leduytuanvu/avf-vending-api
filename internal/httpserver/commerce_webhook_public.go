@@ -14,6 +14,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	domainreliability "github.com/avf/avf-vending-api/internal/domain/reliability"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/go-chi/chi/v5"
@@ -168,7 +169,7 @@ func upsertWebhookReconciliationCase(ctx context.Context, q *db.Queries, audit c
 		CaseType:        caseType,
 		Severity:        sev,
 		Reason:          reason,
-		Metadata:        md,
+		Metadata:        pgjson.RequiredString(md),
 		OrderID:         oid,
 		PaymentID:       pid,
 		MachineID:       mid,

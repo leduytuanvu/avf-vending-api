@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -40,5 +41,14 @@ func TestMapCommerceGRPCErr_insufficientStock(t *testing.T) {
 	st, ok := status.FromError(mapCommerceGRPCErr(errors.New("insufficient stock for slot")))
 	if !ok || st.Code() != codes.ResourceExhausted {
 		t.Fatalf("got %v ok=%v", st, ok)
+	}
+}
+
+func TestMapCommercePersistenceErr_sqlState22P02(t *testing.T) {
+	t.Parallel()
+	err := &pgconn.PgError{Code: "22P02", Message: "invalid input syntax for type json"}
+	st, ok := status.FromError(mapCommercePersistenceErr(err))
+	if !ok || st.Code() != codes.Internal || st.Message() != "payment_session_persistence_failed" {
+		t.Fatalf("got code=%v msg=%q ok=%v", st.Code(), st.Message(), ok)
 	}
 }
