@@ -701,7 +701,7 @@ func (s *machineCommerceServer) getStatus(ctx context.Context, claims plauth.Mac
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return appcommerce.CheckoutStatusView{}, err
 	}
-	return svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	return svc.GetOrderStatusView(ctx, uuid.Nil, orderID, slotIndex, 0)
 }
 
 func (s *machineCommerceServer) GetOrder(ctx context.Context, req *machinev1.GetOrderRequest) (*machinev1.GetOrderResponse, error) {
@@ -746,6 +746,7 @@ func checkoutViewToGetOrderResponse(st appcommerce.CheckoutStatusView) *machinev
 }
 
 func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machinev1.GetOrderStatusRequest) (*machinev1.GetOrderStatusResponse, error) {
+	started := time.Now()
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
@@ -757,16 +758,60 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	if err != nil || orderID == uuid.Nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 	}
-	st, err := s.getStatus(ctx, claims, svc, orderID, req.GetSlotIndex())
+	slotIndex := req.GetSlotIndex()
+	log := observability.LoggerFromContext(ctx, zap.NewNop())
+	log.Info("GET_ORDER_STATUS_START",
+		zap.String("order_id", orderID.String()),
+		zap.String("machine_id", claims.MachineID.String()),
+		zap.Int32("slot_index", slotIndex),
+	)
+	st, err := s.getStatus(ctx, claims, svc, orderID, slotIndex)
 	if err != nil {
+		if errors.Is(err, appcommerce.ErrNotFound) {
+			log.Info("GET_ORDER_STATUS_NOT_FOUND",
+				zap.String("order_id", orderID.String()),
+				zap.String("machine_id", claims.MachineID.String()),
+				zap.Int32("slot_index", slotIndex),
+				zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+			)
+		} else {
+			log.Warn("GET_ORDER_STATUS_ERROR",
+				zap.String("order_id", orderID.String()),
+				zap.String("machine_id", claims.MachineID.String()),
+				zap.Int32("slot_index", slotIndex),
+				zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+				zap.Error(err),
+			)
+		}
 		return nil, mapCommerceGRPCErr(err)
 	}
+	if st.Vend.ID != uuid.Nil && st.Vend.SlotIndex != slotIndex {
+		log.Info("GET_ORDER_STATUS_FALLBACK",
+			zap.String("order_id", orderID.String()),
+			zap.String("machine_id", claims.MachineID.String()),
+			zap.Int32("slot_index", slotIndex),
+			zap.String("from", "slot_index"),
+			zap.String("to", "order_line"),
+			zap.String("reason", "vend_slot_not_matched"),
+			zap.Int32("resolved_slot_index", st.Vend.SlotIndex),
+		)
+	}
+	log.Info("GET_ORDER_STATUS_LOOKUP",
+		zap.String("order_id", orderID.String()),
+		zap.String("machine_id", claims.MachineID.String()),
+		zap.Int32("slot_index", slotIndex),
+		zap.String("lookup_source", "primary"),
+		zap.Bool("order_found", true),
+		zap.Bool("payment_found", st.PaymentPresent),
+		zap.String("order_state", st.Order.Status),
+		zap.String("payment_state", st.Payment.State),
+	)
 	// Accelerate pending QR payments via provider query (ZaloPay-style); IPN/MQTT remain primary.
 	if st.PaymentPresent {
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
 			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID)
-			st, err = s.getStatus(ctx, claims, svc, orderID, req.GetSlotIndex())
+			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {
 				return nil, mapCommerceGRPCErr(err)
 			}
@@ -781,6 +826,15 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	if st.PaymentPresent {
 		resp.PaymentState = st.Payment.State
 	}
+	log.Info("GET_ORDER_STATUS_SUCCESS",
+		zap.String("order_id", orderID.String()),
+		zap.String("machine_id", claims.MachineID.String()),
+		zap.Int32("slot_index", slotIndex),
+		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+		zap.String("order_state", st.Order.Status),
+		zap.String("payment_state", resp.GetPaymentState()),
+		zap.Bool("payment_present", st.PaymentPresent),
+	)
 	return resp, nil
 }
 

@@ -688,6 +688,64 @@ func (s *Service) GetCheckoutStatusByLineSequence(ctx context.Context, companyID
 	return s.getCheckoutStatus(ctx, companyID, orderID, 0, lineSequence)
 }
 
+// GetOrderStatusView returns authoritative order and payment state for machine status polling.
+// Vend resolution tolerates slot_index mismatches by falling back to the lowest line_sequence vend line.
+func (s *Service) GetOrderStatusView(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error) {
+	if s.life == nil {
+		return CheckoutStatusView{}, ErrNotConfigured
+	}
+	o, err := s.life.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return CheckoutStatusView{}, err
+	}
+	if uuid.Nil != companyID {
+		return CheckoutStatusView{}, ErrOrgMismatch
+	}
+	v, err := s.resolveVendForOrderStatusRead(ctx, orderID, slotIndex, lineSequence)
+	if err != nil {
+		return CheckoutStatusView{}, err
+	}
+	out := CheckoutStatusView{Order: o, Vend: v}
+	pay, err := s.resolveAuthoritativePayment(ctx, orderID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return out, nil
+		}
+		return CheckoutStatusView{}, err
+	}
+	out.Payment = pay
+	out.PaymentPresent = true
+	return out, nil
+}
+
+func (s *Service) resolveVendForOrderStatusRead(ctx context.Context, orderID uuid.UUID, slotIndex, lineSequence int32) (domaincommerce.VendSession, error) {
+	if lineSequence > 0 {
+		v, err := s.life.GetVendSessionByOrderAndLineSequence(ctx, orderID, lineSequence)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				return domaincommerce.VendSession{}, nil
+			}
+			return domaincommerce.VendSession{}, err
+		}
+		return v, nil
+	}
+	v, err := s.life.GetVendSessionByOrderAndSlot(ctx, orderID, slotIndex)
+	if err == nil {
+		return v, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return domaincommerce.VendSession{}, err
+	}
+	sessions, err := s.life.ListVendSessionsForOrder(ctx, orderID)
+	if err != nil {
+		return domaincommerce.VendSession{}, err
+	}
+	if len(sessions) == 0 {
+		return domaincommerce.VendSession{}, nil
+	}
+	return sessions[0], nil
+}
+
 func (s *Service) getCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error) {
 	if s.life == nil {
 		return CheckoutStatusView{}, ErrNotConfigured

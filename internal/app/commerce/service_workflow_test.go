@@ -33,6 +33,13 @@ func (s *stubLifecycleForWorkflow) GetVendSessionByOrderAndLineSequence(context.
 	return s.vend, nil
 }
 
+func (s *stubLifecycleForWorkflow) ListVendSessionsForOrder(context.Context, uuid.UUID) ([]domaincommerce.VendSession, error) {
+	if s.vend.ID == uuid.Nil {
+		return nil, nil
+	}
+	return []domaincommerce.VendSession{s.vend}, nil
+}
+
 func (s *stubLifecycleForWorkflow) UpdateVendSessionState(context.Context, UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	s.vend.State = "failed"
 	return s.vend, nil

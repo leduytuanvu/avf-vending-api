@@ -68,6 +68,18 @@ func (s *Store) GetVendSessionByOrderAndLineSequence(ctx context.Context, orderI
 	return mapVendLineSequenceRow(row), nil
 }
 
+func (s *Store) ListVendSessionsForOrder(ctx context.Context, orderID uuid.UUID) ([]domaincommerce.VendSession, error) {
+	rows, err := db.New(s.pool).ListVendSessionsByOrder(ctx, orderID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domaincommerce.VendSession, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, mapVendListRow(row))
+	}
+	return out, nil
+}
+
 func (s *Store) UpdateVendSessionState(ctx context.Context, p appcommerce.UpdateVendSessionParams) (domaincommerce.VendSession, error) {
 	var fr pgtype.Text
 	if p.FailureReason != nil {

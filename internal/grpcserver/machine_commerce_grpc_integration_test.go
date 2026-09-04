@@ -260,6 +260,66 @@ func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
 	require.Equal(t, "completed", succ.GetOrderStatus())
 }
 
+func TestMachineGRPC_Commerce_GetOrderStatus_SlotZeroFallsBackToOrderVendLine(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "qr-status-slot0-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-q-co"),
+		ProductId: testfixtures.DevProductWater.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(1)},
+	})
+	require.NoError(t, err)
+
+	got, err := cli.GetOrderStatus(md, &machinev1.GetOrderStatusRequest{
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.Equal(t, co.GetOrderId(), got.GetOrderId())
+	require.Equal(t, "created", got.GetOrderStatus())
+	require.Equal(t, "pending", got.GetVendState())
+
+	payOut, err := cli.CreatePaymentSession(md, &machinev1.CreatePaymentSessionRequest{
+		Context:      testCommerceIdemCtx(idem+":pay", "evt-pay"),
+		OrderId:      co.GetOrderId(),
+		Provider:     "psp_grpc_int",
+		PaymentState: "created",
+		AmountMinor:  co.GetTotalMinor(),
+		Currency:     "USD",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, payOut.GetQrPayloadOrUrl())
+
+	got, err = cli.GetOrderStatus(md, &machinev1.GetOrderStatusRequest{
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.True(t, got.GetPaymentPresent())
+	require.Equal(t, "created", got.GetPaymentState())
+}
+
+func TestMachineGRPC_Commerce_GetOrderStatus_NotFoundForMissingOrder(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	_, err := cli.GetOrderStatus(md, &machinev1.GetOrderStatusRequest{
+		OrderId: uuid.NewString(),
+	})
+	require.Error(t, err)
+	require.Equal(t, codes.NotFound, status.Code(err))
+}
+
 func TestMachineGRPC_Commerce_StartVend_BlockedBeforePayment(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())

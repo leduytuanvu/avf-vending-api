@@ -25,6 +25,7 @@ type CommerceLifecycleStore interface {
 
 	GetVendSessionByOrderAndSlot(ctx context.Context, orderID uuid.UUID, slotIndex int32) (domaincommerce.VendSession, error)
 	GetVendSessionByOrderAndLineSequence(ctx context.Context, orderID uuid.UUID, lineSequence int32) (domaincommerce.VendSession, error)
+	ListVendSessionsForOrder(ctx context.Context, orderID uuid.UUID) ([]domaincommerce.VendSession, error)
 	UpdateVendSessionState(ctx context.Context, p UpdateVendSessionParams) (domaincommerce.VendSession, error)
 
 	GetLatestPaymentForOrder(ctx context.Context, orderID uuid.UUID) (domaincommerce.Payment, error)
@@ -87,6 +88,9 @@ type Orchestrator interface {
 
 	GetCheckoutStatus(ctx context.Context, companyID, orderID uuid.UUID, slotIndex int32) (CheckoutStatusView, error)
 	GetCheckoutStatusByLineSequence(ctx context.Context, companyID, orderID uuid.UUID, lineSequence int32) (CheckoutStatusView, error)
+	// GetOrderStatusView is the order-authoritative read path for status polling.
+	// Missing vend sessions for the requested slot do not surface as ErrNotFound.
+	GetOrderStatusView(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
 	RefreshPendingPaymentFromProvider(ctx context.Context, companyID, orderID uuid.UUID)
 
