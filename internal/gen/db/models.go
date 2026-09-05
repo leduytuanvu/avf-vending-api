@@ -1055,6 +1055,16 @@ type MachineOperatorSession struct {
 	UpdatedAt   time.Time
 }
 
+type MachinePaymentMethod struct {
+	ID        uuid.UUID
+	MachineID uuid.UUID
+	MethodKey string
+	Enabled   bool
+	SortOrder int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type MachinePlanogramDraft struct {
 	ID        uuid.UUID
 	MachineID uuid.UUID

@@ -45,10 +45,7 @@ func (s *machineCommerceServer) machineFeatureFlags(ctx context.Context, machine
 
 func (s *machineCommerceServer) machinePaymentMethods(ctx context.Context, machineID uuid.UUID) platformpayments.MachinePaymentMethodsView {
 	flags := s.machineFeatureFlags(ctx, machineID)
-	if s.deps.PaymentRuntime != nil {
-		return s.deps.PaymentRuntime.ResolveMachinePaymentMethodsForMachine(s.deps.Config, flags)
-	}
-	return platformpayments.ResolveMachinePaymentMethods(s.deps.Config, nil, flags)
+	return resolveMachinePaymentMethods(ctx, s.deps, machineID, flags)
 }
 
 func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machinev1.PaymentMethodsConfig {

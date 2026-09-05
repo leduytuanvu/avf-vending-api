@@ -712,7 +712,7 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	if resp.RuntimeHints != nil && resp.RuntimeHints.FeatureFlags != nil {
 		flags = resp.RuntimeHints.FeatureFlags
 	}
-	paymentMethods := resolveMachinePaymentMethods(deps, flags)
+	paymentMethods := resolveMachinePaymentMethods(ctx, deps, machineID, flags)
 	slog.Info("PAYMENT_CAPABILITY_RESOLVED",
 		"machine_id", machineID.String(),
 		"cash_enabled", paymentMethods.CashEnabled,
@@ -723,13 +723,6 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	resp.PaymentMethods = mapPaymentMethodsProto(paymentMethods)
 	applyBootstrapLayoutFields(resp, layoutBundle)
 	return resp, nil
-}
-
-func resolveMachinePaymentMethods(deps MachineGRPCServicesDeps, flags map[string]bool) platformpayments.MachinePaymentMethodsView {
-	if deps.PaymentRuntime != nil {
-		return deps.PaymentRuntime.ResolveMachinePaymentMethodsForMachine(deps.Config, flags)
-	}
-	return platformpayments.ResolveMachinePaymentMethods(deps.Config, nil, flags)
 }
 
 func mapRuntimeHintsProto(h *featureflags.RuntimeHints) *machinev1.RuntimeHints {

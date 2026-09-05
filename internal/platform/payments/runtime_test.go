@@ -111,3 +111,67 @@ func TestMachinePaymentMethods_MultiProviderAllowlist(t *testing.T) {
 		require.True(t, p.SessionCreatable, "provider %s should be session_creatable", key)
 	}
 }
+
+func TestMachinePaymentMethodsWithOverride_NarrowsProviders(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		AppEnv:     config.AppEnvProduction,
+		PaymentEnv: config.PaymentEnvLive,
+		Commerce: config.CommerceHTTPConfig{
+			DefaultPaymentProvider:  "momo",
+			AllowedPaymentProviders: []string{"momo", "zalopay", "vietqr"},
+		},
+	}
+	cfg.PSP.MoMo.AVF.PartnerCode = "PC"
+	cfg.PSP.MoMo.AVF.AccessKey = "ak"
+	cfg.PSP.MoMo.AVF.SecretKey = "sk"
+	cfg.PSP.MoMo.AVF.Endpoint = "https://test.momo.vn"
+	cfg.PSP.ZaloPay.AppID = "1"
+	cfg.PSP.ZaloPay.Key1 = "k1"
+	cfg.PSP.ZaloPay.Key2 = "k2"
+	cfg.PSP.ZaloPay.Endpoint = "https://sb-openapi.zalopay.vn"
+	reg := NewRegistry(cfg)
+	methods := ResolveMachinePaymentMethodsWithOverride(cfg, reg, nil, MachineMethodOverride{
+		Configured: true,
+		Enabled: map[string]bool{
+			"cash":    true,
+			"momo":    true,
+			"vietqr":  true,
+			"zalopay": false,
+		},
+	})
+	require.True(t, methods.CashEnabled)
+	byKey := map[string]ProviderCapabilityView{}
+	for _, p := range methods.Providers {
+		byKey[p.Key] = p
+	}
+	require.True(t, byKey["momo"].SessionCreatable)
+	require.False(t, byKey["zalopay"].SessionCreatable)
+	require.Equal(t, QRCardUnavailableReasonMachineMethodDisabled, byKey["zalopay"].UnavailableReason)
+	require.True(t, byKey["vietqr"].SessionCreatable)
+}
+
+func TestMachinePaymentMethodsWithOverride_EmptyUsesDeployment(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		AppEnv:     config.AppEnvProduction,
+		PaymentEnv: config.PaymentEnvLive,
+		Commerce: config.CommerceHTTPConfig{
+			DefaultPaymentProvider:  "momo",
+			AllowedPaymentProviders: []string{"momo", "zalopay", "vietqr"},
+		},
+	}
+	cfg.PSP.MoMo.AVF.PartnerCode = "PC"
+	cfg.PSP.MoMo.AVF.AccessKey = "ak"
+	cfg.PSP.MoMo.AVF.SecretKey = "sk"
+	cfg.PSP.MoMo.AVF.Endpoint = "https://test.momo.vn"
+	cfg.PSP.ZaloPay.AppID = "1"
+	cfg.PSP.ZaloPay.Key1 = "k1"
+	cfg.PSP.ZaloPay.Key2 = "k2"
+	cfg.PSP.ZaloPay.Endpoint = "https://sb-openapi.zalopay.vn"
+	reg := NewRegistry(cfg)
+	base := ResolveMachinePaymentMethods(cfg, reg, nil)
+	override := ResolveMachinePaymentMethodsWithOverride(cfg, reg, nil, MachineMethodOverride{})
+	require.Equal(t, base.QRCardEnabled, override.QRCardEnabled)
+	require.Len(t, base.Providers, len(override.Providers))
+}

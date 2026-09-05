@@ -3205,3 +3205,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_price_book_items_book_product ON price_bo
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_planograms_name_revision ON planograms (name, revision);
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_orders_idempotency ON orders (idempotency_key) WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> '';
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_feature_flags_key ON feature_flags (flag_key);
+
+-- Per-machine payment method allowlist (migration 00029_machine_payment_methods.sql).
+CREATE TABLE machine_payment_methods (
+    id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
+    machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE CASCADE,
+    method_key text NOT NULL CHECK (
+        method_key IN ('cash', 'momo', 'zalopay', 'vietqr', 'vnpay', 'shopeepay')
+    ),
+    enabled boolean NOT NULL DEFAULT true,
+    sort_order int NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uniq_machine_payment_methods
+    ON machine_payment_methods (machine_id, method_key);
+
+CREATE INDEX ix_machine_payment_methods_machine
+    ON machine_payment_methods (machine_id);
