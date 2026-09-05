@@ -83,6 +83,20 @@ jobs:
           echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
           echo "Using loopback SSH target \`127.0.0.1\` for app-node A (public host \`${public_host}\`, self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Augment known_hosts for app node B
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          host="${APP_NODE_B_HOST:-}"
+          [[ -n "${host}" ]] || { echo "APP_NODE_B_HOST not set; skipping"; exit 0; }
+          if ssh-keygen -F "${host}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            || ssh-keygen -F "[${host}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            echo "known_hosts already contains ${host}"
+            exit 0
+          fi
+          echo "Adding SSH host key for app-node B (${host}) via ssh-keyscan"
+          ssh-keyscan -T 10 -H -p "${SSH_PORT}" -t ed25519,ecdsa,rsa "${host}" >> "${HOME}/.ssh/known_hosts"
+
       - name: Validate pinned SSH host identities
         shell: bash
         run: |
