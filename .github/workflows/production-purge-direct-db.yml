@@ -33,6 +33,7 @@ jobs:
     name: Direct production purge
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: production
     env:
       CONFIRM_PRODUCTION_PURGE: ${{ github.event.inputs.confirm_purge }}
       PURGE_PHASE: ${{ github.event.inputs.phase }}
