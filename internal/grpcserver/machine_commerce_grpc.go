@@ -769,6 +769,7 @@ func checkoutViewToGetOrderResponse(st appcommerce.CheckoutStatusView) *machinev
 		VendSlotIndex:  st.Vend.SlotIndex,
 		ProductId:      st.Vend.ProductID.String(),
 		PaymentPresent: st.PaymentPresent,
+		PricingSource:  st.Order.PricingSource,
 	}
 	if st.PaymentPresent {
 		out.PaymentId = st.Payment.ID.String()
@@ -855,6 +856,7 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		OrderStatus:    st.Order.Status,
 		VendState:      st.Vend.State,
 		PaymentPresent: st.PaymentPresent,
+		PricingSource:  st.Order.PricingSource,
 	}
 	if st.PaymentPresent {
 		resp.PaymentState = st.Payment.State

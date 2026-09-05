@@ -102,9 +102,9 @@ func (s *Service) CreateSession(ctx context.Context, in CreateSessionRequest) (C
 	clientProvider := method
 	providerIDForResponse := method
 	if method == "vietqr" {
-		clientProvider = "zalopay"
-		providerIDForResponse = "zalopay"
 		preferred = "vietqr"
+		clientProvider = "vietqr"
+		providerIDForResponse = "vietqr"
 	}
 
 	productID, slotIndex, err := s.resolveProductSlot(ctx, mach.ID, in)

@@ -243,6 +243,8 @@ message ReportLocalLayoutSlot {
   string product_id = 5;
   int32 max_quantity = 6;
   int64 price_minor = 7;
+  // Matches machine_slots.localPricingRevision for this slot at report time.
+  int64 local_pricing_revision = 8;
 }
 
 message ReportLocalLayoutRequest {

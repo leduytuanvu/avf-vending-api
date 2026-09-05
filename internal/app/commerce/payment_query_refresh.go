@@ -64,8 +64,35 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		return
 	}
 	providerRef := ""
+	attemptPayload := []byte(nil)
 	if st.Payment.ID != uuid.Nil {
 		if getter, ok := s.life.(interface {
+			GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error)
+			GetLatestPaymentAttemptPayload(ctx context.Context, paymentID uuid.UUID) ([]byte, error)
+		}); ok {
+			stored, refErr := getter.GetLatestPaymentAttemptProviderReference(ctx, st.Payment.ID)
+			if refErr != nil {
+				log.Warn("PAYMENT_QUERY_REFRESH_ERROR",
+					zap.String("order_id", orderID.String()),
+					zap.String("payment_id", st.Payment.ID.String()),
+					zap.String("stage", "provider_reference_lookup"),
+					zap.Error(refErr),
+				)
+			} else {
+				providerRef = strings.TrimSpace(stored)
+			}
+			payload, payloadErr := getter.GetLatestPaymentAttemptPayload(ctx, st.Payment.ID)
+			if payloadErr != nil {
+				log.Warn("PAYMENT_QUERY_REFRESH_ERROR",
+					zap.String("order_id", orderID.String()),
+					zap.String("payment_id", st.Payment.ID.String()),
+					zap.String("stage", "attempt_payload_lookup"),
+					zap.Error(payloadErr),
+				)
+			} else {
+				attemptPayload = payload
+			}
+		} else if getter, ok := s.life.(interface {
 			GetLatestPaymentAttemptProviderReference(ctx context.Context, paymentID uuid.UUID) (string, error)
 		}); ok {
 			stored, refErr := getter.GetLatestPaymentAttemptProviderReference(ctx, st.Payment.ID)
@@ -110,6 +137,7 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		ProviderReference:   providerRef,
 		AmountMinor:         st.Payment.AmountMinor,
 		MachineExternalCode: strings.TrimSpace(machineExternalCode),
+		AttemptPayloadJSON:  attemptPayload,
 	})
 	if err != nil {
 		log.Warn("PAYMENT_QUERY_PROVIDER_ERROR",

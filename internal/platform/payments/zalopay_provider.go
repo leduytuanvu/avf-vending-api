@@ -120,12 +120,14 @@ func (p *ZaloPayProvider) CreatePaymentSession(ctx context.Context, in CreatePay
 		"qr_code":            qr,
 		"return_code":        res["return_code"],
 	})
+	expiresAt := now.Add(15 * time.Minute)
 	return CreatePaymentSessionResult{
 		ProviderReference:   providerRef,
 		ProviderSessionID:   appTransID,
 		QRPayloadOrURL:      qr,
 		PaymentURL:          qr,
 		CheckoutURL:         qr,
+		ExpiresAt:           &expiresAt,
 		ProviderDisplayJSON: display,
 	}, nil
 }
@@ -138,9 +140,12 @@ func (p *ZaloPayProvider) QueryPaymentStatus(ctx context.Context, lookup domainc
 	if appTransID == "" {
 		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("zalopay query: provider_reference required")
 	}
-	// ProviderReference is usually the short order_code; rebuild yyMMdd_ref when needed.
 	if !strings.Contains(appTransID, "_") {
-		appTransID = zalopay.AppTransID(appTransID, time.Now())
+		if stored := zalopayAppTransIDFromPayload(lookup.AttemptPayloadJSON); stored != "" {
+			appTransID = stored
+		} else {
+			appTransID = zalopay.AppTransID(appTransID, time.Now())
+		}
 	}
 	mac := zalopay.QueryMAC(p.creds.Key1, p.creds.AppID, appTransID)
 	fields := map[string]string{
@@ -222,4 +227,15 @@ func (p *ZaloPayProvider) VerifyAndParseCallback(raw []byte) (orderID, status, z
 		Currency:               &cur,
 	}
 	return orderID, status, zpTransID, event, nil
+}
+
+func zalopayAppTransIDFromPayload(payload []byte) string {
+	if len(payload) == 0 {
+		return ""
+	}
+	var display map[string]any
+	if err := json.Unmarshal(payload, &display); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(asString(display["app_trans_id"]))
 }

@@ -505,13 +505,14 @@ func marshalReportLocalLayoutSlots(slots []*machinev1.ReportLocalLayoutSlot) ([]
 		return nil, fmt.Errorf("slots required")
 	}
 	type slotJSON struct {
-		SlotCode          string `json:"slotCode"`
-		SlotOrdinal       int32  `json:"slotOrdinal,omitempty"`
-		LogicalCoordinate string `json:"logicalCoordinate,omitempty"`
-		PhysicalLane      int32  `json:"physicalLane,omitempty"`
-		ProductID         string `json:"productId,omitempty"`
-		MaxQuantity       int32  `json:"maxQuantity,omitempty"`
-		PriceMinor        int64  `json:"priceMinor,omitempty"`
+		SlotCode             string `json:"slotCode"`
+		SlotOrdinal          int32  `json:"slotOrdinal,omitempty"`
+		LogicalCoordinate    string `json:"logicalCoordinate,omitempty"`
+		PhysicalLane         int32  `json:"physicalLane,omitempty"`
+		ProductID            string `json:"productId,omitempty"`
+		MaxQuantity          int32  `json:"maxQuantity,omitempty"`
+		PriceMinor           int64  `json:"priceMinor,omitempty"`
+		LocalPricingRevision int64  `json:"localPricingRevision,omitempty"`
 	}
 	out := make([]slotJSON, 0, len(slots))
 	for _, sl := range slots {
@@ -519,13 +520,14 @@ func marshalReportLocalLayoutSlots(slots []*machinev1.ReportLocalLayoutSlot) ([]
 			return nil, fmt.Errorf("slot entry required")
 		}
 		out = append(out, slotJSON{
-			SlotCode:          strings.TrimSpace(sl.GetSlotCode()),
-			SlotOrdinal:       sl.GetSlotOrdinal(),
-			LogicalCoordinate: strings.TrimSpace(sl.GetLogicalCoordinate()),
-			PhysicalLane:      sl.GetPhysicalLane(),
-			ProductID:         strings.TrimSpace(sl.GetProductId()),
-			MaxQuantity:       sl.GetMaxQuantity(),
-			PriceMinor:        sl.GetPriceMinor(),
+			SlotCode:             strings.TrimSpace(sl.GetSlotCode()),
+			SlotOrdinal:          sl.GetSlotOrdinal(),
+			LogicalCoordinate:    strings.TrimSpace(sl.GetLogicalCoordinate()),
+			PhysicalLane:         sl.GetPhysicalLane(),
+			ProductID:            strings.TrimSpace(sl.GetProductId()),
+			MaxQuantity:          sl.GetMaxQuantity(),
+			PriceMinor:           sl.GetPriceMinor(),
+			LocalPricingRevision: sl.GetLocalPricingRevision(),
 		})
 	}
 	return json.Marshal(out)
@@ -713,12 +715,20 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 		flags = resp.RuntimeHints.FeatureFlags
 	}
 	paymentMethods := resolveMachinePaymentMethods(ctx, deps, machineID, flags)
+	providerDetails := make([]string, 0, len(paymentMethods.Providers))
+	for _, p := range paymentMethods.Providers {
+		providerDetails = append(providerDetails, fmt.Sprintf(
+			"%s:enabled=%t:ready=%t:session_creatable=%t:reason=%s",
+			p.Key, p.Enabled, p.Ready, p.SessionCreatable, p.UnavailableReason,
+		))
+	}
 	slog.Info("PAYMENT_CAPABILITY_RESOLVED",
 		"machine_id", machineID.String(),
 		"cash_enabled", paymentMethods.CashEnabled,
 		"qr_enabled", paymentMethods.QRCardEnabled,
 		"payment_mode", paymentMethods.PaymentMode,
 		"providers", strings.Join(platformpayments.EnabledSessionCreatableProviders(paymentMethods), ","),
+		"provider_details", strings.Join(providerDetails, ";"),
 	)
 	resp.PaymentMethods = mapPaymentMethodsProto(paymentMethods)
 	applyBootstrapLayoutFields(resp, layoutBundle)

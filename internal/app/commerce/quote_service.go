@@ -204,11 +204,7 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 			}
 		}
 		pricingSource = classifyMachineLocalPricingSourceFromMirror(snap, mirror)
-		pricingEvent := "PRICING_SNAPSHOT_ACCEPTED_UNVERIFIED"
-		if pricingSource == PricingSourceMachineLocalVerified {
-			pricingEvent = "PRICING_SNAPSHOT_ACCEPTED_VERIFIED"
-		}
-		slog.Info(pricingEvent,
+		slog.Info("QUOTE_PRICING_SOURCE_RESOLVED",
 			"machine_id", in.MachineID.String(),
 			"snapshot_id", snap.SnapshotID,
 			"local_pricing_revision", snap.LocalPricingRevision,
