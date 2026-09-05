@@ -2150,8 +2150,10 @@ type GetOrderResponse struct {
 	PaymentId       string                 `protobuf:"bytes,12,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
 	PaymentProvider string                 `protobuf:"bytes,13,opt,name=payment_provider,json=paymentProvider,proto3" json:"payment_provider,omitempty"`
 	PaymentState    string                 `protobuf:"bytes,14,opt,name=payment_state,json=paymentState,proto3" json:"payment_state,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// server_priced | machine_local_verified | machine_local_unverified
+	PricingSource string `protobuf:"bytes,15,opt,name=pricing_source,json=pricingSource,proto3" json:"pricing_source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetOrderResponse) Reset() {
@@ -2282,6 +2284,13 @@ func (x *GetOrderResponse) GetPaymentState() string {
 	return ""
 }
 
+func (x *GetOrderResponse) GetPricingSource() string {
+	if x != nil {
+		return x.PricingSource
+	}
+	return ""
+}
+
 type GetOrderStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
@@ -2341,8 +2350,10 @@ type GetOrderStatusResponse struct {
 	VendState      string                 `protobuf:"bytes,3,opt,name=vend_state,json=vendState,proto3" json:"vend_state,omitempty"`
 	PaymentPresent bool                   `protobuf:"varint,4,opt,name=payment_present,json=paymentPresent,proto3" json:"payment_present,omitempty"`
 	PaymentState   string                 `protobuf:"bytes,5,opt,name=payment_state,json=paymentState,proto3" json:"payment_state,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// server_priced | machine_local_verified | machine_local_unverified
+	PricingSource string `protobuf:"bytes,6,opt,name=pricing_source,json=pricingSource,proto3" json:"pricing_source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetOrderStatusResponse) Reset() {
@@ -2406,6 +2417,13 @@ func (x *GetOrderStatusResponse) GetPaymentPresent() bool {
 func (x *GetOrderStatusResponse) GetPaymentState() string {
 	if x != nil {
 		return x.PaymentState
+	}
+	return ""
+}
+
+func (x *GetOrderStatusResponse) GetPricingSource() string {
+	if x != nil {
+		return x.PricingSource
 	}
 	return ""
 }
@@ -3796,7 +3814,7 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x0fGetOrderRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
-	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\x95\x04\n" +
+	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\xbc\x04\n" +
 	"\x10GetOrderResponse\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12!\n" +
 	"\forder_status\x18\x02 \x01(\tR\vorderStatus\x12\x1a\n" +
@@ -3816,18 +3834,20 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\n" +
 	"payment_id\x18\f \x01(\tR\tpaymentId\x12)\n" +
 	"\x10payment_provider\x18\r \x01(\tR\x0fpaymentProvider\x12#\n" +
-	"\rpayment_state\x18\x0e \x01(\tR\fpaymentState\"Q\n" +
+	"\rpayment_state\x18\x0e \x01(\tR\fpaymentState\x12%\n" +
+	"\x0epricing_source\x18\x0f \x01(\tR\rpricingSource\"Q\n" +
 	"\x15GetOrderStatusRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
-	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\xc3\x01\n" +
+	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\xea\x01\n" +
 	"\x16GetOrderStatusResponse\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12!\n" +
 	"\forder_status\x18\x02 \x01(\tR\vorderStatus\x12\x1d\n" +
 	"\n" +
 	"vend_state\x18\x03 \x01(\tR\tvendState\x12'\n" +
 	"\x0fpayment_present\x18\x04 \x01(\bR\x0epaymentPresent\x12#\n" +
-	"\rpayment_state\x18\x05 \x01(\tR\fpaymentState\"n\n" +
+	"\rpayment_state\x18\x05 \x01(\tR\fpaymentState\x12%\n" +
+	"\x0epricing_source\x18\x06 \x01(\tR\rpricingSource\"n\n" +
 	"\x12HardwareCommandRef\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12 \n" +

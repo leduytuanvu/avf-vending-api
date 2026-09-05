@@ -294,6 +294,8 @@ message GetOrderResponse {
   string payment_id = 12;
   string payment_provider = 13;
   string payment_state = 14;
+  // server_priced | machine_local_verified | machine_local_unverified
+  string pricing_source = 15;
 }
 
 message GetOrderStatusRequest {
@@ -307,6 +309,8 @@ message GetOrderStatusResponse {
   string vend_state = 3;
   bool payment_present = 4;
   string payment_state = 5;
+  // server_priced | machine_local_verified | machine_local_unverified
+  string pricing_source = 6;
 }
 
 // HardwareCommandRef links a vend outcome to a command_ledger / machine_command_attempts row.

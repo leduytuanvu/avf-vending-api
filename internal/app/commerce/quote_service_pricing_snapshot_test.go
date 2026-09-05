@@ -76,7 +76,7 @@ func TestClassifyMachineLocalPricingSourceFromMirror_verifiedWhenMirrorMatches(t
 	t.Parallel()
 	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	slotsJSON, err := json.Marshal([]mirrorSlotPrice{
-		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 2000},
+		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 2000, LocalPricingRevision: 2},
 	})
 	require.NoError(t, err)
 	source := classifyMachineLocalPricingSourceFromMirror(
@@ -98,7 +98,7 @@ func TestClassifyMachineLocalPricingSourceFromMirror_unverifiedWhenMirrorPriceDi
 	t.Parallel()
 	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	slotsJSON, err := json.Marshal([]mirrorSlotPrice{
-		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 15000},
+		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 15000, LocalPricingRevision: 1},
 	})
 	require.NoError(t, err)
 	source := classifyMachineLocalPricingSourceFromMirror(
@@ -119,7 +119,7 @@ func TestClassifyMachineLocalPricingSourceFromMirror_unverifiedWhenRevisionStale
 	t.Parallel()
 	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
 	slotsJSON, err := json.Marshal([]mirrorSlotPrice{
-		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 2000},
+		{SlotCode: "A1", ProductID: productID.String(), PriceMinor: 2000, LocalPricingRevision: 1},
 	})
 	require.NoError(t, err)
 	source := classifyMachineLocalPricingSourceFromMirror(
@@ -127,7 +127,7 @@ func TestClassifyMachineLocalPricingSourceFromMirror_unverifiedWhenRevisionStale
 			SubtotalMinor:        2000,
 			TaxMinor:             0,
 			TotalMinor:           2000,
-			LocalPricingRevision: 1,
+			LocalPricingRevision: 5,
 			Lines: []MachinePricingSnapshotLineInput{
 				{LineSequence: 1, ProductID: productID, SlotCode: "A1", UnitPriceMinor: 2000, LineSubtotalMinor: 2000, Quantity: 1},
 			},

@@ -94,6 +94,7 @@ type PaymentProviderLookup struct {
 	ProviderReference   string // PSP order/ref code when known (payment_attempt.provider_reference)
 	AmountMinor         int64  // optional; required by some PSPs (e.g. ShopeePay check)
 	MachineExternalCode string // machine_code for AVF/TFO tenant selection (MoMo)
+	AttemptPayloadJSON  []byte // latest payment_attempt.payload for provider session hints (e.g. ZaloPay app_trans_id)
 }
 
 // PaymentStatusSnapshot is a provider-normalized payment state hint (adapters interpret ProviderHint).

@@ -125,12 +125,14 @@ func (p *MoMoProvider) CreatePaymentSession(ctx context.Context, in CreatePaymen
 		"qr_code_url":        qr,
 		"result_code":        res["resultCode"],
 	})
+	expiresAt := time.Now().UTC().Add(15 * time.Minute)
 	return CreatePaymentSessionResult{
 		ProviderReference:   providerRef,
 		ProviderSessionID:   requestID,
 		QRPayloadOrURL:      qr,
 		PaymentURL:          qr,
 		CheckoutURL:         qr,
+		ExpiresAt:           &expiresAt,
 		ProviderDisplayJSON: display,
 	}, nil
 }

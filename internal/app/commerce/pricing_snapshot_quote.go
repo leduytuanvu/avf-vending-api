@@ -13,9 +13,10 @@ const (
 )
 
 type mirrorSlotPrice struct {
-	SlotCode   string `json:"slotCode"`
-	ProductID  string `json:"productId"`
-	PriceMinor int64  `json:"priceMinor"`
+	SlotCode             string `json:"slotCode"`
+	ProductID            string `json:"productId"`
+	PriceMinor           int64  `json:"priceMinor"`
+	LocalPricingRevision int64  `json:"localPricingRevision"`
 }
 
 func validateMachinePricingSnapshotMultiLine(snap MachinePricingSnapshotInput, lineCount int) error {
@@ -89,20 +90,21 @@ func classifyMachineLocalPricingSourceFromMirror(snap MachinePricingSnapshotInpu
 	if err != nil || len(prices) == 0 {
 		return PricingSourceMachineLocalUnverified
 	}
-	if snap.LocalPricingRevision > 0 && mirror.Revision > 0 && snap.LocalPricingRevision < int64(mirror.Revision) {
-		return PricingSourceMachineLocalUnverified
-	}
 	for _, ln := range snap.Lines {
 		key := mirrorSlotKey(ln.SlotCode, ln.ProductID.String())
-		mirrorPrice, ok := prices[key]
-		if !ok || mirrorPrice != ln.UnitPriceMinor {
+		mirrorSlot, ok := prices[key]
+		if !ok || mirrorSlot.PriceMinor != ln.UnitPriceMinor {
+			return PricingSourceMachineLocalUnverified
+		}
+		if snap.LocalPricingRevision > 0 && mirrorSlot.LocalPricingRevision > 0 &&
+			mirrorSlot.LocalPricingRevision < snap.LocalPricingRevision {
 			return PricingSourceMachineLocalUnverified
 		}
 	}
 	return PricingSourceMachineLocalVerified
 }
 
-func parseMirrorSlotPrices(slotsJSON []byte) (map[string]int64, error) {
+func parseMirrorSlotPrices(slotsJSON []byte) (map[string]mirrorSlotPrice, error) {
 	trim := strings.TrimSpace(string(slotsJSON))
 	if trim == "" || trim == "[]" {
 		return nil, nil
@@ -111,13 +113,13 @@ func parseMirrorSlotPrices(slotsJSON []byte) (map[string]int64, error) {
 	if err := json.Unmarshal(slotsJSON, &slots); err != nil {
 		return nil, err
 	}
-	out := make(map[string]int64, len(slots))
+	out := make(map[string]mirrorSlotPrice, len(slots))
 	for _, slot := range slots {
 		code := strings.TrimSpace(slot.SlotCode)
 		if code == "" {
 			continue
 		}
-		out[mirrorSlotKey(code, strings.TrimSpace(slot.ProductID))] = slot.PriceMinor
+		out[mirrorSlotKey(code, strings.TrimSpace(slot.ProductID))] = slot
 	}
 	return out, nil
 }

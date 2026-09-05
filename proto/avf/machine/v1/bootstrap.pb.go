@@ -1931,8 +1931,10 @@ type ReportLocalLayoutSlot struct {
 	ProductId         string                 `protobuf:"bytes,5,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
 	MaxQuantity       int32                  `protobuf:"varint,6,opt,name=max_quantity,json=maxQuantity,proto3" json:"max_quantity,omitempty"`
 	PriceMinor        int64                  `protobuf:"varint,7,opt,name=price_minor,json=priceMinor,proto3" json:"price_minor,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// Matches machine_slots.localPricingRevision for this slot at report time.
+	LocalPricingRevision int64 `protobuf:"varint,8,opt,name=local_pricing_revision,json=localPricingRevision,proto3" json:"local_pricing_revision,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ReportLocalLayoutSlot) Reset() {
@@ -2010,6 +2012,13 @@ func (x *ReportLocalLayoutSlot) GetMaxQuantity() int32 {
 func (x *ReportLocalLayoutSlot) GetPriceMinor() int64 {
 	if x != nil {
 		return x.PriceMinor
+	}
+	return 0
+}
+
+func (x *ReportLocalLayoutSlot) GetLocalPricingRevision() int64 {
+	if x != nil {
+		return x.LocalPricingRevision
 	}
 	return 0
 }
@@ -2366,7 +2375,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x1cserver_planogram_fingerprint\x18\b \x01(\tR\x1aserverPlanogramFingerprint\x128\n" +
 	"\x18server_media_fingerprint\x18\t \x01(\tR\x16serverMediaFingerprint\x12%\n" +
 	"\x0elayout_changed\x18\n" +
-	" \x01(\bR\rlayoutChanged\"\x8e\x02\n" +
+	" \x01(\bR\rlayoutChanged\"\xc4\x02\n" +
 	"\x15ReportLocalLayoutSlot\x12\x1b\n" +
 	"\tslot_code\x18\x01 \x01(\tR\bslotCode\x12!\n" +
 	"\fslot_ordinal\x18\x02 \x01(\x05R\vslotOrdinal\x12-\n" +
@@ -2376,7 +2385,8 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"product_id\x18\x05 \x01(\tR\tproductId\x12!\n" +
 	"\fmax_quantity\x18\x06 \x01(\x05R\vmaxQuantity\x12\x1f\n" +
 	"\vprice_minor\x18\a \x01(\x03R\n" +
-	"priceMinor\"\xd1\x02\n" +
+	"priceMinor\x124\n" +
+	"\x16local_pricing_revision\x18\b \x01(\x03R\x14localPricingRevision\"\xd1\x02\n" +
 	"\x18ReportLocalLayoutRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12&\n" +
 	"\x0flocal_layout_id\x18\x02 \x01(\tR\rlocalLayoutId\x12\x1a\n" +
