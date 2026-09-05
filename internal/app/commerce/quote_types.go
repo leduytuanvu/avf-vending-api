@@ -44,17 +44,17 @@ type QuoteLineView struct {
 
 // CreateQuoteResult is the quote snapshot for checkout UI.
 type CreateQuoteResult struct {
-	QuoteID                    uuid.UUID
-	MachineID                  uuid.UUID
-	Currency                   string
-	PaymentMethod              string
-	SubtotalMinor              int64
-	DiscountMinor              int64
-	PayableMinor               int64
-	ExpiresAt                  time.Time
-	Lines                      []QuoteLineView
-	Replay                     bool
-	PricingSource              string
+	QuoteID                     uuid.UUID
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	ExpiresAt                   time.Time
+	Lines                       []QuoteLineView
+	Replay                      bool
+	PricingSource               string
 	ServerReferencePayableMinor int64
 }
 

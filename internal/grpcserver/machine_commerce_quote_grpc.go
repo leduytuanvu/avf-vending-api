@@ -106,16 +106,16 @@ func (s *machineCommerceServer) CreateQuote(ctx context.Context, req *machinev1.
 	}
 	zap.L().Info("CreateQuote ok", zap.String("quote_id", out.QuoteID.String()), zap.Bool("replay", out.Replay))
 	return &machinev1.CreateQuoteResponse{
-		Replay:                     out.Replay,
-		QuoteId:                    out.QuoteID.String(),
-		Currency:                   out.Currency,
-		PaymentMethod:              out.PaymentMethod,
-		SubtotalMinor:              out.SubtotalMinor,
-		DiscountMinor:              out.DiscountMinor,
-		PayableMinor:               out.PayableMinor,
-		ExpiresAt:                  timestamppb.New(out.ExpiresAt),
-		Lines:                      respLines,
-		PricingSource:              out.PricingSource,
+		Replay:                      out.Replay,
+		QuoteId:                     out.QuoteID.String(),
+		Currency:                    out.Currency,
+		PaymentMethod:               out.PaymentMethod,
+		SubtotalMinor:               out.SubtotalMinor,
+		DiscountMinor:               out.DiscountMinor,
+		PayableMinor:                out.PayableMinor,
+		ExpiresAt:                   timestamppb.New(out.ExpiresAt),
+		Lines:                       respLines,
+		PricingSource:               out.PricingSource,
 		ServerReferencePayableMinor: out.ServerReferencePayableMinor,
 	}, nil
 }

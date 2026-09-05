@@ -57,18 +57,18 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 		pricingSource = appcommerce.PricingSourceServerPriced
 	}
 	quoteRow, err := q.InsertCheckoutQuote(ctx, db.InsertCheckoutQuoteParams{
-		MachineID:      in.MachineID,
-		Currency:       in.Currency,
-		PaymentMethod:  in.PaymentMethod,
-		SubtotalMinor:  in.SubtotalMinor,
-		DiscountMinor:  in.DiscountMinor,
-		PayableMinor:   in.PayableMinor,
-		State:          "active",
-		IdempotencyKey: optionalStringToPgText(key),
-		ExpiresAt:      in.ExpiresAt.UTC(),
-		PricingSource:  pricingSource,
-		MachinePricingRevision: optionalInt64ToPg(in.MachinePricingRevision),
-		MachinePricingSnapshot: in.MachinePricingSnapshot,
+		MachineID:                   in.MachineID,
+		Currency:                    in.Currency,
+		PaymentMethod:               in.PaymentMethod,
+		SubtotalMinor:               in.SubtotalMinor,
+		DiscountMinor:               in.DiscountMinor,
+		PayableMinor:                in.PayableMinor,
+		State:                       "active",
+		IdempotencyKey:              optionalStringToPgText(key),
+		ExpiresAt:                   in.ExpiresAt.UTC(),
+		PricingSource:               pricingSource,
+		MachinePricingRevision:      optionalInt64ToPg(in.MachinePricingRevision),
+		MachinePricingSnapshot:      in.MachinePricingSnapshot,
 		ServerReferencePayableMinor: optionalInt64ToPg(in.ServerReferencePayableMinor),
 	})
 	if err != nil {

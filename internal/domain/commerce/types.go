@@ -8,27 +8,27 @@ import (
 
 // Order is a domain projection of a persisted customer order.
 type Order struct {
-	ID                     uuid.UUID
-	MachineID              uuid.UUID
-	Status                 string
-	Currency               string
-	SubtotalMinor          int64
-	TaxMinor               int64
-	TotalMinor             int64
-	IdempotencyKey         *string
-	Simulated              bool
-	SimulationRunID        *string
-	SimulationScenario     *string
-	FakeBill               bool
-	FakeBoard              bool
-	WinningPaymentID       *uuid.UUID
-	WinningClaimedAt       *time.Time
-	PricingSource              string
-	MachinePricingRevision     *int64
-	MachinePricingSnapshot     []byte
-	ServerReferenceTotalMinor  int64
-	CreatedAt                  time.Time
-	UpdatedAt              time.Time
+	ID                        uuid.UUID
+	MachineID                 uuid.UUID
+	Status                    string
+	Currency                  string
+	SubtotalMinor             int64
+	TaxMinor                  int64
+	TotalMinor                int64
+	IdempotencyKey            *string
+	Simulated                 bool
+	SimulationRunID           *string
+	SimulationScenario        *string
+	FakeBill                  bool
+	FakeBoard                 bool
+	WinningPaymentID          *uuid.UUID
+	WinningClaimedAt          *time.Time
+	PricingSource             string
+	MachinePricingRevision    *int64
+	MachinePricingSnapshot    []byte
+	ServerReferenceTotalMinor int64
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 // VendSession tracks a single vend attempt for an order line.

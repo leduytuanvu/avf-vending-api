@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	pricingSnapshotMaxSkew       = 24 * time.Hour
-	pricingMaxUnitPriceMinor     = 100_000_000
+	pricingSnapshotMaxSkew   = 24 * time.Hour
+	pricingMaxUnitPriceMinor = 100_000_000
 )
 
 type mirrorSlotPrice struct {

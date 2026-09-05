@@ -342,17 +342,17 @@ func mapPersistQuoteResult(p PersistQuoteResult) CreateQuoteResult {
 		})
 	}
 	return CreateQuoteResult{
-		QuoteID:                    p.QuoteID,
-		MachineID:                  p.MachineID,
-		Currency:                   p.Currency,
-		PaymentMethod:              p.PaymentMethod,
-		SubtotalMinor:              p.SubtotalMinor,
-		DiscountMinor:              p.DiscountMinor,
-		PayableMinor:               p.PayableMinor,
-		ExpiresAt:                  p.ExpiresAt,
-		Lines:                      lines,
-		Replay:                     p.Replay,
-		PricingSource:              p.PricingSource,
+		QuoteID:                     p.QuoteID,
+		MachineID:                   p.MachineID,
+		Currency:                    p.Currency,
+		PaymentMethod:               p.PaymentMethod,
+		SubtotalMinor:               p.SubtotalMinor,
+		DiscountMinor:               p.DiscountMinor,
+		PayableMinor:                p.PayableMinor,
+		ExpiresAt:                   p.ExpiresAt,
+		Lines:                       lines,
+		Replay:                      p.Replay,
+		PricingSource:               p.PricingSource,
 		ServerReferencePayableMinor: p.ServerReferencePayableMinor,
 	}
 }
