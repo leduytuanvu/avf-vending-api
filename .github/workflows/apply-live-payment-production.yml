@@ -1,6 +1,6 @@
 name: Apply Live Payment Production Env
 
-# Applies PAYMENT_ENV=live + MoMo/ZaloPay/VietQR/VNPay/ShopeePay allowlist on app-node env,
+# Applies PAYMENT_ENV=live + MoMo/ZaloPay/VietQR allowlist on app-node env,
 # restarts api, verifies /version. Prerequisite: production image registers WiredLiveProvider.
 
 on:
@@ -35,11 +35,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Configure SSH
+      - name: Install production SSH credentials and trust
         shell: bash
         env:
-          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}
-          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS || secrets.SSH_KNOWN_HOSTS || vars.SSH_KNOWN_HOSTS }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY }}
         run: |
           set -Eeuo pipefail
           mkdir -p ~/.ssh
@@ -48,10 +48,71 @@ jobs:
           printf '%s\n' "${SSH_PRIVATE_KEY}" > "${identity_file}"
           chmod 600 "${identity_file}"
           printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
           {
-            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts"
+            echo 'Host *'
+            echo '  BatchMode yes'
+            echo '  IdentitiesOnly yes'
+            echo "  IdentityFile ${identity_file}"
+            echo '  StrictHostKeyChecking yes'
+            echo '  UserKnownHostsFile ~/.ssh/known_hosts'
+            echo '  GlobalKnownHostsFile ~/.ssh/known_hosts'
+          } > ~/.ssh/config
+          chmod 600 ~/.ssh/config ~/.ssh/known_hosts
+          {
+            echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts"
           } >> "$GITHUB_ENV"
+
+      - name: Use loopback SSH for co-located app-node A runner
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          public_host="${APP_NODE_A_HOST}"
+          echo "APP_NODE_A_PUBLIC_HOST=${public_host}" >> "$GITHUB_ENV"
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -t ed25519,ecdsa,rsa 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>&1 | tee -a "${GITHUB_STEP_SUMMARY}" || true
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -H -t ed25519,ecdsa,rsa 127.0.0.1 >> "${HOME}/.ssh/known_hosts" 2>/dev/null || true
+          if ! ssh-keygen -F "127.0.0.1" -f "${HOME}/.ssh/known_hosts" >/dev/null 2>&1; then
+            loopback_keys="${HOME}/.ssh/known_hosts.loopback"
+            : > "${loopback_keys}"
+            grep -F "${public_host}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
+            grep -F "[${public_host}]:${SSH_PORT}" "${HOME}/.ssh/known_hosts" | sed "s/${public_host}/127.0.0.1/g" >> "${loopback_keys}" || true
+            if [[ -s "${loopback_keys}" ]]; then
+              cat "${loopback_keys}" >> "${HOME}/.ssh/known_hosts"
+            fi
+            rm -f "${loopback_keys}"
+          fi
+          echo "APP_NODE_A_HOST=127.0.0.1" >> "$GITHUB_ENV"
+          echo "Using loopback SSH target \`127.0.0.1\` for app-node A (public host \`${public_host}\`, self-hosted runner co-located on VPS)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Validate pinned SSH host identities
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          fail() {
+            echo "error: $*" >&2
+            exit 1
+          }
+
+          require_known_host() {
+            local host="$1"
+            [[ -n "${host}" ]] || return 0
+            if [[ "${host}" == "127.0.0.1" || "${host}" == "localhost" ]]; then
+              return 0
+            fi
+
+            if ssh-keygen -F "${host}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+              return 0
+            fi
+
+            if ssh-keygen -F "[${host}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+              return 0
+            fi
+
+            fail "known_hosts does not contain a pinned SSH identity for ${host}:${SSH_PORT}"
+          }
+
+          require_known_host "${APP_NODE_A_HOST}"
+          require_known_host "${APP_NODE_B_HOST:-}"
 
       - name: Preflight public payment_runtime
         id: preflight
