@@ -96,6 +96,8 @@ jobs:
             scripts/deploy/production-migrate.sh \
             scripts/verify_database_environment.sh \
             scripts/db/verify_database_environment.sh \
+            scripts/ops/verify-production-auth-schema.sh \
+            scripts/ops/repair-production-auth-database.sh \
             scripts/ops/verify-production-payment-validation-status.sh \
             scripts/ops/verify-layout-dimension-migration.sh \
             scripts/ops/run_qr_payment_diagnostics.sh \
@@ -154,6 +156,16 @@ jobs:
              cd '${deploy_root}' && GITHUB_ACTIONS=true BACKUP_DATABASE_URL=\"\${backup_url}\" bash scripts/deploy/production-migrate.sh \
                --compose-file '${compose_file}' \
                --env-file '${env_file}'"
+
+      - name: Verify auth schema
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/verify-production-auth-schema.sh"
 
       - name: Verify payment validation_status constraint
         shell: bash

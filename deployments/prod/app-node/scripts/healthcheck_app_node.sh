@@ -3,6 +3,7 @@ set -Eeuo pipefail
 
 NODE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SHARED_ROOT="$(cd "${NODE_ROOT}/../shared" && pwd)"
+REPO_ROOT="$(cd "${NODE_ROOT}/../../.." && pwd)"
 # shellcheck source=../../shared/scripts/lib_release.sh
 source "${SHARED_ROOT}/scripts/lib_release.sh"
 
@@ -85,6 +86,23 @@ fi
 
 if [[ "${TEMPORAL_ENABLED}" == "1" ]]; then
 	check "temporal-worker /health/ready returns 200" "${COMPOSE[@]}" --profile temporal exec -T temporal-worker sh -c 'addr="${TEMPORAL_WORKER_METRICS_LISTEN:-127.0.0.1:9094}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok'
+fi
+
+note "auth schema gate"
+if run_script "${REPO_ROOT}/scripts/ops/verify-production-auth-schema.sh"; then
+	pass "platform_auth_accounts present on API DATABASE_URL"
+else
+	echo "FAIL: auth schema verification failed" >&2
+	failures=$((failures + 1))
+fi
+
+note "auth login smoke (expect structured 4xx, not 5xx schema error)"
+if "${COMPOSE[@]}" exec -T api sh -c \
+	'code=$(curl -sS -o /tmp/login-smoke.json -w "%{http_code}" -X POST http://127.0.0.1:8080/v1/auth/login -H "Content-Type: application/json" -d "{\"username\":\"__healthcheck__\",\"password\":\"__healthcheck__\"}"); test "${code}" != "500" && ! grep -q "platform_auth_accounts" /tmp/login-smoke.json'; then
+	pass "auth login endpoint reachable without schema failure"
+else
+	echo "FAIL: auth login returned 500 or missing-table error" >&2
+	failures=$((failures + 1))
 fi
 
 if (( failures > 0 )); then
