@@ -18,6 +18,11 @@ on:
         required: false
         default: false
         type: boolean
+      repair_auth_database:
+        description: "Align DATABASE_URL to database with platform_auth_accounts and recreate api workloads"
+        required: false
+        default: false
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -156,6 +161,21 @@ jobs:
              cd '${deploy_root}' && GITHUB_ACTIONS=true BACKUP_DATABASE_URL=\"\${backup_url}\" bash scripts/deploy/production-migrate.sh \
                --compose-file '${compose_file}' \
                --env-file '${env_file}'"
+
+      - name: Repair auth DATABASE_URL alignment
+        if: ${{ github.event.inputs.repair_auth_database == 'true' }}
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          env_file="${deploy_root}/deployments/prod/app-node/.env.app-node"
+          compose_file="${deploy_root}/deployments/prod/app-node/docker-compose.app-node.yml"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && CONFIRM_PRODUCTION_AUTH_REPAIR=REPAIR_PRODUCTION_AUTH \
+              APP_NODE_ENV_FILE='${env_file}' COMPOSE_FILE='${compose_file}' \
+              bash scripts/ops/repair-production-auth-database.sh"
 
       - name: Verify auth schema
         shell: bash
