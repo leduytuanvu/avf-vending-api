@@ -16,6 +16,7 @@ import (
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
 	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	applegacypayment "github.com/avf/avf-vending-api/internal/app/legacypayment"
+	appmachinepaymentmethods "github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	appsalecatalog "github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
@@ -252,6 +253,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	if rt.Deps.PaymentProviders != nil {
 		if reg, ok := rt.Deps.PaymentProviders.(*platformpayments.Registry); ok {
 			httpApp.PaymentProviders = reg
+			if mpm, mpmErr := appmachinepaymentmethods.NewService(rt.Pool(), cfg, reg, auditSvc); mpmErr == nil {
+				httpApp.MachinePaymentMethods = mpm
+			}
 			if cfg.TransportBoundary.LegacyPaymentHTTPEnabled {
 				httpApp.LegacyPayment = applegacypayment.NewService(rt.Pool(), commerceSvc, store, reg, cfg)
 			}
@@ -370,23 +374,24 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 
 	grpcSrv, err := grpcserver.NewServer(cfg, log, rt.Redis(), accessRevocation, rt, replayLedger, machineTokenChecker, machineCertChecker,
 		grpcserver.RegisterMachineGRPCServices(grpcserver.MachineGRPCServicesDeps{
-			Activation:      httpApp.Activation,
-			MachineRuntime:  httpApp.MachineRuntime,
-			MachineQueries:  machineQueries,
-			FeatureFlags:    httpApp.FeatureFlags,
-			SaleCatalog:     saleCatalog,
-			Pool:            rt.Pool(),
-			MQTTBrokerURL:   cfg.MQTT.BrokerURL,
-			MQTTTopicPrefix: cfg.MQTT.TopicPrefix,
-			Config:          cfg,
-			InventoryLedger: postgres.NewInventoryRepository(rt.Pool()),
-			EnterpriseAudit: httpApp.EnterpriseAudit,
-			Operator:        httpApp.MachineOperator,
-			Commerce:        httpApp.Commerce,
-			TelemetryStore:  httpApp.TelemetryStore,
-			MediaStore:      machineMediaStore,
-			MediaPresignTTL: machineMediaPresignTTL,
-			PaymentRuntime:  rt.Deps.PaymentProviders,
+			Activation:            httpApp.Activation,
+			MachineRuntime:        httpApp.MachineRuntime,
+			MachineQueries:        machineQueries,
+			FeatureFlags:          httpApp.FeatureFlags,
+			SaleCatalog:           saleCatalog,
+			Pool:                  rt.Pool(),
+			MQTTBrokerURL:         cfg.MQTT.BrokerURL,
+			MQTTTopicPrefix:       cfg.MQTT.TopicPrefix,
+			Config:                cfg,
+			InventoryLedger:       postgres.NewInventoryRepository(rt.Pool()),
+			EnterpriseAudit:       httpApp.EnterpriseAudit,
+			Operator:              httpApp.MachineOperator,
+			Commerce:              httpApp.Commerce,
+			TelemetryStore:        httpApp.TelemetryStore,
+			MediaStore:            machineMediaStore,
+			MediaPresignTTL:       machineMediaPresignTTL,
+			PaymentRuntime:        rt.Deps.PaymentProviders,
+			MachinePaymentMethods: httpApp.MachinePaymentMethods,
 		}),
 	)
 	if err != nil {

@@ -307,6 +307,7 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				mountArtifactAdminRoutes(r, app, writeRL)
 				mountAdminActivationRoutes(r, app, writeRL)
 				mountAdminCompanyScopedActivationRoutes(r, app, writeRL)
+				mountAdminMachinePaymentMethodsRoutes(r, app, writeRL)
 				mountAdminPaymentProviderRoutes(r, app)
 			})
 

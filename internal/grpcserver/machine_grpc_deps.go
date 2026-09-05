@@ -9,6 +9,7 @@ import (
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/featureflags"
 	appinventory "github.com/avf/avf-vending-api/internal/app/inventoryapp"
+	"github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
@@ -46,6 +47,8 @@ type MachineGRPCServicesDeps struct {
 	Commerce appcommerce.Orchestrator
 	// PaymentRuntime resolves machine payment method config for bootstrap and commerce gates.
 	PaymentRuntime MachinePaymentRuntimeSource
+	// MachinePaymentMethods loads per-machine payment method overrides (optional).
+	MachinePaymentMethods *machinepaymentmethods.Service
 	// TelemetryStore applies vend-success inventory decrements (same Store as HTTP TelemetryStore).
 	TelemetryStore *postgres.Store
 	// IncidentProjector optionally overrides TelemetryStore for incident projection (tests / heal hooks).

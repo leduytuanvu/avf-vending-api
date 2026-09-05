@@ -34,6 +34,8 @@ const (
 
 	// QRCardUnavailableReasonProviderUnavailable is returned to Android when no live PSP is wired.
 	QRCardUnavailableReasonProviderUnavailable = "provider_unavailable"
+	// QRCardUnavailableReasonMachineMethodDisabled is returned when per-machine config disables all QR methods.
+	QRCardUnavailableReasonMachineMethodDisabled = "machine_method_disabled"
 )
 
 // WiredLiveProvider marks a production-ready live PSP adapter with outbound session I/O.
@@ -176,9 +178,25 @@ func DeploymentRuntimeFromConfig(cfg *config.Config, reg *Registry) DeploymentRu
 	return out
 }
 
+// MachineMethodOverride narrows deployment payment methods for a specific machine.
+type MachineMethodOverride struct {
+	Configured bool
+	Enabled    map[string]bool // method_key -> enabled when Configured is true
+}
+
+func machineMethodEnabled(override MachineMethodOverride, key string, deploymentAllowed bool) bool {
+	if !deploymentAllowed {
+		return false
+	}
+	if !override.Configured {
+		return deploymentAllowed
+	}
+	return override.Enabled[NormalizeProviderKey(key)]
+}
+
 var productionProviderOrder = []string{"momo", "zalopay", "vnpay", "vietqr", "shopeepay"}
 
-func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy DeploymentRuntime, enabled []string) []ProviderCapabilityView {
+func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy DeploymentRuntime, enabled []string, override MachineMethodOverride) []ProviderCapabilityView {
 	if reg == nil {
 		return nil
 	}
@@ -200,6 +218,7 @@ func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy Deployme
 		if len(enabled) == 0 && cfg != nil && len(cfg.Commerce.AllowedPaymentProviders) == 0 {
 			providerEnabled = sum.Wired && sum.SessionAvailable
 		}
+		providerEnabled = machineMethodEnabled(override, key, providerEnabled)
 		ready := sum.Wired && sum.SessionAvailable && deploy.CardQRSessionsAvailable
 		sessionCreatable := ready && providerEnabled && deploy.PaymentMode != PaymentModeCashOnly
 		reason := ""
@@ -212,7 +231,11 @@ func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy Deployme
 			case !deploy.CardQRSessionsAvailable:
 				reason = QRCardUnavailableReasonProviderUnavailable
 			case !providerEnabled:
-				reason = "provider_not_enabled"
+				if override.Configured && !override.Enabled[key] {
+					reason = QRCardUnavailableReasonMachineMethodDisabled
+				} else {
+					reason = "provider_not_enabled"
+				}
 			}
 		}
 		out = append(out, ProviderCapabilityView{
@@ -229,6 +252,11 @@ func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy Deployme
 
 // ResolveMachinePaymentMethods builds machine bootstrap payment config from deployment runtime and optional feature flags.
 func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlags map[string]bool) MachinePaymentMethodsView {
+	return ResolveMachinePaymentMethodsWithOverride(cfg, reg, featureFlags, MachineMethodOverride{})
+}
+
+// ResolveMachinePaymentMethodsWithOverride applies optional per-machine method narrowing on top of deployment capability.
+func ResolveMachinePaymentMethodsWithOverride(cfg *config.Config, reg *Registry, featureFlags map[string]bool, override MachineMethodOverride) MachinePaymentMethodsView {
 	deploy := DeploymentRuntimeFromConfig(cfg, reg)
 	out := MachinePaymentMethodsView{
 		PaymentMode:          deploy.PaymentMode,
@@ -244,6 +272,9 @@ func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlag
 		cashDefault = true
 	}
 	out.CashEnabled = featureFlagDefaultTrue(featureFlags, MachineFeatureCashEnabled, cashDefault)
+	if override.Configured {
+		out.CashEnabled = out.CashEnabled && machineMethodEnabled(override, "cash", true)
+	}
 
 	qrDefault := deploy.CardQRSessionsAvailable
 	out.QRCardEnabled = featureFlagDefaultTrue(featureFlags, MachineFeatureQRCardEnabled, qrDefault)
@@ -252,8 +283,23 @@ func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlag
 		out.QRCardUnavailableReason = QRCardUnavailableReasonProviderUnavailable
 	}
 	out.EnabledProviders = enabledWiredProviders(cfg, reg)
-	out.Providers = listProviderCapabilities(cfg, reg, deploy, out.EnabledProviders)
+	out.Providers = listProviderCapabilities(cfg, reg, deploy, out.EnabledProviders, override)
+	if override.Configured && !anySessionCreatable(out.Providers) {
+		out.QRCardEnabled = false
+		if out.QRCardUnavailableReason == "" {
+			out.QRCardUnavailableReason = QRCardUnavailableReasonMachineMethodDisabled
+		}
+	}
 	return out
+}
+
+func anySessionCreatable(providers []ProviderCapabilityView) bool {
+	for _, p := range providers {
+		if p.SessionCreatable {
+			return true
+		}
+	}
+	return false
 }
 
 func enabledWiredProviders(cfg *config.Config, reg *Registry) []string {
@@ -285,6 +331,11 @@ func enabledWiredProviders(cfg *config.Config, reg *Registry) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// EnabledWiredProviders returns deployment allowlist intersect wired session-capable provider keys.
+func EnabledWiredProviders(cfg *config.Config, reg *Registry) []string {
+	return enabledWiredProviders(cfg, reg)
 }
 
 func featureFlagDefaultTrue(flags map[string]bool, key string, defaultVal bool) bool {

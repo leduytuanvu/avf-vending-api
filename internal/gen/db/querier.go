@@ -229,6 +229,7 @@ type Querier interface {
 	CountRolloutTargetsByStatus(ctx context.Context, arg CountRolloutTargetsByStatusParams) (int64, error)
 	CountSucceededMachineActivationClaims(ctx context.Context, activationCodeID pgtype.UUID) (int64, error)
 	DeleteMachineMQTTCredentials(ctx context.Context, machineID uuid.UUID) error
+	DeleteMachinePaymentMethods(ctx context.Context, machineID uuid.UUID) error
 	DeleteStaleMachineIdempotencyInProgress(ctx context.Context, arg DeleteStaleMachineIdempotencyInProgressParams) error
 	DeviceCertificateActiveByFingerprint(ctx context.Context, fingerprintSha256 []byte) (DeviceCertificateActiveByFingerprintRow, error)
 	DeviceCertificateInsert(ctx context.Context, arg DeviceCertificateInsertParams) (MachineDeviceCertificate, error)
@@ -412,6 +413,7 @@ type Querier interface {
 	InsertMachineOfflineEvent(ctx context.Context, arg InsertMachineOfflineEventParams) (InsertMachineOfflineEventRow, error)
 	InsertMachineOperatorAuthEvent(ctx context.Context, arg InsertMachineOperatorAuthEventParams) (MachineOperatorAuthEvent, error)
 	InsertMachineOperatorSession(ctx context.Context, arg InsertMachineOperatorSessionParams) (MachineOperatorSession, error)
+	InsertMachinePaymentMethod(ctx context.Context, arg InsertMachinePaymentMethodParams) (MachinePaymentMethod, error)
 	InsertMachineRuntimeRefreshToken(ctx context.Context, arg InsertMachineRuntimeRefreshTokenParams) (MachineRuntimeRefreshToken, error)
 	InsertMachineSession(ctx context.Context, arg InsertMachineSessionParams) (MachineSession, error)
 	InsertMessagingConsumerDedupe(ctx context.Context, arg InsertMessagingConsumerDedupeParams) (MessagingConsumerDedupe, error)
@@ -469,6 +471,7 @@ type Querier interface {
 	ListMachineActivationCodesPaged(ctx context.Context, arg ListMachineActivationCodesPagedParams) ([]ListMachineActivationCodesPagedRow, error)
 	ListMachineDeviceAttachments(ctx context.Context, arg ListMachineDeviceAttachmentsParams) ([]MachineDeviceAttachment, error)
 	ListMachineOperatorAuthEventsByMachineID(ctx context.Context, arg ListMachineOperatorAuthEventsByMachineIDParams) ([]MachineOperatorAuthEvent, error)
+	ListMachinePaymentMethods(ctx context.Context, machineID uuid.UUID) ([]MachinePaymentMethod, error)
 	ListMachineRuntimeAppSessionHistory(ctx context.Context, arg ListMachineRuntimeAppSessionHistoryParams) ([]MachineRuntimeAppSession, error)
 	ListMachineRuntimeSessionHistory(ctx context.Context, arg ListMachineRuntimeSessionHistoryParams) ([]ListMachineRuntimeSessionHistoryRow, error)
 	ListMachineSlotLayoutsForDimensionAudit(ctx context.Context) ([]MachineSlotLayout, error)

@@ -21,6 +21,7 @@ import (
 	appfleetadmin "github.com/avf/avf-vending-api/internal/app/fleetadmin"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	applegacypayment "github.com/avf/avf-vending-api/internal/app/legacypayment"
+	appmachinepaymentmethods "github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
@@ -103,6 +104,8 @@ type HTTPApplication struct {
 	ListPaymentProviders func() []PaymentProviderRegistryInfo
 	// PaymentProviders resolves live PSP adapters for native IPN / legacy payment HTTP (nil disables those routes).
 	PaymentProviders *platformpayments.Registry
+	// MachinePaymentMethods manages per-machine payment method allowlists (optional).
+	MachinePaymentMethods *appmachinepaymentmethods.Service
 	// LegacyPayment optional facade for /payment-service/payment/* when ENABLE_LEGACY_PAYMENT_HTTP is set.
 	LegacyPayment *applegacypayment.Service
 }
