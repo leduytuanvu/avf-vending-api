@@ -200,7 +200,7 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrderID:                 row.OrderID,
 		PaymentID:               row.PaymentID,
-		Provider:                strings.TrimSpace(event.Provider),
+		Provider:                reconcileNativeWebhookProvider(event.Provider, row.Provider),
 		ProviderReference:       ref,
 		WebhookEventID:          strings.TrimSpace(event.WebhookEventID),
 		EventType:               strings.TrimSpace(event.EventType),
@@ -210,9 +210,6 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 		Currency:                event.Currency,
 		WebhookValidationStatus: "provider_native_verified",
 		ProviderMetadata:        []byte(`{"delivery":{"mode":"provider_native"}}`),
-	}
-	if in.Provider == "" {
-		in.Provider = row.Provider
 	}
 	if in.WebhookEventID == "" {
 		in.WebhookEventID = ref
@@ -226,6 +223,23 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 		return false, err
 	}
 	return true, nil
+}
+
+// reconcileNativeWebhookProvider maps a verified PSP callback to the payment row's provider key.
+// VietQR sessions are stored as provider=vietqr but ZaloPay callbacks tag provider=zalopay.
+func reconcileNativeWebhookProvider(eventProvider, storedProvider string) string {
+	eventProv := strings.TrimSpace(eventProvider)
+	storedProv := strings.TrimSpace(storedProvider)
+	switch {
+	case storedProv != "" && (eventProv == "" || strings.EqualFold(eventProv, storedProv)):
+		return storedProv
+	case storedProv != "" && eventProv != "" && platformpayments.SameWebhookAdapterFamily(eventProv, storedProv):
+		return storedProv
+	case eventProv != "":
+		return eventProv
+	default:
+		return storedProv
+	}
 }
 
 // LookupPaymentByProviderReference is a thin alias for tests/handlers that already hold the store.
