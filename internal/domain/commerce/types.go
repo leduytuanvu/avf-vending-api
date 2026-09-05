@@ -23,10 +23,11 @@ type Order struct {
 	FakeBoard              bool
 	WinningPaymentID       *uuid.UUID
 	WinningClaimedAt       *time.Time
-	PricingSource          string
-	MachinePricingRevision *int64
-	MachinePricingSnapshot []byte
-	CreatedAt              time.Time
+	PricingSource              string
+	MachinePricingRevision     *int64
+	MachinePricingSnapshot     []byte
+	ServerReferenceTotalMinor  int64
+	CreatedAt                  time.Time
 	UpdatedAt              time.Time
 }
 

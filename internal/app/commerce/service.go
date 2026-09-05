@@ -38,6 +38,7 @@ type Service struct {
 	paymentSessionReg           PaymentSessionRegistry
 	financial                   FinancialCorrectnessStore
 	winnerArbitrationEnabled    bool
+	layoutMirror                LocalLayoutMirrorReader
 }
 
 // NewService returns a commerce orchestrator. OrderVend workflow is required.
@@ -65,6 +66,7 @@ func NewService(d Deps) *Service {
 		paymentSessionReg:           d.PaymentSessionRegistry,
 		financial:                   d.FinancialCorrectness,
 		winnerArbitrationEnabled:    d.WinnerArbitrationEnabled,
+		layoutMirror:                d.LocalLayoutMirror,
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
+	"github.com/google/uuid"
 )
 
 const (
@@ -18,13 +19,30 @@ const (
 
 // MachinePricingSnapshotInput is the machine-sealed checkout price for offline replay.
 type MachinePricingSnapshotInput struct {
-	SubtotalMinor        int64
-	TaxMinor             int64
-	TotalMinor           int64
-	UnitPriceMinor       int64
-	LocalPricingRevision int64
-	PricingFingerprint   string
-	CapturedAt           time.Time
+	SubtotalMinor            int64
+	TaxMinor                 int64
+	TotalMinor               int64
+	UnitPriceMinor           int64
+	LocalPricingRevision     int64
+	PricingFingerprint       string
+	CapturedAt               time.Time
+	SnapshotID               string
+	SlotConfigVersion        int64
+	ServerPricingFingerprint string
+	Lines                    []MachinePricingSnapshotLineInput
+}
+
+// MachinePricingSnapshotLineInput is one line in a multi-line machine pricing snapshot.
+type MachinePricingSnapshotLineInput struct {
+	LineSequence      int32
+	ProductID         uuid.UUID
+	CabinetCode       string
+	SlotCode          string
+	SlotIndex         int32
+	Quantity          int32
+	UnitPriceMinor    int64
+	LineSubtotalMinor int64
+	PricingSyncState  string
 }
 
 // MachinePricingSnapshotFromProto maps the gRPC pricing snapshot into app-layer input.
@@ -37,12 +55,42 @@ func machinePricingSnapshotFromProto(snap *machinev1.MachinePricingSnapshot) (Ma
 		return MachinePricingSnapshotInput{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot is required"))
 	}
 	out := MachinePricingSnapshotInput{
-		SubtotalMinor:        snap.GetSubtotalMinor(),
-		TaxMinor:             snap.GetTaxMinor(),
-		TotalMinor:           snap.GetTotalMinor(),
-		UnitPriceMinor:       snap.GetUnitPriceMinor(),
-		LocalPricingRevision: snap.GetLocalPricingRevision(),
-		PricingFingerprint:   strings.TrimSpace(snap.GetPricingFingerprint()),
+		SubtotalMinor:            snap.GetSubtotalMinor(),
+		TaxMinor:                 snap.GetTaxMinor(),
+		TotalMinor:               snap.GetTotalMinor(),
+		UnitPriceMinor:           snap.GetUnitPriceMinor(),
+		LocalPricingRevision:     snap.GetLocalPricingRevision(),
+		PricingFingerprint:       strings.TrimSpace(snap.GetPricingFingerprint()),
+		SnapshotID:               strings.TrimSpace(snap.GetSnapshotId()),
+		SlotConfigVersion:        snap.GetSlotConfigVersion(),
+		ServerPricingFingerprint: strings.TrimSpace(snap.GetServerPricingFingerprint()),
+	}
+	for _, ln := range snap.GetLines() {
+		if ln == nil {
+			continue
+		}
+		productID, err := uuid.Parse(strings.TrimSpace(ln.GetProductId()))
+		if err != nil || productID == uuid.Nil {
+			return MachinePricingSnapshotInput{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line product_id invalid"))
+		}
+		slot := ln.GetSlot()
+		cab, sc, slotIdx := "", "", int32(0)
+		if slot != nil {
+			cab = strings.TrimSpace(slot.GetCabinetCode())
+			sc = strings.TrimSpace(slot.GetSlotCode())
+			slotIdx = slot.GetSlotIndex()
+		}
+		out.Lines = append(out.Lines, MachinePricingSnapshotLineInput{
+			LineSequence:      ln.GetLineSequence(),
+			ProductID:         productID,
+			CabinetCode:       cab,
+			SlotCode:          sc,
+			SlotIndex:         slotIdx,
+			Quantity:          ln.GetQuantity(),
+			UnitPriceMinor:    ln.GetUnitPriceMinor(),
+			LineSubtotalMinor: ln.GetLineSubtotalMinor(),
+			PricingSyncState:  strings.TrimSpace(ln.GetPricingSyncState()),
+		})
 	}
 	if ts := snap.GetCapturedAt(); ts != nil && ts.IsValid() {
 		out.CapturedAt = ts.AsTime().UTC()

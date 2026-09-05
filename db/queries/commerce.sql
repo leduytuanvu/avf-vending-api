@@ -14,7 +14,8 @@ INSERT INTO orders (
     fake_board,
     pricing_source,
     machine_pricing_revision,
-    machine_pricing_snapshot
+    machine_pricing_snapshot,
+    server_reference_total_minor
 )
 VALUES (
     $1,
@@ -31,7 +32,8 @@ VALUES (
     $12,
     $13,
     $14,
-    $15
+    $15,
+    $16
 )
 RETURNING *;
 
@@ -152,6 +154,7 @@ SELECT
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at
 FROM orders
@@ -179,6 +182,7 @@ SELECT
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at
 FROM orders
@@ -207,6 +211,7 @@ SELECT
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at
 FROM orders
@@ -240,6 +245,7 @@ SELECT
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at
 FROM orders
@@ -392,6 +398,7 @@ SELECT DISTINCT
     o.pricing_source,
     o.machine_pricing_revision,
     o.machine_pricing_snapshot,
+    o.server_reference_total_minor,
     o.created_at,
     o.updated_at
 FROM orders o
@@ -624,6 +631,7 @@ RETURNING
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at;
 

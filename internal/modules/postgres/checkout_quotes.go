@@ -52,6 +52,10 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 			return appcommerce.PersistQuoteResult{}, err
 		}
 	}
+	pricingSource := strings.TrimSpace(in.PricingSource)
+	if pricingSource == "" {
+		pricingSource = appcommerce.PricingSourceServerPriced
+	}
 	quoteRow, err := q.InsertCheckoutQuote(ctx, db.InsertCheckoutQuoteParams{
 		MachineID:      in.MachineID,
 		Currency:       in.Currency,
@@ -62,6 +66,10 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 		State:          "active",
 		IdempotencyKey: optionalStringToPgText(key),
 		ExpiresAt:      in.ExpiresAt.UTC(),
+		PricingSource:  pricingSource,
+		MachinePricingRevision: optionalInt64ToPg(in.MachinePricingRevision),
+		MachinePricingSnapshot: in.MachinePricingSnapshot,
+		ServerReferencePayableMinor: optionalInt64ToPg(in.ServerReferencePayableMinor),
 	})
 	if err != nil {
 		return appcommerce.PersistQuoteResult{}, err
@@ -69,17 +77,19 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 	var lineRows []db.CheckoutQuoteLine
 	for _, line := range in.Lines {
 		row, err := q.InsertCheckoutQuoteLine(ctx, db.InsertCheckoutQuoteLineParams{
-			QuoteID:            quoteRow.ID,
-			LineSequence:       line.LineSequence,
-			ProductID:          line.ProductID,
-			SlotConfigID:       uuidPtrToPgUUID(line.SlotConfigID),
-			CabinetCode:        line.CabinetCode,
-			SlotCode:           line.SlotCode,
-			SlotIndex:          line.SlotIndex,
-			Quantity:           line.Quantity,
-			UnitPriceMinor:     line.UnitPriceMinor,
-			LineSubtotalMinor:  line.LineSubtotalMinor,
-			PricingFingerprint: line.PricingFingerprint,
+			QuoteID:                       quoteRow.ID,
+			LineSequence:                  line.LineSequence,
+			ProductID:                     line.ProductID,
+			SlotConfigID:                  uuidPtrToPgUUID(line.SlotConfigID),
+			CabinetCode:                   line.CabinetCode,
+			SlotCode:                      line.SlotCode,
+			SlotIndex:                     line.SlotIndex,
+			Quantity:                      line.Quantity,
+			UnitPriceMinor:                line.UnitPriceMinor,
+			LineSubtotalMinor:             line.LineSubtotalMinor,
+			PricingFingerprint:            line.PricingFingerprint,
+			MachineUnitPriceMinor:         optionalInt64ToPg(line.MachineUnitPriceMinor),
+			ServerReferenceUnitPriceMinor: optionalInt64ToPg(line.ServerReferenceUnitPriceMinor),
 		})
 		if err != nil {
 			return appcommerce.PersistQuoteResult{}, err
@@ -198,24 +208,35 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		return appcommerce.PersistOrderFromQuoteResult{}, fmt.Errorf("postgres: quote expired")
 	}
 
-	pricingSource, err := validatePricingSourceForPersist(appcommerce.PricingSourceServerPriced)
+	pricingSource, err := validatePricingSourceForPersist(lockedQuote.PricingSource)
 	if err != nil {
 		return appcommerce.PersistOrderFromQuoteResult{}, err
 	}
+	if pricingSource == "" {
+		pricingSource = appcommerce.PricingSourceServerPriced
+	}
+	var serverRef *int64
+	if lockedQuote.ServerReferencePayableMinor.Valid {
+		v := lockedQuote.ServerReferencePayableMinor.Int64
+		serverRef = &v
+	}
 	orderRow, err := q.InsertOrder(ctx, db.InsertOrderParams{
-		MachineID:          quote.MachineID,
-		Status:             "created",
-		Currency:           quote.Currency,
-		SubtotalMinor:      quote.SubtotalMinor,
-		TaxMinor:           0,
-		TotalMinor:         quote.PayableMinor,
-		IdempotencyKey:     optionalStringToPgText(key),
-		Simulated:          in.Simulated,
-		SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
-		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
-		FakeBill:           in.FakeBill,
-		FakeBoard:          in.FakeBoard,
-		PricingSource:      pricingSource,
+		MachineID:                 quote.MachineID,
+		Status:                    "created",
+		Currency:                  quote.Currency,
+		SubtotalMinor:             quote.SubtotalMinor,
+		TaxMinor:                  0,
+		TotalMinor:                quote.PayableMinor,
+		IdempotencyKey:            optionalStringToPgText(key),
+		Simulated:                 in.Simulated,
+		SimulationRunID:           optionalStringToPgText(in.SimulationRunID),
+		SimulationScenario:        optionalStringToPgText(in.SimulationScenario),
+		FakeBill:                  in.FakeBill,
+		FakeBoard:                 in.FakeBoard,
+		PricingSource:             pricingSource,
+		MachinePricingRevision:    lockedQuote.MachinePricingRevision,
+		MachinePricingSnapshot:    lockedQuote.MachinePricingSnapshot,
+		ServerReferenceTotalMinor: optionalInt64ToPg(serverRef),
 	})
 	if err != nil {
 		return appcommerce.PersistOrderFromQuoteResult{}, err
@@ -276,16 +297,18 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 
 func mapPersistQuote(row db.CheckoutQuote, lines []db.CheckoutQuoteLine, replay bool) appcommerce.PersistQuoteResult {
 	out := appcommerce.PersistQuoteResult{
-		QuoteID:       row.ID,
-		MachineID:     row.MachineID,
-		Currency:      row.Currency,
-		PaymentMethod: row.PaymentMethod,
-		SubtotalMinor: row.SubtotalMinor,
-		DiscountMinor: row.DiscountMinor,
-		PayableMinor:  row.PayableMinor,
-		ExpiresAt:     row.ExpiresAt,
-		State:         row.State,
-		Replay:        replay,
+		QuoteID:                     row.ID,
+		MachineID:                   row.MachineID,
+		Currency:                    row.Currency,
+		PaymentMethod:               row.PaymentMethod,
+		SubtotalMinor:               row.SubtotalMinor,
+		DiscountMinor:               row.DiscountMinor,
+		PayableMinor:                row.PayableMinor,
+		ExpiresAt:                   row.ExpiresAt,
+		State:                       row.State,
+		PricingSource:               row.PricingSource,
+		ServerReferencePayableMinor: pgInt8ToInt64(row.ServerReferencePayableMinor),
+		Replay:                      replay,
 	}
 	for _, l := range lines {
 		slotCfg := uuid.Nil
@@ -327,4 +350,11 @@ func uuidPtrToPgUUID(id uuid.UUID) pgtype.UUID {
 		return pgtype.UUID{Valid: false}
 	}
 	return pgtype.UUID{Bytes: id, Valid: true}
+}
+
+func optionalInt64ToPg(v *int64) pgtype.Int8 {
+	if v == nil {
+		return pgtype.Int8{Valid: false}
+	}
+	return pgtype.Int8{Int64: *v, Valid: true}
 }

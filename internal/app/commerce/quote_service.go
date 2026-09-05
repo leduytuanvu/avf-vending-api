@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -24,42 +25,50 @@ type QuoteStore interface {
 
 // PersistQuoteInput is the persistence payload for quote creation.
 type PersistQuoteInput struct {
-	MachineID      uuid.UUID
-	Currency       string
-	PaymentMethod  string
-	SubtotalMinor  int64
-	DiscountMinor  int64
-	PayableMinor   int64
-	IdempotencyKey string
-	ExpiresAt      time.Time
-	Lines          []PersistQuoteLineInput
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	IdempotencyKey              string
+	ExpiresAt                   time.Time
+	PricingSource               string
+	MachinePricingRevision      *int64
+	MachinePricingSnapshot      []byte
+	ServerReferencePayableMinor *int64
+	Lines                       []PersistQuoteLineInput
 }
 
 type PersistQuoteLineInput struct {
-	LineSequence       int32
-	ProductID          uuid.UUID
-	SlotConfigID       uuid.UUID
-	CabinetCode        string
-	SlotCode           string
-	SlotIndex          int32
-	Quantity           int32
-	UnitPriceMinor     int64
-	LineSubtotalMinor  int64
-	PricingFingerprint string
+	LineSequence                  int32
+	ProductID                     uuid.UUID
+	SlotConfigID                  uuid.UUID
+	CabinetCode                   string
+	SlotCode                      string
+	SlotIndex                     int32
+	Quantity                      int32
+	UnitPriceMinor                int64
+	LineSubtotalMinor             int64
+	PricingFingerprint            string
+	MachineUnitPriceMinor         *int64
+	ServerReferenceUnitPriceMinor *int64
 }
 
 type PersistQuoteResult struct {
-	QuoteID       uuid.UUID
-	MachineID     uuid.UUID
-	Currency      string
-	PaymentMethod string
-	SubtotalMinor int64
-	DiscountMinor int64
-	PayableMinor  int64
-	ExpiresAt     time.Time
-	State         string
-	Lines         []PersistQuoteLineInput
-	Replay        bool
+	QuoteID                     uuid.UUID
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	ExpiresAt                   time.Time
+	State                       string
+	PricingSource               string
+	ServerReferencePayableMinor int64
+	Lines                       []PersistQuoteLineInput
+	Replay                      bool
 }
 
 type PersistOrderFromQuoteInput struct {
@@ -172,17 +181,79 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		})
 	}
 	discountMinor := int64(0)
+	serverReferencePayable := subtotal
 	payable := subtotal - discountMinor
+	quoteSubtotal := subtotal
+	pricingSource := PricingSourceServerPriced
+	var machineSnapJSON []byte
+	var machineRevision *int64
+	if in.PricingSnapshot != nil {
+		snap := *in.PricingSnapshot
+		if err := validateMachinePricingSnapshotMultiLine(snap, len(in.Lines)); err != nil {
+			slog.Warn("PRICING_SNAPSHOT_REJECTED_STRUCTURAL",
+				"machine_id", in.MachineID.String(),
+				"snapshot_id", snap.SnapshotID,
+				"error", err.Error(),
+			)
+			return CreateQuoteResult{}, err
+		}
+		mirror := LocalLayoutMirror{}
+		if s.layoutMirror != nil {
+			if m, err := s.layoutMirror.GetLocalLayoutMirror(ctx, in.MachineID); err == nil {
+				mirror = m
+			}
+		}
+		pricingSource = classifyMachineLocalPricingSourceFromMirror(snap, mirror)
+		pricingEvent := "PRICING_SNAPSHOT_ACCEPTED_UNVERIFIED"
+		if pricingSource == PricingSourceMachineLocalVerified {
+			pricingEvent = "PRICING_SNAPSHOT_ACCEPTED_VERIFIED"
+		}
+		slog.Info(pricingEvent,
+			"machine_id", in.MachineID.String(),
+			"snapshot_id", snap.SnapshotID,
+			"local_pricing_revision", snap.LocalPricingRevision,
+			"mirror_revision", mirror.Revision,
+			"payable_minor", snap.TotalMinor,
+			"server_reference_payable_minor", serverReferencePayable,
+			"pricing_source", pricingSource,
+		)
+		quoteSubtotal = snap.SubtotalMinor
+		payable = snap.TotalMinor
+		if snap.LocalPricingRevision > 0 {
+			rev := snap.LocalPricingRevision
+			machineRevision = &rev
+		}
+		raw, err := machinePricingSnapshotJSON(snap)
+		if err != nil {
+			return CreateQuoteResult{}, err
+		}
+		machineSnapJSON = raw
+		for i := range persistLines {
+			machineUnit := snapshotLineUnitPrice(snap, persistLines[i].LineSequence, persistLines[i].UnitPriceMinor)
+			serverUnit := persistLines[i].UnitPriceMinor
+			persistLines[i].UnitPriceMinor = machineUnit
+			persistLines[i].LineSubtotalMinor = machineUnit * int64(persistLines[i].Quantity)
+			persistLines[i].MachineUnitPriceMinor = &machineUnit
+			persistLines[i].ServerReferenceUnitPriceMinor = &serverUnit
+			views[i].UnitPriceMinor = machineUnit
+			views[i].LineSubtotalMinor = persistLines[i].LineSubtotalMinor
+		}
+	}
+	serverRef := serverReferencePayable
 	persisted, err := store.CreateQuoteWithLines(ctx, PersistQuoteInput{
-		MachineID:      in.MachineID,
-		Currency:       strings.ToUpper(strings.TrimSpace(in.Currency)),
-		PaymentMethod:  strings.TrimSpace(in.PaymentMethod),
-		SubtotalMinor:  subtotal,
-		DiscountMinor:  discountMinor,
-		PayableMinor:   payable,
-		IdempotencyKey: key,
-		ExpiresAt:      expiresAt,
-		Lines:          persistLines,
+		MachineID:                   in.MachineID,
+		Currency:                    strings.ToUpper(strings.TrimSpace(in.Currency)),
+		PaymentMethod:               strings.TrimSpace(in.PaymentMethod),
+		SubtotalMinor:               quoteSubtotal,
+		DiscountMinor:               discountMinor,
+		PayableMinor:                payable,
+		IdempotencyKey:              key,
+		ExpiresAt:                   expiresAt,
+		PricingSource:               pricingSource,
+		MachinePricingRevision:      machineRevision,
+		MachinePricingSnapshot:      machineSnapJSON,
+		ServerReferencePayableMinor: &serverRef,
+		Lines:                       persistLines,
 	})
 	if err != nil {
 		return CreateQuoteResult{}, err
@@ -215,6 +286,16 @@ func (s *Service) CreateOrderFromQuote(ctx context.Context, in CreateOrderFromQu
 	}
 	if quote.MachineID != in.MachineID {
 		return CreateOrderFromQuoteResult{}, fmt.Errorf("quote machine mismatch")
+	}
+	if in.PricingSnapshot != nil {
+		if err := ValidateReplayPricingSnapshot(in.PricingSnapshot, domaincommerce.Order{
+			TotalMinor:    quote.PayableMinor,
+			SubtotalMinor: quote.SubtotalMinor,
+			TaxMinor:      0,
+			PricingSource: quote.PricingSource,
+		}); err != nil {
+			return CreateOrderFromQuoteResult{}, err
+		}
 	}
 	if strings.ToLower(strings.TrimSpace(quote.State)) != "active" {
 		return CreateOrderFromQuoteResult{}, fmt.Errorf("quote is not active")
@@ -261,16 +342,18 @@ func mapPersistQuoteResult(p PersistQuoteResult) CreateQuoteResult {
 		})
 	}
 	return CreateQuoteResult{
-		QuoteID:       p.QuoteID,
-		MachineID:     p.MachineID,
-		Currency:      p.Currency,
-		PaymentMethod: p.PaymentMethod,
-		SubtotalMinor: p.SubtotalMinor,
-		DiscountMinor: p.DiscountMinor,
-		PayableMinor:  p.PayableMinor,
-		ExpiresAt:     p.ExpiresAt,
-		Lines:         lines,
-		Replay:        p.Replay,
+		QuoteID:                    p.QuoteID,
+		MachineID:                  p.MachineID,
+		Currency:                   p.Currency,
+		PaymentMethod:              p.PaymentMethod,
+		SubtotalMinor:              p.SubtotalMinor,
+		DiscountMinor:              p.DiscountMinor,
+		PayableMinor:               p.PayableMinor,
+		ExpiresAt:                  p.ExpiresAt,
+		Lines:                      lines,
+		Replay:                     p.Replay,
+		PricingSource:              p.PricingSource,
+		ServerReferencePayableMinor: p.ServerReferencePayableMinor,
 	}
 }
 
@@ -289,14 +372,16 @@ func mapPersistOrderFromQuote(p PersistOrderFromQuoteResult) CreateOrderFromQuot
 	}
 	o := p.Order
 	return CreateOrderFromQuoteResult{
-		OrderID:       o.ID,
-		OrderStatus:   o.Status,
-		Currency:      o.Currency,
-		SubtotalMinor: o.SubtotalMinor,
-		TaxMinor:      o.TaxMinor,
-		TotalMinor:    o.TotalMinor,
-		Lines:         lines,
-		Replay:        p.Replay,
+		OrderID:                   o.ID,
+		OrderStatus:               o.Status,
+		Currency:                  o.Currency,
+		SubtotalMinor:             o.SubtotalMinor,
+		TaxMinor:                  o.TaxMinor,
+		TotalMinor:                o.TotalMinor,
+		Lines:                     lines,
+		Replay:                    p.Replay,
+		PricingSource:             o.PricingSource,
+		ServerReferenceTotalMinor: o.ServerReferenceTotalMinor,
 	}
 }
 

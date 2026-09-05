@@ -26,10 +26,11 @@ func mapOrder(row db.Order) commerce.Order {
 		FakeBoard:              row.FakeBoard,
 		WinningPaymentID:       pgUUIDToPtr(row.WinningPaymentID),
 		WinningClaimedAt:       pgTimestamptzToTimePtr(row.WinningClaimedAt),
-		PricingSource:          row.PricingSource,
-		MachinePricingRevision: pgInt8ToPtr(row.MachinePricingRevision),
-		MachinePricingSnapshot: row.MachinePricingSnapshot,
-		CreatedAt:              row.CreatedAt,
+		PricingSource:             row.PricingSource,
+		MachinePricingRevision:    pgInt8ToPtr(row.MachinePricingRevision),
+		MachinePricingSnapshot:    row.MachinePricingSnapshot,
+		ServerReferenceTotalMinor: pgInt8ToInt64(row.ServerReferenceTotalMinor),
+		CreatedAt:                 row.CreatedAt,
 		UpdatedAt:              row.UpdatedAt,
 	}
 }

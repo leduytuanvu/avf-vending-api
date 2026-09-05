@@ -55,6 +55,17 @@ func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machi
 	if m.PaymentMode == "" {
 		return nil
 	}
+	providers := make([]*machinev1.PaymentProviderCapability, 0, len(m.Providers))
+	for _, p := range m.Providers {
+		providers = append(providers, &machinev1.PaymentProviderCapability{
+			Key:               p.Key,
+			Enabled:           p.Enabled,
+			Status:            p.Status,
+			Ready:             p.Ready,
+			SessionCreatable:  p.SessionCreatable,
+			UnavailableReason: p.UnavailableReason,
+		})
+	}
 	return &machinev1.PaymentMethodsConfig{
 		CashEnabled:             m.CashEnabled,
 		QrCardEnabled:           m.QRCardEnabled,
@@ -62,6 +73,7 @@ func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machi
 		CardQrProviderKey:       m.CardQRProviderKey,
 		CardQrProviderStatus:    m.CardQRProviderStatus,
 		QrCardUnavailableReason: m.QRCardUnavailableReason,
+		Providers:               providers,
 	}
 }
 

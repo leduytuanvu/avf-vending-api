@@ -63,12 +63,21 @@ func (s *machineCommerceServer) CreateQuote(ctx context.Context, req *machinev1.
 			Quantity:    qty,
 		})
 	}
+	var pricingSnap *appcommerce.MachinePricingSnapshotInput
+	if req.GetPricingSnapshot() != nil {
+		snap, perr := appcommerce.MachinePricingSnapshotFromProto(req.GetPricingSnapshot())
+		if perr != nil {
+			return nil, status.Error(codes.InvalidArgument, perr.Error())
+		}
+		pricingSnap = &snap
+	}
 	out, err := svc.CreateQuote(ctx, appcommerce.CreateQuoteInput{
-		MachineID:      claims.MachineID,
-		Currency:       cur,
-		PaymentMethod:  strings.TrimSpace(req.GetPaymentMethod()),
-		Lines:          lines,
-		IdempotencyKey: wctx.IdempotencyKey,
+		MachineID:       claims.MachineID,
+		Currency:        cur,
+		PaymentMethod:   strings.TrimSpace(req.GetPaymentMethod()),
+		Lines:           lines,
+		IdempotencyKey:  wctx.IdempotencyKey,
+		PricingSnapshot: pricingSnap,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -97,15 +106,17 @@ func (s *machineCommerceServer) CreateQuote(ctx context.Context, req *machinev1.
 	}
 	zap.L().Info("CreateQuote ok", zap.String("quote_id", out.QuoteID.String()), zap.Bool("replay", out.Replay))
 	return &machinev1.CreateQuoteResponse{
-		Replay:        out.Replay,
-		QuoteId:       out.QuoteID.String(),
-		Currency:      out.Currency,
-		PaymentMethod: out.PaymentMethod,
-		SubtotalMinor: out.SubtotalMinor,
-		DiscountMinor: out.DiscountMinor,
-		PayableMinor:  out.PayableMinor,
-		ExpiresAt:     timestamppb.New(out.ExpiresAt),
-		Lines:         respLines,
+		Replay:                     out.Replay,
+		QuoteId:                    out.QuoteID.String(),
+		Currency:                   out.Currency,
+		PaymentMethod:              out.PaymentMethod,
+		SubtotalMinor:              out.SubtotalMinor,
+		DiscountMinor:              out.DiscountMinor,
+		PayableMinor:               out.PayableMinor,
+		ExpiresAt:                  timestamppb.New(out.ExpiresAt),
+		Lines:                      respLines,
+		PricingSource:              out.PricingSource,
+		ServerReferencePayableMinor: out.ServerReferencePayableMinor,
 	}, nil
 }
 
@@ -135,6 +146,14 @@ func (s *machineCommerceServer) CreateOrderFromQuote(ctx context.Context, req *m
 	if err := validateSimulationCommerce(claims.MachineID, simMeta, s.deps.Config.AppEnv); err != nil {
 		return nil, err
 	}
+	var orderPricingSnap *appcommerce.MachinePricingSnapshotInput
+	if req.GetPricingSnapshot() != nil {
+		snap, perr := appcommerce.MachinePricingSnapshotFromProto(req.GetPricingSnapshot())
+		if perr != nil {
+			return nil, status.Error(codes.InvalidArgument, perr.Error())
+		}
+		orderPricingSnap = &snap
+	}
 	out, err := svc.CreateOrderFromQuote(ctx, appcommerce.CreateOrderFromQuoteInput{
 		MachineID:          claims.MachineID,
 		QuoteID:            quoteID,
@@ -145,6 +164,7 @@ func (s *machineCommerceServer) CreateOrderFromQuote(ctx context.Context, req *m
 		SimulationScenario: simMeta.SimulationScenario,
 		FakeBill:           simMeta.FakeBill,
 		FakeBoard:          simMeta.FakeBoard,
+		PricingSnapshot:    orderPricingSnap,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -171,13 +191,15 @@ func (s *machineCommerceServer) CreateOrderFromQuote(ctx context.Context, req *m
 		})
 	}
 	return &machinev1.CreateOrderFromQuoteResponse{
-		Replay:        out.Replay,
-		OrderId:       out.OrderID.String(),
-		OrderStatus:   out.OrderStatus,
-		Currency:      out.Currency,
-		SubtotalMinor: out.SubtotalMinor,
-		TaxMinor:      out.TaxMinor,
-		TotalMinor:    out.TotalMinor,
-		Lines:         respLines,
+		Replay:                    out.Replay,
+		OrderId:                   out.OrderID.String(),
+		OrderStatus:               out.OrderStatus,
+		Currency:                  out.Currency,
+		SubtotalMinor:             out.SubtotalMinor,
+		TaxMinor:                  out.TaxMinor,
+		TotalMinor:                out.TotalMinor,
+		Lines:                     respLines,
+		PricingSource:             out.PricingSource,
+		ServerReferenceTotalMinor: out.ServerReferenceTotalMinor,
 	}, nil
 }

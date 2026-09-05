@@ -55,6 +55,16 @@ type DeploymentRuntime struct {
 	EnabledProviders          []string `json:"enabled_providers,omitempty"`
 }
 
+// ProviderCapabilityView is per-provider readiness exposed on machine bootstrap.
+type ProviderCapabilityView struct {
+	Key               string
+	Enabled           bool
+	Status            string
+	Ready             bool
+	SessionCreatable  bool
+	UnavailableReason string
+}
+
 // MachinePaymentMethodsView is the machine-facing payment method matrix for bootstrap/config.
 type MachinePaymentMethodsView struct {
 	CashEnabled             bool
@@ -64,6 +74,7 @@ type MachinePaymentMethodsView struct {
 	CardQRProviderStatus    string
 	QRCardUnavailableReason string
 	EnabledProviders        []string // allowlist ∩ wired session-capable keys
+	Providers               []ProviderCapabilityView
 }
 
 // IsPlaceholderLiveProviderKey reports whether key is a known unwired live PSP shell.
@@ -165,6 +176,57 @@ func DeploymentRuntimeFromConfig(cfg *config.Config, reg *Registry) DeploymentRu
 	return out
 }
 
+var productionProviderOrder = []string{"momo", "zalopay", "vnpay", "vietqr", "shopeepay"}
+
+func listProviderCapabilities(cfg *config.Config, reg *Registry, deploy DeploymentRuntime, enabled []string) []ProviderCapabilityView {
+	if reg == nil {
+		return nil
+	}
+	enabledSet := map[string]bool{}
+	for _, k := range enabled {
+		enabledSet[NormalizeProviderKey(k)] = true
+	}
+	byKey := map[string]ProviderSummary{}
+	for _, s := range reg.ProviderSummaries() {
+		byKey[s.Key] = s
+	}
+	var out []ProviderCapabilityView
+	for _, key := range productionProviderOrder {
+		sum, ok := byKey[key]
+		if !ok {
+			continue
+		}
+		providerEnabled := enabledSet[key]
+		if len(enabled) == 0 && cfg != nil && len(cfg.Commerce.AllowedPaymentProviders) == 0 {
+			providerEnabled = sum.Wired && sum.SessionAvailable
+		}
+		ready := sum.Wired && sum.SessionAvailable && deploy.CardQRSessionsAvailable
+		sessionCreatable := ready && providerEnabled && deploy.PaymentMode != PaymentModeCashOnly
+		reason := ""
+		if !sessionCreatable {
+			switch {
+			case deploy.PaymentMode == PaymentModeCashOnly:
+				reason = "cash_only_deployment"
+			case !sum.Wired:
+				reason = QRCardUnavailableReasonProviderUnavailable
+			case !deploy.CardQRSessionsAvailable:
+				reason = QRCardUnavailableReasonProviderUnavailable
+			case !providerEnabled:
+				reason = "provider_not_enabled"
+			}
+		}
+		out = append(out, ProviderCapabilityView{
+			Key:               key,
+			Enabled:           providerEnabled,
+			Status:            sum.ProviderStatus,
+			Ready:             ready,
+			SessionCreatable:  sessionCreatable,
+			UnavailableReason: reason,
+		})
+	}
+	return out
+}
+
 // ResolveMachinePaymentMethods builds machine bootstrap payment config from deployment runtime and optional feature flags.
 func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlags map[string]bool) MachinePaymentMethodsView {
 	deploy := DeploymentRuntimeFromConfig(cfg, reg)
@@ -190,6 +252,7 @@ func ResolveMachinePaymentMethods(cfg *config.Config, reg *Registry, featureFlag
 		out.QRCardUnavailableReason = QRCardUnavailableReasonProviderUnavailable
 	}
 	out.EnabledProviders = enabledWiredProviders(cfg, reg)
+	out.Providers = listProviderCapabilities(cfg, reg, deploy, out.EnabledProviders)
 	return out
 }
 

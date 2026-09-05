@@ -70,6 +70,8 @@ type Deps struct {
 	FinancialCorrectness FinancialCorrectnessStore
 	// WinnerArbitrationEnabled gates atomic winner claim (COMMERCE_WINNER_ARBITRATION_ENABLED).
 	WinnerArbitrationEnabled bool
+	// LocalLayoutMirror optional reader for machine-reported layout pricing provenance.
+	LocalLayoutMirror LocalLayoutMirrorReader
 }
 
 // Orchestrator is the application surface for HTTP/workers.

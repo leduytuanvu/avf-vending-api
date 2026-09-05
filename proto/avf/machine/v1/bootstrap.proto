@@ -136,6 +136,15 @@ message PendingRolloutHint {
   string status = 4;
 }
 
+message PaymentProviderCapability {
+  string key = 1;
+  bool enabled = 2;
+  string status = 3;
+  bool ready = 4;
+  bool session_creatable = 5;
+  string unavailable_reason = 6;
+}
+
 message PaymentMethodsConfig {
   // Machine may offer cash checkout when true (also requires deployment cash_only or operator policy).
   bool cash_enabled = 1;
@@ -149,6 +158,7 @@ message PaymentMethodsConfig {
   string card_qr_provider_status = 5;
   // Stable Android reason when qr_card_enabled=false (e.g. provider_unavailable).
   string qr_card_unavailable_reason = 6;
+  repeated PaymentProviderCapability providers = 7;
 }
 
 message GetBootstrapResponse {

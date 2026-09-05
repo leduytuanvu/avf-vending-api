@@ -116,15 +116,15 @@ UPDATE machine_operator_sessions
 SET
     updated_at = now(),
     last_activity_at = now(),
-    expires_at = COALESCE($1, expires_at),
-    client_metadata = $2
+    expires_at = COALESCE(sqlc.arg('expires_at'), expires_at),
+    client_metadata = COALESCE(NULLIF(sqlc.arg('client_metadata')::text, '')::jsonb, '{}'::jsonb)
 WHERE
-    machine_id = $3
+    machine_id = sqlc.arg('machine_id')
     AND TRUE
     AND status = 'ACTIVE'
-    AND actor_type = $4
-    AND technician_id IS NOT DISTINCT FROM $5
-    AND user_principal IS NOT DISTINCT FROM $6
+    AND actor_type = sqlc.arg('actor_type')
+    AND technician_id IS NOT DISTINCT FROM sqlc.arg('technician_id')
+    AND user_principal IS NOT DISTINCT FROM sqlc.arg('user_principal')
 RETURNING
     id,
     machine_id,
@@ -157,7 +157,7 @@ INSERT INTO machine_operator_sessions (
     $4,
     $5,
     $6,
-    $7
+    COALESCE(NULLIF(sqlc.arg('client_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -269,7 +269,7 @@ INSERT INTO machine_operator_auth_events (
     $4,
     COALESCE($5::timestamptz, now()),
     $6,
-    $7
+    COALESCE(NULLIF(sqlc.arg('metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,

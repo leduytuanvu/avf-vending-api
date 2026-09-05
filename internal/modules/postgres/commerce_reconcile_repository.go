@@ -245,6 +245,13 @@ func pgInt8ToPtr(v pgtype.Int8) *int64 {
 	return &x
 }
 
+func pgInt8ToInt64(v pgtype.Int8) int64 {
+	if !v.Valid {
+		return 0
+	}
+	return v.Int64
+}
+
 func mapCommerceReconciliationCase(row db.CommerceReconciliationCase) domaincommerce.ReconciliationCase {
 	return domaincommerce.ReconciliationCase{
 		ID:              row.ID,

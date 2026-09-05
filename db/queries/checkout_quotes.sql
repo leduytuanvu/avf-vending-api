@@ -8,7 +8,11 @@ INSERT INTO checkout_quotes (
     payable_minor,
     state,
     idempotency_key,
-    expires_at
+    expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor
 )
 VALUES (
     $1,
@@ -19,7 +23,11 @@ VALUES (
     $6,
     $7,
     $8,
-    $9
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
 )
 RETURNING *;
 
@@ -35,6 +43,10 @@ SELECT
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at
 FROM checkout_quotes
 WHERE
@@ -52,6 +64,10 @@ SELECT
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at
 FROM checkout_quotes
 WHERE
@@ -76,6 +92,10 @@ RETURNING
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at;
 
 -- name: InsertCheckoutQuoteLine :one
@@ -90,7 +110,9 @@ INSERT INTO checkout_quote_lines (
     quantity,
     unit_price_minor,
     line_subtotal_minor,
-    pricing_fingerprint
+    pricing_fingerprint,
+    machine_unit_price_minor,
+    server_reference_unit_price_minor
 )
 VALUES (
     $1,
@@ -103,7 +125,9 @@ VALUES (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12,
+    $13
 )
 RETURNING *;
 
@@ -121,6 +145,8 @@ SELECT
     unit_price_minor,
     line_subtotal_minor,
     pricing_fingerprint,
+    machine_unit_price_minor,
+    server_reference_unit_price_minor,
     created_at
 FROM checkout_quote_lines
 WHERE

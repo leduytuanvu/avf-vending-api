@@ -626,7 +626,7 @@ INSERT INTO machine_local_layout_mirror (
     $3,
     $4,
     $5,
-    $6,
+    COALESCE(NULLIF($6::text, '')::jsonb, '[]'::jsonb),
     $7,
     $8,
     $9,
@@ -652,7 +652,7 @@ type UpsertMachineLocalLayoutMirrorParams struct {
 	Revision         int32
 	GridRows         int32
 	GridCols         int32
-	Slots            []byte
+	Slots            string
 	Fingerprint      string
 	ReportedAt       time.Time
 	DeviceInstanceID string
