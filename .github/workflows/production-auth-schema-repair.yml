@@ -1,0 +1,148 @@
+name: Production Auth Schema Repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_repair:
+        description: "Must be exactly REPAIR_PRODUCTION_AUTH"
+        required: true
+        type: string
+      repair_env:
+        description: "Apply DATABASE_URL alignment and recreate api workloads when true"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-auth-schema-repair
+  cancel-in-progress: false
+
+jobs:
+  repair-on-app-node:
+    name: Repair auth DB alignment on app-node A
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm_repair }}" == "REPAIR_PRODUCTION_AUTH" ]] \
+            || { echo "error: confirm_repair must be REPAIR_PRODUCTION_AUTH"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Sync auth repair scripts
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          sync_tar="$(mktemp)"
+          tar -cf "${sync_tar}" \
+            scripts/ops/verify-production-auth-schema.sh \
+            scripts/ops/repair-production-auth-database.sh \
+            deployments/prod/shared/scripts/lib_release.sh
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+              '${deploy_root}/scripts/ops/verify-production-auth-schema.sh' \
+              '${deploy_root}/scripts/ops/repair-production-auth-database.sh'"
+          rm -f "${sync_tar}"
+
+      - name: Verify auth schema (before repair)
+        id: verify_before
+        continue-on-error: true
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/verify-production-auth-schema.sh"
+
+      - name: Repair DATABASE_URL alignment
+        if: ${{ github.event.inputs.repair_env == 'true' && steps.verify_before.outcome != 'success' }}
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          env_file="${deploy_root}/deployments/prod/app-node/.env.app-node"
+          compose_file="${deploy_root}/deployments/prod/app-node/docker-compose.app-node.yml"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && CONFIRM_PRODUCTION_AUTH_REPAIR=REPAIR_PRODUCTION_AUTH \
+              APP_NODE_ENV_FILE='${env_file}' COMPOSE_FILE='${compose_file}' \
+              bash scripts/ops/repair-production-auth-database.sh"
+
+      - name: Verify auth schema (after repair)
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/verify-production-auth-schema.sh"
+
+      - name: Public login smoke
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          body="$(curl -sS -X POST https://api.ldtv.dev/v1/auth/login \
+            -H 'Content-Type: application/json' \
+            -d '{"username":"__healthcheck__","password":"__healthcheck__"}' || true)"
+          echo "${body}"
+          if echo "${body}" | grep -q 'platform_auth_accounts'; then
+            echo "error: login still returns missing-table schema error" >&2
+            exit 1
+          fi
+          echo "login smoke OK (no schema-missing error)"

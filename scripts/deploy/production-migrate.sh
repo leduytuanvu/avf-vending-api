@@ -117,15 +117,6 @@ print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(query), u.frag
 PY
 }
 
-load_env_file() {
-	local path="$1"
-	[[ -f "${path}" ]] || fail "env file not found: ${path}"
-	set -a
-	# shellcheck disable=SC1090
-	source "${path}"
-	set +a
-}
-
 read_env_value_from_file() {
 	local file="$1"
 	local key="$2"
@@ -156,20 +147,26 @@ read_database_url_from_running_api_container() {
 }
 
 resolve_database_url() {
-	local container val
+	local container val env_url
 	if [[ -n "${DATABASE_URL:-}" ]]; then
 		return 0
 	fi
 	load_env_file "${COMPOSE_ENV_FILE}"
 	if [[ -n "${DATABASE_URL:-}" ]]; then
+		note "resolved DATABASE_URL from ${COMPOSE_ENV_FILE}"
+		return 0
+	fi
+	env_url="$(read_env_value_from_file "${COMPOSE_ENV_FILE}" "DATABASE_URL" || true)"
+	if [[ -n "${env_url}" ]]; then
+		DATABASE_URL="${env_url}"
+		export DATABASE_URL
+		note "resolved DATABASE_URL via safe env parse from ${COMPOSE_ENV_FILE}"
 		return 0
 	fi
 	container="$(find_running_api_container)"
 	if val="$(read_database_url_from_running_api_container "${container}")"; then
-		DATABASE_URL="${val}"
-		export DATABASE_URL
-		note "resolved DATABASE_URL from running api container (${container})"
-		return 0
+		fail_with_code "${EXIT_VERIFY_ENV}" \
+			"DATABASE_URL missing from ${COMPOSE_ENV_FILE}; refusing container fallback (${container}) to avoid migrating a different database than docker compose will use after recreate"
 	fi
 	return 1
 }
