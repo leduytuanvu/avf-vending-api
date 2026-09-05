@@ -150,6 +150,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		PaymentSessionRegistry:      rt.Deps.PaymentProviders,
 		FinancialCorrectness:        store,
 		WinnerArbitrationEnabled:    cfg.Commerce.WinnerArbitrationEnabled,
+		LocalLayoutMirror:           store,
 	})
 	var artifactSvc *appartifacts.Service
 	var machineMediaStore objectstore.Store

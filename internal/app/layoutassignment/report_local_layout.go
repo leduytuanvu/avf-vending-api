@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -83,7 +84,7 @@ func (s *Service) ReportLocalLayout(ctx context.Context, auth MachineAuthContext
 		Revision:         in.Revision,
 		GridRows:         in.Rows,
 		GridCols:         in.Columns,
-		Slots:            in.SlotsJSON,
+		Slots:            pgjson.RequiredString(in.SlotsJSON),
 		Fingerprint:      inFP,
 		ReportedAt:       now,
 		DeviceInstanceID: strings.TrimSpace(in.DeviceInstanceID),

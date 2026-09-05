@@ -23,11 +23,8 @@ func NewOperatorRepository(pool *pgxpool.Pool) *OperatorRepository {
 	return &OperatorRepository{pool: pool}
 }
 
-func defaultJSONB(b []byte) []byte {
-	if len(b) == 0 {
-		return []byte("{}")
-	}
-	return b
+func clientMetadataJSON(b []byte) string {
+	return pgjson.RequiredString(b)
 }
 
 func sameOperatorSessionActor(active db.MachineOperatorSession, in domainoperator.StartOperatorSessionParams) bool {
@@ -81,7 +78,7 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 	if err == nil {
 		if sameOperatorSessionActor(active, in) {
 			row, rerr := q.ResumeActiveOperatorSessionForActor(ctx, db.ResumeActiveOperatorSessionForActorParams{ExpiresAt: optionalTimeToPgTimestamptz(in.ExpiresAt),
-				ClientMetadata: defaultJSONB(in.ClientMetadata),
+				ClientMetadata: clientMetadataJSON(in.ClientMetadata),
 
 				MachineID:     in.MachineID,
 				ActorType:     in.ActorType,
@@ -98,7 +95,7 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 				if err := domainoperator.ValidateAuthEventSemantics(domainoperator.AuthEventSessionRefresh, in.InitialAuth.AuthMethod); err != nil {
 					return domainoperator.Session{}, err
 				}
-				meta := defaultJSONB(in.InitialAuth.Metadata)
+				meta := clientMetadataJSON(in.InitialAuth.Metadata)
 				sid := row.ID
 				_, err = q.InsertMachineOperatorAuthEvent(ctx, db.InsertMachineOperatorAuthEventParams{Column5: ptrTimeOrNow(nil),
 
@@ -162,7 +159,7 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 		UserPrincipal:  optionalStringPtrToPgText(in.UserPrincipal),
 		Status:         domainoperator.SessionStatusActive,
 		ExpiresAt:      optionalTimeToPgTimestamptz(in.ExpiresAt),
-		ClientMetadata: defaultJSONB(in.ClientMetadata),
+		ClientMetadata: clientMetadataJSON(in.ClientMetadata),
 	})
 	if err != nil {
 		if isUniqueViolation(err) {
@@ -172,7 +169,7 @@ func (r *OperatorRepository) StartOperatorSession(ctx context.Context, in domain
 	}
 
 	if in.InitialAuth != nil {
-		meta := defaultJSONB(in.InitialAuth.Metadata)
+		meta := clientMetadataJSON(in.InitialAuth.Metadata)
 		eventType := in.InitialAuth.EventType
 		if eventType == "" {
 			eventType = domainoperator.AuthEventLoginSuccess
@@ -266,7 +263,7 @@ func (r *OperatorRepository) EndOperatorSession(ctx context.Context, in domainop
 			EventType:         log.EventType,
 			AuthMethod:        log.AuthMethod,
 			CorrelationID:     optionalUUIDToPg(log.CorrelationID),
-			Metadata:          defaultJSONB(log.Metadata),
+			Metadata:          clientMetadataJSON(log.Metadata),
 		})
 		if err != nil {
 			return domainoperator.Session{}, err
@@ -357,7 +354,7 @@ func (r *OperatorRepository) InsertAuthEvent(ctx context.Context, in domainopera
 		EventType:         in.EventType,
 		AuthMethod:        in.AuthMethod,
 		CorrelationID:     optionalUUIDToPg(in.CorrelationID),
-		Metadata:          defaultJSONB(in.Metadata),
+		Metadata:          clientMetadataJSON(in.Metadata),
 	})
 	if err != nil {
 		return domainoperator.AuthEvent{}, err

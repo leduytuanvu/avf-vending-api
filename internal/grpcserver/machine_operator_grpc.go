@@ -22,8 +22,18 @@ type machineOperatorServer struct {
 	deps MachineGRPCServicesDeps
 }
 
-func (s *machineOperatorServer) OpenOperatorSession(context.Context, *machinev1.OpenOperatorSessionRequest) (*machinev1.OpenOperatorSessionResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "OpenOperatorSession requires human identity proof; use HTTP POST .../operator-sessions/start (not Machine JWT alone)")
+func (s *machineOperatorServer) OpenOperatorSession(ctx context.Context, _ *machinev1.OpenOperatorSessionRequest) (*machinev1.OpenOperatorSessionResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	q := db.New(s.deps.Pool)
+	if err := machineRuntimeInventoryGate(ctx, q, claims); err != nil {
+		return nil, err
+	}
+	// Human identity proof (PIN/biometric) remains on HTTP operator-sessions routes.
+	// OpenOperatorSessionResponse is intentionally empty; use HTTP POST .../operator-sessions/start to open a session.
+	return &machinev1.OpenOperatorSessionResponse{}, nil
 }
 
 func (s *machineOperatorServer) CloseOperatorSession(context.Context, *machinev1.CloseOperatorSessionRequest) (*machinev1.CloseOperatorSessionResponse, error) {

@@ -33,6 +33,7 @@ RETURNING
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
+    server_reference_total_minor,
     created_at,
     updated_at;
 

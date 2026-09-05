@@ -387,7 +387,7 @@ INSERT INTO machine_operator_auth_events (
     $4,
     COALESCE($5::timestamptz, now()),
     $6,
-    $7
+    COALESCE(NULLIF($7::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -407,7 +407,7 @@ type InsertMachineOperatorAuthEventParams struct {
 	AuthMethod        string
 	Column5           time.Time
 	CorrelationID     pgtype.UUID
-	Metadata          []byte
+	Metadata          string
 }
 
 func (q *Queries) InsertMachineOperatorAuthEvent(ctx context.Context, arg InsertMachineOperatorAuthEventParams) (MachineOperatorAuthEvent, error) {
@@ -450,7 +450,7 @@ INSERT INTO machine_operator_sessions (
     $4,
     $5,
     $6,
-    $7
+    COALESCE(NULLIF($7::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING
     id,
@@ -476,7 +476,7 @@ type InsertMachineOperatorSessionParams struct {
 	UserPrincipal  pgtype.Text
 	Status         string
 	ExpiresAt      pgtype.Timestamptz
-	ClientMetadata []byte
+	ClientMetadata string
 }
 
 func (q *Queries) InsertMachineOperatorSession(ctx context.Context, arg InsertMachineOperatorSessionParams) (MachineOperatorSession, error) {
@@ -983,7 +983,7 @@ SET
     updated_at = now(),
     last_activity_at = now(),
     expires_at = COALESCE($1, expires_at),
-    client_metadata = $2
+    client_metadata = COALESCE(NULLIF($2::text, '')::jsonb, '{}'::jsonb)
 WHERE
     machine_id = $3
     AND TRUE
@@ -1010,7 +1010,7 @@ RETURNING
 
 type ResumeActiveOperatorSessionForActorParams struct {
 	ExpiresAt      pgtype.Timestamptz
-	ClientMetadata []byte
+	ClientMetadata string
 	MachineID      uuid.UUID
 	ActorType      string
 	TechnicianID   pgtype.UUID

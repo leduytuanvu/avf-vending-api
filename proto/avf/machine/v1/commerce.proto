@@ -84,6 +84,16 @@ message SimulationContext {
 
 // MachinePricingSnapshot seals the customer-approved price at checkout for offline replay.
 // When set, the server persists declared amounts and skips server-side re-pricing.
+message MachinePricingSnapshotLine {
+  int32 line_sequence = 1;
+  string product_id = 2;
+  SlotSelection slot = 3;
+  int32 quantity = 4;
+  int64 unit_price_minor = 5;
+  int64 line_subtotal_minor = 6;
+  string pricing_sync_state = 7;
+}
+
 message MachinePricingSnapshot {
   int64 subtotal_minor = 1;
   int64 tax_minor = 2;
@@ -92,6 +102,10 @@ message MachinePricingSnapshot {
   int64 local_pricing_revision = 5;
   string pricing_fingerprint = 6;
   google.protobuf.Timestamp captured_at = 7;
+  string snapshot_id = 8;
+  repeated MachinePricingSnapshotLine lines = 9;
+  int64 slot_config_version = 10;
+  string server_pricing_fingerprint = 11;
 }
 
 message CreateOrderRequest {
@@ -137,6 +151,7 @@ message CreateQuoteRequest {
   string payment_method = 4;
   repeated QuoteLineInput lines = 5;
   MachineRequestMeta meta = 6;
+  optional MachinePricingSnapshot pricing_snapshot = 7;
 }
 
 message QuoteLineResponse {
@@ -162,6 +177,8 @@ message CreateQuoteResponse {
   google.protobuf.Timestamp expires_at = 8;
   repeated QuoteLineResponse lines = 9;
   MachineResponseMeta meta = 10;
+  string pricing_source = 11;
+  int64 server_reference_payable_minor = 12;
 }
 
 message CreateOrderFromQuoteRequest {
@@ -171,6 +188,7 @@ message CreateOrderFromQuoteRequest {
   string payment_method = 4;
   MachineRequestMeta meta = 5;
   optional SimulationContext simulation = 6;
+  optional MachinePricingSnapshot pricing_snapshot = 7;
 }
 
 message OrderVendLineResponse {
@@ -193,6 +211,8 @@ message CreateOrderFromQuoteResponse {
   int64 total_minor = 7;
   repeated OrderVendLineResponse lines = 8;
   MachineResponseMeta meta = 9;
+  string pricing_source = 10;
+  int64 server_reference_total_minor = 11;
 }
 
 message CreatePaymentSessionRequest {

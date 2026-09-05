@@ -18,12 +18,13 @@ type QuoteLineInput struct {
 
 // CreateQuoteInput provisions a priced checkout quote for a multi-line cart.
 type CreateQuoteInput struct {
-	MachineID      uuid.UUID
-	Currency       string
-	PaymentMethod  string
-	Lines          []QuoteLineInput
-	IdempotencyKey string
-	QuoteTTL       time.Duration
+	MachineID       uuid.UUID
+	Currency        string
+	PaymentMethod   string
+	Lines           []QuoteLineInput
+	IdempotencyKey  string
+	QuoteTTL        time.Duration
+	PricingSnapshot *MachinePricingSnapshotInput
 }
 
 // QuoteLineView is one priced line returned to clients.
@@ -43,16 +44,18 @@ type QuoteLineView struct {
 
 // CreateQuoteResult is the quote snapshot for checkout UI.
 type CreateQuoteResult struct {
-	QuoteID       uuid.UUID
-	MachineID     uuid.UUID
-	Currency      string
-	PaymentMethod string
-	SubtotalMinor int64
-	DiscountMinor int64
-	PayableMinor  int64
-	ExpiresAt     time.Time
-	Lines         []QuoteLineView
-	Replay        bool
+	QuoteID                     uuid.UUID
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	ExpiresAt                   time.Time
+	Lines                       []QuoteLineView
+	Replay                      bool
+	PricingSource               string
+	ServerReferencePayableMinor int64
 }
 
 // CreateOrderFromQuoteInput binds a quote to a new order with N vend sessions.
@@ -66,6 +69,7 @@ type CreateOrderFromQuoteInput struct {
 	SimulationScenario string
 	FakeBill           bool
 	FakeBoard          bool
+	PricingSnapshot    *MachinePricingSnapshotInput
 }
 
 // OrderVendLineView is one vend session row created from a quote.
@@ -81,12 +85,14 @@ type OrderVendLineView struct {
 
 // CreateOrderFromQuoteResult is the multi-line order create outcome.
 type CreateOrderFromQuoteResult struct {
-	OrderID       uuid.UUID
-	OrderStatus   string
-	Currency      string
-	SubtotalMinor int64
-	TaxMinor      int64
-	TotalMinor    int64
-	Lines         []OrderVendLineView
-	Replay        bool
+	OrderID                   uuid.UUID
+	OrderStatus               string
+	Currency                  string
+	SubtotalMinor             int64
+	TaxMinor                  int64
+	TotalMinor                int64
+	Lines                     []OrderVendLineView
+	Replay                    bool
+	PricingSource             string
+	ServerReferenceTotalMinor int64
 }

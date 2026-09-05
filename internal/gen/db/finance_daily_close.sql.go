@@ -30,7 +30,7 @@ func (q *Queries) CountFinanceDailyCloses(ctx context.Context) (int64, error) {
 const FinanceDailyCloseAggregate = `-- name: FinanceDailyCloseAggregate :one
 WITH scoped_orders AS (
     SELECT
-        o.id, o.machine_id, o.status, o.currency, o.subtotal_minor, o.tax_minor, o.total_minor, o.idempotency_key, o.simulated, o.simulation_run_id, o.simulation_scenario, o.fake_bill, o.fake_board, o.simulation_metadata, o.winning_payment_id, o.winning_claimed_at, o.pricing_source, o.machine_pricing_revision, o.machine_pricing_snapshot, o.created_at, o.updated_at
+        o.id, o.machine_id, o.status, o.currency, o.subtotal_minor, o.tax_minor, o.total_minor, o.idempotency_key, o.simulated, o.simulation_run_id, o.simulation_scenario, o.fake_bill, o.fake_board, o.simulation_metadata, o.winning_payment_id, o.winning_claimed_at, o.pricing_source, o.machine_pricing_revision, o.machine_pricing_snapshot, o.server_reference_total_minor, o.created_at, o.updated_at
     FROM
         orders o
         INNER JOIN machines m ON m.id = o.machine_id

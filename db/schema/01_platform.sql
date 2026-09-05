@@ -769,6 +769,7 @@ CREATE TABLE orders (
     ),
     machine_pricing_revision bigint,
     machine_pricing_snapshot jsonb,
+    server_reference_total_minor bigint,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -821,6 +822,12 @@ CREATE TABLE checkout_quotes (
     state text NOT NULL DEFAULT 'active' CHECK (state IN ('active', 'consumed', 'expired')),
     idempotency_key text,
     expires_at timestamptz NOT NULL,
+    pricing_source text NOT NULL DEFAULT 'server_priced' CHECK (
+        pricing_source IN ('server_priced', 'machine_local_verified', 'machine_local_unverified')
+    ),
+    machine_pricing_revision bigint,
+    machine_pricing_snapshot jsonb,
+    server_reference_payable_minor bigint,
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -843,6 +850,8 @@ CREATE TABLE checkout_quote_lines (
     unit_price_minor bigint NOT NULL,
     line_subtotal_minor bigint NOT NULL,
     pricing_fingerprint text NOT NULL DEFAULT '',
+    machine_unit_price_minor bigint,
+    server_reference_unit_price_minor bigint,
     created_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ux_checkout_quote_lines_quote_seq UNIQUE (quote_id, line_sequence)
 );

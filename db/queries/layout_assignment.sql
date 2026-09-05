@@ -150,7 +150,7 @@ INSERT INTO machine_local_layout_mirror (
     sqlc.arg(revision),
     sqlc.arg(grid_rows),
     sqlc.arg(grid_cols),
-    sqlc.arg(slots),
+    COALESCE(NULLIF(sqlc.arg('slots')::text, '')::jsonb, '[]'::jsonb),
     sqlc.arg(fingerprint),
     sqlc.arg(reported_at),
     sqlc.arg(device_instance_id),

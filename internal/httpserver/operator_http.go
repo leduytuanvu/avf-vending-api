@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -62,6 +63,14 @@ func decodeOperatorLoginBody(w http.ResponseWriter, r *http.Request) (operatorLo
 	dec.DisallowUnknownFields()
 	switch err := dec.Decode(&body); err {
 	case nil, io.EOF:
+		if len(bytes.TrimSpace(body.ClientMetadata)) > 0 && !json.Valid(body.ClientMetadata) {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_client_metadata", "client_metadata must be valid JSON")
+			return body, false
+		}
+		if len(bytes.TrimSpace(body.ClientMetadata)) > 0 && body.ClientMetadata[0] != '{' {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_client_metadata", "client_metadata must be a JSON object")
+			return body, false
+		}
 		return body, true
 	default:
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid request body")

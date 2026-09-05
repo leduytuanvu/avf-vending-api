@@ -25,6 +25,10 @@ SELECT
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at
 FROM checkout_quotes
 WHERE
@@ -45,6 +49,10 @@ func (q *Queries) GetCheckoutQuoteByID(ctx context.Context, id uuid.UUID) (Check
 		&i.State,
 		&i.IdempotencyKey,
 		&i.ExpiresAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
+		&i.ServerReferencePayableMinor,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -62,6 +70,10 @@ SELECT
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at
 FROM checkout_quotes
 WHERE
@@ -88,6 +100,10 @@ func (q *Queries) GetCheckoutQuoteByMachineAndIdempotencyKey(ctx context.Context
 		&i.State,
 		&i.IdempotencyKey,
 		&i.ExpiresAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
+		&i.ServerReferencePayableMinor,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -178,7 +194,11 @@ INSERT INTO checkout_quotes (
     payable_minor,
     state,
     idempotency_key,
-    expires_at
+    expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor
 )
 VALUES (
     $1,
@@ -189,21 +209,29 @@ VALUES (
     $6,
     $7,
     $8,
-    $9
+    $9,
+    $10,
+    $11,
+    $12,
+    $13
 )
-RETURNING id, machine_id, currency, payment_method, subtotal_minor, discount_minor, payable_minor, state, idempotency_key, expires_at, created_at
+RETURNING id, machine_id, currency, payment_method, subtotal_minor, discount_minor, payable_minor, state, idempotency_key, expires_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, server_reference_payable_minor, created_at
 `
 
 type InsertCheckoutQuoteParams struct {
-	MachineID      uuid.UUID
-	Currency       string
-	PaymentMethod  string
-	SubtotalMinor  int64
-	DiscountMinor  int64
-	PayableMinor   int64
-	State          string
-	IdempotencyKey pgtype.Text
-	ExpiresAt      time.Time
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	State                       string
+	IdempotencyKey              pgtype.Text
+	ExpiresAt                   time.Time
+	PricingSource               string
+	MachinePricingRevision      pgtype.Int8
+	MachinePricingSnapshot      []byte
+	ServerReferencePayableMinor pgtype.Int8
 }
 
 func (q *Queries) InsertCheckoutQuote(ctx context.Context, arg InsertCheckoutQuoteParams) (CheckoutQuote, error) {
@@ -217,6 +245,10 @@ func (q *Queries) InsertCheckoutQuote(ctx context.Context, arg InsertCheckoutQuo
 		arg.State,
 		arg.IdempotencyKey,
 		arg.ExpiresAt,
+		arg.PricingSource,
+		arg.MachinePricingRevision,
+		arg.MachinePricingSnapshot,
+		arg.ServerReferencePayableMinor,
 	)
 	var i CheckoutQuote
 	err := row.Scan(
@@ -230,6 +262,10 @@ func (q *Queries) InsertCheckoutQuote(ctx context.Context, arg InsertCheckoutQuo
 		&i.State,
 		&i.IdempotencyKey,
 		&i.ExpiresAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
+		&i.ServerReferencePayableMinor,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -247,7 +283,9 @@ INSERT INTO checkout_quote_lines (
     quantity,
     unit_price_minor,
     line_subtotal_minor,
-    pricing_fingerprint
+    pricing_fingerprint,
+    machine_unit_price_minor,
+    server_reference_unit_price_minor
 )
 VALUES (
     $1,
@@ -260,23 +298,27 @@ VALUES (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12,
+    $13
 )
-RETURNING id, quote_id, line_sequence, product_id, slot_config_id, cabinet_code, slot_code, slot_index, quantity, unit_price_minor, line_subtotal_minor, pricing_fingerprint, created_at
+RETURNING id, quote_id, line_sequence, product_id, slot_config_id, cabinet_code, slot_code, slot_index, quantity, unit_price_minor, line_subtotal_minor, pricing_fingerprint, machine_unit_price_minor, server_reference_unit_price_minor, created_at
 `
 
 type InsertCheckoutQuoteLineParams struct {
-	QuoteID            uuid.UUID
-	LineSequence       int32
-	ProductID          uuid.UUID
-	SlotConfigID       pgtype.UUID
-	CabinetCode        string
-	SlotCode           string
-	SlotIndex          int32
-	Quantity           int32
-	UnitPriceMinor     int64
-	LineSubtotalMinor  int64
-	PricingFingerprint string
+	QuoteID                       uuid.UUID
+	LineSequence                  int32
+	ProductID                     uuid.UUID
+	SlotConfigID                  pgtype.UUID
+	CabinetCode                   string
+	SlotCode                      string
+	SlotIndex                     int32
+	Quantity                      int32
+	UnitPriceMinor                int64
+	LineSubtotalMinor             int64
+	PricingFingerprint            string
+	MachineUnitPriceMinor         pgtype.Int8
+	ServerReferenceUnitPriceMinor pgtype.Int8
 }
 
 func (q *Queries) InsertCheckoutQuoteLine(ctx context.Context, arg InsertCheckoutQuoteLineParams) (CheckoutQuoteLine, error) {
@@ -292,6 +334,8 @@ func (q *Queries) InsertCheckoutQuoteLine(ctx context.Context, arg InsertCheckou
 		arg.UnitPriceMinor,
 		arg.LineSubtotalMinor,
 		arg.PricingFingerprint,
+		arg.MachineUnitPriceMinor,
+		arg.ServerReferenceUnitPriceMinor,
 	)
 	var i CheckoutQuoteLine
 	err := row.Scan(
@@ -307,6 +351,8 @@ func (q *Queries) InsertCheckoutQuoteLine(ctx context.Context, arg InsertCheckou
 		&i.UnitPriceMinor,
 		&i.LineSubtotalMinor,
 		&i.PricingFingerprint,
+		&i.MachineUnitPriceMinor,
+		&i.ServerReferenceUnitPriceMinor,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -436,6 +482,8 @@ SELECT
     unit_price_minor,
     line_subtotal_minor,
     pricing_fingerprint,
+    machine_unit_price_minor,
+    server_reference_unit_price_minor,
     created_at
 FROM checkout_quote_lines
 WHERE
@@ -466,6 +514,8 @@ func (q *Queries) ListCheckoutQuoteLines(ctx context.Context, quoteID uuid.UUID)
 			&i.UnitPriceMinor,
 			&i.LineSubtotalMinor,
 			&i.PricingFingerprint,
+			&i.MachineUnitPriceMinor,
+			&i.ServerReferenceUnitPriceMinor,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -656,6 +706,10 @@ RETURNING
     state,
     idempotency_key,
     expires_at,
+    pricing_source,
+    machine_pricing_revision,
+    machine_pricing_snapshot,
+    server_reference_payable_minor,
     created_at
 `
 
@@ -673,6 +727,10 @@ func (q *Queries) MarkCheckoutQuoteConsumed(ctx context.Context, id uuid.UUID) (
 		&i.State,
 		&i.IdempotencyKey,
 		&i.ExpiresAt,
+		&i.PricingSource,
+		&i.MachinePricingRevision,
+		&i.MachinePricingSnapshot,
+		&i.ServerReferencePayableMinor,
 		&i.CreatedAt,
 	)
 	return i, err

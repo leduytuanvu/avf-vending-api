@@ -36,6 +36,7 @@ func TestMachinePaymentMethods_SandboxDev(t *testing.T) {
 	require.Equal(t, PaymentModeSandbox, methods.PaymentMode)
 	require.True(t, methods.QRCardEnabled)
 	require.Equal(t, ProviderStatusSandbox, methods.CardQRProviderStatus)
+	require.NotEmpty(t, methods.Providers, "Providers must be populated from listProviderCapabilities")
 }
 
 func TestMachinePaymentMethods_FeatureFlagDisablesCash(t *testing.T) {

@@ -237,33 +237,39 @@ type Category struct {
 }
 
 type CheckoutQuote struct {
-	ID             uuid.UUID
-	MachineID      uuid.UUID
-	Currency       string
-	PaymentMethod  string
-	SubtotalMinor  int64
-	DiscountMinor  int64
-	PayableMinor   int64
-	State          string
-	IdempotencyKey pgtype.Text
-	ExpiresAt      time.Time
-	CreatedAt      time.Time
+	ID                          uuid.UUID
+	MachineID                   uuid.UUID
+	Currency                    string
+	PaymentMethod               string
+	SubtotalMinor               int64
+	DiscountMinor               int64
+	PayableMinor                int64
+	State                       string
+	IdempotencyKey              pgtype.Text
+	ExpiresAt                   time.Time
+	PricingSource               string
+	MachinePricingRevision      pgtype.Int8
+	MachinePricingSnapshot      []byte
+	ServerReferencePayableMinor pgtype.Int8
+	CreatedAt                   time.Time
 }
 
 type CheckoutQuoteLine struct {
-	ID                 uuid.UUID
-	QuoteID            uuid.UUID
-	LineSequence       int32
-	ProductID          uuid.UUID
-	SlotConfigID       pgtype.UUID
-	CabinetCode        string
-	SlotCode           string
-	SlotIndex          int32
-	Quantity           int32
-	UnitPriceMinor     int64
-	LineSubtotalMinor  int64
-	PricingFingerprint string
-	CreatedAt          time.Time
+	ID                            uuid.UUID
+	QuoteID                       uuid.UUID
+	LineSequence                  int32
+	ProductID                     uuid.UUID
+	SlotConfigID                  pgtype.UUID
+	CabinetCode                   string
+	SlotCode                      string
+	SlotIndex                     int32
+	Quantity                      int32
+	UnitPriceMinor                int64
+	LineSubtotalMinor             int64
+	PricingFingerprint            string
+	MachineUnitPriceMinor         pgtype.Int8
+	ServerReferenceUnitPriceMinor pgtype.Int8
+	CreatedAt                     time.Time
 }
 
 // Authoritative machine command rows (sequence = device monotonic id). Trace: ledger -> machine_command_attempts -> transport/raw/ack -> device_command_receipts; correlate with vend_sessions / orders via correlation_id and time.
@@ -1358,27 +1364,28 @@ type MessagingConsumerDedupe struct {
 }
 
 type Order struct {
-	ID                     uuid.UUID
-	MachineID              uuid.UUID
-	Status                 string
-	Currency               string
-	SubtotalMinor          int64
-	TaxMinor               int64
-	TotalMinor             int64
-	IdempotencyKey         pgtype.Text
-	Simulated              bool
-	SimulationRunID        pgtype.Text
-	SimulationScenario     pgtype.Text
-	FakeBill               bool
-	FakeBoard              bool
-	SimulationMetadata     []byte
-	WinningPaymentID       pgtype.UUID
-	WinningClaimedAt       pgtype.Timestamptz
-	PricingSource          string
-	MachinePricingRevision pgtype.Int8
-	MachinePricingSnapshot []byte
-	CreatedAt              time.Time
-	UpdatedAt              time.Time
+	ID                        uuid.UUID
+	MachineID                 uuid.UUID
+	Status                    string
+	Currency                  string
+	SubtotalMinor             int64
+	TaxMinor                  int64
+	TotalMinor                int64
+	IdempotencyKey            pgtype.Text
+	Simulated                 bool
+	SimulationRunID           pgtype.Text
+	SimulationScenario        pgtype.Text
+	FakeBill                  bool
+	FakeBoard                 bool
+	SimulationMetadata        []byte
+	WinningPaymentID          pgtype.UUID
+	WinningClaimedAt          pgtype.Timestamptz
+	PricingSource             string
+	MachinePricingRevision    pgtype.Int8
+	MachinePricingSnapshot    []byte
+	ServerReferenceTotalMinor pgtype.Int8
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
 }
 
 // Append-only commerce order lifecycle events (reconciliation actions, refunds, operator visibility).
