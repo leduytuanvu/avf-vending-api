@@ -76,3 +76,38 @@ func TestResolveForPaymentSession_PlaceholderUnavailable(t *testing.T) {
 	_, _, err := reg.ResolveForPaymentSession(config.AppEnvDevelopment, "")
 	require.ErrorIs(t, err, ErrProviderUnavailable)
 }
+
+func TestMachinePaymentMethods_MultiProviderAllowlist(t *testing.T) {
+	t.Parallel()
+	cfg := &config.Config{
+		AppEnv:     config.AppEnvProduction,
+		PaymentEnv: config.PaymentEnvLive,
+		Commerce: config.CommerceHTTPConfig{
+			DefaultPaymentProvider:  "momo",
+			AllowedPaymentProviders: []string{"momo", "zalopay", "vietqr"},
+		},
+	}
+	cfg.PSP.MoMo.AVF.PartnerCode = "PC"
+	cfg.PSP.MoMo.AVF.AccessKey = "ak"
+	cfg.PSP.MoMo.AVF.SecretKey = "sk"
+	cfg.PSP.MoMo.AVF.Endpoint = "https://test.momo.vn"
+	cfg.PSP.ZaloPay.AppID = "1"
+	cfg.PSP.ZaloPay.Key1 = "k1"
+	cfg.PSP.ZaloPay.Key2 = "k2"
+	cfg.PSP.ZaloPay.Endpoint = "https://sb-openapi.zalopay.vn"
+	reg := NewRegistry(cfg)
+	methods := ResolveMachinePaymentMethods(cfg, reg, nil)
+	require.True(t, methods.QRCardEnabled)
+
+	byKey := map[string]ProviderCapabilityView{}
+	for _, p := range methods.Providers {
+		byKey[p.Key] = p
+	}
+	for _, key := range []string{"momo", "zalopay", "vietqr"} {
+		p, ok := byKey[key]
+		require.True(t, ok, "missing provider %s", key)
+		require.True(t, p.Enabled, "provider %s should be enabled", key)
+		require.True(t, p.Ready, "provider %s should be ready", key)
+		require.True(t, p.SessionCreatable, "provider %s should be session_creatable", key)
+	}
+}

@@ -296,3 +296,14 @@ func featureFlagDefaultTrue(flags map[string]bool, key string, defaultVal bool) 
 	}
 	return defaultVal
 }
+
+// EnabledSessionCreatableProviders returns provider keys the kiosk may use for QR sessions.
+func EnabledSessionCreatableProviders(m MachinePaymentMethodsView) []string {
+	var out []string
+	for _, p := range m.Providers {
+		if p.SessionCreatable && strings.TrimSpace(p.Key) != "" {
+			out = append(out, p.Key)
+		}
+	}
+	return out
+}

@@ -712,7 +712,15 @@ func mapBootstrapToProto(ctx context.Context, deps MachineGRPCServicesDeps, mach
 	if resp.RuntimeHints != nil && resp.RuntimeHints.FeatureFlags != nil {
 		flags = resp.RuntimeHints.FeatureFlags
 	}
-	resp.PaymentMethods = mapPaymentMethodsProto(resolveMachinePaymentMethods(deps, flags))
+	paymentMethods := resolveMachinePaymentMethods(deps, flags)
+	slog.Info("PAYMENT_CAPABILITY_RESOLVED",
+		"machine_id", machineID.String(),
+		"cash_enabled", paymentMethods.CashEnabled,
+		"qr_enabled", paymentMethods.QRCardEnabled,
+		"payment_mode", paymentMethods.PaymentMode,
+		"providers", strings.Join(platformpayments.EnabledSessionCreatableProviders(paymentMethods), ","),
+	)
+	resp.PaymentMethods = mapPaymentMethodsProto(paymentMethods)
 	applyBootstrapLayoutFields(resp, layoutBundle)
 	return resp, nil
 }

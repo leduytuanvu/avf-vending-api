@@ -11,6 +11,25 @@ import (
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 )
 
+func TestReconcileNativeWebhookProvider(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		event, stored, want string
+	}{
+		{"zalopay", "vietqr", "vietqr"},
+		{"vietqr", "zalopay", "zalopay"},
+		{"momo", "momo", "momo"},
+		{"", "vietqr", "vietqr"},
+		{"zalopay", "", "zalopay"},
+		{"momo", "zalopay", "momo"},
+	}
+	for _, tc := range cases {
+		if got := reconcileNativeWebhookProvider(tc.event, tc.stored); got != tc.want {
+			t.Fatalf("reconcileNativeWebhookProvider(%q,%q)=%q want %q", tc.event, tc.stored, got, tc.want)
+		}
+	}
+}
+
 func TestMoMoNativeIPN_invalidSignature(t *testing.T) {
 	t.Parallel()
 

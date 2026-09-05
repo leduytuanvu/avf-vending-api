@@ -13,7 +13,7 @@ No live PSP (`stripe`, `momo`, `zalopay`, `vnpay`) is wired for outbound `Create
 `
 PAYMENT_ENV=live
 COMMERCE_PAYMENT_PROVIDER=momo
-COMMERCE_PAYMENT_PROVIDERS=momo,zalopay,vietqr,vnpay,shopeepay
+COMMERCE_PAYMENT_PROVIDERS=momo,zalopay,vietqr,shopeepay
 `
 
 Fill MOMO_* / ZALOPAY_* / VNP_* / SHOPEEPAY_* from the secret store. To revert to cash pilot, use pply_cash_only_payment_app_node_env.sh.
