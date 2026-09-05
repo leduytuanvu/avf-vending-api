@@ -9,6 +9,7 @@ import (
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -56,6 +57,11 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 	if pricingSource == "" {
 		pricingSource = appcommerce.PricingSourceServerPriced
 	}
+	validatedPricingSource, err := validatePricingSourceForPersist(pricingSource)
+	if err != nil {
+		return appcommerce.PersistQuoteResult{}, err
+	}
+	pricingSource = validatedPricingSource
 	quoteRow, err := q.InsertCheckoutQuote(ctx, db.InsertCheckoutQuoteParams{
 		MachineID:                   in.MachineID,
 		Currency:                    in.Currency,
@@ -68,7 +74,7 @@ func (s *Store) CreateQuoteWithLines(ctx context.Context, in appcommerce.Persist
 		ExpiresAt:                   in.ExpiresAt.UTC(),
 		PricingSource:               pricingSource,
 		MachinePricingRevision:      optionalInt64ToPg(in.MachinePricingRevision),
-		MachinePricingSnapshot:      in.MachinePricingSnapshot,
+		MachinePricingSnapshot:      pgjson.OptionalString(in.MachinePricingSnapshot),
 		ServerReferencePayableMinor: optionalInt64ToPg(in.ServerReferencePayableMinor),
 	})
 	if err != nil {
@@ -235,7 +241,7 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		FakeBoard:                 in.FakeBoard,
 		PricingSource:             pricingSource,
 		MachinePricingRevision:    lockedQuote.MachinePricingRevision,
-		MachinePricingSnapshot:    lockedQuote.MachinePricingSnapshot,
+		MachinePricingSnapshot:    pgjson.OptionalString(lockedQuote.MachinePricingSnapshot),
 		ServerReferenceTotalMinor: optionalInt64ToPg(serverRef),
 	})
 	if err != nil {

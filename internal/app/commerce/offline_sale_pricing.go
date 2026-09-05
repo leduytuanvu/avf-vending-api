@@ -134,15 +134,37 @@ func validateMachinePricingSnapshot(snap MachinePricingSnapshotInput) error {
 
 func machinePricingSnapshotJSON(snap MachinePricingSnapshotInput) ([]byte, error) {
 	payload := map[string]any{
-		"subtotal_minor":         snap.SubtotalMinor,
-		"tax_minor":              snap.TaxMinor,
-		"total_minor":            snap.TotalMinor,
-		"unit_price_minor":       snap.UnitPriceMinor,
-		"local_pricing_revision": snap.LocalPricingRevision,
-		"pricing_fingerprint":    snap.PricingFingerprint,
+		"schema_version":             2,
+		"snapshot_id":                strings.TrimSpace(snap.SnapshotID),
+		"subtotal_minor":             snap.SubtotalMinor,
+		"tax_minor":                  snap.TaxMinor,
+		"total_minor":                snap.TotalMinor,
+		"unit_price_minor":           snap.UnitPriceMinor,
+		"local_pricing_revision":     snap.LocalPricingRevision,
+		"pricing_fingerprint":        snap.PricingFingerprint,
+		"slot_config_version":        snap.SlotConfigVersion,
+		"server_pricing_fingerprint": snap.ServerPricingFingerprint,
 	}
 	if !snap.CapturedAt.IsZero() {
 		payload["captured_at"] = snap.CapturedAt.UTC().Format(time.RFC3339Nano)
+	}
+	if len(snap.Lines) > 0 {
+		lines := make([]map[string]any, 0, len(snap.Lines))
+		for _, ln := range snap.Lines {
+			line := map[string]any{
+				"line_sequence":       ln.LineSequence,
+				"product_id":          ln.ProductID.String(),
+				"cabinet_code":        ln.CabinetCode,
+				"slot_code":           ln.SlotCode,
+				"slot_index":          ln.SlotIndex,
+				"quantity":            ln.Quantity,
+				"unit_price_minor":    ln.UnitPriceMinor,
+				"line_subtotal_minor": ln.LineSubtotalMinor,
+				"pricing_sync_state":  ln.PricingSyncState,
+			}
+			lines = append(lines, line)
+		}
+		payload["lines"] = lines
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {

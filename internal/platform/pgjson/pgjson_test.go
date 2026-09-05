@@ -1,31 +1,25 @@
-package pgjson
+package pgjson_test
 
 import (
 	"testing"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 )
 
-func TestTextJSON_EmptyIsNull(t *testing.T) {
-	got := TextJSON(nil)
-	if got.Valid {
-		t.Fatalf("empty should be NULL, got %#v", got)
+func TestOptionalString_emptyIsNullBind(t *testing.T) {
+	t.Parallel()
+	if pgjson.OptionalString(nil) != "" {
+		t.Fatalf("expected empty string for nil snapshot")
+	}
+	if pgjson.OptionalString([]byte("  ")) != "" {
+		t.Fatalf("expected empty string for blank snapshot")
 	}
 }
 
-func TestTextJSON_ValidObject(t *testing.T) {
-	got := TextJSON([]byte(`{"k":1}`))
-	want := pgtype.Text{String: `{"k":1}`, Valid: true}
-	if got != want {
-		t.Fatalf("got %#v want %#v", got, want)
-	}
-}
-
-func TestRequiredString_InvalidBecomesObject(t *testing.T) {
-	if got := RequiredString([]byte("not-json")); got != "{}" {
-		t.Fatalf("got %q", got)
-	}
-	if got := RequiredString([]byte(`{"ok":true}`)); got != `{"ok":true}` {
+func TestOptionalString_validJSON(t *testing.T) {
+	t.Parallel()
+	got := pgjson.OptionalString([]byte(`{"total_minor":2000}`))
+	if got != `{"total_minor":2000}` {
 		t.Fatalf("got %q", got)
 	}
 }

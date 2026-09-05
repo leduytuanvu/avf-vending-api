@@ -18,22 +18,22 @@ INSERT INTO orders (
     server_reference_total_minor
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13,
-    $14,
-    $15,
-    $16
+    sqlc.arg('machine_id'),
+    sqlc.arg('status'),
+    sqlc.arg('currency'),
+    sqlc.arg('subtotal_minor'),
+    sqlc.arg('tax_minor'),
+    sqlc.arg('total_minor'),
+    sqlc.arg('idempotency_key'),
+    sqlc.arg('simulated'),
+    sqlc.arg('simulation_run_id'),
+    sqlc.arg('simulation_scenario'),
+    sqlc.arg('fake_bill'),
+    sqlc.arg('fake_board'),
+    sqlc.arg('pricing_source'),
+    sqlc.arg('machine_pricing_revision'),
+    NULLIF(sqlc.arg('machine_pricing_snapshot')::text, '')::jsonb,
+    sqlc.arg('server_reference_total_minor')
 )
 RETURNING *;
 
