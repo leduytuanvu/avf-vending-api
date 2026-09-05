@@ -29,7 +29,7 @@ func RequiredString(b []byte) string {
 	return string(trim)
 }
 
-// OptionalString is nullable jsonb text sent as UTF-8; empty becomes SQL NULL via NULLIF(..., '')::jsonb.
+// OptionalString is nullable jsonb text sent as UTF-8; empty becomes SQL NULL via NULLIF(..., ”)::jsonb.
 func OptionalString(b []byte) string {
 	trim := bytes.TrimSpace(b)
 	if len(trim) == 0 || bytes.Equal(trim, []byte("null")) {
