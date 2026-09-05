@@ -148,7 +148,7 @@ func mapCommercePaymentSessionErr(err error) error {
 	case errors.Is(err, platformpayments.ErrInvalidCardSessionProvider):
 		return status.Error(codes.InvalidArgument, err.Error())
 	default:
-		if mapped := mapCommercePersistenceErr(err); mapped != nil {
+		if mapped := mapCommercePersistenceErrForOp(OpCreatePaymentSession, err, CommercePersistenceContext{}); mapped != nil {
 			return mapped
 		}
 		if msg := err.Error(); strings.Contains(msg, "momo create failed") || strings.Contains(msg, "empty provider_reference") {
@@ -157,29 +157,38 @@ func mapCommercePaymentSessionErr(err error) error {
 		if strings.Contains(err.Error(), "momo create:") || strings.Contains(err.Error(), "timeout") {
 			return status.Error(codes.Unavailable, "provider_timeout")
 		}
-		return mapCommerceGRPCErr(err)
+		return mapCommerceGRPCErrForOp(OpGenericCommerce, err)
 	}
 }
 
 func mapCommercePersistenceErr(err error) error {
+	return mapCommercePersistenceErrForOp(OpGenericCommerce, err, CommercePersistenceContext{})
+}
+
+func mapCommercePersistenceErrForOp(op CommerceOperation, err error, ctx CommercePersistenceContext) error {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) {
 		return nil
 	}
+	logCommercePersistenceError(op, pgErr, ctx)
 	switch pgErr.Code {
 	case "22P02", "22023":
-		return status.Error(codes.Internal, "payment_session_persistence_failed")
+		return status.Error(codes.Internal, persistenceReasonForOp(op, "persistence_failed"))
 	case "23505":
-		return status.Error(codes.FailedPrecondition, "payment_conflict")
+		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, "conflict"))
 	default:
 		if strings.HasPrefix(pgErr.Code, "08") || pgErr.Code == "57P03" {
-			return status.Error(codes.Unavailable, "payment_backend_unavailable")
+			return status.Error(codes.Unavailable, "commerce_backend_unavailable")
 		}
 	}
 	return nil
 }
 
 func mapCommerceGRPCErr(err error) error {
+	return mapCommerceGRPCErrForOp(OpGenericCommerce, err)
+}
+
+func mapCommerceGRPCErrForOp(op CommerceOperation, err error) error {
 	if err == nil {
 		return nil
 	}
@@ -208,7 +217,7 @@ func mapCommerceGRPCErr(err error) error {
 	case errors.Is(err, domaincommerce.ErrVendEvidenceInvalid):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	default:
-		if mapped := mapCommercePersistenceErr(err); mapped != nil {
+		if mapped := mapCommercePersistenceErrForOp(op, err, CommercePersistenceContext{}); mapped != nil {
 			return mapped
 		}
 		if strings.Contains(err.Error(), "insufficient stock") {

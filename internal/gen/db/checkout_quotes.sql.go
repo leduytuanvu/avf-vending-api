@@ -212,7 +212,7 @@ VALUES (
     $9,
     $10,
     $11,
-    $12,
+    NULLIF($12::text, '')::jsonb,
     $13
 )
 RETURNING id, machine_id, currency, payment_method, subtotal_minor, discount_minor, payable_minor, state, idempotency_key, expires_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, server_reference_payable_minor, created_at
@@ -230,7 +230,7 @@ type InsertCheckoutQuoteParams struct {
 	ExpiresAt                   time.Time
 	PricingSource               string
 	MachinePricingRevision      pgtype.Int8
-	MachinePricingSnapshot      []byte
+	MachinePricingSnapshot      string
 	ServerReferencePayableMinor pgtype.Int8
 }
 

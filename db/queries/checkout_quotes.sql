@@ -15,19 +15,19 @@ INSERT INTO checkout_quotes (
     server_reference_payable_minor
 )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10,
-    $11,
-    $12,
-    $13
+    sqlc.arg('machine_id'),
+    sqlc.arg('currency'),
+    sqlc.arg('payment_method'),
+    sqlc.arg('subtotal_minor'),
+    sqlc.arg('discount_minor'),
+    sqlc.arg('payable_minor'),
+    sqlc.arg('state'),
+    sqlc.arg('idempotency_key'),
+    sqlc.arg('expires_at'),
+    sqlc.arg('pricing_source'),
+    sqlc.arg('machine_pricing_revision'),
+    NULLIF(sqlc.arg('machine_pricing_snapshot')::text, '')::jsonb,
+    sqlc.arg('server_reference_payable_minor')
 )
 RETURNING *;
 

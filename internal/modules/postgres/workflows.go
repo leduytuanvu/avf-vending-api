@@ -123,7 +123,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			FakeBoard:              in.FakeBoard,
 			PricingSource:          pricingSource,
 			MachinePricingRevision: optionalInt64ToPgInt8(in.MachinePricingRevision),
-			MachinePricingSnapshot: in.MachinePricingSnapshot,
+			MachinePricingSnapshot: pgjson.OptionalString(in.MachinePricingSnapshot),
 		})
 		if err != nil {
 			if isUniqueViolation(err) {

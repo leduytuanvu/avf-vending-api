@@ -914,7 +914,7 @@ VALUES (
     $12,
     $13,
     $14,
-    $15,
+    NULLIF($15::text, '')::jsonb,
     $16
 )
 RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, server_reference_total_minor, created_at, updated_at
@@ -935,7 +935,7 @@ type InsertOrderParams struct {
 	FakeBoard                 bool
 	PricingSource             string
 	MachinePricingRevision    pgtype.Int8
-	MachinePricingSnapshot    []byte
+	MachinePricingSnapshot    string
 	ServerReferenceTotalMinor pgtype.Int8
 }
 

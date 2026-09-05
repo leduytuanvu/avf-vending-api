@@ -103,6 +103,7 @@ jobs:
             scripts/db/verify_database_environment.sh \
             scripts/ops/verify-production-auth-schema.sh \
             scripts/ops/repair-production-auth-database.sh \
+            scripts/ops/verify-local-first-pricing-schema.sh \
             scripts/ops/verify-production-payment-validation-status.sh \
             scripts/ops/verify-layout-dimension-migration.sh \
             scripts/ops/run_qr_payment_diagnostics.sh \
@@ -186,6 +187,16 @@ jobs:
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
           PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
             "cd '${deploy_root}' && bash scripts/ops/verify-production-auth-schema.sh"
+
+      - name: Verify local-first pricing schema
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${deploy_root}' && bash scripts/ops/verify-local-first-pricing-schema.sh"
 
       - name: Verify payment validation_status constraint
         shell: bash

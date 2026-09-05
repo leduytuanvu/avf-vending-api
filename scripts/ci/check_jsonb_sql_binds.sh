@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 FILES=(
   "${ROOT}/db/queries/commerce.sql"
+  "${ROOT}/db/queries/checkout_quotes.sql"
   "${ROOT}/db/queries/commerce_timelines_refunds.sql"
   "${ROOT}/db/queries/financial_correctness.sql"
   "${ROOT}/db/queries/financial_ledger.sql"
@@ -28,5 +29,13 @@ if [[ -n "${hits}" ]]; then
   echo "${hits}" >&2
   exit 1
 fi
+
+# machine_pricing_snapshot inserts must cast via ::text before ::jsonb
+for f in "${ROOT}/db/queries/checkout_quotes.sql" "${ROOT}/db/queries/commerce.sql"; do
+  if rg -n "machine_pricing_snapshot" "${f}" | rg -q "INSERT" && ! rg -q "machine_pricing_snapshot.*::text" "${f}"; then
+    echo "check_jsonb_sql_binds: ${f} must cast machine_pricing_snapshot via ::text" >&2
+    exit 1
+  fi
+done
 
 echo "check_jsonb_sql_binds: ok"

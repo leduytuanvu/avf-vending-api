@@ -80,7 +80,7 @@ func (s *machineCommerceServer) CreateQuote(ctx context.Context, req *machinev1.
 		PricingSnapshot: pricingSnap,
 	})
 	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
+		return nil, mapCommerceGRPCErrForOp(OpCreateQuote, err)
 	}
 	if !out.Replay {
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceOrderCreated, map[string]any{
@@ -167,7 +167,7 @@ func (s *machineCommerceServer) CreateOrderFromQuote(ctx context.Context, req *m
 		PricingSnapshot:    orderPricingSnap,
 	})
 	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
+		return nil, mapCommerceGRPCErrForOp(OpCreateOrderFromQuote, err)
 	}
 	if !out.Replay {
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceOrderCreated, map[string]any{
