@@ -436,6 +436,9 @@ func (c *Config) validateLivePSPCredentials(provider string) error {
 		if !c.PSP.ZaloPay.ZaloPayWired() {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ZaloPay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
 		}
+		if !c.PSP.ZaloPay.ZaloPayCallbacksWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ZALOPAY_CALLBACK_URL for COMMERCE_PAYMENT_PROVIDER=%q", k)
+		}
 	case "vnpay":
 		if !c.PSP.VNPay.VNPayWired() {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires VNPay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)

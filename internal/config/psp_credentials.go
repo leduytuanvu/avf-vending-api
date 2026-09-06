@@ -109,6 +109,11 @@ func (c ZaloPayConfig) ZaloPayWired() bool {
 		strings.TrimSpace(c.Endpoint) != ""
 }
 
+// ZaloPayCallbacksWired reports whether ZaloPay/VietQR callback URL is configured.
+func (c ZaloPayConfig) ZaloPayCallbacksWired() bool {
+	return c.ZaloPayWired() && strings.TrimSpace(c.CallbackURL) != ""
+}
+
 // VNPayWired reports whether VNPay QR credentials are complete.
 func (c VNPayConfig) VNPayWired() bool {
 	return strings.TrimSpace(c.AppID) != "" &&

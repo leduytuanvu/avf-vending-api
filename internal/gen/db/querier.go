@@ -482,6 +482,7 @@ type Querier interface {
 	ListOperatorSessionsByMachineID(ctx context.Context, arg ListOperatorSessionsByMachineIDParams) ([]MachineOperatorSession, error)
 	ListOperatorSessionsByTechnicianID(ctx context.Context, arg ListOperatorSessionsByTechnicianIDParams) ([]MachineOperatorSession, error)
 	ListOperatorSessionsByUserPrincipal(ctx context.Context, arg ListOperatorSessionsByUserPrincipalParams) ([]MachineOperatorSession, error)
+	ListOrdersWithCapturedUnpaidPayment(ctx context.Context, arg ListOrdersWithCapturedUnpaidPaymentParams) ([]uuid.UUID, error)
 	ListOrdersWithCashGrossMismatch(ctx context.Context, arg ListOrdersWithCashGrossMismatchParams) ([]uuid.UUID, error)
 	ListOrdersWithUnresolvedPayment(ctx context.Context, arg ListOrdersWithUnresolvedPaymentParams) ([]Order, error)
 	ListOutboxOpsRows(ctx context.Context, arg ListOutboxOpsRowsParams) ([]OutboxEvent, error)

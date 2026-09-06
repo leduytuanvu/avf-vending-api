@@ -843,11 +843,38 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	// Accelerate pending QR payments via provider query (ZaloPay-style); IPN/MQTT remain primary.
 	if st.PaymentPresent {
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
+		os := strings.ToLower(strings.TrimSpace(st.Order.Status))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
 			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
 			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {
 				return nil, mapCommerceGRPCErr(err)
+			}
+			ps = strings.ToLower(strings.TrimSpace(st.Payment.State))
+			os = strings.ToLower(strings.TrimSpace(st.Order.Status))
+		}
+		if ps == "captured" && (os == "created" || os == "quoted") {
+			if _, promoteErr := svc.MarkOrderPaidAfterPaymentCapture(ctx, uuid.Nil, orderID); promoteErr != nil {
+				log.Warn("PAYMENT_ORDER_PROMOTION_REPAIR_FAILED",
+					zap.String("order_id", orderID.String()),
+					zap.String("machine_id", claims.MachineID.String()),
+					zap.String("order_state", st.Order.Status),
+					zap.String("payment_state", st.Payment.State),
+					zap.Error(promoteErr),
+				)
+				productionmetrics.RecordPaymentOrderPromotionRepair("failed")
+			} else {
+				log.Info("PAYMENT_ORDER_PROMOTION_REPAIRED",
+					zap.String("order_id", orderID.String()),
+					zap.String("machine_id", claims.MachineID.String()),
+					zap.String("prior_order_state", st.Order.Status),
+					zap.String("payment_state", st.Payment.State),
+				)
+				productionmetrics.RecordPaymentOrderPromotionRepair("repaired")
+				st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
+				if err != nil {
+					return nil, mapCommerceGRPCErr(err)
+				}
 			}
 		}
 	}

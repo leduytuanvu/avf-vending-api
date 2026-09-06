@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/config"
+	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/observability"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
@@ -184,6 +185,24 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			productionmetrics.RecordPaymentWebhookLookupMiss(strings.TrimSpace(event.Provider))
+			if app.TelemetryStore != nil {
+				provider := strings.TrimSpace(event.Provider)
+				if provider == "" {
+					provider = "unknown"
+				}
+				_, _ = app.TelemetryStore.UpsertReconciliationCase(ctx, domaincommerce.ReconciliationCaseInput{
+					CaseType:       "payment_webhook_lookup_miss",
+					Severity:       "critical",
+					Reason:         "PSP webhook provider_reference did not match any payment row",
+					Provider:       &provider,
+					CorrelationKey: "webhook_lookup_miss:" + provider + ":" + ref,
+					Metadata:       []byte(`{"provider_reference":"` + ref + `"}`),
+				})
+			}
+			observability.LoggerFromContext(ctx, zap.NewNop()).Warn("PAYMENT_WEBHOOK_LOOKUP_MISS",
+				zap.String("provider", strings.TrimSpace(event.Provider)),
+				zap.String("provider_reference", ref),
+			)
 		}
 		return false, err
 	}

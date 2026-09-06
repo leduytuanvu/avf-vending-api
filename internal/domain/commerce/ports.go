@@ -134,6 +134,7 @@ type VendReconciliationCandidate struct {
 // ReconciliationReader lists reconciliation candidates from Postgres (no provider I/O).
 type ReconciliationReader interface {
 	ListPaymentsPendingTimeout(ctx context.Context, before time.Time, limit int32) ([]Payment, error)
+	ListOrdersWithCapturedUnpaidPayment(ctx context.Context, before time.Time, limit int32) ([]uuid.UUID, error)
 	ListOrdersWithUnresolvedPayment(ctx context.Context, before time.Time, limit int32) ([]Order, error)
 	ListVendSessionsStuckForReconciliation(ctx context.Context, before time.Time, limit int32) ([]VendReconciliationCandidate, error)
 	ListPotentialDuplicatePayments(ctx context.Context, before time.Time, limit int32) ([]Payment, error)

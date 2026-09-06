@@ -82,6 +82,10 @@ func (s *Store) webhookReplayResultFromEvent(ctx context.Context, q *db.Queries,
 	if err != nil {
 		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
 	}
+	ord, err = promoteCapturedOrderIfNeeded(ctx, q, ord, pay)
+	if err != nil {
+		return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+	}
 	return appcommerce.ApplyPaymentProviderWebhookResult{
 		Replay:        true,
 		Order:         mapOrder(ord),
@@ -320,6 +324,25 @@ func (s *Store) ApplyPaymentProviderWebhook(ctx context.Context, in appcommerce.
 			if cerr == nil {
 				ord = claimed
 				_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+			} else if ord.Status == "created" || ord.Status == "quoted" {
+				ord, err = q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "paid", ID: ord.ID})
+				if err != nil {
+					return appcommerce.ApplyPaymentProviderWebhookResult{}, err
+				}
+				_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+			} else {
+				orderIDCopy := ord.ID
+				paymentIDCopy := pay.ID
+				machineID := ord.MachineID
+				_, _ = q.UpsertCommerceReconciliationCase(ctx, db.UpsertCommerceReconciliationCaseParams{
+					CaseType:       "late_capture_order_promotion_failed",
+					Severity:       "critical",
+					Reason:         "Late capture could not promote order to paid",
+					OrderID:        optionalUUIDToPg(&orderIDCopy),
+					PaymentID:      optionalUUIDToPg(&paymentIDCopy),
+					MachineID:      optionalUUIDToPg(&machineID),
+					CorrelationKey: pgtype.Text{String: "financial_correctness:late_capture_promotion:" + pay.ID.String(), Valid: true},
+				})
 			}
 		}
 	}
@@ -440,6 +463,31 @@ func webhookAmountCurrencyMatches(pay db.Payment, ord db.Order, in appcommerce.A
 
 func normalizeWebhookCurrency(s string) string {
 	return strings.ToUpper(strings.TrimSpace(s))
+}
+
+// promoteCapturedOrderIfNeeded moves created/quoted orders to paid when payment is already captured.
+func promoteCapturedOrderIfNeeded(ctx context.Context, q *db.Queries, ord db.Order, pay db.Payment) (db.Order, error) {
+	if strings.TrimSpace(pay.State) != "captured" {
+		return ord, nil
+	}
+	st := strings.TrimSpace(ord.Status)
+	if st != "created" && st != "quoted" {
+		return ord, nil
+	}
+	claimed, cerr := q.ClaimWinningPayment(ctx, db.ClaimWinningPaymentParams{
+		WinningPaymentID: uuidToPg(pay.ID),
+		ID:               ord.ID,
+	})
+	if cerr == nil {
+		_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+		return claimed, nil
+	}
+	updated, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "paid", ID: ord.ID})
+	if err != nil {
+		return ord, err
+	}
+	_, _ = q.UpdatePaymentOutcome(ctx, db.UpdatePaymentOutcomeParams{ID: pay.ID, Outcome: "winner"})
+	return updated, nil
 }
 
 func webhookLateDeliveryAgainstTerminalState(ord db.Order, pay db.Payment) bool {
