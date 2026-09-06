@@ -69,8 +69,29 @@ jobs:
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
           script="${deploy_root}/scripts/ops/run_qr_payment_diagnostics.sh"
           checkout_script="${GITHUB_WORKSPACE}/scripts/ops/run_qr_payment_diagnostics.sh"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
-            | tee qr-payment-diagnostics.txt
+
+          run_diagnostics() {
+            if [[ -f "${script}" ]]; then
+              bash "${script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              bash "${checkout_script}"
+            else
+              echo "error: run_qr_payment_diagnostics.sh not found" >&2
+              exit 1
+            fi
+          }
+
+          # github-runner on app-node A has docker socket access; read-only SQL does not need root.
+          if [[ "${PRIV_MODE:-none}" == "none" ]]; then
+            if ! docker info >/dev/null 2>&1; then
+              echo "error: PRIV_MODE=none and docker is not available to the runner" >&2
+              exit 1
+            fi
+            run_diagnostics | tee qr-payment-diagnostics.txt
+          else
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
+              | tee qr-payment-diagnostics.txt
+          fi
           echo "=== diagnostics output ==="
           cat qr-payment-diagnostics.txt
