@@ -887,12 +887,12 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		}
 	}
 	resp := &machinev1.GetOrderStatusResponse{
-		OrderId:            st.Order.ID.String(),
-		OrderStatus:        st.Order.Status,
-		VendState:          st.Vend.State,
-		PaymentPresent:     st.PaymentPresent,
-		PricingSource:      st.Order.PricingSource,
-		PaymentDiagnostic:  paymentDiagnostic,
+		OrderId:           st.Order.ID.String(),
+		OrderStatus:       st.Order.Status,
+		VendState:         st.Vend.State,
+		PaymentPresent:    st.PaymentPresent,
+		PricingSource:     st.Order.PricingSource,
+		PaymentDiagnostic: paymentDiagnostic,
 	}
 	if st.PaymentPresent {
 		resp.PaymentState = st.Payment.State

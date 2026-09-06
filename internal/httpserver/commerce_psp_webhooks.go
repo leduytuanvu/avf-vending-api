@@ -105,7 +105,9 @@ func ZaloPayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config) 
 		logPSPWebhookParsed(log, "zalopay", event, status)
 		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "zalopay", event, status,
 			func() { writeJSON(w, http.StatusOK, map[string]any{"return_code": 1, "return_message": "success"}) },
-			func(msg string) { writeJSON(w, http.StatusOK, map[string]any{"return_code": -1, "return_message": msg}) },
+			func(msg string) {
+				writeJSON(w, http.StatusOK, map[string]any{"return_code": -1, "return_message": msg})
+			},
 		)
 	}
 }

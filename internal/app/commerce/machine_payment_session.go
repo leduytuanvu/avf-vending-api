@@ -36,17 +36,17 @@ type CreateMachinePaymentSessionInput struct {
 
 // CreateMachinePaymentSessionResult returns provider-owned display material for the kiosk.
 type CreateMachinePaymentSessionResult struct {
-	Replay         bool
-	Payment        domaincommerce.Payment
-	Outbox         domaincommerce.OutboxEvent
-	ProviderKey        string
-	ProviderReference  string
-	ProviderSessionID  string
-	CallbackURLHost    string
-	QRPayloadOrURL string
-	PaymentURL     string
-	CheckoutURL    string
-	ExpiresAt      *time.Time
+	Replay            bool
+	Payment           domaincommerce.Payment
+	Outbox            domaincommerce.OutboxEvent
+	ProviderKey       string
+	ProviderReference string
+	ProviderSessionID string
+	CallbackURLHost   string
+	QRPayloadOrURL    string
+	PaymentURL        string
+	CheckoutURL       string
+	ExpiresAt         *time.Time
 }
 
 // CreateMachinePaymentSession provisions a PSP-backed payment session with server-side adapter I/O.
