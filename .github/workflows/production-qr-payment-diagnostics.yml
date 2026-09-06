@@ -15,6 +15,7 @@ jobs:
   diagnostics:
     name: Run qr_payment_diagnostics.sql
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     timeout-minutes: 15
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
@@ -69,8 +70,29 @@ jobs:
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
           script="${deploy_root}/scripts/ops/run_qr_payment_diagnostics.sh"
           checkout_script="${GITHUB_WORKSPACE}/scripts/ops/run_qr_payment_diagnostics.sh"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
-            | tee qr-payment-diagnostics.txt
+
+          run_diagnostics() {
+            if [[ -f "${script}" ]]; then
+              bash "${script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              bash "${checkout_script}"
+            else
+              echo "error: run_qr_payment_diagnostics.sh not found" >&2
+              exit 1
+            fi
+          }
+
+          # Prefer privileged wrapper when production env secrets are available (su-root).
+          # Fall back to direct docker when github-runner has socket access.
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
+              | tee qr-payment-diagnostics.txt
+          elif docker info >/dev/null 2>&1; then
+            run_diagnostics | tee qr-payment-diagnostics.txt
+          else
+            echo "error: no root credentials (set PRODUCTION_ROOT_PASSWORD on environment production) and docker is unavailable to github-runner" >&2
+            exit 1
+          fi
           echo "=== diagnostics output ==="
           cat qr-payment-diagnostics.txt
