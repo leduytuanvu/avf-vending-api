@@ -115,17 +115,30 @@ func ClientIPAllowed(ip string, whitelist map[string]struct{}) bool {
 }
 
 // MapTxStatus maps ShopeePay transaction_status to (status, legacyReturnCode).
-// 3 → captured/0, 1|2 → pending/1, 4|6|7 → failed/-1, else failed/-1.
+// Unknown codes map to pending; only documented terminal codes map to failed.
 func MapTxStatus(txStatus int) (status string, legacyCode int) {
+	d := MapTxStatusDetail(txStatus)
+	return d.Status, d.LegacyCode
+}
+
+// TxStatusDetail is the normalized status plus recognition metadata.
+type TxStatusDetail struct {
+	Status     string
+	LegacyCode int
+	Recognized bool
+}
+
+// MapTxStatusDetail classifies a ShopeePay transaction_status.
+func MapTxStatusDetail(txStatus int) TxStatusDetail {
 	switch txStatus {
 	case TXStatusSuccess:
-		return StatusCaptured, 0
+		return TxStatusDetail{Status: StatusCaptured, LegacyCode: 0, Recognized: true}
 	case TXStatusInitial, TXStatusProcessing:
-		return StatusPending, 1
+		return TxStatusDetail{Status: StatusPending, LegacyCode: 1, Recognized: true}
 	case TXStatusFailed, TXStatusExpired, TXStatusInvalidated:
-		return StatusFailed, -1
+		return TxStatusDetail{Status: StatusFailed, LegacyCode: -1, Recognized: true}
 	default:
-		return StatusFailed, -1
+		return TxStatusDetail{Status: StatusPending, LegacyCode: 1, Recognized: false}
 	}
 }
 

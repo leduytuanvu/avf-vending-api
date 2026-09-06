@@ -122,8 +122,9 @@ func TestMapResultCode(t *testing.T) {
 	}{
 		{0, StatusCaptured, 0},
 		{9000, StatusPending, 1},
-		{1000, StatusFailed, -1},
-		{-1, StatusFailed, -1},
+		{1000, StatusPending, 1},
+		{7000, StatusPending, 1},
+		{-1, StatusPending, 1},
 	}
 	for _, tc := range cases {
 		if got := MapResultCode(tc.code); got != tc.status {

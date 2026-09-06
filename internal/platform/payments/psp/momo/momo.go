@@ -164,25 +164,39 @@ func VerifyIPNSignature(secret string, f IPNFields, signature string) bool {
 }
 
 // MapResultCode maps MoMo resultCode to normalized status.
-// 0 → captured, 9000 → pending, else failed.
+// Unknown/transient codes map to pending; only documented terminal codes map to failed.
 func MapResultCode(resultCode int) string {
+	return MapResultCodeDetail(resultCode).Status
+}
+
+// MapResultCodeDetail classifies a MoMo resultCode with recognition metadata for observability.
+func MapResultCodeDetail(resultCode int) ResultCodeDetail {
 	switch resultCode {
 	case 0:
-		return StatusCaptured
-	case 9000:
-		return StatusPending
+		return ResultCodeDetail{Status: StatusCaptured, Recognized: true}
+	case 9000, 1000, 7000, 7002, 8000:
+		return ResultCodeDetail{Status: StatusPending, Recognized: true}
+	case 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 11, 12, 13, 20, 21, 22, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50:
+		return ResultCodeDetail{Status: StatusFailed, Recognized: true}
 	default:
-		return StatusFailed
+		return ResultCodeDetail{Status: StatusPending, Recognized: false}
 	}
 }
 
+// ResultCodeDetail is the normalized status plus whether the code was explicitly mapped.
+type ResultCodeDetail struct {
+	Status     string
+	Recognized bool
+}
+
 // MapResultCodeToReturnCode maps MoMo resultCode to legacy return_code.
-// 0 → 0, 9000 → 1, else -1.
+// 0 → 0, pending family → 1, failed → -1.
 func MapResultCodeToReturnCode(resultCode int) int {
-	switch resultCode {
-	case 0:
+	d := MapResultCodeDetail(resultCode)
+	switch d.Status {
+	case StatusCaptured:
 		return 0
-	case 9000:
+	case StatusPending:
 		return 1
 	default:
 		return -1

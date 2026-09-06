@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
@@ -53,32 +54,24 @@ func MoMoNativeIPNHandler(app *api.HTTPApplication, cfg *config.Config) http.Han
 			return
 		}
 		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
-		log.Info("MOMO_IPN_RECEIVED", zap.Int("body_bytes", len(body)))
+		log.Info("PSP_WEBHOOK_RECEIVED",
+			zap.String("provider", "momo"),
+			zap.Int("body_bytes", len(body)),
+		)
 		_, status, _, event, err := prov.VerifyAndParseIPN(body)
 		if err != nil {
-			log.Warn("MOMO_IPN_SIGNATURE_INVALID", zap.Error(err))
+			log.Warn("PSP_WEBHOOK_SIGNATURE_INVALID",
+				zap.String("provider", "momo"),
+				zap.Error(err),
+			)
 			writeJSON(w, http.StatusBadRequest, map[string]any{"message": err.Error(), "resultCode": 1001})
 			return
 		}
-		log.Info("MOMO_IPN_RECEIVED",
-			zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)),
-			zap.String("normalized_state", status),
-			zap.Bool("signature_valid", true),
+		logPSPWebhookParsed(log, "momo", event, status)
+		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "momo", event, status,
+			func() { writeJSON(w, http.StatusOK, map[string]any{"message": "Success", "resultCode": 0}) },
+			func(msg string) { writeJSON(w, http.StatusOK, map[string]any{"message": msg, "resultCode": 1001}) },
 		)
-		applied, applyErr := applyNativePSPWebhook(r.Context(), app, cfg, event, status)
-		if applyErr != nil {
-			if errors.Is(applyErr, pgx.ErrNoRows) {
-				writeJSON(w, http.StatusOK, map[string]any{"message": "order not found", "resultCode": 1001})
-				return
-			}
-			log.Error("MOMO_IPN_DB_ERROR", zap.Error(applyErr))
-			writeJSON(w, http.StatusOK, map[string]any{"message": "apply failed", "resultCode": 1001})
-			return
-		}
-		if applied {
-			log.Info("MOMO_IPN_APPLIED", zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)))
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"message": "Success", "resultCode": 0})
 	}
 }
 
@@ -95,22 +88,27 @@ func ZaloPayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config) 
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"return_code": -1, "return_message": "zalopay not configured"})
 			return
 		}
+		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
+		log.Info("PSP_WEBHOOK_RECEIVED",
+			zap.String("provider", "zalopay"),
+			zap.Int("body_bytes", len(body)),
+		)
 		_, status, _, event, err := prov.VerifyAndParseCallback(body)
 		if err != nil {
+			log.Warn("PSP_WEBHOOK_SIGNATURE_INVALID",
+				zap.String("provider", "zalopay"),
+				zap.Error(err),
+			)
 			writeJSON(w, http.StatusBadRequest, map[string]any{"return_code": -1, "return_message": err.Error()})
 			return
 		}
-		_, applyErr := applyNativePSPWebhook(r.Context(), app, cfg, event, status)
-		if applyErr != nil {
-			if errors.Is(applyErr, pgx.ErrNoRows) {
-				writeJSON(w, http.StatusOK, map[string]any{"return_code": -1, "return_message": "order not found"})
-				return
-			}
-			observability.LoggerFromContext(r.Context(), zap.NewNop()).Warn("zalopay native callback apply failed", zap.Error(applyErr))
-			writeJSON(w, http.StatusOK, map[string]any{"return_code": -1, "return_message": "apply failed"})
-			return
-		}
-		writeJSON(w, http.StatusOK, map[string]any{"return_code": 1, "return_message": "success"})
+		logPSPWebhookParsed(log, "zalopay", event, status)
+		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "zalopay", event, status,
+			func() { writeJSON(w, http.StatusOK, map[string]any{"return_code": 1, "return_message": "success"}) },
+			func(msg string) {
+				writeJSON(w, http.StatusOK, map[string]any{"return_code": -1, "return_message": msg})
+			},
+		)
 	}
 }
 
@@ -130,19 +128,24 @@ func ShopeePayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config
 			softACK()
 			return
 		}
+		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
+		log.Info("PSP_WEBHOOK_RECEIVED",
+			zap.String("provider", "shopeepay"),
+			zap.Int("body_bytes", len(body)),
+		)
 		clientID := strings.TrimSpace(r.Header.Get("X-Airpay-ClientId"))
 		signature := strings.TrimSpace(r.Header.Get("X-Airpay-Req-H"))
 		_, status, _, event, err := prov.VerifyAndParseCallback(body, clientID, signature, clientIP(r))
 		if err != nil {
-			observability.LoggerFromContext(r.Context(), zap.NewNop()).Warn("shopeepay native callback verify failed", zap.Error(err))
+			log.Warn("PSP_WEBHOOK_SIGNATURE_INVALID",
+				zap.String("provider", "shopeepay"),
+				zap.Error(err),
+			)
 			softACK()
 			return
 		}
-		_, applyErr := applyNativePSPWebhook(r.Context(), app, cfg, event, status)
-		if applyErr != nil && !errors.Is(applyErr, pgx.ErrNoRows) {
-			observability.LoggerFromContext(r.Context(), zap.NewNop()).Warn("shopeepay native callback apply failed", zap.Error(applyErr))
-		}
-		softACK()
+		logPSPWebhookParsed(log, "shopeepay", event, status)
+		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "shopeepay", event, status, softACK, func(_ string) { softACK() })
 	}
 }
 
@@ -154,23 +157,76 @@ func VNPayNativeReturnHandler(app *api.HTTPApplication, cfg *config.Config) http
 			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"RspCode": "99", "Message": "vnpay not configured"})
 			return
 		}
+		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
+		log.Info("PSP_WEBHOOK_RECEIVED",
+			zap.String("provider", "vnpay"),
+			zap.String("query", r.URL.RawQuery),
+		)
 		event, err := prov.ParseReturnQuery(r.URL.Query())
 		if err != nil {
+			log.Warn("PSP_WEBHOOK_SIGNATURE_INVALID",
+				zap.String("provider", "vnpay"),
+				zap.Error(err),
+			)
 			writeJSON(w, http.StatusBadRequest, map[string]any{"RspCode": "99", "Message": err.Error()})
 			return
 		}
-		_, applyErr := applyNativePSPWebhook(r.Context(), app, cfg, event, event.NormalizedPaymentState)
-		if applyErr != nil {
-			if errors.Is(applyErr, pgx.ErrNoRows) {
-				writeJSON(w, http.StatusOK, map[string]any{"RspCode": "01", "Message": "Order not found"})
-				return
-			}
-			observability.LoggerFromContext(r.Context(), zap.NewNop()).Warn("vnpay return apply failed", zap.Error(applyErr))
-			writeJSON(w, http.StatusOK, map[string]any{"RspCode": "99", "Message": "apply failed"})
+		logPSPWebhookParsed(log, "vnpay", event, event.NormalizedPaymentState)
+		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "vnpay", event, event.NormalizedPaymentState,
+			func() { writeJSON(w, http.StatusOK, map[string]any{"RspCode": "00", "Message": "Confirm Success"}) },
+			func(msg string) { writeJSON(w, http.StatusOK, map[string]any{"RspCode": "99", "Message": msg}) },
+		)
+	}
+}
+
+func logPSPWebhookParsed(log *zap.Logger, provider string, event platformpayments.CommerceWebhookEventJSON, status string) {
+	if log == nil {
+		return
+	}
+	log.Info("PSP_WEBHOOK_RECEIVED",
+		zap.String("provider", provider),
+		zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)),
+		zap.String("normalized_state", strings.TrimSpace(status)),
+		zap.Bool("signature_valid", true),
+	)
+}
+
+func handleNativePSPWebhookResponse(
+	_ http.ResponseWriter,
+	ctx context.Context,
+	app *api.HTTPApplication,
+	cfg *config.Config,
+	log *zap.Logger,
+	provider string,
+	event platformpayments.CommerceWebhookEventJSON,
+	status string,
+	onSuccess func(),
+	onFailure func(string),
+) {
+	applied, applyErr := applyNativePSPWebhook(ctx, app, cfg, event, status)
+	if applyErr != nil {
+		if errors.Is(applyErr, pgx.ErrNoRows) {
+			onFailure("order not found")
 			return
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"RspCode": "00", "Message": "Confirm Success"})
+		reason := appcommerce.ClassifyApplyRejectReason(applyErr)
+		log.Warn("PSP_WEBHOOK_APPLY_REJECTED",
+			zap.String("provider", provider),
+			zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)),
+			zap.String("reject_reason", reason),
+			zap.Error(applyErr),
+		)
+		onFailure("apply failed")
+		return
 	}
+	if applied {
+		log.Info("PSP_WEBHOOK_APPLIED",
+			zap.String("provider", provider),
+			zap.String("provider_reference", strings.TrimSpace(event.ProviderReference)),
+			zap.String("normalized_state", strings.TrimSpace(status)),
+		)
+	}
+	onSuccess()
 }
 
 func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *config.Config, event platformpayments.CommerceWebhookEventJSON, normalizedState string) (bool, error) {
@@ -199,7 +255,7 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 					Metadata:       []byte(`{"provider_reference":"` + ref + `"}`),
 				})
 			}
-			observability.LoggerFromContext(ctx, zap.NewNop()).Warn("PAYMENT_WEBHOOK_LOOKUP_MISS",
+			observability.LoggerFromContext(ctx, zap.NewNop()).Warn("PSP_WEBHOOK_LOOKUP_MISS",
 				zap.String("provider", strings.TrimSpace(event.Provider)),
 				zap.String("provider_reference", ref),
 			)
@@ -216,10 +272,18 @@ func applyNativePSPWebhook(ctx context.Context, app *api.HTTPApplication, cfg *c
 		// Pending / unknown: acknowledge without mutating payment state.
 		return false, nil
 	}
+	resolvedProvider := reconcileNativeWebhookProvider(event.Provider, row.Provider)
+	if resolvedProvider != strings.TrimSpace(event.Provider) && strings.TrimSpace(event.Provider) != "" {
+		observability.LoggerFromContext(ctx, zap.NewNop()).Info("PSP_WEBHOOK_PROVIDER_RECONCILED",
+			zap.String("event_provider", strings.TrimSpace(event.Provider)),
+			zap.String("stored_provider", strings.TrimSpace(row.Provider)),
+			zap.String("resolved_provider", resolvedProvider),
+		)
+	}
 	in := appcommerce.ApplyPaymentProviderWebhookInput{
 		OrderID:                 row.OrderID,
 		PaymentID:               row.PaymentID,
-		Provider:                reconcileNativeWebhookProvider(event.Provider, row.Provider),
+		Provider:                resolvedProvider,
 		ProviderReference:       ref,
 		WebhookEventID:          strings.TrimSpace(event.WebhookEventID),
 		EventType:               strings.TrimSpace(event.EventType),
@@ -259,6 +323,18 @@ func reconcileNativeWebhookProvider(eventProvider, storedProvider string) string
 	default:
 		return storedProv
 	}
+}
+
+func callbackURLHost(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return raw
+	}
+	return u.Host
 }
 
 // LookupPaymentByProviderReference is a thin alias for tests/handlers that already hold the store.

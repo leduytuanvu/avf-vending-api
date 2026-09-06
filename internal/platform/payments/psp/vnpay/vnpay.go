@@ -22,6 +22,7 @@ const (
 // Status values returned by MapCode.
 const (
 	StatusCaptured = "captured"
+	StatusPending  = "pending"
 	StatusFailed   = "failed"
 )
 
@@ -87,12 +88,33 @@ func QueryChecksum(payDate, txnID, merchantCode, terminalID, secretCheckTrans st
 }
 
 // MapCode maps VNPay response code to (status, legacyReturnCode).
-// "00" → captured/0, else failed/-1.
+// Unknown/transient codes map to pending; only documented terminal codes map to failed.
 func MapCode(code string) (status string, legacyCode int) {
-	if code == "00" {
-		return StatusCaptured, 0
+	return MapCodeDetail(code).Status, MapCodeDetail(code).LegacyCode
+}
+
+// CodeDetail is the normalized status plus recognition metadata.
+type CodeDetail struct {
+	Status     string
+	LegacyCode int
+	Recognized bool
+}
+
+// MapCodeDetail classifies a VNPay response code.
+func MapCodeDetail(code string) CodeDetail {
+	c := strings.TrimSpace(code)
+	switch c {
+	case "00", "08":
+		return CodeDetail{Status: StatusCaptured, LegacyCode: 0, Recognized: true}
+	case "09", "10", "11", "12", "13", "24", "51", "91", "97", "99":
+		return CodeDetail{Status: StatusPending, LegacyCode: 1, Recognized: true}
+	case "01", "02", "03", "04", "05", "06", "07", "19", "20", "21", "22", "23", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "52", "53", "54", "55", "56", "57", "58", "59", "60", "61", "62", "63", "64", "65", "66", "67", "68", "69", "70", "71", "72", "73", "74", "75", "76", "77", "78", "79", "80", "81", "82", "83", "84", "85", "86", "87", "88", "89", "90", "92", "93", "94", "95", "96", "98":
+		return CodeDetail{Status: StatusFailed, LegacyCode: -1, Recognized: true}
+	case "":
+		return CodeDetail{Status: StatusPending, LegacyCode: 1, Recognized: false}
+	default:
+		return CodeDetail{Status: StatusPending, LegacyCode: 1, Recognized: false}
 	}
-	return StatusFailed, -1
 }
 
 func md5Upper(raw string) string {

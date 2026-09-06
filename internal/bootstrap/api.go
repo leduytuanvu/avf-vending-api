@@ -72,6 +72,16 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		return fmt.Errorf("bootstrap: build runtime: %w", err)
 	}
 	defer rt.Close()
+	if rt.Deps.PaymentProviders != nil {
+		for _, summary := range rt.Deps.PaymentProviders.ProviderSummaries() {
+			log.Info("PSP_PROVIDER_STARTUP",
+				zap.String("provider", summary.Key),
+				zap.Bool("wired", summary.Wired),
+				zap.String("status", summary.ProviderStatus),
+				zap.Bool("query_supported", summary.QuerySupported),
+			)
+		}
+	}
 
 	mqttLayout := platformmqtt.TopicLayoutLegacy
 	if strings.EqualFold(strings.TrimSpace(cfg.MQTT.TopicLayout), "enterprise") {

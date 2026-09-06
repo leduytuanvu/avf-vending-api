@@ -50,7 +50,7 @@ func TestMapCode(t *testing.T) {
 		t.Fatalf("01 → (%q,%d)", st, lg)
 	}
 	st, lg = MapCode("99")
-	if st != StatusFailed || lg != -1 {
+	if st != StatusPending || lg != 1 {
 		t.Fatalf("99 → (%q,%d)", st, lg)
 	}
 }

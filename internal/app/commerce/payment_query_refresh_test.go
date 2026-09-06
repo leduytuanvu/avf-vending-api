@@ -227,3 +227,40 @@ func TestRefreshPendingPaymentFromProvider_appliesCapturedHintJSON(t *testing.T)
 	svc.RefreshPendingPaymentFromProvider(context.Background(), uuid.Nil, orderID, "AVF-01")
 	require.JSONEq(t, string(hint), string(capture.got.Payload))
 }
+
+func TestRefreshPendingPaymentFromProvider_doesNotApplyFailedFromQuery(t *testing.T) {
+	orderID := uuid.New()
+	provider := &refreshQueryProvider{
+		snapshot: domaincommerce.PaymentStatusSnapshot{NormalizedState: "failed"},
+	}
+	life := &refreshLifecycleStub{
+		orderStatusLifecycleStub: orderStatusLifecycleStub{
+			order: domaincommerce.Order{ID: orderID, Status: "created"},
+			vend: domaincommerce.VendSession{
+				ID:      uuid.New(),
+				OrderID: orderID,
+				State:   "pending",
+			},
+			payment: domaincommerce.Payment{
+				ID:       uuid.New(),
+				OrderID:  orderID,
+				Provider: "momo",
+				State:    "created",
+			},
+		},
+		providerRef: "ref",
+	}
+	capture := &captureWebhookPersistence{}
+	svc := NewService(Deps{
+		OrderVend:              stubOrderVend{},
+		PaymentOutbox:          stubPaymentOutbox{},
+		Lifecycle:              life,
+		WebhookPersist:         capture,
+		SaleLines:              stubSaleLineResolver{},
+		PaymentSessionRegistry: refreshProviderRegistry{provider: provider},
+	})
+
+	out := svc.RefreshPendingPaymentFromProvider(context.Background(), uuid.Nil, orderID, "AVF-01")
+	require.Equal(t, "provider_reported_failure", out.Diagnostic)
+	require.Empty(t, capture.got.EventType)
+}

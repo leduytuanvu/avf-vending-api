@@ -88,7 +88,7 @@ func TestMapTxStatus(t *testing.T) {
 		{4, StatusFailed, -1},
 		{6, StatusFailed, -1},
 		{7, StatusFailed, -1},
-		{99, StatusFailed, -1},
+		{99, StatusPending, 1},
 	}
 	for _, tc := range cases {
 		st, lg := MapTxStatus(tc.tx)

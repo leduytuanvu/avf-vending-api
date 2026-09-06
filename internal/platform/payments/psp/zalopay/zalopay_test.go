@@ -83,7 +83,7 @@ func TestMapReturnCode(t *testing.T) {
 		{1, StatusCaptured, 0},
 		{3, StatusPending, 1},
 		{2, StatusFailed, -1},
-		{-53, StatusFailed, -1},
+		{-53, StatusPending, 1},
 	}
 	for _, tc := range cases {
 		st, lg := MapReturnCode(tc.code)
