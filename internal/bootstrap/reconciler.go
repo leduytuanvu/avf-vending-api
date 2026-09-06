@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"

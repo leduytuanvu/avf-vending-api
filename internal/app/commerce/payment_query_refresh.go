@@ -16,8 +16,8 @@ import (
 
 const (
 	paymentQueryMinIntervalDefault  = 5 * time.Second
-	paymentQueryMinIntervalActiveQR   = 3 * time.Second
-	paymentQueryAcceleratedWindow     = 2 * time.Minute
+	paymentQueryMinIntervalActiveQR = 3 * time.Second
+	paymentQueryAcceleratedWindow   = 2 * time.Minute
 )
 
 // RefreshPendingPaymentFromProvider optionally queries the live PSP when payment is still created/authorized
