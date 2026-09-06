@@ -57,3 +57,21 @@ WHERE p.state = 'failed'
   AND p.updated_at - p.created_at < interval '60 seconds'
 ORDER BY p.created_at DESC
 LIMIT 50;
+
+-- 9. Targeted order/payment forensics (replace UUIDs)
+-- SELECT p.id, p.provider, p.state, p.amount_minor, p.created_at, p.updated_at, o.status AS order_status
+-- FROM payments p JOIN orders o ON o.id = p.order_id
+-- WHERE p.order_id = '00000000-0000-0000-0000-000000000000';
+--
+-- SELECT pa.attempt_seq, pa.provider_reference, pa.created_at,
+--        pa.payload->>'provider_reference' AS payload_ref
+-- FROM payment_attempts pa
+-- WHERE pa.payment_id = '00000000-0000-0000-0000-000000000000'
+-- ORDER BY pa.attempt_seq DESC;
+--
+-- SELECT provider, event_type, validation_status, ingress_status, received_at,
+--        payload->>'resultCode' AS result_code,
+--        payload->>'orderId' AS momo_order_id
+-- FROM payment_provider_events
+-- WHERE payment_id = '00000000-0000-0000-0000-000000000000'
+-- ORDER BY received_at;

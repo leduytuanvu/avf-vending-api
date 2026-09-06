@@ -58,7 +58,7 @@ func main() {
 		log.Fatal("reconciler requires DATABASE_URL for persistence")
 	}
 
-	if err := config.ValidateReconciler(&cfg.Reconciler); err != nil {
+	if err := config.ValidateReconcilerWithApp(&cfg.Reconciler, cfg); err != nil {
 		log.Fatal("reconciler config invalid", zap.Error(err))
 	}
 
