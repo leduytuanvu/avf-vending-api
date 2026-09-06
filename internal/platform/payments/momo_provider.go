@@ -164,8 +164,15 @@ func (p *MoMoProvider) QueryPaymentStatus(ctx context.Context, lookup domaincomm
 	if err != nil {
 		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("momo query decode: %w (http %d)", err, status)
 	}
+	if _, ok := res["resultCode"]; !ok {
+		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("momo query: missing resultCode in response")
+	}
 	resultCode := asInt(res["resultCode"])
-	norm := momo.MapResultCode(resultCode)
+	detail := momo.MapResultCodeDetail(resultCode)
+	if !detail.Recognized {
+		// logged at commerce refresh layer via provider hint; mapper stays pending for unknown codes.
+	}
+	norm := detail.Status
 	hint, _ := json.Marshal(res)
 	return domaincommerce.PaymentStatusSnapshot{
 		NormalizedState: norm,

@@ -14,18 +14,22 @@ import (
 	"go.uber.org/zap"
 )
 
+const paymentQueryMinInterval = 5 * time.Second
+
 // RefreshPendingPaymentFromProvider optionally queries the live PSP when payment is still created/authorized
-// and applies a captured/failed webhook locally when the provider reports a terminal state.
-// Failures are logged; poll/IPN remain authoritative — this only accelerates provider query paths.
+// and applies a captured webhook locally when the provider reports capture.
+// Query refresh never applies failed — terminal failure remains the job of authenticated callbacks and expiry.
 func (s *Service) RefreshPendingPaymentFromProvider(
 	ctx context.Context,
 	companyID, orderID uuid.UUID,
 	machineExternalCode string,
-) {
+) PaymentQueryRefreshOutcome {
 	log := observability.LoggerFromContext(ctx, zap.NewNop())
 	started := time.Now()
+	out := PaymentQueryRefreshOutcome{Diagnostic: "awaiting_callback"}
 	if s == nil || s.paymentSessionReg == nil || s.life == nil || s.webhook == nil {
-		return
+		out.Diagnostic = "not_configured"
+		return out
 	}
 	log.Info("PAYMENT_QUERY_REFRESH_START",
 		zap.String("order_id", orderID.String()),
@@ -41,15 +45,28 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 				zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 			)
 			productionmetrics.RecordPaymentQueryRefresh("checkout_status_error")
+			out.Diagnostic = "checkout_status_error"
 		} else {
 			productionmetrics.RecordPaymentQueryRefresh("no_payment")
+			out.Diagnostic = "no_payment"
 		}
-		return
+		logOutcome(log, orderID, out, started)
+		return out
 	}
 	state := strings.ToLower(strings.TrimSpace(st.Payment.State))
 	if state != "created" && state != "authorized" && state != "pending" {
 		productionmetrics.RecordPaymentQueryRefresh("skipped_terminal_state")
-		return
+		out.Diagnostic = "skipped_terminal_state"
+		out.Skipped = true
+		logOutcome(log, orderID, out, started)
+		return out
+	}
+	if st.Payment.ID != uuid.Nil && !s.paymentQueryThrottleAllows(st.Payment.ID, started) {
+		productionmetrics.RecordPaymentQueryRefresh("throttled")
+		out.Diagnostic = "provider_throttled"
+		out.Skipped = true
+		logOutcome(log, orderID, out, started)
+		return out
 	}
 	provKey := strings.ToLower(strings.TrimSpace(st.Payment.Provider))
 	type providerGetter interface {
@@ -61,7 +78,10 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 	}
 	if p == nil || !p.SupportsQueryPaymentStatus() {
 		productionmetrics.RecordPaymentQueryRefresh("provider_unsupported")
-		return
+		out.Diagnostic = "provider_unsupported"
+		out.Skipped = true
+		logOutcome(log, orderID, out, started)
+		return out
 	}
 	providerRef := ""
 	attemptPayload := []byte(nil)
@@ -124,6 +144,9 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 			zap.String("source", "latest_attempt"),
 		)
 	}
+	if st.Payment.ID != uuid.Nil {
+		s.paymentQueryThrottle.Store(st.Payment.ID.String(), started)
+	}
 	log.Info("PAYMENT_QUERY_PROVIDER_START",
 		zap.String("order_id", orderID.String()),
 		zap.String("payment_id", st.Payment.ID.String()),
@@ -148,7 +171,9 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 			zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 		)
 		productionmetrics.RecordPaymentQueryRefresh("provider_error")
-		return
+		out.Diagnostic = "provider_error"
+		logOutcome(log, orderID, out, started)
+		return out
 	}
 	norm := strings.ToLower(strings.TrimSpace(snap.NormalizedState))
 	log.Info("PAYMENT_QUERY_PROVIDER_RESULT",
@@ -158,11 +183,24 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		zap.String("normalized_state", norm),
 		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 	)
-	if norm != "captured" && norm != "failed" {
-		productionmetrics.RecordPaymentQueryRefresh("provider_pending")
-		return
+	if norm != "captured" {
+		if norm == "failed" {
+			log.Warn("PAYMENT_QUERY_PROVIDER_REPORTED_FAILURE",
+				zap.String("order_id", orderID.String()),
+				zap.String("payment_id", st.Payment.ID.String()),
+				zap.String("provider", provKey),
+				zap.String("normalized_state", norm),
+			)
+			productionmetrics.RecordPaymentQueryRefresh("provider_reported_failure")
+			out.Diagnostic = "provider_reported_failure"
+		} else {
+			productionmetrics.RecordPaymentQueryRefresh("provider_pending")
+			out.Diagnostic = "provider_pending"
+		}
+		logOutcome(log, orderID, out, started)
+		return out
 	}
-	eventID := "query_refresh:" + st.Payment.ID.String() + ":" + norm
+	eventID := "query_refresh:" + st.Payment.ID.String() + ":captured"
 	log.Info("PAYMENT_CAPTURE_APPLY_START",
 		zap.String("order_id", orderID.String()),
 		zap.String("payment_id", st.Payment.ID.String()),
@@ -181,16 +219,20 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		WebhookValidationStatus: "provider_native_verified",
 	})
 	if applyErr != nil {
+		reason := ClassifyApplyRejectReason(applyErr)
 		log.Warn("PAYMENT_CAPTURE_APPLY_ERROR",
 			zap.String("order_id", orderID.String()),
 			zap.String("payment_id", st.Payment.ID.String()),
 			zap.String("provider", provKey),
 			zap.String("normalized_state", norm),
+			zap.String("reject_reason", reason),
 			zap.Error(applyErr),
 			zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 		)
 		productionmetrics.RecordPaymentQueryRefresh("apply_error")
-		return
+		out.Diagnostic = "apply_rejected"
+		logOutcome(log, orderID, out, started)
+		return out
 	}
 	log.Info("PAYMENT_CAPTURE_APPLY_SUCCESS",
 		zap.String("order_id", orderID.String()),
@@ -200,4 +242,32 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 	)
 	productionmetrics.RecordPaymentQueryRefresh(norm)
+	out.Diagnostic = "captured"
+	logOutcome(log, orderID, out, started)
+	return out
+}
+
+func (s *Service) paymentQueryThrottleAllows(paymentID uuid.UUID, now time.Time) bool {
+	if s == nil || paymentID == uuid.Nil {
+		return true
+	}
+	key := paymentID.String()
+	if prev, ok := s.paymentQueryThrottle.Load(key); ok {
+		if last, ok := prev.(time.Time); ok && now.Sub(last) < paymentQueryMinInterval {
+			return false
+		}
+	}
+	return true
+}
+
+func logOutcome(log *zap.Logger, orderID uuid.UUID, out PaymentQueryRefreshOutcome, started time.Time) {
+	if log == nil {
+		return
+	}
+	log.Info("PAYMENT_QUERY_REFRESH_OUTCOME",
+		zap.String("order_id", orderID.String()),
+		zap.String("diagnostic", out.Diagnostic),
+		zap.Bool("skipped", out.Skipped),
+		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+	)
 }

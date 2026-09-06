@@ -39,7 +39,10 @@ type CreateMachinePaymentSessionResult struct {
 	Replay         bool
 	Payment        domaincommerce.Payment
 	Outbox         domaincommerce.OutboxEvent
-	ProviderKey    string
+	ProviderKey        string
+	ProviderReference  string
+	ProviderSessionID  string
+	CallbackURLHost    string
 	QRPayloadOrURL string
 	PaymentURL     string
 	CheckoutURL    string
@@ -204,6 +207,8 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	out.PaymentURL = strings.TrimSpace(sess.PaymentURL)
 	out.CheckoutURL = strings.TrimSpace(sess.CheckoutURL)
 	out.ExpiresAt = sess.ExpiresAt
+	out.ProviderReference = boundRef
+	out.ProviderSessionID = strings.TrimSpace(sess.ProviderSessionID)
 	return out, nil
 }
 

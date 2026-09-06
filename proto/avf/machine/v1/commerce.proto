@@ -311,6 +311,8 @@ message GetOrderStatusResponse {
   string payment_state = 5;
   // server_priced | machine_local_verified | machine_local_unverified
   string pricing_source = 6;
+  // Short machine-safe reason from the latest provider query refresh (awaiting_callback, provider_pending, ...).
+  string payment_diagnostic = 7;
 }
 
 // HardwareCommandRef links a vend outcome to a command_ledger / machine_command_attempts row.

@@ -2352,8 +2352,10 @@ type GetOrderStatusResponse struct {
 	PaymentState   string                 `protobuf:"bytes,5,opt,name=payment_state,json=paymentState,proto3" json:"payment_state,omitempty"`
 	// server_priced | machine_local_verified | machine_local_unverified
 	PricingSource string `protobuf:"bytes,6,opt,name=pricing_source,json=pricingSource,proto3" json:"pricing_source,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Short machine-safe reason from the latest provider query refresh (awaiting_callback, provider_pending, ...).
+	PaymentDiagnostic string `protobuf:"bytes,7,opt,name=payment_diagnostic,json=paymentDiagnostic,proto3" json:"payment_diagnostic,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetOrderStatusResponse) Reset() {
@@ -2424,6 +2426,13 @@ func (x *GetOrderStatusResponse) GetPaymentState() string {
 func (x *GetOrderStatusResponse) GetPricingSource() string {
 	if x != nil {
 		return x.PricingSource
+	}
+	return ""
+}
+
+func (x *GetOrderStatusResponse) GetPaymentDiagnostic() string {
+	if x != nil {
+		return x.PaymentDiagnostic
 	}
 	return ""
 }
@@ -3839,7 +3848,7 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x15GetOrderStatusRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
-	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\xea\x01\n" +
+	"slot_index\x18\x02 \x01(\x05R\tslotIndex\"\x99\x02\n" +
 	"\x16GetOrderStatusResponse\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12!\n" +
 	"\forder_status\x18\x02 \x01(\tR\vorderStatus\x12\x1d\n" +
@@ -3847,7 +3856,8 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"vend_state\x18\x03 \x01(\tR\tvendState\x12'\n" +
 	"\x0fpayment_present\x18\x04 \x01(\bR\x0epaymentPresent\x12#\n" +
 	"\rpayment_state\x18\x05 \x01(\tR\fpaymentState\x12%\n" +
-	"\x0epricing_source\x18\x06 \x01(\tR\rpricingSource\"n\n" +
+	"\x0epricing_source\x18\x06 \x01(\tR\rpricingSource\x12-\n" +
+	"\x12payment_diagnostic\x18\a \x01(\tR\x11paymentDiagnostic\"n\n" +
 	"\x12HardwareCommandRef\x12\x1d\n" +
 	"\n" +
 	"command_id\x18\x01 \x01(\tR\tcommandId\x12 \n" +

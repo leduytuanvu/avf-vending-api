@@ -166,6 +166,9 @@ func (p *ZaloPayProvider) QueryPaymentStatus(ctx context.Context, lookup domainc
 	if err != nil {
 		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("zalopay query decode: %w (http %d)", err, status)
 	}
+	if _, ok := res["return_code"]; !ok {
+		return domaincommerce.PaymentStatusSnapshot{}, fmt.Errorf("zalopay query: missing return_code in response")
+	}
 	norm, _ := zalopay.MapReturnCode(asInt(res["return_code"]))
 	hint, _ := json.Marshal(res)
 	return domaincommerce.PaymentStatusSnapshot{
@@ -213,8 +216,6 @@ func (p *ZaloPayProvider) VerifyAndParseCallback(raw []byte) (orderID, status, z
 	// Prefer explicit return_code when present; otherwise treat as captured when zp_trans_id is set.
 	if rc, ok := data["return_code"]; ok {
 		status, _ = zalopay.MapReturnCode(asInt(rc))
-	} else if zpTransID != "" {
-		status = zalopay.StatusCaptured
 	} else {
 		status = zalopay.StatusPending
 	}

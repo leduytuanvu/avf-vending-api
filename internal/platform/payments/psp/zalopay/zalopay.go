@@ -83,15 +83,30 @@ func EmbedData(vietqr bool) string {
 }
 
 // MapReturnCode maps ZaloPay provider return_code to (status, legacyReturnCode).
-// 1 → captured/0, 3 → pending/1, else failed/-1.
+// Unknown/transient codes map to pending; only documented terminal codes map to failed.
 func MapReturnCode(returnCode int) (status string, legacyCode int) {
+	d := MapReturnCodeDetail(returnCode)
+	return d.Status, d.LegacyCode
+}
+
+// ReturnCodeDetail is the normalized status plus recognition metadata.
+type ReturnCodeDetail struct {
+	Status     string
+	LegacyCode int
+	Recognized bool
+}
+
+// MapReturnCodeDetail classifies a ZaloPay return_code.
+func MapReturnCodeDetail(returnCode int) ReturnCodeDetail {
 	switch returnCode {
 	case 1:
-		return StatusCaptured, 0
+		return ReturnCodeDetail{Status: StatusCaptured, LegacyCode: 0, Recognized: true}
 	case 3:
-		return StatusPending, 1
+		return ReturnCodeDetail{Status: StatusPending, LegacyCode: 1, Recognized: true}
+	case 2, -1, -49, -54, -63:
+		return ReturnCodeDetail{Status: StatusFailed, LegacyCode: -1, Recognized: true}
 	default:
-		return StatusFailed, -1
+		return ReturnCodeDetail{Status: StatusPending, LegacyCode: 1, Recognized: false}
 	}
 }
 

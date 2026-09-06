@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -39,6 +40,7 @@ type Service struct {
 	financial                   FinancialCorrectnessStore
 	winnerArbitrationEnabled    bool
 	layoutMirror                LocalLayoutMirrorReader
+	paymentQueryThrottle        sync.Map // paymentID string -> time.Time
 }
 
 // NewService returns a commerce orchestrator. OrderVend workflow is required.

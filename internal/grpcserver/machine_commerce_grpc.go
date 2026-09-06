@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -545,6 +547,10 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		zap.String("order_id", orderID.String()),
 		zap.String("payment_id", res.Payment.ID.String()),
 		zap.String("provider", res.ProviderKey),
+		zap.String("provider_reference", strings.TrimSpace(res.ProviderReference)),
+		zap.String("provider_session_id", strings.TrimSpace(res.ProviderSessionID)),
+		zap.String("callback_url_host", paymentCallbackURLHost(s.deps.Config, res.ProviderKey)),
+		zap.String("machine_external_code", machineExternalCode(ctx, s.deps, claims.MachineID)),
 		zap.Bool("replay", res.Replay),
 		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 	)
@@ -841,11 +847,13 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		zap.String("payment_state", st.Payment.State),
 	)
 	// Accelerate pending QR payments via provider query (ZaloPay-style); IPN/MQTT remain primary.
+	paymentDiagnostic := ""
 	if st.PaymentPresent {
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
 		os := strings.ToLower(strings.TrimSpace(st.Order.Status))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
-			svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
+			refreshOutcome := svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
+			paymentDiagnostic = strings.TrimSpace(refreshOutcome.Diagnostic)
 			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {
 				return nil, mapCommerceGRPCErr(err)
@@ -879,11 +887,12 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		}
 	}
 	resp := &machinev1.GetOrderStatusResponse{
-		OrderId:        st.Order.ID.String(),
-		OrderStatus:    st.Order.Status,
-		VendState:      st.Vend.State,
-		PaymentPresent: st.PaymentPresent,
-		PricingSource:  st.Order.PricingSource,
+		OrderId:            st.Order.ID.String(),
+		OrderStatus:        st.Order.Status,
+		VendState:          st.Vend.State,
+		PaymentPresent:     st.PaymentPresent,
+		PricingSource:      st.Order.PricingSource,
+		PaymentDiagnostic:  paymentDiagnostic,
 	}
 	if st.PaymentPresent {
 		resp.PaymentState = st.Payment.State
@@ -1327,4 +1336,30 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 func idempotencyKeyFingerprint(key string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(key)))
 	return hex.EncodeToString(sum[:])[:12]
+}
+
+func paymentCallbackURLHost(cfg *config.Config, providerKey string) string {
+	if cfg == nil {
+		return ""
+	}
+	raw := ""
+	switch strings.ToLower(strings.TrimSpace(providerKey)) {
+	case "momo":
+		raw = cfg.PSP.MoMo.AVF.IPNURL
+	case "zalopay", "vietqr":
+		raw = cfg.PSP.ZaloPay.CallbackURL
+	case "vnpay":
+		raw = cfg.PSP.VNPay.ReturnURL
+	case "shopeepay":
+		raw = cfg.PSP.ShopeePay.AVF.CallbackURL
+	}
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return raw
+	}
+	return u.Host
 }

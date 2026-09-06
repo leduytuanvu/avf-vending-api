@@ -94,7 +94,7 @@ type Orchestrator interface {
 	// Missing vend sessions for the requested slot do not surface as ErrNotFound.
 	GetOrderStatusView(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
-	RefreshPendingPaymentFromProvider(ctx context.Context, companyID, orderID uuid.UUID, machineExternalCode string)
+	RefreshPendingPaymentFromProvider(ctx context.Context, companyID, orderID uuid.UUID, machineExternalCode string) PaymentQueryRefreshOutcome
 
 	EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error
 	CancelOrder(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)

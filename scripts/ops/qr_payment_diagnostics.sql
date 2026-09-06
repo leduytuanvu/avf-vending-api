@@ -40,3 +40,20 @@ WHERE status = 'in_progress'
   AND last_seen_at > now() - interval '7 days'
 GROUP BY operation, status
 ORDER BY count(*) DESC;
+
+-- 7. Payment state breakdown by provider (30 days)
+SELECT provider, state, count(*) AS cnt, min(created_at), max(created_at)
+FROM payments
+WHERE created_at > now() - interval '30 days'
+GROUP BY provider, state
+ORDER BY provider, cnt DESC;
+
+-- 8. Payments that reached failed within 60s of creation (mapper/query burn suspect)
+SELECT p.id, p.provider, p.state, p.order_id, p.created_at,
+       EXTRACT(EPOCH FROM (p.updated_at - p.created_at)) AS seconds_to_terminal
+FROM payments p
+WHERE p.state = 'failed'
+  AND p.created_at > now() - interval '30 days'
+  AND p.updated_at - p.created_at < interval '60 seconds'
+ORDER BY p.created_at DESC
+LIMIT 50;
