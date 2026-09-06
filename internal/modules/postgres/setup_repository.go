@@ -207,25 +207,17 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 	clearedDraftScopes := make(map[layoutDraftScope]struct{})
 
 	for _, it := range in.Items {
-		cabRow, err := q.FleetAdminGetMachineCabinetByMachineAndCode(ctx, db.FleetAdminGetMachineCabinetByMachineAndCodeParams{
-			MachineID:   machineID,
-			CabinetCode: strings.TrimSpace(it.CabinetCode),
-		})
+		cabRow, err := lookupMachineCabinet(ctx, q, machineID, it.CabinetCode)
 		if err != nil {
-			if isNoRows(err) {
+			if errors.Is(err, setupapp.ErrCabinetNotFound) {
 				return setupapp.ErrCabinetNotFound
 			}
 			return err
 		}
 
-		layoutRow, err := q.FleetAdminGetMachineSlotLayoutByKey(ctx, db.FleetAdminGetMachineSlotLayoutByKeyParams{
-			MachineID:        machineID,
-			MachineCabinetID: cabRow.ID,
-			LayoutKey:        strings.TrimSpace(it.LayoutKey),
-			Revision:         it.LayoutRevision,
-		})
+		layoutRow, err := lookupMachineSlotLayout(ctx, q, machineID, cabRow.ID, it.LayoutKey, it.LayoutRevision)
 		if err != nil {
-			if isNoRows(err) {
+			if errors.Is(err, setupapp.ErrSlotLayoutNotFound) {
 				return setupapp.ErrSlotLayoutNotFound
 			}
 			return err
@@ -560,4 +552,74 @@ func mapConfiguredSlotRows(rows []db.InventoryAdminListCurrentMachineSlotConfigs
 		})
 	}
 	return out
+}
+
+func cabinetCodesToTry(requested string) []string {
+	trimmed := strings.TrimSpace(requested)
+	if trimmed == "" {
+		return []string{"CAB-A"}
+	}
+	switch strings.ToUpper(trimmed) {
+	case "A", "MAIN":
+		return []string{trimmed, "CAB-A"}
+	default:
+		return []string{trimmed}
+	}
+}
+
+func layoutKeysToTry(requested string) []string {
+	trimmed := strings.TrimSpace(requested)
+	if trimmed == "" {
+		return []string{"default", "grid-10x6", "grid-4x6"}
+	}
+	if trimmed == "default" {
+		return []string{"default", "grid-10x6", "grid-4x6"}
+	}
+	return []string{trimmed}
+}
+
+func lookupMachineCabinet(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	requestedCode string,
+) (db.MachineCabinet, error) {
+	for _, code := range cabinetCodesToTry(requestedCode) {
+		row, err := q.FleetAdminGetMachineCabinetByMachineAndCode(ctx, db.FleetAdminGetMachineCabinetByMachineAndCodeParams{
+			MachineID:   machineID,
+			CabinetCode: code,
+		})
+		if err == nil {
+			return row, nil
+		}
+		if !isNoRows(err) {
+			return db.MachineCabinet{}, err
+		}
+	}
+	return db.MachineCabinet{}, setupapp.ErrCabinetNotFound
+}
+
+func lookupMachineSlotLayout(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	cabinetID uuid.UUID,
+	requestedLayoutKey string,
+	revision int32,
+) (db.FleetAdminGetMachineSlotLayoutByKeyRow, error) {
+	for _, layoutKey := range layoutKeysToTry(requestedLayoutKey) {
+		row, err := q.FleetAdminGetMachineSlotLayoutByKey(ctx, db.FleetAdminGetMachineSlotLayoutByKeyParams{
+			MachineID:        machineID,
+			MachineCabinetID: cabinetID,
+			LayoutKey:        layoutKey,
+			Revision:         revision,
+		})
+		if err == nil {
+			return row, nil
+		}
+		if !isNoRows(err) {
+			return db.FleetAdminGetMachineSlotLayoutByKeyRow{}, err
+		}
+	}
+	return db.FleetAdminGetMachineSlotLayoutByKeyRow{}, setupapp.ErrSlotLayoutNotFound
 }
