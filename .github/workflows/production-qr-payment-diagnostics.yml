@@ -15,6 +15,7 @@ jobs:
   diagnostics:
     name: Run qr_payment_diagnostics.sql
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     timeout-minutes: 15
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
