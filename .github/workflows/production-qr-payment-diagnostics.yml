@@ -82,17 +82,17 @@ jobs:
             fi
           }
 
-          # github-runner on app-node A has docker socket access; read-only SQL does not need root.
-          if [[ "${PRIV_MODE:-none}" == "none" ]]; then
-            if ! docker info >/dev/null 2>&1; then
-              echo "error: PRIV_MODE=none and docker is not available to the runner" >&2
-              exit 1
-            fi
-            run_diagnostics | tee qr-payment-diagnostics.txt
-          else
+          # Prefer privileged wrapper when production env secrets are available (su-root).
+          # Fall back to direct docker when github-runner has socket access.
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
               "if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: run_qr_payment_diagnostics.sh not found' >&2; exit 1; fi" \
               | tee qr-payment-diagnostics.txt
+          elif docker info >/dev/null 2>&1; then
+            run_diagnostics | tee qr-payment-diagnostics.txt
+          else
+            echo "error: no root credentials (set PRODUCTION_ROOT_PASSWORD on environment production) and docker is unavailable to github-runner" >&2
+            exit 1
           fi
           echo "=== diagnostics output ==="
           cat qr-payment-diagnostics.txt
