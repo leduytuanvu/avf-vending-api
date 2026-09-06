@@ -265,6 +265,52 @@ func TestRefreshPendingPaymentFromProvider_doesNotApplyFailedFromQuery(t *testin
 	require.Empty(t, capture.got.EventType)
 }
 
+func TestRefreshPendingPaymentFromProvider_queriesWhenSlotIndexMisses(t *testing.T) {
+	orderID := uuid.New()
+	paymentID := uuid.New()
+	provider := &refreshQueryProvider{
+		snapshot: domaincommerce.PaymentStatusSnapshot{
+			NormalizedState: "captured",
+			ProviderHint:    []byte(`{"resultCode":0}`),
+		},
+	}
+	life := &refreshLifecycleStub{
+		orderStatusLifecycleStub: orderStatusLifecycleStub{
+			order: domaincommerce.Order{ID: orderID, Status: "created"},
+			vend: domaincommerce.VendSession{
+				ID:        uuid.New(),
+				OrderID:   orderID,
+				SlotIndex: 11,
+				State:     "pending",
+			},
+			payment: domaincommerce.Payment{
+				ID:          paymentID,
+				OrderID:     orderID,
+				Provider:    "momo",
+				State:       "created",
+				AmountMinor: 2000,
+			},
+			slotMiss: true,
+		},
+		providerRef: "momo-ref-slot-miss",
+	}
+	capture := &captureWebhookPersistence{}
+	svc := NewService(Deps{
+		OrderVend:              stubOrderVend{},
+		PaymentOutbox:          stubPaymentOutbox{},
+		Lifecycle:              life,
+		WebhookPersist:         capture,
+		SaleLines:              stubSaleLineResolver{},
+		PaymentSessionRegistry: refreshProviderRegistry{provider: provider},
+	})
+
+	out := svc.RefreshPendingPaymentFromProvider(context.Background(), uuid.Nil, orderID, "AVF-01")
+
+	require.NotEqual(t, "checkout_status_error", out.Diagnostic)
+	require.Equal(t, "momo-ref-slot-miss", provider.lastLookup.ProviderReference)
+	require.Equal(t, "captured", capture.got.NormalizedPaymentState)
+}
+
 func TestPaymentQueryMinInterval_acceleratedWithinTwoMinutes(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Now().Add(-30 * time.Second)
