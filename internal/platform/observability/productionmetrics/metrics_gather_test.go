@@ -28,6 +28,8 @@ func TestGatherIncludesCanonicalMetricFamilies(t *testing.T) {
 		"payment_provider_probe_stale_pending_queue",
 		"payment_query_refresh_total",
 		"payment_webhook_lookup_miss_total",
+		"payment_order_promotion_repair_total",
+		"payment_stuck_settlement_gauge",
 		"commands_dispatched_total",
 		"outbox_pending_total",
 		"audit_events_total",
@@ -61,6 +63,8 @@ func warmupCanonicalMetricFamilies(t *testing.T) {
 	SetPaymentProviderProbeStalePendingQueue(0)
 	RecordPaymentQueryRefresh("warmup")
 	RecordPaymentWebhookLookupMiss("warmup")
+	RecordPaymentOrderPromotionRepair("warmup")
+	SetPaymentStuckSettlementGauge(0)
 }
 
 func gatherSumFamily(t *testing.T, family string) float64 {

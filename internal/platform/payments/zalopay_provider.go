@@ -83,6 +83,10 @@ func (p *ZaloPayProvider) CreatePaymentSession(ctx context.Context, in CreatePay
 		appUser = "avf"
 	}
 	mac := zalopay.CreateOrderMAC(p.creds.Key1, p.creds.AppID, appTransID, appUser, amount, appTime, embed, item)
+	callbackURL := strings.TrimSpace(p.creds.CallbackURL)
+	if callbackURL == "" {
+		// Logged at session create; startup validation should reject live deployments without ZALOPAY_CALLBACK_URL.
+	}
 	fields := map[string]string{
 		"app_id":       p.creds.AppID,
 		"app_trans_id": appTransID,
@@ -91,7 +95,7 @@ func (p *ZaloPayProvider) CreatePaymentSession(ctx context.Context, in CreatePay
 		"embed_data":   embed,
 		"item":         item,
 		"amount":       amount,
-		"callback_url": p.creds.CallbackURL,
+		"callback_url": callbackURL,
 		"description":  "AVF - Thanh toan cho don hang #" + providerRef,
 		"bank_code":    "",
 		"mac":          mac,

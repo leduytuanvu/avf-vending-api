@@ -1414,6 +1414,50 @@ func (q *Queries) InsertVendSession(ctx context.Context, arg InsertVendSessionPa
 	return i, err
 }
 
+const ListOrdersWithCapturedUnpaidPayment = `-- name: ListOrdersWithCapturedUnpaidPayment :many
+SELECT
+    o.id
+FROM orders o
+WHERE
+    o.status IN ('created', 'quoted')
+    AND EXISTS (
+        SELECT 1
+        FROM payments p
+        WHERE
+            p.order_id = o.id
+            AND p.state = 'captured'
+    )
+    AND o.updated_at < $1
+ORDER BY
+    o.updated_at ASC
+LIMIT $2
+`
+
+type ListOrdersWithCapturedUnpaidPaymentParams struct {
+	UpdatedAt time.Time
+	Limit     int32
+}
+
+func (q *Queries) ListOrdersWithCapturedUnpaidPayment(ctx context.Context, arg ListOrdersWithCapturedUnpaidPaymentParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, ListOrdersWithCapturedUnpaidPayment, arg.UpdatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []uuid.UUID{}
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const ListOrdersWithUnresolvedPayment = `-- name: ListOrdersWithUnresolvedPayment :many
 SELECT DISTINCT
     ON (o.id) o.id,

@@ -377,6 +377,24 @@ ORDER BY
     created_at ASC
 LIMIT $2;
 
+-- name: ListOrdersWithCapturedUnpaidPayment :many
+SELECT
+    o.id
+FROM orders o
+WHERE
+    o.status IN ('created', 'quoted')
+    AND EXISTS (
+        SELECT 1
+        FROM payments p
+        WHERE
+            p.order_id = o.id
+            AND p.state = 'captured'
+    )
+    AND o.updated_at < $1
+ORDER BY
+    o.updated_at ASC
+LIMIT $2;
+
 -- name: ListOrdersWithUnresolvedPayment :many
 SELECT DISTINCT
     ON (o.id) o.id,

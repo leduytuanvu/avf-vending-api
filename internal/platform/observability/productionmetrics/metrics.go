@@ -123,6 +123,14 @@ var (
 		Name: "payment_webhook_lookup_miss_total",
 		Help: "PSP webhooks that could not resolve a payment row by provider_reference.",
 	}, []string{"provider"})
+	paymentOrderPromotionRepairTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "payment_order_promotion_repair_total",
+		Help: "Attempts to promote captured payments to paid orders (GetOrderStatus self-heal and related paths).",
+	}, []string{"result"})
+	paymentStuckSettlementGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "payment_stuck_settlement_gauge",
+		Help: "Orders with captured payment but unpaid order status (reconciler last tick snapshot).",
+	})
 	reconciliationCasesOpenTotal = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "reconciliation_cases_open_total",
 		Help: "Current count of commerce reconciliation cases in open status.",
@@ -361,6 +369,22 @@ func RecordPaymentWebhookLookupMiss(provider string) {
 		provider = "unknown"
 	}
 	paymentWebhookLookupMissTotal.WithLabelValues(provider).Inc()
+}
+
+// RecordPaymentOrderPromotionRepair increments payment_order_promotion_repair_total{result}.
+func RecordPaymentOrderPromotionRepair(result string) {
+	if result == "" {
+		result = "unknown"
+	}
+	paymentOrderPromotionRepairTotal.WithLabelValues(result).Inc()
+}
+
+// SetPaymentStuckSettlementGauge sets payment_stuck_settlement_gauge.
+func SetPaymentStuckSettlementGauge(n float64) {
+	if n < 0 {
+		n = 0
+	}
+	paymentStuckSettlementGauge.Set(n)
 }
 
 // SetReconciliationCasesOpen sets reconciliation_cases_open_total gauge.

@@ -49,6 +49,17 @@ func (r *CommerceReconcileRepository) ListPaymentsPendingTimeout(ctx context.Con
 	return out, nil
 }
 
+func (r *CommerceReconcileRepository) ListOrdersWithCapturedUnpaidPayment(ctx context.Context, before time.Time, limit int32) ([]uuid.UUID, error) {
+	rows, err := db.New(r.pool).ListOrdersWithCapturedUnpaidPayment(ctx, db.ListOrdersWithCapturedUnpaidPaymentParams{
+		UpdatedAt: before,
+		Limit:     limit,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (r *CommerceReconcileRepository) ListOrdersWithUnresolvedPayment(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Order, error) {
 	rows, err := db.New(r.pool).ListOrdersWithUnresolvedPayment(ctx, db.ListOrdersWithUnresolvedPaymentParams{
 		CreatedAt: before,

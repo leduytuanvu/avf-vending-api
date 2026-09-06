@@ -19,6 +19,7 @@ type stubReconReader struct {
 	paidNoVend     []domaincommerce.PaidOrderVendStartCandidate
 	paidFailures   []domaincommerce.PaidVendFailureCandidate
 	pendingRefunds []domaincommerce.RefundPendingCandidate
+	capturedUnpaid []uuid.UUID
 }
 
 func (s *stubReconReader) ListPaymentsPendingTimeout(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.Payment, error) {
@@ -35,6 +36,15 @@ func (s *stubReconReader) ListOrdersWithUnresolvedPayment(ctx context.Context, b
 	_ = before
 	_ = limit
 	return nil, nil
+}
+
+func (s *stubReconReader) ListOrdersWithCapturedUnpaidPayment(ctx context.Context, before time.Time, limit int32) ([]uuid.UUID, error) {
+	_ = ctx
+	_ = before
+	if limit > 0 && int32(len(s.capturedUnpaid)) > limit {
+		return s.capturedUnpaid[:limit], nil
+	}
+	return append([]uuid.UUID(nil), s.capturedUnpaid...), nil
 }
 
 func (s *stubReconReader) ListVendSessionsStuckForReconciliation(ctx context.Context, before time.Time, limit int32) ([]domaincommerce.VendReconciliationCandidate, error) {
@@ -363,6 +373,28 @@ func TestPaymentProviderReconcileTick_captureCallsMarkOrderPaid(t *testing.T) {
 	}
 	if mp.calls != 1 {
 		t.Fatalf("mark paid calls: %d", mp.calls)
+	}
+}
+
+func TestCapturedUnpaidOrderPromotionTick_promotesStuckOrders(t *testing.T) {
+	t.Parallel()
+	oid := uuid.MustParse("35353535-3535-3535-3535-353535353535")
+	reader := &stubReconReader{
+		capturedUnpaid: []uuid.UUID{oid},
+	}
+	mp := &stubMarkOrderPaid{}
+	ctx := context.Background()
+	deps := ReconcilerDeps{
+		Reader:         reader,
+		MarkOrderPaid:  mp,
+		ActionsEnabled: true,
+		Limits:         10,
+	}
+	if err := CapturedUnpaidOrderPromotionTick(ctx, deps); err != nil {
+		t.Fatal(err)
+	}
+	if mp.calls != 1 {
+		t.Fatalf("expected 1 promotion call, got %d", mp.calls)
 	}
 }
 

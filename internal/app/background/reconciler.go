@@ -222,6 +222,58 @@ func UnresolvedOrdersTick(ctx context.Context, deps ReconcilerDeps) error {
 			recordCommerceReconciliationCase("payment_paid_vend_not_started")
 		}
 	}
+	return CapturedUnpaidOrderPromotionTick(ctx, deps)
+}
+
+// CapturedUnpaidOrderPromotionTick promotes orders stuck with captured payment but unpaid order status.
+func CapturedUnpaidOrderPromotionTick(ctx context.Context, deps ReconcilerDeps) error {
+	if deps.Reader == nil || deps.MarkOrderPaid == nil {
+		return nil
+	}
+	if !deps.ActionsEnabled {
+		return nil
+	}
+	lim := deps.limits()
+	before := time.Now().UTC().Add(-60 * time.Second)
+	orderIDs, err := deps.Reader.ListOrdersWithCapturedUnpaidPayment(ctx, before, lim)
+	if err != nil {
+		productionmetrics.SetPaymentStuckSettlementGauge(0)
+		return err
+	}
+	productionmetrics.SetPaymentStuckSettlementGauge(float64(len(orderIDs)))
+	var promoted, failed int
+	for _, orderID := range orderIDs {
+		if orderID == uuid.Nil {
+			continue
+		}
+		if _, merr := deps.MarkOrderPaid.MarkOrderPaidAfterPaymentCapture(ctx, uuid.Nil, orderID); merr != nil {
+			failed++
+			productionmetrics.RecordPaymentOrderPromotionRepair("reconciler_failed")
+			if deps.Log != nil {
+				deps.Log.Warn("reconcile_promoted_captured_order_failed",
+					zap.Error(merr),
+					zap.String("order_id", orderID.String()),
+				)
+			}
+			continue
+		}
+		promoted++
+		productionmetrics.RecordPaymentOrderPromotionRepair("reconciler_promoted")
+		if deps.Log != nil {
+			deps.Log.Info("reconcile_promoted_captured_order",
+				zap.String("order_id", orderID.String()),
+			)
+		}
+	}
+	if deps.Log != nil {
+		deps.Log.Info("reconciler_job_summary",
+			zap.String("job", "captured_unpaid_order_promotion"),
+			zap.Int("selected", len(orderIDs)),
+			zap.Int("promoted", promoted),
+			zap.Int("failed", failed),
+			zap.Bool("reconciler_dry_run", deps.DryRun),
+		)
+	}
 	return nil
 }
 
