@@ -39,7 +39,8 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		zap.String("order_id", orderID.String()),
 		zap.String("machine_code", strings.TrimSpace(machineExternalCode)),
 	)
-	st, err := s.GetCheckoutStatus(ctx, companyID, orderID, 0)
+	// Tolerant lookup: machine polls often use slot_index=0 while vend lives on the real slot (e.g. A1=1).
+	st, err := s.GetOrderStatusView(ctx, companyID, orderID, 0, 0)
 	if err != nil || !st.PaymentPresent {
 		if err != nil {
 			log.Warn("PAYMENT_QUERY_REFRESH_ERROR",
