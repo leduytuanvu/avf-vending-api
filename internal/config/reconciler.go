@@ -37,6 +37,12 @@ func loadReconcilerConfig() ReconcilerConfig {
 
 // ValidateReconciler enforces wiring rules for cmd/reconciler when actions are enabled.
 func ValidateReconciler(c *ReconcilerConfig) error {
+	return ValidateReconcilerWithApp(c, nil)
+}
+
+// ValidateReconcilerWithApp enforces reconciler wiring; native PSP query satisfies the probe requirement
+// when at least one live adapter supports QueryPaymentStatus (no HTTP probe template required).
+func ValidateReconcilerWithApp(c *ReconcilerConfig, app *Config) error {
 	if c == nil {
 		return fmt.Errorf("config: nil reconciler config")
 	}
@@ -47,9 +53,10 @@ func ValidateReconciler(c *ReconcilerConfig) error {
 		return nil
 	}
 	if strings.TrimSpace(c.PaymentProbeURLTemplate) == "" {
-		return fmt.Errorf("config: RECONCILER_ACTIONS_ENABLED=true requires RECONCILER_PAYMENT_PROBE_URL_TEMPLATE")
-	}
-	if strings.Count(c.PaymentProbeURLTemplate, "%s") != 1 {
+		if app == nil || !liveNativeQueryProbeAvailable(app) {
+			return fmt.Errorf("config: RECONCILER_ACTIONS_ENABLED=true requires RECONCILER_PAYMENT_PROBE_URL_TEMPLATE or a wired live PSP with query support")
+		}
+	} else if strings.Count(c.PaymentProbeURLTemplate, "%s") != 1 {
 		return fmt.Errorf("config: RECONCILER_PAYMENT_PROBE_URL_TEMPLATE must contain exactly one %%s placeholder")
 	}
 	if strings.TrimSpace(os.Getenv(platformnats.EnvNATSURL)) == "" {
@@ -62,4 +69,15 @@ func ValidateReconciler(c *ReconcilerConfig) error {
 		return fmt.Errorf("config: RECONCILER_BATCH_LIMIT must be > 0 when actions are enabled")
 	}
 	return nil
+}
+
+// liveNativeQueryProbeAvailable reports whether cmd/reconciler can query stuck payments via wired PSP adapters.
+func liveNativeQueryProbeAvailable(cfg *Config) bool {
+	if cfg == nil || strings.ToLower(strings.TrimSpace(cfg.PaymentEnv)) != "live" {
+		return false
+	}
+	return cfg.PSP.MoMo.MoMoWired() ||
+		cfg.PSP.ZaloPay.ZaloPayWired() ||
+		cfg.PSP.VNPay.VNPayWired() ||
+		cfg.PSP.ShopeePay.ShopeePayWired()
 }

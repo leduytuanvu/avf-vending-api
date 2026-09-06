@@ -32,7 +32,44 @@ func TestValidateReconciler_actionsEnabled_missingProbeTemplate(t *testing.T) {
 		BatchLimit:              50,
 	}
 	if err := ValidateReconciler(c); err == nil {
-		t.Fatal("expected error for missing probe template")
+		t.Fatal("expected error for missing probe template without native PSP config")
+	}
+}
+
+func TestValidateReconciler_actionsEnabled_nativePSPWithoutHTTPProbe(t *testing.T) {
+	prev := os.Getenv(platformnats.EnvNATSURL)
+	_ = os.Setenv(platformnats.EnvNATSURL, "nats://127.0.0.1:4222")
+	t.Cleanup(func() {
+		if prev == "" {
+			_ = os.Unsetenv(platformnats.EnvNATSURL)
+		} else {
+			_ = os.Setenv(platformnats.EnvNATSURL, prev)
+		}
+	})
+
+	app := &Config{
+		PaymentEnv: "live",
+		PSP: PSPCredentials{
+			MoMo: MoMoConfig{
+				AVF: MoMoTenantCredentials{
+					PartnerCode: "P1",
+					AccessKey:   "A1",
+					SecretKey:   "S1",
+					Endpoint:    "https://test.momo.vn",
+					IPNURL:      "https://api.test/v1/commerce/webhooks/momo",
+					RedirectURL: "https://api.test/redirect",
+				},
+			},
+		},
+	}
+	c := &ReconcilerConfig{
+		ActionsEnabled:          true,
+		PaymentProbeURLTemplate: "",
+		RefundReviewSubject:     "reconciler.refund_review",
+		BatchLimit:              50,
+	}
+	if err := ValidateReconcilerWithApp(c, app); err != nil {
+		t.Fatalf("expected ok with wired native PSP, got %v", err)
 	}
 }
 

@@ -905,6 +905,7 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		zap.String("order_state", st.Order.Status),
 		zap.String("payment_state", resp.GetPaymentState()),
 		zap.Bool("payment_present", st.PaymentPresent),
+		zap.String("payment_diagnostic", paymentDiagnostic),
 	)
 	return resp, nil
 }

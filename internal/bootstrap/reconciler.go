@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	appbackground "github.com/avf/avf-vending-api/internal/app/background"
@@ -84,11 +85,13 @@ func BuildReconcilerDeps(ctx context.Context, cfg *config.Config, pool *pgxpool.
 	}
 
 	reg := platformpayments.NewRegistry(cfg)
-	gw, err := platformpayments.NewHTTPStatusGateway(cfg.Reconciler.PaymentProbeURLTemplate, cfg.Reconciler.PaymentProbeBearerToken)
-	if err != nil {
-		return appbackground.ReconcilerDeps{}, cleanup, fmt.Errorf("bootstrap: payment probe gateway: %w", err)
+	if strings.TrimSpace(cfg.Reconciler.PaymentProbeURLTemplate) != "" {
+		httpGw, err := platformpayments.NewHTTPStatusGateway(cfg.Reconciler.PaymentProbeURLTemplate, cfg.Reconciler.PaymentProbeBearerToken)
+		if err != nil {
+			return appbackground.ReconcilerDeps{}, cleanup, fmt.Errorf("bootstrap: payment probe gateway: %w", err)
+		}
+		reg.SetHTTPProbe(httpGw)
 	}
-	reg.SetHTTPProbe(gw)
 	deps.Gateway = reg.CompositePaymentGateway()
 
 	natsURL := cfg.NATS.URL

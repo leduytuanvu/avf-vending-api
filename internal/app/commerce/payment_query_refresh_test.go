@@ -264,3 +264,15 @@ func TestRefreshPendingPaymentFromProvider_doesNotApplyFailedFromQuery(t *testin
 	require.Equal(t, "provider_reported_failure", out.Diagnostic)
 	require.Empty(t, capture.got.EventType)
 }
+
+func TestPaymentQueryMinInterval_acceleratedWithinTwoMinutes(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Now().Add(-30 * time.Second)
+	require.Equal(t, paymentQueryMinIntervalActiveQR, paymentQueryMinInterval(createdAt, time.Now()))
+}
+
+func TestPaymentQueryMinInterval_defaultAfterAcceleratedWindow(t *testing.T) {
+	t.Parallel()
+	createdAt := time.Now().Add(-3 * time.Minute)
+	require.Equal(t, paymentQueryMinIntervalDefault, paymentQueryMinInterval(createdAt, time.Now()))
+}

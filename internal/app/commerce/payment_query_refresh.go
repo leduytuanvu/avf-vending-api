@@ -14,7 +14,11 @@ import (
 	"go.uber.org/zap"
 )
 
-const paymentQueryMinInterval = 5 * time.Second
+const (
+	paymentQueryMinIntervalDefault  = 5 * time.Second
+	paymentQueryMinIntervalActiveQR = 3 * time.Second
+	paymentQueryAcceleratedWindow   = 2 * time.Minute
+)
 
 // RefreshPendingPaymentFromProvider optionally queries the live PSP when payment is still created/authorized
 // and applies a captured webhook locally when the provider reports capture.
@@ -61,7 +65,7 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 		logOutcome(log, orderID, out, started)
 		return out
 	}
-	if st.Payment.ID != uuid.Nil && !s.paymentQueryThrottleAllows(st.Payment.ID, started) {
+	if st.Payment.ID != uuid.Nil && !s.paymentQueryThrottleAllows(st.Payment.ID, st.Payment.CreatedAt, started) {
 		productionmetrics.RecordPaymentQueryRefresh("throttled")
 		out.Diagnostic = "provider_throttled"
 		out.Skipped = true
@@ -247,13 +251,24 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 	return out
 }
 
-func (s *Service) paymentQueryThrottleAllows(paymentID uuid.UUID, now time.Time) bool {
+func paymentQueryMinInterval(paymentCreatedAt, now time.Time) time.Duration {
+	if paymentCreatedAt.IsZero() {
+		return paymentQueryMinIntervalDefault
+	}
+	if now.Sub(paymentCreatedAt) <= paymentQueryAcceleratedWindow {
+		return paymentQueryMinIntervalActiveQR
+	}
+	return paymentQueryMinIntervalDefault
+}
+
+func (s *Service) paymentQueryThrottleAllows(paymentID uuid.UUID, paymentCreatedAt, now time.Time) bool {
 	if s == nil || paymentID == uuid.Nil {
 		return true
 	}
+	minInterval := paymentQueryMinInterval(paymentCreatedAt, now)
 	key := paymentID.String()
 	if prev, ok := s.paymentQueryThrottle.Load(key); ok {
-		if last, ok := prev.(time.Time); ok && now.Sub(last) < paymentQueryMinInterval {
+		if last, ok := prev.(time.Time); ok && now.Sub(last) < minInterval {
 			return false
 		}
 	}
