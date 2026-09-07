@@ -56,6 +56,28 @@ Do not add high-cardinality labels (raw path, accountId, machineId, tokens).
 - Catalog cache is machine-scoped with revision/epoch keys; short TTL if invalidation path is uncertain.
 - Never cache auth/session revocation decisions in catalog TTL paths.
 
+## QR / CreatePaymentSession latency
+
+**Client (TCN logcat):**
+
+```bash
+# Windows — capture then parse
+.\avf-vending-app\scripts\diagnostics\capture-qr-timing-logcat.ps1
+adb logcat -d | .\avf-vending-app\scripts\diagnostics\parse-qr-payment-timing.ps1
+```
+
+Tags: `QR_PAYMENT_TIMING`, `PAYMENT_RAIL_DECISION`, `GRPC_CREATE_PAYMENT_SESSION_*`.
+
+**Server (app node):**
+
+```bash
+APP_NODE_DIR=/opt/avf/app-node ./scripts/production/measure-create-payment-session.sh
+OPS_METRICS_URL=http://127.0.0.1:8081/metrics ./scripts/production/verify-pool-and-momo.sh
+SSH_HOST=root@<app-vps> APP_NODE_DIR=/opt/avf/app-node ./scripts/production/correlate-qr-payment-latency.sh
+```
+
+Server structured phases: log `CREATE_PAYMENT_SESSION_PHASES` (`order_load_ms`, `start_payment_outbox_ms`, `bind_pre_ms`, `psp_create_ms`, `bind_post_ms`, `total_ms`).
+
 ## Related
 
 - [Production resource sizing](./production-resource-sizing.md)

@@ -37,6 +37,9 @@ collect_compose() {
     docker compose ps >"${RUN_DIR}/docker-ps.txt" 2>&1 || true
     docker stats --no-stream >"${RUN_DIR}/docker-stats.txt" 2>&1 || true
     docker compose logs --tail=200 api >"${RUN_DIR}/api-logs-tail.txt" 2>&1 || true
+    grep -E 'CREATE_PAYMENT_SESSION_(PHASES|SUCCESS|PSP_ERROR)' "${RUN_DIR}/api-logs-tail.txt" \
+      >"${RUN_DIR}/create-payment-session-tail.txt" 2>&1 || true
+    curl -fsS http://127.0.0.1:8081/metrics >"${RUN_DIR}/ops-metrics.txt" 2>&1 || true
     docker compose logs --tail=100 caddy >"${RUN_DIR}/caddy-logs-tail.txt" 2>&1 || true
   )
 }
