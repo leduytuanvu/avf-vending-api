@@ -9,9 +9,11 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
+	"github.com/avf/avf-vending-api/internal/observability"
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/avf/avf-vending-api/internal/platform/payments/psp/ref"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // CreateMachinePaymentSessionInput is the app-layer contract for vending gRPC payment sessions.
@@ -52,6 +54,9 @@ type CreateMachinePaymentSessionResult struct {
 // CreateMachinePaymentSession provisions a PSP-backed payment session with server-side adapter I/O.
 func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMachinePaymentSessionInput) (CreateMachinePaymentSessionResult, error) {
 	out := CreateMachinePaymentSessionResult{}
+	log := observability.LoggerFromContext(ctx, zap.NewNop())
+	overallStart := time.Now()
+	var phaseStart time.Time
 	if s == nil || s.payments == nil || s.life == nil {
 		return out, ErrNotConfigured
 	}
@@ -69,7 +74,9 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	if ps != "" && strings.ToLower(ps) != "created" {
 		return out, errors.Join(ErrInvalidArgument, errors.New("payment_state must be empty or created for PSP sessions"))
 	}
+	phaseStart = time.Now()
 	o, err := s.life.GetOrderByID(ctx, in.OrderID)
+	orderLoadMs := time.Since(phaseStart).Milliseconds()
 	if err != nil {
 		return out, err
 	}
@@ -99,6 +106,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		"schema_version": 1,
 	})
 	outboxIdem := key + ":outbox:" + in.OrderID.String()
+	phaseStart = time.Now()
 	payRes, err := s.StartPaymentWithOutbox(ctx, StartPaymentInput{
 		OrderID:              in.OrderID,
 		Provider:             pkey,
@@ -118,6 +126,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		FakeBill:             o.FakeBill,
 		FakeBoard:            o.FakeBoard,
 	})
+	startPaymentOutboxMs := time.Since(phaseStart).Milliseconds()
 	if err != nil {
 		return out, err
 	}
@@ -137,6 +146,13 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		}
 		qr := replayQRPayloadFromStoredAttempt(ctx, s.life, payRes.Payment.ID)
 		out.QRPayloadOrURL = qr
+		log.Info("CREATE_PAYMENT_SESSION_PHASES",
+			zap.String("order_id", in.OrderID.String()),
+			zap.Bool("replay", true),
+			zap.Int64("order_load_ms", orderLoadMs),
+			zap.Int64("start_payment_outbox_ms", startPaymentOutboxMs),
+			zap.Int64("total_ms", time.Since(overallStart).Milliseconds()),
+		)
 		return out, nil
 	}
 
@@ -148,6 +164,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		"provider_reference": providerRef,
 		"bind_phase":         "pre_create",
 	})
+	phaseStart = time.Now()
 	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
 		PaymentID:         payRes.Payment.ID,
 		State:             "created",
@@ -156,7 +173,9 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	}); err != nil {
 		return out, err
 	}
+	bindPreMs := time.Since(phaseStart).Milliseconds()
 
+	phaseStart = time.Now()
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{
 		OrderID:             in.OrderID,
 		PaymentID:           payRes.Payment.ID,
@@ -168,7 +187,14 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		ProviderReference:   providerRef,
 		PreferredMethod:     strings.TrimSpace(in.PreferredMethod),
 	})
+	pspCreateMs := time.Since(phaseStart).Milliseconds()
 	if err != nil {
+		log.Warn("CREATE_PAYMENT_SESSION_PSP_ERROR",
+			zap.String("order_id", in.OrderID.String()),
+			zap.String("provider", pkey),
+			zap.Int64("psp_create_ms", pspCreateMs),
+			zap.Error(err),
+		)
 		return out, err
 	}
 	boundRef := strings.TrimSpace(sess.ProviderReference)
@@ -191,6 +217,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	if !json.Valid(attemptPayload) {
 		return out, errors.Join(ErrNotConfigured, errors.New("payment provider returned invalid attempt payload json"))
 	}
+	phaseStart = time.Now()
 	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
 		PaymentID:         payRes.Payment.ID,
 		State:             "created",
@@ -199,6 +226,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	}); err != nil {
 		return out, err
 	}
+	bindPostMs := time.Since(phaseStart).Milliseconds()
 	qr := strings.TrimSpace(sess.QRPayloadOrURL)
 	if qr == "" {
 		qr = strings.TrimSpace(sess.PaymentURL)
@@ -209,6 +237,17 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 	out.ExpiresAt = sess.ExpiresAt
 	out.ProviderReference = boundRef
 	out.ProviderSessionID = strings.TrimSpace(sess.ProviderSessionID)
+	log.Info("CREATE_PAYMENT_SESSION_PHASES",
+		zap.String("order_id", in.OrderID.String()),
+		zap.String("provider", pkey),
+		zap.Bool("replay", false),
+		zap.Int64("order_load_ms", orderLoadMs),
+		zap.Int64("start_payment_outbox_ms", startPaymentOutboxMs),
+		zap.Int64("bind_pre_ms", bindPreMs),
+		zap.Int64("psp_create_ms", pspCreateMs),
+		zap.Int64("bind_post_ms", bindPostMs),
+		zap.Int64("total_ms", time.Since(overallStart).Milliseconds()),
+	)
 	return out, nil
 }
 

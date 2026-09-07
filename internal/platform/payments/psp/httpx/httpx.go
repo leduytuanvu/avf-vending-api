@@ -16,6 +16,13 @@ import (
 // DefaultTimeout is used when a caller does not set a context deadline.
 const DefaultTimeout = 10 * time.Second
 
+// defaultTransport reuses TCP/TLS connections to PSP endpoints (MoMo, ZaloPay, …).
+var defaultTransport = &http.Transport{
+	MaxIdleConns:        100,
+	MaxIdleConnsPerHost: 10,
+	IdleConnTimeout:     90 * time.Second,
+}
+
 // Client is a thin wrapper around http.Client for JSON and form POSTs.
 type Client struct {
 	HTTP    *http.Client
@@ -28,7 +35,10 @@ func New(timeout time.Duration) *Client {
 		timeout = DefaultTimeout
 	}
 	return &Client{
-		HTTP:    &http.Client{Timeout: timeout},
+		HTTP: &http.Client{
+			Timeout:   timeout,
+			Transport: defaultTransport,
+		},
 		Timeout: timeout,
 	}
 }
@@ -66,7 +76,7 @@ func (c *Client) do(ctx context.Context, endpoint, contentType string, headers m
 		c = New(DefaultTimeout)
 	}
 	if c.HTTP == nil {
-		c.HTTP = &http.Client{Timeout: c.Timeout}
+		c.HTTP = &http.Client{Timeout: c.Timeout, Transport: defaultTransport}
 	}
 	if ctx == nil {
 		ctx = context.Background()
