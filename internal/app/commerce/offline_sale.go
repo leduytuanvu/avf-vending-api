@@ -141,7 +141,7 @@ func (s *Service) ProcessOfflineSale(
 		GrossAcceptedMinor:  cashReceived,
 		AllocatedMinor:      payable,
 		Currency:            currency,
-		ConsentSource:       "explicit_confirm",
+		ConsentSource:       "implicit_post_order",
 		OutboxTopic:         strings.TrimSpace(outbox.Topic),
 		OutboxEventType:     strings.TrimSpace(outbox.EventType),
 		OutboxAggregateType: strings.TrimSpace(outbox.AggregateType),
