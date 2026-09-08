@@ -237,6 +237,8 @@ func (s *Service) StartPaymentWithOutbox(ctx context.Context, in StartPaymentInp
 		SimulationScenario:   strings.TrimSpace(in.SimulationScenario),
 		FakeBill:             in.FakeBill,
 		FakeBoard:            in.FakeBoard,
+		AttemptSeq:           in.AttemptSeq,
+		SupersedesPaymentID:  in.SupersedesPaymentID,
 	})
 }
 

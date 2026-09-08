@@ -260,7 +260,7 @@ message ConfirmCashPaymentRequest {
   int64 change_dispensed_minor = 9;
   // delivered | delivered_after_fault | not_delivered | ambiguous | none
   string change_outcome = 10;
-  // explicit_confirm | implicit_post_order | operator | unknown
+  // explicit_confirm | implicit_post_order | operator | unknown | wallet_auto_settlement
   string consent_source = 11;
   google.protobuf.Timestamp consented_at = 12;
   string currency = 13;
@@ -432,6 +432,8 @@ message CancelPaymentSessionRequest {
   IdempotencyContext context = 1;
   string order_id = 2;
   string reason = 3;
+  // When set, cancels this specific payment attempt instead of the latest non-captured.
+  string payment_id = 4;
 }
 
 message CancelPaymentSessionResponse {

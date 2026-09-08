@@ -52,6 +52,8 @@ type StartPaymentInput struct {
 	SimulationScenario string
 	FakeBill           bool
 	FakeBoard          bool
+	AttemptSeq         int32
+	SupersedesPaymentID *uuid.UUID
 }
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.

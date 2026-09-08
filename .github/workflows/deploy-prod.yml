@@ -2306,6 +2306,7 @@ jobs:
               "PAYMENT_ENV=${PAYMENT_ENV:-live}" \
               "COMMERCE_PAYMENT_PROVIDER=${COMMERCE_PAYMENT_PROVIDER:-momo}" \
               "COMMERCE_PAYMENT_PROVIDERS=${COMMERCE_PAYMENT_PROVIDERS:-momo,zalopay,vietqr}" \
+              "COMMERCE_WINNER_ARBITRATION_ENABLED=${COMMERCE_WINNER_ARBITRATION_ENABLED:-true}" \
               "APP_NODE_ENV_FILE=${env_path}" \
               bash "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/scripts/apply_live_payment_app_node_env.sh" "${env_path}"
           }

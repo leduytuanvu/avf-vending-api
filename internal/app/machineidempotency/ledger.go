@@ -3,6 +3,8 @@ package machineidempotency
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"strings"
@@ -101,7 +103,12 @@ func (l *Ledger) BeginMutation(ctx context.Context, claims plauth.MachineAccessC
 			Operation:      operation,
 			IdempotencyKey: key,
 		})
-		l.recordAudit(ctx, claims, compliance.ActionMachineIdempotencyConflict, operation, key, map[string]any{"status": row.Status})
+		l.recordAudit(ctx, claims, compliance.ActionMachineIdempotencyConflict, operation, key, map[string]any{
+			"status":                     row.Status,
+			"stored_hash_fingerprint":    hashFingerprint(row.RequestHash),
+			"incoming_hash_fingerprint":  hashFingerprint(requestHash),
+			"idempotency_key_fingerprint": hashFingerprint([]byte(key)),
+		})
 		return row, nil, status.Error(codes.FailedPrecondition, ErrMsgIdempotencyPayloadMismatch)
 	}
 
@@ -230,4 +237,12 @@ func wrapFinalizeStoreError(err error) error {
 		out.SQLState = pgErr.Code
 	}
 	return out
+}
+
+func hashFingerprint(b []byte) string {
+	if len(b) == 0 {
+		return ""
+	}
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])[:12]
 }

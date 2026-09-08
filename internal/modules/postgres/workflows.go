@@ -293,17 +293,19 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 	}
 
 	pRow, err := q.InsertPayment(ctx, db.InsertPaymentParams{
-		OrderID:            in.OrderID,
-		Provider:           in.Provider,
-		State:              in.PaymentState,
-		AmountMinor:        in.AmountMinor,
-		Currency:           in.Currency,
-		IdempotencyKey:     optionalStringToPgText(in.IdempotencyKey),
-		Simulated:          in.Simulated,
-		SimulationRunID:    optionalStringToPgText(in.SimulationRunID),
-		SimulationScenario: optionalStringToPgText(in.SimulationScenario),
-		FakeBill:           in.FakeBill,
-		FakeBoard:          in.FakeBoard,
+		OrderID:             in.OrderID,
+		Provider:            in.Provider,
+		State:               in.PaymentState,
+		AmountMinor:         in.AmountMinor,
+		Currency:            in.Currency,
+		IdempotencyKey:      optionalStringToPgText(in.IdempotencyKey),
+		Simulated:           in.Simulated,
+		SimulationRunID:     optionalStringToPgText(in.SimulationRunID),
+		SimulationScenario:  optionalStringToPgText(in.SimulationScenario),
+		FakeBill:            in.FakeBill,
+		FakeBoard:           in.FakeBoard,
+		AttemptSeq:          in.AttemptSeq,
+		SupersedesPaymentID: optionalUUIDToPg(in.SupersedesPaymentID),
 	})
 	if err != nil {
 		return commerce.PaymentOutboxResult{}, err

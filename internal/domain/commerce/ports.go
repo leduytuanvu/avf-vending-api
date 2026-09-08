@@ -63,6 +63,8 @@ type PaymentOutboxInput struct {
 	SimulationScenario   string
 	FakeBill             bool
 	FakeBoard            bool
+	AttemptSeq           int32
+	SupersedesPaymentID  *uuid.UUID
 }
 
 // PaymentOutboxResult is the outcome of CreatePaymentWithOutbox.

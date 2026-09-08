@@ -88,7 +88,9 @@ INSERT INTO payments (
     simulation_run_id,
     simulation_scenario,
     fake_bill,
-    fake_board
+    fake_board,
+    attempt_seq,
+    supersedes_payment_id
 )
 VALUES (
     $1,
@@ -101,7 +103,9 @@ VALUES (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12,
+    $13
 )
 RETURNING *;
 

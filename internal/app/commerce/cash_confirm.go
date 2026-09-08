@@ -45,15 +45,12 @@ func (s *Service) ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentI
 	} else if allocated != o.TotalMinor {
 		return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("allocated_minor must match order total"))
 	}
-	if in.PreOrderCreditMinor > 0 && consent != "explicit_confirm" && consent != "unknown" && consent != "operator" {
-		if consent == "implicit_post_order" && in.PreOrderCreditMinor > 0 && in.PostOrderInsertedMinor == 0 {
-			// post-order only path ok
-		} else if in.PreOrderCreditMinor > 0 && consent != "explicit_confirm" {
-			return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("pre_order_credit requires explicit_confirm consent"))
-		}
+	if err := validateCashConfirmConsent(consent, in); err != nil {
+		return ConfirmCashPaymentResult{}, err
 	}
-	if in.PreOrderCreditMinor > 0 && consent != "explicit_confirm" && consent != "unknown" && in.PostOrderInsertedMinor == 0 {
-		return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("pre_order_credit requires explicit_confirm consent"))
+	if !legacyThin && in.GrossAcceptedMinor > 0 &&
+		in.GrossAcceptedMinor < in.PreOrderCreditMinor+in.PostOrderInsertedMinor {
+		return ConfirmCashPaymentResult{}, errors.Join(ErrInvalidArgument, errors.New("gross_accepted_minor must cover pre_order and post_order credit"))
 	}
 
 	currency := strings.ToUpper(strings.TrimSpace(in.Currency))
@@ -196,6 +193,27 @@ func (s *Service) ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentI
 	}, nil
 }
 
+// validateCashConfirmConsent enforces consent semantics for cash allocation evidence.
+func validateCashConfirmConsent(consent string, in ConfirmCashPaymentInput) error {
+	if in.PreOrderCreditMinor <= 0 {
+		return nil
+	}
+	switch consent {
+	case "explicit_confirm", "unknown", "operator":
+		return nil
+	case "wallet_auto_settlement":
+		if in.PostOrderInsertedMinor != 0 {
+			return errors.Join(ErrInvalidArgument, errors.New("wallet_auto_settlement requires post_order_inserted_minor=0"))
+		}
+		if len(in.AcceptanceEvents) == 0 {
+			return errors.Join(ErrInvalidArgument, errors.New("wallet_auto_settlement requires cash_acceptance_events"))
+		}
+		return nil
+	default:
+		return errors.Join(ErrInvalidArgument, errors.New("pre_order_credit requires explicit_confirm or wallet_auto_settlement consent"))
+	}
+}
+
 // CancelPaymentSession cancels the latest non-captured payment while keeping the order payable.
 func (s *Service) CancelPaymentSession(ctx context.Context, in CancelPaymentSessionInput) (CancelPaymentSessionResult, error) {
 	if s.life == nil {
@@ -217,12 +235,23 @@ func (s *Service) CancelPaymentSession(ctx context.Context, in CancelPaymentSess
 	if s.financial == nil {
 		return CancelPaymentSessionResult{}, ErrNotConfigured
 	}
-	pay, err := s.financial.GetLatestNonCapturedPaymentForOrder(ctx, in.OrderID)
-	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			return CancelPaymentSessionResult{Order: o, PaymentFound: false}, nil
+	var pay domaincommerce.Payment
+	if in.PaymentID != nil && *in.PaymentID != uuid.Nil {
+		pay, err = s.life.GetPaymentByID(ctx, *in.PaymentID)
+		if err != nil {
+			return CancelPaymentSessionResult{}, err
 		}
-		return CancelPaymentSessionResult{}, err
+		if pay.OrderID != in.OrderID {
+			return CancelPaymentSessionResult{}, errors.Join(ErrInvalidArgument, errors.New("payment order mismatch"))
+		}
+	} else {
+		pay, err = s.financial.GetLatestNonCapturedPaymentForOrder(ctx, in.OrderID)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				return CancelPaymentSessionResult{Order: o, PaymentFound: false}, nil
+			}
+			return CancelPaymentSessionResult{}, err
+		}
 	}
 	canceled, err := s.financial.CancelPaymentByID(ctx, pay.ID)
 	if err != nil {
