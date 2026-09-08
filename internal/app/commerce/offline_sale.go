@@ -25,13 +25,13 @@ type OfflineSaleWirePayload struct {
 
 // appCheckoutPricingSnapshot mirrors Kotlin CheckoutPricingSnapshot JSON.
 type appCheckoutPricingSnapshot struct {
-	SnapshotID           string `json:"snapshotId"`
-	MachineID            string `json:"machineId"`
-	PayableTotalMinor    int64  `json:"payableTotalMinor"`
-	Currency             string `json:"currency"`
-	LocalPricingRevision int64  `json:"localPricingRevision"`
-	SlotConfigVersion    int    `json:"slotConfigVersion"`
-	CapturedAtEpochMs    int64  `json:"capturedAtEpochMs"`
+	SnapshotID           string            `json:"snapshotId"`
+	MachineID            string            `json:"machineId"`
+	PayableTotalMinor    int64             `json:"payableTotalMinor"`
+	Currency             string            `json:"currency"`
+	LocalPricingRevision int64             `json:"localPricingRevision"`
+	SlotConfigVersion    int               `json:"slotConfigVersion"`
+	CapturedAtEpochMs    int64             `json:"capturedAtEpochMs"`
 	Lines                []appCheckoutLine `json:"lines"`
 }
 
@@ -135,16 +135,16 @@ func (s *Service) ProcessOfflineSale(
 
 	cashKey := key + ":offline:cash"
 	_, err = s.ConfirmCashPayment(ctx, ConfirmCashPaymentInput{
-		OrderID:              orderID,
-		MachineID:            machineID,
-		IdempotencyKey:       cashKey,
-		GrossAcceptedMinor:   cashReceived,
-		AllocatedMinor:       payable,
-		Currency:             currency,
-		ConsentSource:        "explicit_confirm",
-		OutboxTopic:          strings.TrimSpace(outbox.Topic),
-		OutboxEventType:      strings.TrimSpace(outbox.EventType),
-		OutboxAggregateType:  strings.TrimSpace(outbox.AggregateType),
+		OrderID:             orderID,
+		MachineID:           machineID,
+		IdempotencyKey:      cashKey,
+		GrossAcceptedMinor:  cashReceived,
+		AllocatedMinor:      payable,
+		Currency:            currency,
+		ConsentSource:       "explicit_confirm",
+		OutboxTopic:         strings.TrimSpace(outbox.Topic),
+		OutboxEventType:     strings.TrimSpace(outbox.EventType),
+		OutboxAggregateType: strings.TrimSpace(outbox.AggregateType),
 	})
 	if err != nil {
 		return err

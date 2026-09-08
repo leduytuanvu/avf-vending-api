@@ -67,11 +67,11 @@ func TestMachinePricingSnapshotFromAppCheckout_mapsTotals(t *testing.T) {
 	t.Parallel()
 	productID := uuid.New()
 	snap := appCheckoutPricingSnapshot{
-		SnapshotID:        "snap-x",
-		PayableTotalMinor: 4500,
+		SnapshotID:           "snap-x",
+		PayableTotalMinor:    4500,
 		LocalPricingRevision: 2,
-		SlotConfigVersion: 1,
-		CapturedAtEpochMs: 1700000000000,
+		SlotConfigVersion:    1,
+		CapturedAtEpochMs:    1700000000000,
 	}
 	line := appCheckoutLine{SlotCode: "A01", ProductID: productID.String(), UnitPriceMinor: 4500, Quantity: 1}
 	out := machinePricingSnapshotFromAppCheckout(snap, line, 4500)

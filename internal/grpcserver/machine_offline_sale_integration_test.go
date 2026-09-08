@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/avf/avf-vending-api/internal/testfixtures"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/testfixtures"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -51,14 +51,14 @@ func TestP06_OfflineSync_offlineSaleReplayCreatesOrderAndCashPayment(t *testing.
 		},
 	}
 	payloadMap := map[string]any{
-		"orderId":            base + ":order",
-		"machineId":          testfixtures.DevMachineID.String(),
-		"transactionId":      base + ":tx",
-		"cashReceivedMinor":  100,
-		"payableTotalMinor":  100,
-		"currency":           "USD",
-		"snapshotId":         base + ":snap",
-		"pricingSnapshot":    snapshot,
+		"orderId":             base + ":order",
+		"machineId":           testfixtures.DevMachineID.String(),
+		"transactionId":       base + ":tx",
+		"cashReceivedMinor":   100,
+		"payableTotalMinor":   100,
+		"currency":            "USD",
+		"snapshotId":          base + ":snap",
+		"pricingSnapshot":     snapshot,
 		"canonical_operation": "commerce.offline_sale",
 	}
 	payloadJSON, err := json.Marshal(payloadMap)
