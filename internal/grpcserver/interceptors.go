@@ -646,7 +646,8 @@ func isMachineHotGRPCMethod(fullMethod string) bool {
 		machinev1.MachineInventoryService_GetInventorySnapshot_FullMethodName,
 		machinev1.MachineInventoryService_GetPlanogram_FullMethodName,
 		machinev1.MachineOperatorService_HeartbeatOperatorSession_FullMethodName,
-		machinev1.MachineCommerceService_GetOrderStatus_FullMethodName:
+		machinev1.MachineCommerceService_GetOrderStatus_FullMethodName,
+		machinev1.MachineCommerceService_GetPaymentStatus_FullMethodName:
 		return true
 	default:
 		return false
@@ -746,6 +747,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCommerceService_CreateCashCheckout_FullMethodName,
 		machinev1.MachineCommerceService_GetOrder_FullMethodName,
 		machinev1.MachineCommerceService_GetOrderStatus_FullMethodName,
+		machinev1.MachineCommerceService_GetPaymentStatus_FullMethodName,
 		machinev1.MachineCommerceService_StartVend_FullMethodName,
 		machinev1.MachineCommerceService_ConfirmVendSuccess_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendSuccess_FullMethodName,

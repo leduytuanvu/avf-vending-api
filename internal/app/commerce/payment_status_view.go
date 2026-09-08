@@ -45,9 +45,9 @@ func (s *Service) GetPaymentStatusView(
 		return PaymentStatusView{}, errors.Join(ErrInvalidArgument, errors.New("payment order mismatch"))
 	}
 	out := PaymentStatusView{
-		OrderID:  orderID,
-		Payment:  pay,
-		Outcome:  strings.TrimSpace(pay.Outcome),
+		OrderID: orderID,
+		Payment: pay,
+		Outcome: strings.TrimSpace(pay.Outcome),
 	}
 	if o.WinningPaymentID != nil && *o.WinningPaymentID == paymentID {
 		out.IsWinningPayment = true
