@@ -515,6 +515,8 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		ClientPayState:      strings.TrimSpace(req.GetPaymentState()),
 		AmountMinor:         amt,
 		Currency:            cur,
+		AttemptSeq:          req.GetAttemptSeq(),
+		SupersedesPaymentID: parseOptionalPaymentID(req.GetSupersedesPaymentId()),
 		AppEnv:              s.deps.Config.AppEnv,
 		OutboxTopic:         topic,
 		OutboxEventType:     evType,
@@ -710,11 +712,20 @@ func (s *machineCommerceServer) CancelPaymentSession(ctx context.Context, req *m
 	if o.MachineID != claims.MachineID {
 		return nil, status.Error(codes.PermissionDenied, "order machine mismatch")
 	}
+	var paymentID *uuid.UUID
+	if pid := strings.TrimSpace(req.GetPaymentId()); pid != "" {
+		parsed, perr := uuid.Parse(pid)
+		if perr != nil || parsed == uuid.Nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid payment_id")
+		}
+		paymentID = &parsed
+	}
 	res, err := svc.CancelPaymentSession(ctx, appcommerce.CancelPaymentSessionInput{
 		OrderID:        orderID,
 		MachineID:      claims.MachineID,
 		IdempotencyKey: wctx.IdempotencyKey,
 		Reason:         strings.TrimSpace(req.GetReason()),
+		PaymentID:      paymentID,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -1332,6 +1343,18 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 		"reason":          reason,
 	})
 	return &machinev1.CancelOrderResponse{Replay: false, OrderId: o2.ID.String(), OrderStatus: o2.Status}, nil
+}
+
+func parseOptionalPaymentID(raw string) *uuid.UUID {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil || id == uuid.Nil {
+		return nil
+	}
+	return &id
 }
 
 func idempotencyKeyFingerprint(key string) string {

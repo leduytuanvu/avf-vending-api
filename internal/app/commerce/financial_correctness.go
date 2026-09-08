@@ -154,12 +154,13 @@ type ConfirmCashPaymentResult struct {
 	ChangeEvent *CashChangeEventView
 }
 
-// CancelPaymentSessionInput cancels the latest non-captured payment on an order.
+// CancelPaymentSessionInput cancels a non-captured payment on an order.
 type CancelPaymentSessionInput struct {
 	OrderID        uuid.UUID
 	MachineID      uuid.UUID
 	IdempotencyKey string
 	Reason         string
+	PaymentID      *uuid.UUID
 }
 
 type CancelPaymentSessionResult struct {
@@ -178,7 +179,7 @@ type ArbitrationResult struct {
 
 func normalizeConsentSource(s string) string {
 	switch strings.TrimSpace(strings.ToLower(s)) {
-	case "explicit_confirm", "implicit_post_order", "operator", "unknown":
+	case "explicit_confirm", "implicit_post_order", "operator", "unknown", "wallet_auto_settlement":
 		return strings.TrimSpace(strings.ToLower(s))
 	default:
 		return "unknown"

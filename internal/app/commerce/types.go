@@ -47,11 +47,13 @@ type StartPaymentInput struct {
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
 
-	Simulated          bool
-	SimulationRunID    string
-	SimulationScenario string
-	FakeBill           bool
-	FakeBoard          bool
+	Simulated           bool
+	SimulationRunID     string
+	SimulationScenario  string
+	FakeBill            bool
+	FakeBoard           bool
+	AttemptSeq          int32
+	SupersedesPaymentID *uuid.UUID
 }
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.

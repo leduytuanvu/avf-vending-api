@@ -34,6 +34,8 @@ type CreateMachinePaymentSessionInput struct {
 	StoreID             string // terminal/store hint for PSP
 	ProviderReference   string // optional pre-assigned ref (legacy order_code)
 	PreferredMethod     string // e.g. vietqr when using zalopay adapter
+	AttemptSeq          int32
+	SupersedesPaymentID *uuid.UUID
 }
 
 // CreateMachinePaymentSessionResult returns provider-owned display material for the kiosk.
@@ -114,6 +116,8 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		AmountMinor:          o.TotalMinor,
 		Currency:             o.Currency,
 		IdempotencyKey:       key,
+		AttemptSeq:           in.AttemptSeq,
+		SupersedesPaymentID:  in.SupersedesPaymentID,
 		OutboxTopic:          in.OutboxTopic,
 		OutboxEventType:      in.OutboxEventType,
 		OutboxPayload:        outboxPayload,

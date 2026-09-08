@@ -998,7 +998,9 @@ INSERT INTO payments (
     simulation_run_id,
     simulation_scenario,
     fake_bill,
-    fake_board
+    fake_board,
+    attempt_seq,
+    supersedes_payment_id
 )
 VALUES (
     $1,
@@ -1011,23 +1013,27 @@ VALUES (
     $8,
     $9,
     $10,
-    $11
+    $11,
+    $12,
+    $13
 )
 RETURNING id, order_id, provider, state, amount_minor, currency, idempotency_key, created_at, updated_at, reconciliation_status, settlement_status, settlement_batch_id, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, outcome, attempt_seq, supersedes_payment_id
 `
 
 type InsertPaymentParams struct {
-	OrderID            uuid.UUID
-	Provider           string
-	State              string
-	AmountMinor        int64
-	Currency           string
-	IdempotencyKey     pgtype.Text
-	Simulated          bool
-	SimulationRunID    pgtype.Text
-	SimulationScenario pgtype.Text
-	FakeBill           bool
-	FakeBoard          bool
+	OrderID             uuid.UUID
+	Provider            string
+	State               string
+	AmountMinor         int64
+	Currency            string
+	IdempotencyKey      pgtype.Text
+	Simulated           bool
+	SimulationRunID     pgtype.Text
+	SimulationScenario  pgtype.Text
+	FakeBill            bool
+	FakeBoard           bool
+	AttemptSeq          int32
+	SupersedesPaymentID pgtype.UUID
 }
 
 func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (Payment, error) {
@@ -1043,6 +1049,8 @@ func (q *Queries) InsertPayment(ctx context.Context, arg InsertPaymentParams) (P
 		arg.SimulationScenario,
 		arg.FakeBill,
 		arg.FakeBoard,
+		arg.AttemptSeq,
+		arg.SupersedesPaymentID,
 	)
 	var i Payment
 	err := row.Scan(

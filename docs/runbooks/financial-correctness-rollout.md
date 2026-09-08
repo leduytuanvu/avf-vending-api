@@ -20,7 +20,7 @@ Set `COMMERCE_WINNER_ARBITRATION_ENABLED=true` after divergence logs are clean.
 
 Roll out storefront build with:
 
-- Cash wallet consent gate (`explicit_confirm`)
+- Cash wallet consent gate (`wallet_auto_settlement` with terminal acceptance events)
 - Attempt-sequenced QR idempotency keys + server cancel
 - Durable payment-screen cash credits (Room + `rawRecordHex` dedup)
 - Full cash evidence on `ConfirmCashPayment`

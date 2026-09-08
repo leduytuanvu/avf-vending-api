@@ -1877,7 +1877,7 @@ type ConfirmCashPaymentRequest struct {
 	ChangeDispensedMinor   int64                  `protobuf:"varint,9,opt,name=change_dispensed_minor,json=changeDispensedMinor,proto3" json:"change_dispensed_minor,omitempty"`
 	// delivered | delivered_after_fault | not_delivered | ambiguous | none
 	ChangeOutcome string `protobuf:"bytes,10,opt,name=change_outcome,json=changeOutcome,proto3" json:"change_outcome,omitempty"`
-	// explicit_confirm | implicit_post_order | operator | unknown
+	// explicit_confirm | implicit_post_order | operator | unknown | wallet_auto_settlement
 	ConsentSource        string                 `protobuf:"bytes,11,opt,name=consent_source,json=consentSource,proto3" json:"consent_source,omitempty"`
 	ConsentedAt          *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=consented_at,json=consentedAt,proto3" json:"consented_at,omitempty"`
 	Currency             string                 `protobuf:"bytes,13,opt,name=currency,proto3" json:"currency,omitempty"`
@@ -3454,10 +3454,12 @@ func (x *CancelOrderResponse) GetOrderStatus() string {
 }
 
 type CancelPaymentSessionRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Context       *IdempotencyContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
-	OrderId       string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
-	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Context *IdempotencyContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	OrderId string                 `protobuf:"bytes,2,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
+	Reason  string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// When set, cancels this specific payment attempt instead of the latest non-captured.
+	PaymentId     string `protobuf:"bytes,4,opt,name=payment_id,json=paymentId,proto3" json:"payment_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3509,6 +3511,13 @@ func (x *CancelPaymentSessionRequest) GetOrderId() string {
 func (x *CancelPaymentSessionRequest) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *CancelPaymentSessionRequest) GetPaymentId() string {
+	if x != nil {
+		return x.PaymentId
 	}
 	return ""
 }
@@ -3957,11 +3966,13 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x13CancelOrderResponse\x12\x16\n" +
 	"\x06replay\x18\x01 \x01(\bR\x06replay\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12!\n" +
-	"\forder_status\x18\x03 \x01(\tR\vorderStatus\"\x8e\x01\n" +
+	"\forder_status\x18\x03 \x01(\tR\vorderStatus\"\xad\x01\n" +
 	"\x1bCancelPaymentSessionRequest\x12<\n" +
 	"\acontext\x18\x01 \x01(\v2\".avf.machine.v1.IdempotencyContextR\acontext\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xb8\x01\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1d\n" +
+	"\n" +
+	"payment_id\x18\x04 \x01(\tR\tpaymentId\"\xb8\x01\n" +
 	"\x1cCancelPaymentSessionResponse\x12\x16\n" +
 	"\x06replay\x18\x01 \x01(\bR\x06replay\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12!\n" +

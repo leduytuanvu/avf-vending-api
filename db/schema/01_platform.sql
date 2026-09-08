@@ -1007,7 +1007,7 @@ CREATE TABLE cash_allocations (
     pre_order_credit_minor bigint NOT NULL DEFAULT 0 CHECK (pre_order_credit_minor >= 0),
     post_order_inserted_minor bigint NOT NULL DEFAULT 0 CHECK (post_order_inserted_minor >= 0),
     consent_source text NOT NULL CHECK (
-        consent_source IN ('explicit_confirm', 'implicit_post_order', 'operator', 'unknown')
+        consent_source IN ('explicit_confirm', 'implicit_post_order', 'operator', 'unknown', 'wallet_auto_settlement')
     ),
     consented_at timestamptz,
     currency char(3) NOT NULL,
