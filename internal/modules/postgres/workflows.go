@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/zap"
 )
 
 // CommandWorkflowAudit is optional persistence-side audit metadata (callers supply org + actor context).
@@ -255,6 +256,12 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 			if err := tx.Commit(ctx); err != nil {
 				return commerce.PaymentOutboxResult{}, err
 			}
+			zap.L().Info("PAYMENT_ATTEMPT_SEQUENCE_REPLAYED",
+				zap.String("order_id", in.OrderID.String()),
+				zap.String("payment_id", existingPay.ID.String()),
+				zap.Int32("attempt_seq", int32(existingPay.AttemptSeq)),
+				zap.Bool("replay", true),
+			)
 			return commerce.PaymentOutboxResult{
 				Payment: mapPayment(existingPay),
 				Outbox:  mapOutbox(ob),
@@ -292,6 +299,11 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		return commerce.PaymentOutboxResult{}, err
 	}
 
+	attemptSeq, allocErr := allocatePaymentAttemptSeq(ctx, q, in)
+	if allocErr != nil {
+		return commerce.PaymentOutboxResult{}, allocErr
+	}
+
 	pRow, err := q.InsertPayment(ctx, db.InsertPaymentParams{
 		OrderID:             in.OrderID,
 		Provider:            in.Provider,
@@ -304,7 +316,7 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		SimulationScenario:  optionalStringToPgText(in.SimulationScenario),
 		FakeBill:            in.FakeBill,
 		FakeBoard:           in.FakeBoard,
-		AttemptSeq:          in.AttemptSeq,
+		AttemptSeq:          attemptSeq,
 		SupersedesPaymentID: optionalUUIDToPg(in.SupersedesPaymentID),
 	})
 	if err != nil {
@@ -335,6 +347,44 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		Outbox:  mapOutbox(obRow),
 		Replay:  false,
 	}, nil
+}
+
+func allocatePaymentAttemptSeq(ctx context.Context, q *db.Queries, in commerce.PaymentOutboxInput) (int32, error) {
+	clientHint := in.AttemptSeq
+	zap.L().Info("PAYMENT_ATTEMPT_SEQUENCE_ALLOCATE_START",
+		zap.String("order_id", in.OrderID.String()),
+		zap.String("provider", in.Provider),
+		zap.Int32("client_attempt_seq_hint", clientHint),
+	)
+	if _, err := q.LockOrderForPaymentAttempt(ctx, in.OrderID); err != nil {
+		if isNoRows(err) {
+			return 0, fmt.Errorf("postgres: order not found for payment attempt allocation")
+		}
+		return 0, err
+	}
+	next, err := q.NextPaymentAttemptSeqForOrder(ctx, in.OrderID)
+	if err != nil {
+		return 0, err
+	}
+	attemptSeq := next
+	if attemptSeq < 1 {
+		return 0, fmt.Errorf("postgres: invalid payment attempt sequence %d", attemptSeq)
+	}
+	if clientHint > 0 && clientHint != attemptSeq {
+		zap.L().Warn("PAYMENT_ATTEMPT_SEQUENCE_CONFLICT",
+			zap.String("order_id", in.OrderID.String()),
+			zap.String("provider", in.Provider),
+			zap.Int32("client_attempt_seq_hint", clientHint),
+			zap.Int32("allocated_attempt_seq", attemptSeq),
+		)
+	}
+	zap.L().Info("PAYMENT_ATTEMPT_SEQUENCE_ALLOCATED",
+		zap.String("order_id", in.OrderID.String()),
+		zap.String("provider", in.Provider),
+		zap.Int32("attempt_seq", attemptSeq),
+		zap.Bool("replay", false),
+	)
+	return attemptSeq, nil
 }
 
 func mapDeviceReceiptToAttemptStatus(receiptStatus string) string {

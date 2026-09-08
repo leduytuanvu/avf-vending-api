@@ -175,6 +175,14 @@ func mapCommercePersistenceErrForOp(op CommerceOperation, err error, ctx Commerc
 		return status.Error(codes.Internal, persistenceReasonForOp(op, "persistence_failed"))
 	case "23505":
 		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, "conflict"))
+	case "23514":
+		zap.L().Error("PAYMENT_START_DB_CONSTRAINT_FAILED",
+			zap.String("operation", string(op)),
+			zap.String("sqlstate", pgErr.Code),
+			zap.String("constraint_name", pgErr.ConstraintName),
+			zap.String("table_name", pgErr.TableName),
+		)
+		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, "payment_attempt_sequence_invalid"))
 	default:
 		if strings.HasPrefix(pgErr.Code, "08") || pgErr.Code == "57P03" {
 			return status.Error(codes.Unavailable, "commerce_backend_unavailable")
@@ -667,7 +675,7 @@ func (s *machineCommerceServer) ConfirmCashPayment(ctx context.Context, req *mac
 		OutboxAggregateType:    aggType,
 	})
 	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
+		return nil, mapCommerceGRPCErrForOp(OpConfirmCashCheckout, err)
 	}
 	if !res.Replay {
 		s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceCashPaymentConfirmed, map[string]any{

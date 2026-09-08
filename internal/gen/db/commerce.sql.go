@@ -2307,6 +2307,20 @@ func (q *Queries) LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID
 	return i, err
 }
 
+const LockOrderForPaymentAttempt = `-- name: LockOrderForPaymentAttempt :one
+SELECT id
+FROM orders
+WHERE id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockOrderForPaymentAttempt(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, LockOrderForPaymentAttempt, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const LockVendSessionByOrderAndSlotForUpdate = `-- name: LockVendSessionByOrderAndSlotForUpdate :one
 SELECT
     id,
@@ -2460,6 +2474,19 @@ func (q *Queries) MarkOutboxEventPublished(ctx context.Context, id int64) (MarkO
 		&i.MaxPublishAttempts,
 	)
 	return i, err
+}
+
+const NextPaymentAttemptSeqForOrder = `-- name: NextPaymentAttemptSeqForOrder :one
+SELECT COALESCE(MAX(attempt_seq), 0)::int + 1 AS next_attempt_seq
+FROM payments
+WHERE order_id = $1
+`
+
+func (q *Queries) NextPaymentAttemptSeqForOrder(ctx context.Context, orderID uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, NextPaymentAttemptSeqForOrder, orderID)
+	var next_attempt_seq int32
+	err := row.Scan(&next_attempt_seq)
+	return next_attempt_seq, err
 }
 
 const SumNonFailedRefundAmountForPayment = `-- name: SumNonFailedRefundAmountForPayment :one

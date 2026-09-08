@@ -1004,6 +1004,9 @@ func validateStartPayment(in StartPaymentInput) error {
 	if in.OutboxAggregateID == uuid.Nil {
 		return errors.Join(ErrInvalidArgument, errors.New("outbox_aggregate_id must be set"))
 	}
+	if in.AttemptSeq < 0 {
+		return errors.Join(ErrInvalidArgument, errors.New("attempt_seq must be non-negative"))
+	}
 	return nil
 }
 

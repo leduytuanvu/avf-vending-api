@@ -109,6 +109,17 @@ VALUES (
 )
 RETURNING *;
 
+-- name: LockOrderForPaymentAttempt :one
+SELECT id
+FROM orders
+WHERE id = $1
+FOR UPDATE;
+
+-- name: NextPaymentAttemptSeqForOrder :one
+SELECT COALESCE(MAX(attempt_seq), 0)::int + 1 AS next_attempt_seq
+FROM payments
+WHERE order_id = $1;
+
 -- name: GetPaymentByOrderAndIdempotencyKey :one
 SELECT
     id,
