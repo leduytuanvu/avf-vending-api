@@ -459,7 +459,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 	if !row.Inserted && offlineLedgerTerminalStatus(row.ProcessingStatus) {
 		return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED, Reason: "offline event replayed"}
 	}
-	if err := s.dispatchOfflineEvent(ctx, eventType, payload); err != nil {
+	if err := s.dispatchOfflineEvent(ctx, eventType, payload, meta); err != nil {
 		code := status.Code(err)
 		productionmetrics.RecordOfflineReplayFailure(code.String())
 		st := "failed"
@@ -532,9 +532,11 @@ func mapOfflineEventAlias(eventType string) string {
 	}
 }
 
-func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eventType string, payload []byte) error {
+func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eventType string, payload []byte, meta *machinev1.MachineRequestMeta) error {
 	eventType = mapOfflineEventAlias(strings.ToLower(strings.TrimSpace(eventType)))
 	switch eventType {
+	case "commerce.offline_sale":
+		return s.replayOfflineSale(ctx, payload, meta)
 	case "commerce.create_order", "sale.create_order":
 		var req machinev1.CreateOrderRequest
 		if err := protojson.Unmarshal(payload, &req); err != nil {
