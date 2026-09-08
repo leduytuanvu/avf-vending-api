@@ -21,6 +21,8 @@ service MachineCommerceService {
   rpc CreateCashCheckout(ConfirmCashPaymentRequest) returns (ConfirmCashPaymentResponse);
   rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
   rpc GetOrderStatus(GetOrderStatusRequest) returns (GetOrderStatusResponse);
+  // Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
+  rpc GetPaymentStatus(GetPaymentStatusRequest) returns (GetPaymentStatusResponse);
   rpc StartVend(StartVendRequest) returns (StartVendResponse);
   rpc ConfirmVendSuccess(ConfirmVendSuccessRequest) returns (ConfirmVendSuccessResponse);
   rpc ReportVendSuccess(ReportVendSuccessRequest) returns (ReportVendSuccessResponse);
@@ -312,6 +314,22 @@ message GetOrderStatusResponse {
   // server_priced | machine_local_verified | machine_local_unverified
   string pricing_source = 6;
   // Short machine-safe reason from the latest provider query refresh (awaiting_callback, provider_pending, ...).
+  string payment_diagnostic = 7;
+}
+
+message GetPaymentStatusRequest {
+  string order_id = 1;
+  string payment_id = 2;
+}
+
+message GetPaymentStatusResponse {
+  string order_id = 1;
+  string payment_id = 2;
+  string payment_provider = 3;
+  string payment_state = 4;
+  // winner | refund_required | empty when not set
+  string outcome = 5;
+  bool is_winning_payment = 6;
   string payment_diagnostic = 7;
 }
 

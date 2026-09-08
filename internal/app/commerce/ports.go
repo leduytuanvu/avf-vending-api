@@ -93,6 +93,7 @@ type Orchestrator interface {
 	// GetOrderStatusView is the order-authoritative read path for status polling.
 	// Missing vend sessions for the requested slot do not surface as ErrNotFound.
 	GetOrderStatusView(ctx context.Context, companyID, orderID uuid.UUID, slotIndex, lineSequence int32) (CheckoutStatusView, error)
+	GetPaymentStatusView(ctx context.Context, companyID, orderID, paymentID uuid.UUID, machineExternalCode string) (PaymentStatusView, error)
 	ApplyPaymentProviderWebhook(ctx context.Context, in ApplyPaymentProviderWebhookInput) (ApplyPaymentProviderWebhookResult, error)
 	RefreshPendingPaymentFromProvider(ctx context.Context, companyID, orderID uuid.UUID, machineExternalCode string) PaymentQueryRefreshOutcome
 
