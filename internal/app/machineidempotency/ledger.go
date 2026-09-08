@@ -104,9 +104,9 @@ func (l *Ledger) BeginMutation(ctx context.Context, claims plauth.MachineAccessC
 			IdempotencyKey: key,
 		})
 		l.recordAudit(ctx, claims, compliance.ActionMachineIdempotencyConflict, operation, key, map[string]any{
-			"status":                     row.Status,
-			"stored_hash_fingerprint":    hashFingerprint(row.RequestHash),
-			"incoming_hash_fingerprint":  hashFingerprint(requestHash),
+			"status":                      row.Status,
+			"stored_hash_fingerprint":     hashFingerprint(row.RequestHash),
+			"incoming_hash_fingerprint":   hashFingerprint(requestHash),
 			"idempotency_key_fingerprint": hashFingerprint([]byte(key)),
 		})
 		return row, nil, status.Error(codes.FailedPrecondition, ErrMsgIdempotencyPayloadMismatch)

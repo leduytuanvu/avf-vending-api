@@ -47,12 +47,12 @@ type StartPaymentInput struct {
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
 
-	Simulated          bool
-	SimulationRunID    string
-	SimulationScenario string
-	FakeBill           bool
-	FakeBoard          bool
-	AttemptSeq         int32
+	Simulated           bool
+	SimulationRunID     string
+	SimulationScenario  string
+	FakeBill            bool
+	FakeBoard           bool
+	AttemptSeq          int32
 	SupersedesPaymentID *uuid.UUID
 }
 
