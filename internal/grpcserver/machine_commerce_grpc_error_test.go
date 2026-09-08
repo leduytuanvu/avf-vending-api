@@ -58,6 +58,7 @@ func TestMapCommercePersistenceErrForOp_sqlStates(t *testing.T) {
 		{OpCreateOrderFromQuote, "22P02", codes.Internal, "order_persistence_failed"},
 		{OpCreatePaymentSession, "22P02", codes.Internal, "payment_session_persistence_failed"},
 		{OpCreatePaymentSession, "23505", codes.FailedPrecondition, "payment_session_conflict"},
+		{OpConfirmCashCheckout, "23514", codes.FailedPrecondition, "cash_checkout_payment_attempt_sequence_invalid"},
 		{OpCreateQuote, "08006", codes.Unavailable, "commerce_backend_unavailable"},
 		{OpCreateQuote, "57P03", codes.Unavailable, "commerce_backend_unavailable"},
 	}

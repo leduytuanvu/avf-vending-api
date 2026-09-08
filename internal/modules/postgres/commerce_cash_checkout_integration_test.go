@@ -58,4 +58,5 @@ func TestCashCheckout_storeFlow_orderPaid_cashProviderCaptured(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "cash", pay.Provider)
 	require.Equal(t, "captured", pay.State)
+	require.GreaterOrEqual(t, pay.AttemptSeq, int32(1))
 }

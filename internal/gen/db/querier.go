@@ -520,6 +520,7 @@ type Querier interface {
 	ListVendSessionsStuckForReconciliation(ctx context.Context, arg ListVendSessionsStuckForReconciliationParams) ([]ListVendSessionsStuckForReconciliationRow, error)
 	LockMachineForUpdate(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	LockOrderByIDAndOrgForUpdate(ctx context.Context, id uuid.UUID) (Order, error)
+	LockOrderForPaymentAttempt(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	LockVendSessionByOrderAndLineSequenceForUpdate(ctx context.Context, arg LockVendSessionByOrderAndLineSequenceForUpdateParams) (LockVendSessionByOrderAndLineSequenceForUpdateRow, error)
 	LockVendSessionByOrderAndSlotForUpdate(ctx context.Context, arg LockVendSessionByOrderAndSlotForUpdateParams) (LockVendSessionByOrderAndSlotForUpdateRow, error)
 	MachineAppliedConfigRevision(ctx context.Context, machineID uuid.UUID) (int32, error)
@@ -573,6 +574,7 @@ type Querier interface {
 	MediaAdminSoftDeleteAsset(ctx context.Context, id uuid.UUID) (MediaAsset, error)
 	MediaAdminUpdateAssetReady(ctx context.Context, arg MediaAdminUpdateAssetReadyParams) (MediaAsset, error)
 	NextMachineLayoutAssignmentRevision(ctx context.Context, arg NextMachineLayoutAssignmentRevisionParams) (int32, error)
+	NextPaymentAttemptSeqForOrder(ctx context.Context, orderID uuid.UUID) (int32, error)
 	OtaAdminCountCampaigns(ctx context.Context, arg OtaAdminCountCampaignsParams) (int64, error)
 	OtaAdminDeleteTargetsForCampaign(ctx context.Context, campaignID uuid.UUID) error
 	OtaAdminGetArtifactForOrg(ctx context.Context, id uuid.UUID) (OtaArtifact, error)

@@ -18,6 +18,7 @@ const (
 	OpCreateOrderFromQuote CommerceOperation = "create_order_from_quote"
 	OpCreateOrder          CommerceOperation = "create_order"
 	OpCreatePaymentSession CommerceOperation = "create_payment_session"
+	OpConfirmCashCheckout  CommerceOperation = "confirm_cash_checkout"
 	OpGenericCommerce      CommerceOperation = "commerce"
 )
 
@@ -80,6 +81,8 @@ func persistenceReasonForOp(op CommerceOperation, suffix string) string {
 		return "order_" + suffix
 	case OpCreatePaymentSession:
 		return "payment_session_" + suffix
+	case OpConfirmCashCheckout:
+		return "cash_checkout_" + suffix
 	default:
 		return "commerce_" + suffix
 	}
