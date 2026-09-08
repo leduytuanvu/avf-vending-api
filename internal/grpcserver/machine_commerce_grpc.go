@@ -164,6 +164,18 @@ func mapCommercePersistenceErr(err error) error {
 	return mapCommercePersistenceErrForOp(OpGenericCommerce, err, CommercePersistenceContext{})
 }
 
+// checkConstraintViolationReason maps a PostgreSQL CHECK constraint name to a stable gRPC reason suffix.
+func checkConstraintViolationReason(constraintName string) string {
+	switch strings.ToLower(strings.TrimSpace(constraintName)) {
+	case "payments_attempt_seq_check":
+		return "payment_attempt_sequence_invalid"
+	case "cash_allocations_consent_source_check":
+		return "consent_source_invalid"
+	default:
+		return "constraint_violation"
+	}
+}
+
 func mapCommercePersistenceErrForOp(op CommerceOperation, err error, ctx CommercePersistenceContext) error {
 	var pgErr *pgconn.PgError
 	if !errors.As(err, &pgErr) {
@@ -176,13 +188,15 @@ func mapCommercePersistenceErrForOp(op CommerceOperation, err error, ctx Commerc
 	case "23505":
 		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, "conflict"))
 	case "23514":
-		zap.L().Error("PAYMENT_START_DB_CONSTRAINT_FAILED",
+		reasonSuffix := checkConstraintViolationReason(pgErr.ConstraintName)
+		zap.L().Error("PAYMENT_ATTEMPT_SEQUENCE_REJECTED",
 			zap.String("operation", string(op)),
 			zap.String("sqlstate", pgErr.Code),
 			zap.String("constraint_name", pgErr.ConstraintName),
 			zap.String("table_name", pgErr.TableName),
+			zap.String("reason_suffix", reasonSuffix),
 		)
-		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, "payment_attempt_sequence_invalid"))
+		return status.Error(codes.FailedPrecondition, persistenceReasonForOp(op, reasonSuffix))
 	default:
 		if strings.HasPrefix(pgErr.Code, "08") || pgErr.Code == "57P03" {
 			return status.Error(codes.Unavailable, "commerce_backend_unavailable")

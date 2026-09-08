@@ -58,7 +58,7 @@ func TestMapCommercePersistenceErrForOp_sqlStates(t *testing.T) {
 		{OpCreateOrderFromQuote, "22P02", codes.Internal, "order_persistence_failed"},
 		{OpCreatePaymentSession, "22P02", codes.Internal, "payment_session_persistence_failed"},
 		{OpCreatePaymentSession, "23505", codes.FailedPrecondition, "payment_session_conflict"},
-		{OpConfirmCashCheckout, "23514", codes.FailedPrecondition, "cash_checkout_payment_attempt_sequence_invalid"},
+		{OpConfirmCashCheckout, "23514", codes.FailedPrecondition, "cash_checkout_constraint_violation"},
 		{OpCreateQuote, "08006", codes.Unavailable, "commerce_backend_unavailable"},
 		{OpCreateQuote, "57P03", codes.Unavailable, "commerce_backend_unavailable"},
 	}
@@ -70,6 +70,46 @@ func TestMapCommercePersistenceErrForOp_sqlStates(t *testing.T) {
 		}
 		if st.Code() != tc.grpc || st.Message() != tc.message {
 			t.Fatalf("op=%s code=%s: got code=%v msg=%q want code=%v msg=%q", tc.op, tc.code, st.Code(), st.Message(), tc.grpc, tc.message)
+		}
+	}
+}
+
+func TestCheckConstraintViolationReason_knownConstraints(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		constraint string
+		want       string
+	}{
+		{"payments_attempt_seq_check", "payment_attempt_sequence_invalid"},
+		{"cash_allocations_consent_source_check", "consent_source_invalid"},
+		{"unknown_check", "constraint_violation"},
+		{"", "constraint_violation"},
+	}
+	for _, tc := range cases {
+		if got := checkConstraintViolationReason(tc.constraint); got != tc.want {
+			t.Fatalf("constraint %q: got %q want %q", tc.constraint, got, tc.want)
+		}
+	}
+}
+
+func TestMapCommercePersistenceErrForOp_cashCheckoutConstraintNames(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		constraint string
+		message    string
+	}{
+		{"payments_attempt_seq_check", "cash_checkout_payment_attempt_sequence_invalid"},
+		{"cash_allocations_consent_source_check", "cash_checkout_consent_source_invalid"},
+		{"other_check", "cash_checkout_constraint_violation"},
+	}
+	for _, tc := range cases {
+		err := &pgconn.PgError{Code: "23514", ConstraintName: tc.constraint, Message: "check violation"}
+		st, ok := status.FromError(mapCommercePersistenceErrForOp(OpConfirmCashCheckout, err, CommercePersistenceContext{}))
+		if !ok {
+			t.Fatalf("constraint %q: expected status", tc.constraint)
+		}
+		if st.Message() != tc.message {
+			t.Fatalf("constraint %q: got msg %q want %q", tc.constraint, st.Message(), tc.message)
 		}
 	}
 }
