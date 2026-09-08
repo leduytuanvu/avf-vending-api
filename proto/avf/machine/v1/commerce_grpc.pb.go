@@ -28,6 +28,7 @@ const (
 	MachineCommerceService_CreateCashCheckout_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CreateCashCheckout"
 	MachineCommerceService_GetOrder_FullMethodName             = "/avf.machine.v1.MachineCommerceService/GetOrder"
 	MachineCommerceService_GetOrderStatus_FullMethodName       = "/avf.machine.v1.MachineCommerceService/GetOrderStatus"
+	MachineCommerceService_GetPaymentStatus_FullMethodName     = "/avf.machine.v1.MachineCommerceService/GetPaymentStatus"
 	MachineCommerceService_StartVend_FullMethodName            = "/avf.machine.v1.MachineCommerceService/StartVend"
 	MachineCommerceService_ConfirmVendSuccess_FullMethodName   = "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess"
 	MachineCommerceService_ReportVendSuccess_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportVendSuccess"
@@ -54,6 +55,8 @@ type MachineCommerceServiceClient interface {
 	CreateCashCheckout(ctx context.Context, in *ConfirmCashPaymentRequest, opts ...grpc.CallOption) (*ConfirmCashPaymentResponse, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderResponse, error)
 	GetOrderStatus(ctx context.Context, in *GetOrderStatusRequest, opts ...grpc.CallOption) (*GetOrderStatusResponse, error)
+	// Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
+	GetPaymentStatus(ctx context.Context, in *GetPaymentStatusRequest, opts ...grpc.CallOption) (*GetPaymentStatusResponse, error)
 	StartVend(ctx context.Context, in *StartVendRequest, opts ...grpc.CallOption) (*StartVendResponse, error)
 	ConfirmVendSuccess(ctx context.Context, in *ConfirmVendSuccessRequest, opts ...grpc.CallOption) (*ConfirmVendSuccessResponse, error)
 	ReportVendSuccess(ctx context.Context, in *ReportVendSuccessRequest, opts ...grpc.CallOption) (*ReportVendSuccessResponse, error)
@@ -161,6 +164,16 @@ func (c *machineCommerceServiceClient) GetOrderStatus(ctx context.Context, in *G
 	return out, nil
 }
 
+func (c *machineCommerceServiceClient) GetPaymentStatus(ctx context.Context, in *GetPaymentStatusRequest, opts ...grpc.CallOption) (*GetPaymentStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPaymentStatusResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_GetPaymentStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *machineCommerceServiceClient) StartVend(ctx context.Context, in *StartVendRequest, opts ...grpc.CallOption) (*StartVendResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartVendResponse)
@@ -239,6 +252,8 @@ type MachineCommerceServiceServer interface {
 	CreateCashCheckout(context.Context, *ConfirmCashPaymentRequest) (*ConfirmCashPaymentResponse, error)
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderResponse, error)
 	GetOrderStatus(context.Context, *GetOrderStatusRequest) (*GetOrderStatusResponse, error)
+	// Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
+	GetPaymentStatus(context.Context, *GetPaymentStatusRequest) (*GetPaymentStatusResponse, error)
 	StartVend(context.Context, *StartVendRequest) (*StartVendResponse, error)
 	ConfirmVendSuccess(context.Context, *ConfirmVendSuccessRequest) (*ConfirmVendSuccessResponse, error)
 	ReportVendSuccess(context.Context, *ReportVendSuccessRequest) (*ReportVendSuccessResponse, error)
@@ -282,6 +297,9 @@ func (UnimplementedMachineCommerceServiceServer) GetOrder(context.Context, *GetO
 }
 func (UnimplementedMachineCommerceServiceServer) GetOrderStatus(context.Context, *GetOrderStatusRequest) (*GetOrderStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrderStatus not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) GetPaymentStatus(context.Context, *GetPaymentStatusRequest) (*GetPaymentStatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPaymentStatus not implemented")
 }
 func (UnimplementedMachineCommerceServiceServer) StartVend(context.Context, *StartVendRequest) (*StartVendResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method StartVend not implemented")
@@ -485,6 +503,24 @@ func _MachineCommerceService_GetOrderStatus_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineCommerceService_GetPaymentStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPaymentStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).GetPaymentStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_GetPaymentStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).GetPaymentStatus(ctx, req.(*GetPaymentStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MachineCommerceService_StartVend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartVendRequest)
 	if err := dec(in); err != nil {
@@ -635,6 +671,10 @@ var MachineCommerceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetOrderStatus",
 			Handler:    _MachineCommerceService_GetOrderStatus_Handler,
+		},
+		{
+			MethodName: "GetPaymentStatus",
+			Handler:    _MachineCommerceService_GetPaymentStatus_Handler,
 		},
 		{
 			MethodName: "StartVend",

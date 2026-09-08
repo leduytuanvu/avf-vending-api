@@ -943,6 +943,66 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 	return resp, nil
 }
 
+func (s *machineCommerceServer) GetPaymentStatus(ctx context.Context, req *machinev1.GetPaymentStatusRequest) (*machinev1.GetPaymentStatusResponse, error) {
+	started := time.Now()
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	claims, svc, _, err := s.requireCommerce(ctx)
+	if err != nil {
+		return nil, err
+	}
+	orderID, err := uuid.Parse(strings.TrimSpace(req.GetOrderId()))
+	if err != nil || orderID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
+	}
+	paymentID, err := uuid.Parse(strings.TrimSpace(req.GetPaymentId()))
+	if err != nil || paymentID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid payment_id")
+	}
+	log := observability.LoggerFromContext(ctx, zap.NewNop())
+	log.Info("GET_PAYMENT_STATUS_START",
+		zap.String("order_id", orderID.String()),
+		zap.String("payment_id", paymentID.String()),
+		zap.String("machine_id", claims.MachineID.String()),
+	)
+	principal := machinePrincipalFromAccessClaims(claims)
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	st, err := svc.GetPaymentStatusView(
+		ctx,
+		uuid.Nil,
+		orderID,
+		paymentID,
+		machineExternalCode(ctx, s.deps, claims.MachineID),
+	)
+	if err != nil {
+		log.Warn("GET_PAYMENT_STATUS_ERROR",
+			zap.String("order_id", orderID.String()),
+			zap.String("payment_id", paymentID.String()),
+			zap.Error(err),
+		)
+		return nil, mapCommerceGRPCErr(err)
+	}
+	resp := &machinev1.GetPaymentStatusResponse{
+		OrderId:           st.OrderID.String(),
+		PaymentId:         st.Payment.ID.String(),
+		PaymentProvider:   st.Payment.Provider,
+		PaymentState:      st.Payment.State,
+		Outcome:           st.Outcome,
+		IsWinningPayment:  st.IsWinningPayment,
+		PaymentDiagnostic: st.PaymentDiagnostic,
+	}
+	log.Info("GET_PAYMENT_STATUS_SUCCESS",
+		zap.String("order_id", orderID.String()),
+		zap.String("payment_id", paymentID.String()),
+		zap.String("payment_state", resp.GetPaymentState()),
+		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
+	)
+	return resp, nil
+}
+
 func (s *machineCommerceServer) StartVend(ctx context.Context, req *machinev1.StartVendRequest) (*machinev1.StartVendResponse, error) {
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
