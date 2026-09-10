@@ -440,7 +440,7 @@ type Querier interface {
 	InventoryAdminGetInventoryIdempotencyPayloadHash(ctx context.Context, arg InventoryAdminGetInventoryIdempotencyPayloadHashParams) (string, error)
 	InventoryAdminGetMachineOrg(ctx context.Context, id uuid.UUID) (InventoryAdminGetMachineOrgRow, error)
 	InventoryAdminGetOrgDefaultCurrency(ctx context.Context) (string, error)
-	InventoryAdminInsertInventoryEventsBatch(ctx context.Context, eventsJson []byte) ([]int64, error)
+	InventoryAdminInsertInventoryEventsBatch(ctx context.Context, eventsJson string) ([]int64, error)
 	InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx context.Context, machineID uuid.UUID) ([]InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error)
 	InventoryAdminListInventoryEventsByMachine(ctx context.Context, arg InventoryAdminListInventoryEventsByMachineParams) ([]InventoryAdminListInventoryEventsByMachineRow, error)
 	InventoryAdminListMachineSlots(ctx context.Context, machineID uuid.UUID) ([]InventoryAdminListMachineSlotsRow, error)

@@ -242,7 +242,7 @@ func (r *InventoryRepository) CreateInventoryAdjustmentBatch(ctx context.Context
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
 
-	eventIDs, err := q.InventoryAdminInsertInventoryEventsBatch(ctx, payload)
+	eventIDs, err := insertInventoryEventsBatchJSON(ctx, tx, payload)
 	if err != nil {
 		return inventoryapp.AdjustmentBatchResult{}, err
 	}
