@@ -12,7 +12,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb),
     $5,
     $6,
     $7
@@ -47,7 +47,7 @@ INSERT INTO machine_shadow (
 )
 VALUES (
     $1,
-    $2,
+    COALESCE(NULLIF($2::text, '')::jsonb, '{}'::jsonb),
     '{}'::jsonb,
     1,
     now()

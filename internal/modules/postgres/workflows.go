@@ -492,10 +492,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 		IdempotencyKey: optionalStringToPgText(idem),
 	})
 	if err == nil {
-		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
-			MachineID:    in.MachineID,
-			DesiredState: in.DesiredState,
-		}); err != nil {
+		if err := upsertMachineShadowDesiredJSON(ctx, tx, in.MachineID, in.DesiredState); err != nil {
 			return device.AppendCommandResult{}, err
 		}
 		if err := tx.Commit(ctx); err != nil {
@@ -512,7 +509,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 		return device.AppendCommandResult{}, err
 	}
 
-	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
+	cmdRow, err := insertCommandLedgerEntryJSON(ctx, tx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.MachineID,
 		Sequence:          seq,
 		CommandType:       in.CommandType,
@@ -541,10 +538,7 @@ func (s *Store) AppendCommandUpdateShadow(ctx context.Context, in device.AppendC
 		return device.AppendCommandResult{}, err
 	}
 
-	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
-		MachineID:    in.MachineID,
-		DesiredState: in.DesiredState,
-	}); err != nil {
+	if err := upsertMachineShadowDesiredJSON(ctx, tx, in.MachineID, in.DesiredState); err != nil {
 		return device.AppendCommandResult{}, err
 	}
 
@@ -584,10 +578,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 		IdempotencyKey: optionalStringToPgText(idem),
 	})
 	if err == nil {
-		if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
-			MachineID:    in.Command.MachineID,
-			DesiredState: in.Command.DesiredState,
-		}); err != nil {
+		if err := upsertMachineShadowDesiredJSON(ctx, tx, in.Command.MachineID, in.Command.DesiredState); err != nil {
 			return AppendCommandWithOutboxResult{}, err
 		}
 
@@ -646,7 +637,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 		return AppendCommandWithOutboxResult{}, err
 	}
 
-	cmdRow, err := q.InsertCommandLedgerEntry(ctx, db.InsertCommandLedgerEntryParams{
+	cmdRow, err := insertCommandLedgerEntryJSON(ctx, tx, db.InsertCommandLedgerEntryParams{
 		MachineID:         in.Command.MachineID,
 		Sequence:          seq,
 		CommandType:       in.Command.CommandType,
@@ -675,10 +666,7 @@ func (s *Store) AppendCommandUpdateShadowAndOutbox(ctx context.Context, in Appen
 		return AppendCommandWithOutboxResult{}, err
 	}
 
-	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
-		MachineID:    in.Command.MachineID,
-		DesiredState: in.Command.DesiredState,
-	}); err != nil {
+	if err := upsertMachineShadowDesiredJSON(ctx, tx, in.Command.MachineID, in.Command.DesiredState); err != nil {
 		return AppendCommandWithOutboxResult{}, err
 	}
 
@@ -1047,10 +1035,7 @@ func (s *Store) IngestShadowDesired(ctx context.Context, in platformmqtt.ShadowD
 	if _, err = q.GetMachineByIDForUpdate(ctx, in.MachineID); err != nil {
 		return err
 	}
-	if _, err := q.UpsertMachineShadowDesired(ctx, db.UpsertMachineShadowDesiredParams{
-		MachineID:    in.MachineID,
-		DesiredState: in.DesiredJSON,
-	}); err != nil {
+	if err := upsertMachineShadowDesiredJSON(ctx, tx, in.MachineID, in.DesiredJSON); err != nil {
 		return err
 	}
 	if err := q.TouchMachineConnectivity(ctx, in.MachineID); err != nil {

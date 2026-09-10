@@ -398,7 +398,9 @@ SELECT
     coalesce((e->>'recorded_at')::timestamptz, now()) AS recorded_at,
     coalesce(e->'metadata', '{}'::jsonb) AS metadata
 FROM
-    jsonb_array_elements(sqlc.arg(events_json)::jsonb) AS e
+    jsonb_array_elements(
+        COALESCE(NULLIF(sqlc.arg(events_json)::text, '')::jsonb, '[]'::jsonb)
+    ) AS e
 RETURNING
     id;
 
