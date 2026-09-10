@@ -128,7 +128,7 @@ RETURNING
 		arg.MachineID,
 		arg.Sequence,
 		arg.CommandType,
-		pgjson.RequiredString(arg.Payload),
+		arg.Column4,
 		arg.CorrelationID,
 		arg.IdempotencyKey,
 		arg.OperatorSessionID,

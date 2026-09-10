@@ -102,7 +102,7 @@ VALUES (
     $1,
     $2,
     $3,
-    $4,
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb),
     $5,
     $6,
     $7
@@ -132,7 +132,7 @@ type InsertCommandLedgerEntryParams struct {
 	MachineID         uuid.UUID
 	Sequence          int64
 	CommandType       string
-	Payload           []byte
+	Column4           string
 	CorrelationID     pgtype.UUID
 	IdempotencyKey    pgtype.Text
 	OperatorSessionID pgtype.UUID
@@ -143,7 +143,7 @@ func (q *Queries) InsertCommandLedgerEntry(ctx context.Context, arg InsertComman
 		arg.MachineID,
 		arg.Sequence,
 		arg.CommandType,
-		arg.Payload,
+		arg.Column4,
 		arg.CorrelationID,
 		arg.IdempotencyKey,
 		arg.OperatorSessionID,
@@ -306,7 +306,7 @@ INSERT INTO machine_shadow (
 )
 VALUES (
     $1,
-    $2,
+    COALESCE(NULLIF($2::text, '')::jsonb, '{}'::jsonb),
     '{}'::jsonb,
     1,
     now()
@@ -320,12 +320,12 @@ RETURNING machine_id, desired_state, reported_state, version, updated_at
 `
 
 type UpsertMachineShadowDesiredParams struct {
-	MachineID    uuid.UUID
-	DesiredState []byte
+	MachineID uuid.UUID
+	Column2   string
 }
 
 func (q *Queries) UpsertMachineShadowDesired(ctx context.Context, arg UpsertMachineShadowDesiredParams) (MachineShadow, error) {
-	row := q.db.QueryRow(ctx, UpsertMachineShadowDesired, arg.MachineID, arg.DesiredState)
+	row := q.db.QueryRow(ctx, UpsertMachineShadowDesired, arg.MachineID, arg.Column2)
 	var i MachineShadow
 	err := row.Scan(
 		&i.MachineID,

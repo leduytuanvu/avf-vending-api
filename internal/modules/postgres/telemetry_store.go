@@ -1025,7 +1025,7 @@ func (s *Store) AppendInventoryEventFromDeviceTelemetry(ctx context.Context, env
 	if err != nil {
 		return false, err
 	}
-	_, err = db.New(s.pool).InventoryAdminInsertInventoryEventsBatch(ctx, batch)
+	_, err = db.New(s.pool).InventoryAdminInsertInventoryEventsBatch(ctx, string(batch))
 	return false, err
 }
 
@@ -1122,7 +1122,7 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, sco
 	if err != nil {
 		return false, err
 	}
-	if _, err := q.InventoryAdminInsertInventoryEventsBatch(ctx, batch); err != nil {
+	if _, err := q.InventoryAdminInsertInventoryEventsBatch(ctx, string(batch)); err != nil {
 		return false, err
 	}
 	if _, err := q.InventoryAdminUpsertMachineSlotState(ctx, db.InventoryAdminUpsertMachineSlotStateParams{

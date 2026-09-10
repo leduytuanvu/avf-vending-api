@@ -318,12 +318,14 @@ SELECT
     coalesce((e->>'recorded_at')::timestamptz, now()) AS recorded_at,
     coalesce(e->'metadata', '{}'::jsonb) AS metadata
 FROM
-    jsonb_array_elements($1::jsonb) AS e
+    jsonb_array_elements(
+        COALESCE(NULLIF($1::text, '')::jsonb, '[]'::jsonb)
+    ) AS e
 RETURNING
     id
 `
 
-func (q *Queries) InventoryAdminInsertInventoryEventsBatch(ctx context.Context, eventsJson []byte) ([]int64, error) {
+func (q *Queries) InventoryAdminInsertInventoryEventsBatch(ctx context.Context, eventsJson string) ([]int64, error) {
 	rows, err := q.db.Query(ctx, InventoryAdminInsertInventoryEventsBatch, eventsJson)
 	if err != nil {
 		return nil, err
