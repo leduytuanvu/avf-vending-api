@@ -61,11 +61,11 @@ func (s *Service) ReportLocalLayout(ctx context.Context, auth MachineAuthContext
 
 	inFP := strings.TrimSpace(in.Fingerprint)
 	if in.Revision < storedRev {
-		return ReportLocalLayoutResult{Accepted: true, StoredRevision: storedRev}, nil
+		return ReportLocalLayoutResult{Accepted: true, StoredRevision: storedRev, StoredGeneration: in.LocalGeneration, StoredFingerprint: storedFP}, nil
 	}
 	if in.Revision == storedRev {
 		if inFP == storedFP {
-			return ReportLocalLayoutResult{Accepted: true, StoredRevision: storedRev}, nil
+			return ReportLocalLayoutResult{Accepted: true, StoredRevision: storedRev, StoredGeneration: in.LocalGeneration, StoredFingerprint: storedFP}, nil
 		}
 		return ReportLocalLayoutResult{}, ErrLayoutRevisionConflict
 	}
@@ -111,7 +111,7 @@ func (s *Service) ReportLocalLayout(ctx context.Context, auth MachineAuthContext
 		return ReportLocalLayoutResult{}, err
 	}
 
-	return ReportLocalLayoutResult{Accepted: true, StoredRevision: in.Revision}, nil
+	return ReportLocalLayoutResult{Accepted: true, StoredRevision: in.Revision, StoredGeneration: in.LocalGeneration, StoredFingerprint: inFP}, nil
 }
 
 func validateReportedSlotsUnique(slotsJSON []byte) error {

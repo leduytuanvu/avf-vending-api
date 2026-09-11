@@ -1932,7 +1932,10 @@ type ReportLocalLayoutSlot struct {
 	MaxQuantity       int32                  `protobuf:"varint,6,opt,name=max_quantity,json=maxQuantity,proto3" json:"max_quantity,omitempty"`
 	PriceMinor        int64                  `protobuf:"varint,7,opt,name=price_minor,json=priceMinor,proto3" json:"price_minor,omitempty"`
 	// Matches machine_slots.localPricingRevision for this slot at report time.
-	LocalPricingRevision int64 `protobuf:"varint,8,opt,name=local_pricing_revision,json=localPricingRevision,proto3" json:"local_pricing_revision,omitempty"`
+	LocalPricingRevision int64  `protobuf:"varint,8,opt,name=local_pricing_revision,json=localPricingRevision,proto3" json:"local_pricing_revision,omitempty"`
+	CurrentInventory     int32  `protobuf:"varint,9,opt,name=current_inventory,json=currentInventory,proto3" json:"current_inventory,omitempty"`
+	Enabled              bool   `protobuf:"varint,10,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	OperationalState     string `protobuf:"bytes,11,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -2023,6 +2026,27 @@ func (x *ReportLocalLayoutSlot) GetLocalPricingRevision() int64 {
 	return 0
 }
 
+func (x *ReportLocalLayoutSlot) GetCurrentInventory() int32 {
+	if x != nil {
+		return x.CurrentInventory
+	}
+	return 0
+}
+
+func (x *ReportLocalLayoutSlot) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+func (x *ReportLocalLayoutSlot) GetOperationalState() string {
+	if x != nil {
+		return x.OperationalState
+	}
+	return ""
+}
+
 type ReportLocalLayoutRequest struct {
 	state            protoimpl.MessageState   `protogen:"open.v1"`
 	Meta             *MachineRequestMeta      `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -2033,6 +2057,7 @@ type ReportLocalLayoutRequest struct {
 	Slots            []*ReportLocalLayoutSlot `protobuf:"bytes,6,rep,name=slots,proto3" json:"slots,omitempty"`
 	Fingerprint      string                   `protobuf:"bytes,7,opt,name=fingerprint,proto3" json:"fingerprint,omitempty"`
 	DeviceInstanceId string                   `protobuf:"bytes,8,opt,name=device_instance_id,json=deviceInstanceId,proto3" json:"device_instance_id,omitempty"`
+	LocalGeneration  int64                    `protobuf:"varint,9,opt,name=local_generation,json=localGeneration,proto3" json:"local_generation,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -2123,13 +2148,22 @@ func (x *ReportLocalLayoutRequest) GetDeviceInstanceId() string {
 	return ""
 }
 
+func (x *ReportLocalLayoutRequest) GetLocalGeneration() int64 {
+	if x != nil {
+		return x.LocalGeneration
+	}
+	return 0
+}
+
 type ReportLocalLayoutResponse struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Meta           *MachineResponseMeta   `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	Accepted       bool                   `protobuf:"varint,2,opt,name=accepted,proto3" json:"accepted,omitempty"`
-	StoredRevision int32                  `protobuf:"varint,3,opt,name=stored_revision,json=storedRevision,proto3" json:"stored_revision,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Meta              *MachineResponseMeta   `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Accepted          bool                   `protobuf:"varint,2,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	StoredRevision    int32                  `protobuf:"varint,3,opt,name=stored_revision,json=storedRevision,proto3" json:"stored_revision,omitempty"`
+	StoredGeneration  int64                  `protobuf:"varint,4,opt,name=stored_generation,json=storedGeneration,proto3" json:"stored_generation,omitempty"`
+	StoredFingerprint string                 `protobuf:"bytes,5,opt,name=stored_fingerprint,json=storedFingerprint,proto3" json:"stored_fingerprint,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ReportLocalLayoutResponse) Reset() {
@@ -2181,6 +2215,20 @@ func (x *ReportLocalLayoutResponse) GetStoredRevision() int32 {
 		return x.StoredRevision
 	}
 	return 0
+}
+
+func (x *ReportLocalLayoutResponse) GetStoredGeneration() int64 {
+	if x != nil {
+		return x.StoredGeneration
+	}
+	return 0
+}
+
+func (x *ReportLocalLayoutResponse) GetStoredFingerprint() string {
+	if x != nil {
+		return x.StoredFingerprint
+	}
+	return ""
 }
 
 var File_avf_machine_v1_bootstrap_proto protoreflect.FileDescriptor
@@ -2375,7 +2423,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x1cserver_planogram_fingerprint\x18\b \x01(\tR\x1aserverPlanogramFingerprint\x128\n" +
 	"\x18server_media_fingerprint\x18\t \x01(\tR\x16serverMediaFingerprint\x12%\n" +
 	"\x0elayout_changed\x18\n" +
-	" \x01(\bR\rlayoutChanged\"\xc4\x02\n" +
+	" \x01(\bR\rlayoutChanged\"\xb8\x03\n" +
 	"\x15ReportLocalLayoutSlot\x12\x1b\n" +
 	"\tslot_code\x18\x01 \x01(\tR\bslotCode\x12!\n" +
 	"\fslot_ordinal\x18\x02 \x01(\x05R\vslotOrdinal\x12-\n" +
@@ -2386,7 +2434,11 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\fmax_quantity\x18\x06 \x01(\x05R\vmaxQuantity\x12\x1f\n" +
 	"\vprice_minor\x18\a \x01(\x03R\n" +
 	"priceMinor\x124\n" +
-	"\x16local_pricing_revision\x18\b \x01(\x03R\x14localPricingRevision\"\xd1\x02\n" +
+	"\x16local_pricing_revision\x18\b \x01(\x03R\x14localPricingRevision\x12+\n" +
+	"\x11current_inventory\x18\t \x01(\x05R\x10currentInventory\x12\x18\n" +
+	"\aenabled\x18\n" +
+	" \x01(\bR\aenabled\x12+\n" +
+	"\x11operational_state\x18\v \x01(\tR\x10operationalState\"\xfc\x02\n" +
 	"\x18ReportLocalLayoutRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12&\n" +
 	"\x0flocal_layout_id\x18\x02 \x01(\tR\rlocalLayoutId\x12\x1a\n" +
@@ -2395,11 +2447,14 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\acolumns\x18\x05 \x01(\x05R\acolumns\x12;\n" +
 	"\x05slots\x18\x06 \x03(\v2%.avf.machine.v1.ReportLocalLayoutSlotR\x05slots\x12 \n" +
 	"\vfingerprint\x18\a \x01(\tR\vfingerprint\x12,\n" +
-	"\x12device_instance_id\x18\b \x01(\tR\x10deviceInstanceId\"\x99\x01\n" +
+	"\x12device_instance_id\x18\b \x01(\tR\x10deviceInstanceId\x12)\n" +
+	"\x10local_generation\x18\t \x01(\x03R\x0flocalGeneration\"\xf5\x01\n" +
 	"\x19ReportLocalLayoutResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12\x1a\n" +
 	"\baccepted\x18\x02 \x01(\bR\baccepted\x12'\n" +
-	"\x0fstored_revision\x18\x03 \x01(\x05R\x0estoredRevision*`\n" +
+	"\x0fstored_revision\x18\x03 \x01(\x05R\x0estoredRevision\x12+\n" +
+	"\x11stored_generation\x18\x04 \x01(\x03R\x10storedGeneration\x12-\n" +
+	"\x12stored_fingerprint\x18\x05 \x01(\tR\x11storedFingerprint*`\n" +
 	"\fLayoutSource\x12\x1d\n" +
 	"\x19LAYOUT_SOURCE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14LAYOUT_SOURCE_SERVER\x10\x01\x12\x17\n" +

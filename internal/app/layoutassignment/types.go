@@ -79,13 +79,34 @@ type AssignmentView struct {
 
 // LocalMirrorView is the device-reported LOCAL snapshot mirror.
 type LocalMirrorView struct {
-	LocalLayoutID    uuid.UUID
-	Revision         int32
-	Rows             int32
-	Columns          int32
-	Fingerprint      string
-	ReportedAt       time.Time
-	DeviceInstanceID string
+	LocalLayoutID      uuid.UUID
+	Revision           int32
+	Rows               int32
+	Columns            int32
+	Fingerprint        string
+	ReportedAt         time.Time
+	DeviceInstanceID   string
+	ReportedGeneration *int64
+	MirrorSlots        []LocalMirrorSlotView
+	MergeGroups        []LocalMirrorMergeGroupView
+}
+
+// LocalMirrorSlotView is one slot from the device mirror payload.
+type LocalMirrorSlotView struct {
+	SlotCode         string  `json:"slotCode"`
+	SlotOrdinal      int32   `json:"slotOrdinal,omitempty"`
+	ProductID        string  `json:"productId,omitempty"`
+	CurrentInventory *int32  `json:"currentInventory,omitempty"`
+	MaxQuantity      int32   `json:"maxQuantity,omitempty"`
+	Enabled          *bool   `json:"enabled,omitempty"`
+	OperationalState *string `json:"operationalState,omitempty"`
+	PriceMinor       int64   `json:"priceMinor,omitempty"`
+}
+
+// LocalMirrorMergeGroupView groups merged lanes reported by the device.
+type LocalMirrorMergeGroupView struct {
+	LeftSlotCode  string `json:"leftSlotCode"`
+	RightSlotCode string `json:"rightSlotCode"`
 }
 
 // BulkAssignResult is per-machine outcome for bulk assignment.
@@ -115,12 +136,15 @@ type ReportLocalLayoutInput struct {
 	Fingerprint      string
 	DeviceInstanceID string
 	IdempotencyKey   string
+	LocalGeneration  int64
 }
 
 // ReportLocalLayoutResult is returned after a device LOCAL layout report.
 type ReportLocalLayoutResult struct {
-	Accepted       bool
-	StoredRevision int32
+	Accepted          bool
+	StoredRevision    int32
+	StoredGeneration  int64
+	StoredFingerprint string
 }
 
 // SetDesiredSourceInput switches the desired active layout source for a machine.

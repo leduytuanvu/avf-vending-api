@@ -276,6 +276,7 @@ func (s *Service) GetLayoutState(ctx context.Context, machineID uuid.UUID) (*Lay
 			Fingerprint:      mirror.Fingerprint,
 			ReportedAt:       mirror.ReportedAt,
 			DeviceInstanceID: mirror.DeviceInstanceID,
+			MirrorSlots:      parseMirrorSlots(mirror.Slots),
 		}
 	}
 
