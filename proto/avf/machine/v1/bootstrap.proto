@@ -245,6 +245,9 @@ message ReportLocalLayoutSlot {
   int64 price_minor = 7;
   // Matches machine_slots.localPricingRevision for this slot at report time.
   int64 local_pricing_revision = 8;
+  int32 current_inventory = 9;
+  bool enabled = 10;
+  string operational_state = 11;
 }
 
 message ReportLocalLayoutRequest {
@@ -256,10 +259,13 @@ message ReportLocalLayoutRequest {
   repeated ReportLocalLayoutSlot slots = 6;
   string fingerprint = 7;
   string device_instance_id = 8;
+  int64 local_generation = 9;
 }
 
 message ReportLocalLayoutResponse {
   MachineResponseMeta meta = 1;
   bool accepted = 2;
   int32 stored_revision = 3;
+  int64 stored_generation = 4;
+  string stored_fingerprint = 5;
 }

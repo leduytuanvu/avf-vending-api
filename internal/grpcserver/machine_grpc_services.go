@@ -485,6 +485,7 @@ func (s *machineBootstrapServer) ReportLocalLayout(ctx context.Context, req *mac
 		Fingerprint:      req.GetFingerprint(),
 		DeviceInstanceID: req.GetDeviceInstanceId(),
 		IdempotencyKey:   req.GetMeta().GetIdempotencyKey(),
+		LocalGeneration:  req.GetLocalGeneration(),
 	})
 	if rerr != nil {
 		return nil, mapReportLocalLayoutError(rerr)
@@ -494,9 +495,11 @@ func (s *machineBootstrapServer) ReportLocalLayout(ctx context.Context, req *mac
 		rid = req.GetMeta().GetRequestId()
 	}
 	return &machinev1.ReportLocalLayoutResponse{
-		Meta:           responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
-		Accepted:       out.Accepted,
-		StoredRevision: out.StoredRevision,
+		Meta:              responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Accepted:          out.Accepted,
+		StoredRevision:    out.StoredRevision,
+		StoredGeneration:  out.StoredGeneration,
+		StoredFingerprint: out.StoredFingerprint,
 	}, nil
 }
 
