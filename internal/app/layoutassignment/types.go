@@ -79,28 +79,28 @@ type AssignmentView struct {
 
 // LocalMirrorView is the device-reported LOCAL snapshot mirror.
 type LocalMirrorView struct {
-	LocalLayoutID     uuid.UUID
-	Revision          int32
-	Rows              int32
-	Columns           int32
-	Fingerprint       string
-	ReportedAt        time.Time
-	DeviceInstanceID  string
+	LocalLayoutID      uuid.UUID
+	Revision           int32
+	Rows               int32
+	Columns            int32
+	Fingerprint        string
+	ReportedAt         time.Time
+	DeviceInstanceID   string
 	ReportedGeneration *int64
-	MirrorSlots       []LocalMirrorSlotView
-	MergeGroups       []LocalMirrorMergeGroupView
+	MirrorSlots        []LocalMirrorSlotView
+	MergeGroups        []LocalMirrorMergeGroupView
 }
 
 // LocalMirrorSlotView is one slot from the device mirror payload.
 type LocalMirrorSlotView struct {
-	SlotCode          string  `json:"slotCode"`
-	SlotOrdinal       int32   `json:"slotOrdinal,omitempty"`
-	ProductID         string  `json:"productId,omitempty"`
-	CurrentInventory  *int32  `json:"currentInventory,omitempty"`
-	MaxQuantity       int32   `json:"maxQuantity,omitempty"`
-	Enabled           *bool   `json:"enabled,omitempty"`
-	OperationalState  *string `json:"operationalState,omitempty"`
-	PriceMinor        int64   `json:"priceMinor,omitempty"`
+	SlotCode         string  `json:"slotCode"`
+	SlotOrdinal      int32   `json:"slotOrdinal,omitempty"`
+	ProductID        string  `json:"productId,omitempty"`
+	CurrentInventory *int32  `json:"currentInventory,omitempty"`
+	MaxQuantity      int32   `json:"maxQuantity,omitempty"`
+	Enabled          *bool   `json:"enabled,omitempty"`
+	OperationalState *string `json:"operationalState,omitempty"`
+	PriceMinor       int64   `json:"priceMinor,omitempty"`
 }
 
 // LocalMirrorMergeGroupView groups merged lanes reported by the device.
