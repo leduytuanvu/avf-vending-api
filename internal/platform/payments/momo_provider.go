@@ -83,11 +83,8 @@ func (p *MoMoProvider) CreatePaymentSession(ctx context.Context, in CreatePaymen
 
 	providerRef := resolveProviderRef(in)
 	requestID := id.NewUUIDV7String()
-	storeID := strings.TrimSpace(in.StoreID)
-	if storeID == "" {
-		storeID = strings.TrimSpace(creds.TerminalID)
-	}
-	orderInfo := "Thanh toan don hang MoMo " + providerRef
+	storeID := resolveMoMoStoreID(in, creds)
+	orderInfo := momoOrderInfo(in.MachineExternalCode, providerRef)
 	amount := momo.FormatAmount(in.AmountMinor)
 
 	req := momo.CreateRequest{
@@ -301,4 +298,19 @@ func (p *MoMoProvider) VerifyAndParseIPN(raw []byte) (orderID, status, transID s
 func (p *MoMoProvider) ParseMoMoIPN(raw []byte) (CommerceWebhookEventJSON, error) {
 	_, _, _, event, err := p.VerifyAndParseIPN(raw)
 	return event, err
+}
+
+func resolveMoMoStoreID(in CreatePaymentSessionInput, creds momo.Credentials) string {
+	if storeID := strings.TrimSpace(in.StoreID); storeID != "" {
+		return storeID
+	}
+	return strings.TrimSpace(creds.TerminalID)
+}
+
+func momoOrderInfo(machineExternalCode, providerRef string) string {
+	code := strings.TrimSpace(machineExternalCode)
+	if code != "" {
+		return "Thanh toan " + code + " don hang MoMo " + providerRef
+	}
+	return "Thanh toan don hang MoMo " + providerRef
 }

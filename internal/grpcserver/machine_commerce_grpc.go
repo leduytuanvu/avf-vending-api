@@ -529,6 +529,8 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	}
 	_ = payState // vending clients cannot choose non-created PSP states; validated again in app layer
 
+	machineCode := machineExternalCode(ctx, s.deps, claims.MachineID)
+
 	res, err := svc.CreateMachinePaymentSession(ctx, appcommerce.CreateMachinePaymentSessionInput{
 		OrderID:             orderID,
 		MachineID:           claims.MachineID,
@@ -543,7 +545,8 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		OutboxTopic:         topic,
 		OutboxEventType:     evType,
 		OutboxAggregate:     aggType,
-		MachineExternalCode: machineExternalCode(ctx, s.deps, claims.MachineID),
+		MachineExternalCode: machineCode,
+		StoreID:             machineCode,
 	})
 	if err != nil {
 		if st, ok := status.FromError(mapCommercePaymentSessionErr(err)); ok {
@@ -574,7 +577,8 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		zap.String("provider_reference", strings.TrimSpace(res.ProviderReference)),
 		zap.String("provider_session_id", strings.TrimSpace(res.ProviderSessionID)),
 		zap.String("callback_url_host", paymentCallbackURLHost(s.deps.Config, res.ProviderKey)),
-		zap.String("machine_external_code", machineExternalCode(ctx, s.deps, claims.MachineID)),
+		zap.String("machine_external_code", machineCode),
+		zap.String("store_id", machineCode),
 		zap.Bool("replay", res.Replay),
 		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 	)
