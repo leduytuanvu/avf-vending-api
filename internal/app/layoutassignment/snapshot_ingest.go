@@ -18,6 +18,7 @@ import (
 
 const (
 	SnapshotReasonPeriodic30M  = "PERIODIC_30M"
+	SnapshotReasonPeriodic5M   = "PERIODIC_5M"
 	SnapshotReasonManualSync   = "MANUAL_SYNC"
 	SnapshotReasonReconnect    = "RECONNECT"
 	SnapshotReasonActivation   = "ACTIVATION"
@@ -289,7 +290,7 @@ func validateReportLayoutSnapshotInput(auth MachineAuthContext, in ReportLayoutS
 func normalizeSnapshotReason(reason string) string {
 	r := strings.TrimSpace(strings.ToUpper(reason))
 	switch r {
-	case SnapshotReasonPeriodic30M, SnapshotReasonManualSync, SnapshotReasonReconnect, SnapshotReasonActivation, SnapshotReasonLegacyReport:
+	case SnapshotReasonPeriodic30M, SnapshotReasonPeriodic5M, SnapshotReasonManualSync, SnapshotReasonReconnect, SnapshotReasonActivation, SnapshotReasonLegacyReport:
 		return r
 	default:
 		return SnapshotReasonLegacyReport

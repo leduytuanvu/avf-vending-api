@@ -719,6 +719,8 @@ func mapSnapshotReasonProto(reason machinev1.LayoutSnapshotReason) string {
 	switch reason {
 	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_30M:
 		return layoutassignment.SnapshotReasonPeriodic30M
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_5M:
+		return layoutassignment.SnapshotReasonPeriodic5M
 	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC:
 		return layoutassignment.SnapshotReasonManualSync
 	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_RECONNECT:

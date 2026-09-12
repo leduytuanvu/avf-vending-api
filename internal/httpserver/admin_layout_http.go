@@ -3,6 +3,7 @@ package httpserver
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
@@ -27,6 +28,7 @@ func mountAdminLayoutRoutes(r chi.Router, app *api.HTTPApplication, writeRL func
 		r.Get("/machines/{machineId}/layout-state", getAdminMachineLayoutState(app))
 		r.Get("/machines/{machineId}/layouts", getAdminMachineLayouts(app))
 		r.Get("/machines/{machineId}/layouts/{layoutId}/history", getAdminMachineLayoutHistory(app))
+		r.Get("/machines/{machineId}/layout-history", getAdminMachineLayoutHistoryAll(app))
 		r.Get("/machines/{machineId}/snapshots/{snapshotId}", getAdminMachineLayoutSnapshot(app))
 		r.Get("/layout-dimension-migration-audit", getAdminLayoutDimensionMigrationAudit(app))
 	})
@@ -541,7 +543,47 @@ func getAdminMachineLayoutHistory(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_id", "invalid machineId or layoutId")
 			return
 		}
-		page, err := svc.ListLayoutSnapshotHistory(r.Context(), machineID, &layoutID, 50, 0)
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		limit, offset := parseAdminPagination(r, 50, 200)
+		page, err := svc.ListLayoutSnapshotHistory(r.Context(), machineID, &layoutID, limit, offset)
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, page)
+	}
+}
+
+func getAdminMachineLayoutHistoryAll(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		var layoutFilter *uuid.UUID
+		if raw := strings.TrimSpace(r.URL.Query().Get("layoutId")); raw != "" {
+			layoutID, perr := uuid.Parse(raw)
+			if perr != nil || layoutID == uuid.Nil {
+				writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_layout_id", "invalid layoutId")
+				return
+			}
+			layoutFilter = &layoutID
+		}
+		limit, offset := parseAdminPagination(r, 50, 200)
+		page, err := svc.ListLayoutSnapshotHistory(r.Context(), machineID, layoutFilter, limit, offset)
 		if err != nil {
 			writeLayoutAssignmentError(w, r, err)
 			return
@@ -557,16 +599,48 @@ func getAdminMachineLayoutSnapshot(app *api.HTTPApplication) http.HandlerFunc {
 			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
 			return
 		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
 		snapshotID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "snapshotId")))
 		if err != nil || snapshotID == uuid.Nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_snapshot_id", "invalid snapshotId")
 			return
 		}
-		row, err := svc.GetLayoutSnapshotDetail(r.Context(), snapshotID)
+		row, err := svc.GetLayoutSnapshotDetailView(r.Context(), snapshotID)
 		if err != nil {
 			writeLayoutAssignmentError(w, r, err)
 			return
 		}
+		if row.MachineID != machineID {
+			writeAPIError(w, r.Context(), http.StatusNotFound, "snapshot_not_found", "snapshot not found for machine")
+			return
+		}
 		writeJSON(w, http.StatusOK, row)
 	}
+}
+
+func parseAdminPagination(r *http.Request, defaultLimit, maxLimit int32) (int32, int32) {
+	limit := defaultLimit
+	offset := int32(0)
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		if parsed, err := strconv.ParseInt(raw, 10, 32); err == nil && parsed > 0 {
+			limit = int32(parsed)
+		}
+	}
+	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
+		if parsed, err := strconv.ParseInt(raw, 10, 32); err == nil && parsed >= 0 {
+			offset = int32(parsed)
+		}
+	}
+	if limit > maxLimit {
+		limit = maxLimit
+	}
+	return limit, offset
 }

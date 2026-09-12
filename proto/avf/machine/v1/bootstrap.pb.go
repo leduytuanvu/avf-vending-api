@@ -81,6 +81,7 @@ const (
 	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_RECONNECT     LayoutSnapshotReason = 3
 	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_ACTIVATION    LayoutSnapshotReason = 4
 	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT LayoutSnapshotReason = 5
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_5M   LayoutSnapshotReason = 6
 )
 
 // Enum value maps for LayoutSnapshotReason.
@@ -92,6 +93,7 @@ var (
 		3: "LAYOUT_SNAPSHOT_REASON_RECONNECT",
 		4: "LAYOUT_SNAPSHOT_REASON_ACTIVATION",
 		5: "LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT",
+		6: "LAYOUT_SNAPSHOT_REASON_PERIODIC_5M",
 	}
 	LayoutSnapshotReason_value = map[string]int32{
 		"LAYOUT_SNAPSHOT_REASON_UNSPECIFIED":   0,
@@ -100,6 +102,7 @@ var (
 		"LAYOUT_SNAPSHOT_REASON_RECONNECT":     3,
 		"LAYOUT_SNAPSHOT_REASON_ACTIVATION":    4,
 		"LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT": 5,
+		"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M":   6,
 	}
 )
 
@@ -3489,14 +3492,15 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\fLayoutSource\x12\x1d\n" +
 	"\x19LAYOUT_SOURCE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14LAYOUT_SOURCE_SERVER\x10\x01\x12\x17\n" +
-	"\x13LAYOUT_SOURCE_LOCAL\x10\x02*\x86\x02\n" +
+	"\x13LAYOUT_SOURCE_LOCAL\x10\x02*\xae\x02\n" +
 	"\x14LayoutSnapshotReason\x12&\n" +
 	"\"LAYOUT_SNAPSHOT_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#LAYOUT_SNAPSHOT_REASON_PERIODIC_30M\x10\x01\x12&\n" +
 	"\"LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC\x10\x02\x12$\n" +
 	" LAYOUT_SNAPSHOT_REASON_RECONNECT\x10\x03\x12%\n" +
 	"!LAYOUT_SNAPSHOT_REASON_ACTIVATION\x10\x04\x12(\n" +
-	"$LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT\x10\x052\x85\b\n" +
+	"$LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT\x10\x05\x12&\n" +
+	"\"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M\x10\x062\x85\b\n" +
 	"\x17MachineBootstrapService\x12Y\n" +
 	"\fGetBootstrap\x12#.avf.machine.v1.GetBootstrapRequest\x1a$.avf.machine.v1.GetBootstrapResponse\x12x\n" +
 	"\aCheckIn\x125.avf.machine.v1.MachineBootstrapServiceCheckInRequest\x1a6.avf.machine.v1.MachineBootstrapServiceCheckInResponse\x12e\n" +

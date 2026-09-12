@@ -3310,7 +3310,7 @@ CREATE TABLE machine_layout_snapshot_history (
     base_server_revision int NULL,
     fingerprint text NOT NULL,
     snapshot_reason text NOT NULL DEFAULT 'PERIODIC_30M' CHECK (
-        snapshot_reason IN ('PERIODIC_30M', 'MANUAL_SYNC', 'RECONNECT', 'ACTIVATION', 'LEGACY_REPORT')
+        snapshot_reason IN ('PERIODIC_30M', 'PERIODIC_5M', 'MANUAL_SYNC', 'RECONNECT', 'ACTIVATION', 'LEGACY_REPORT')
     ),
     payload_version int NOT NULL DEFAULT 1,
     payload jsonb NOT NULL DEFAULT '{}'::jsonb,

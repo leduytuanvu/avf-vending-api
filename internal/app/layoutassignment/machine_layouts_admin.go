@@ -2,6 +2,7 @@ package layoutassignment
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -38,8 +39,8 @@ type SetDesiredActiveLayoutInput struct {
 
 // SnapshotHistoryPage is paginated immutable history.
 type SnapshotHistoryPage struct {
-	Items []SnapshotHistoryItem
-	Total int64
+	Items []SnapshotHistoryItem `json:"items"`
+	Total int64                 `json:"total"`
 }
 
 type SnapshotHistoryItem struct {
@@ -260,4 +261,46 @@ func (s *Service) GetLayoutSnapshotDetail(ctx context.Context, snapshotID uuid.U
 		return db.MachineLayoutSnapshotHistory{}, err
 	}
 	return row, nil
+}
+
+// LayoutSnapshotDetailView is admin read model for one immutable snapshot row.
+type LayoutSnapshotDetailView struct {
+	SnapshotID      uuid.UUID       `json:"snapshotId"`
+	MachineID       uuid.UUID       `json:"machineId"`
+	LayoutID        uuid.UUID       `json:"layoutId"`
+	CaptureSequence int64           `json:"captureSequence"`
+	CapturedAt      time.Time       `json:"capturedAt"`
+	ReceivedAt      time.Time       `json:"receivedAt"`
+	Fingerprint     string          `json:"fingerprint"`
+	SnapshotReason  string          `json:"snapshotReason"`
+	PayloadVersion  int32           `json:"payloadVersion"`
+	DeviceInstanceID string         `json:"deviceInstanceId"`
+	IntervalKey     string          `json:"intervalKey,omitempty"`
+	Payload         json.RawMessage `json:"payload"`
+}
+
+// GetLayoutSnapshotDetailView maps one history row for admin HTTP responses.
+func (s *Service) GetLayoutSnapshotDetailView(ctx context.Context, snapshotID uuid.UUID) (LayoutSnapshotDetailView, error) {
+	row, err := s.GetLayoutSnapshotDetail(ctx, snapshotID)
+	if err != nil {
+		return LayoutSnapshotDetailView{}, err
+	}
+	intervalKey := ""
+	if row.IntervalKey.Valid {
+		intervalKey = row.IntervalKey.String
+	}
+	return LayoutSnapshotDetailView{
+		SnapshotID:       row.SnapshotID,
+		MachineID:        row.MachineID,
+		LayoutID:         row.LayoutID,
+		CaptureSequence:  row.CaptureSequence,
+		CapturedAt:       row.CapturedAt,
+		ReceivedAt:       row.ReceivedAt,
+		Fingerprint:      row.Fingerprint,
+		SnapshotReason:   row.SnapshotReason,
+		PayloadVersion:   row.PayloadVersion,
+		DeviceInstanceID: row.DeviceInstanceID,
+		IntervalKey:      intervalKey,
+		Payload:          json.RawMessage(row.Payload),
+	}, nil
 }
