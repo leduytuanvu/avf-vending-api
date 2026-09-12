@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# DEPRECATED: Use scripts/ops/run-environment-data-wipe.sh (dry-run default, guarded --execute).
+# See docs/runbooks/database-wipe.md. This script remains for emergency parity until retirement.
+#
 # Orchestrate production test-data purge (PostgreSQL + Redis + media + EMQX machine users).
 # Run on app-node A with live deployments/prod/app-node/.env.app-node.
 #

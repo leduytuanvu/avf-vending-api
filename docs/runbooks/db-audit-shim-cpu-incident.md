@@ -1,14 +1,13 @@
 # DB audit python3 shim CPU incident
 
-## DO NOT RUN (local audit/wipe tooling)
+## Tracked toolchain (use reviewed scripts only)
 
-Until a separate reviewed PR upstreams the full DB audit/wipe toolchain to `main`, **do not run** local or production copies of:
+After merge of the DB audit/wipe upstream PRs, use **only** the tracked scripts under `scripts/ops/` at the commit recorded in `scripts/ops/TOOLCHAIN_SHA` on the host.
 
-- `run-table-data-audit.sh`
-- `run-environment-data-wipe.sh`
-- any script that prepends `.db-destroy-evidence/.bin` to `PATH` without using `scripts/ops/lib/python3_shim.sh`
+- Read-only audit: `docs/runbooks/database-audit.md`
+- Destructive wipe: `docs/runbooks/database-wipe.md` (dry-run default; production requires explicit gates)
 
-Historical versions of those scripts can recreate the recursive `python3` shim incident. Preserve local evidence; do not delete `.db-destroy-evidence/` artifacts during triage.
+**Never** run ad-hoc copies or scripts that prepend `.db-destroy-evidence/.bin` to `PATH` without `scripts/ops/lib/python3_shim.sh`. Historical local versions can recreate the recursive `python3` shim incident. Preserve local evidence; do not delete `.db-destroy-evidence/` artifacts during triage.
 
 ## Symptoms
 

@@ -19,6 +19,32 @@ bash -n scripts/ops/lib/python3_shim.sh
 bash -n scripts/ops/tests/python3_shim.test.sh
 bash -n scripts/ops/terminate-verified-db-audit-orphans.sh
 
+PR1_AUDIT_SCRIPTS=(
+	scripts/ops/run-table-data-audit.sh
+	scripts/ops/run-clean-slate-audit.sh
+	scripts/ops/emqx-audit.sh
+	scripts/ops/nats-audit-streams.sh
+	scripts/ops/lib/redis_resolve.sh
+	scripts/ops/lib/redact.sh
+)
+for f in "${PR1_AUDIT_SCRIPTS[@]}"; do
+	[[ -f "${f}" ]] || fail "missing PR1 audit script: ${f}"
+	bash -n "${f}"
+done
+
+PR2_WIPE_SCRIPTS=(
+	scripts/ops/run-environment-data-wipe.sh
+	scripts/ops/emqx-purge.sh
+	scripts/ops/nats-purge-streams.sh
+	scripts/ops/lib/redis_wipe.sh
+	scripts/ops/lib/ops_lock.sh
+	scripts/ops/lib/ops_evidence.sh
+)
+for f in "${PR2_WIPE_SCRIPTS[@]}"; do
+	[[ -f "${f}" ]] || fail "missing PR2 wipe script: ${f}"
+	bash -n "${f}"
+done
+
 note "running python3_shim regression tests"
 bash scripts/ops/tests/python3_shim.test.sh
 
