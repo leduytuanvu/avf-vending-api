@@ -11,6 +11,7 @@ func TestP06MachineMethodsRequireMachineJWT(t *testing.T) {
 
 	methods := []string{
 		machinev1.MachineInventoryService_GetPlanogram_FullMethodName,
+		machinev1.MachineInventoryService_GetPhysicalSlotTopology_FullMethodName,
 		machinev1.MachineInventoryService_SubmitStockSnapshot_FullMethodName,
 		machinev1.MachineInventoryService_SubmitFillResult_FullMethodName,
 		machinev1.MachineInventoryService_SubmitFillReport_FullMethodName,

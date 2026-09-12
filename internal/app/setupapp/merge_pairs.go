@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -186,6 +187,27 @@ func ApplyMergePairBatch(ctx context.Context, pool *pgxpool.Pool, in MergePairBa
 		pair := mapMergePairRow(row)
 		desired[left] = pair
 		activeByLeft[left] = row
+		cfgRows, cfgErr := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, in.MachineID)
+		if cfgErr != nil {
+			return zero, cfgErr
+		}
+		if tmpl, ok := physicaltopology.PickTemplateRow(cfgRows); ok {
+			gridCols := int32(10)
+			if assign, aerr := q.GetCurrentMachineLayoutAssignment(ctx, db.GetCurrentMachineLayoutAssignmentParams{
+				MachineID: in.MachineID,
+				Source:    "SERVER",
+			}); aerr == nil && assign.GridCols > 0 {
+				gridCols = assign.GridCols
+			}
+			leftIdx := physicaltopology.SlotIndexFromCode(left, int(gridCols))
+			rightIdx := physicaltopology.SlotIndexFromCode(right, int(gridCols))
+			if err := physicaltopology.EnsureSlotConfigStub(ctx, q, in.MachineID, left, leftIdx, tmpl); err != nil {
+				return zero, err
+			}
+			if err := physicaltopology.EnsureSlotConfigStub(ctx, q, in.MachineID, right, rightIdx, tmpl); err != nil {
+				return zero, err
+			}
+		}
 		if err := mirrorMergeMetadata(ctx, q, in.MachineID, pair); err != nil {
 			return zero, err
 		}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/inventoryapp"
+	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
@@ -59,6 +60,52 @@ func (s *machineInventoryServer) GetPlanogram(ctx context.Context, req *machinev
 		MachineId:  claims.MachineID.String(),
 		ServerTime: timestamppb.New(time.Now().UTC()),
 		Slots:      slots,
+	}, nil
+}
+
+func (s *machineInventoryServer) GetPhysicalSlotTopology(ctx context.Context, req *machinev1.GetPhysicalSlotTopologyRequest) (*machinev1.GetPhysicalSlotTopologyResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	q := db.New(s.deps.Pool)
+	if err := machineRuntimeInventoryGate(ctx, q, claims); err != nil {
+		return nil, err
+	}
+	svc := physicaltopology.Service{Pool: s.deps.Pool}
+	snap, err := svc.ListSnapshot(ctx, claims.MachineID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "physical slot topology failed")
+	}
+	rows := make([]*machinev1.PhysicalSlotRow, 0, len(snap.Slots))
+	for _, sl := range snap.Slots {
+		pr := &machinev1.PhysicalSlotRow{
+			SlotCode:     sl.SlotCode,
+			SlotIndex:    sl.SlotIndex,
+			CabinetCode:  sl.CabinetCode,
+			CabinetIndex: sl.CabinetIndex,
+			MaxQuantity:  sl.MaxQuantity,
+			PriceMinor:   sl.PriceMinor,
+			MergeRole:    sl.MergeRole,
+			MergeWith:    sl.MergeWith,
+		}
+		if sl.ProductID != nil {
+			pid := sl.ProductID.String()
+			pr.ProductId = &pid
+		}
+		rows = append(rows, pr)
+	}
+	rid := ""
+	if req != nil && req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.GetPhysicalSlotTopologyResponse{
+		MachineId:  claims.MachineID.String(),
+		GridRows:   snap.GridRows,
+		GridCols:   snap.GridCols,
+		ServerTime: timestamppb.New(time.Now().UTC()),
+		Slots:      rows,
+		Meta:       responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
 	}, nil
 }
 
