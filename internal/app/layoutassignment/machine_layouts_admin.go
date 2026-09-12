@@ -265,18 +265,18 @@ func (s *Service) GetLayoutSnapshotDetail(ctx context.Context, snapshotID uuid.U
 
 // LayoutSnapshotDetailView is admin read model for one immutable snapshot row.
 type LayoutSnapshotDetailView struct {
-	SnapshotID      uuid.UUID       `json:"snapshotId"`
-	MachineID       uuid.UUID       `json:"machineId"`
-	LayoutID        uuid.UUID       `json:"layoutId"`
-	CaptureSequence int64           `json:"captureSequence"`
-	CapturedAt      time.Time       `json:"capturedAt"`
-	ReceivedAt      time.Time       `json:"receivedAt"`
-	Fingerprint     string          `json:"fingerprint"`
-	SnapshotReason  string          `json:"snapshotReason"`
-	PayloadVersion  int32           `json:"payloadVersion"`
-	DeviceInstanceID string         `json:"deviceInstanceId"`
-	IntervalKey     string          `json:"intervalKey,omitempty"`
-	Payload         json.RawMessage `json:"payload"`
+	SnapshotID       uuid.UUID       `json:"snapshotId"`
+	MachineID        uuid.UUID       `json:"machineId"`
+	LayoutID         uuid.UUID       `json:"layoutId"`
+	CaptureSequence  int64           `json:"captureSequence"`
+	CapturedAt       time.Time       `json:"capturedAt"`
+	ReceivedAt       time.Time       `json:"receivedAt"`
+	Fingerprint      string          `json:"fingerprint"`
+	SnapshotReason   string          `json:"snapshotReason"`
+	PayloadVersion   int32           `json:"payloadVersion"`
+	DeviceInstanceID string          `json:"deviceInstanceId"`
+	IntervalKey      string          `json:"intervalKey,omitempty"`
+	Payload          json.RawMessage `json:"payload"`
 }
 
 // GetLayoutSnapshotDetailView maps one history row for admin HTTP responses.
