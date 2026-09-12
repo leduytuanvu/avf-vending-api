@@ -1,6 +1,7 @@
 package layoutassignment
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -49,4 +50,26 @@ func TestValidateLayoutName_rejectsBlank(t *testing.T) {
 func TestNormalizeSnapshotReason_defaultsLegacy(t *testing.T) {
 	require.Equal(t, SnapshotReasonLegacyReport, normalizeSnapshotReason(""))
 	require.Equal(t, SnapshotReasonPeriodic30M, normalizeSnapshotReason("PERIODIC_30M"))
+	require.Equal(t, SnapshotReasonPeriodic5M, normalizeSnapshotReason("PERIODIC_5M"))
+}
+
+func TestSnapshotHistoryPage_JSONTags(t *testing.T) {
+	page := SnapshotHistoryPage{
+		Items: []SnapshotHistoryItem{{
+			SnapshotID:      uuid.New(),
+			LayoutID:        uuid.New(),
+			CaptureSequence: 1,
+			CapturedAt:      time.Now().UTC(),
+			ReceivedAt:      time.Now().UTC(),
+			Fingerprint:     "fp",
+			SnapshotReason:  SnapshotReasonPeriodic5M,
+			PayloadVersion:  1,
+		}},
+		Total: 1,
+	}
+	raw, err := json.Marshal(page)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), `"items"`)
+	require.Contains(t, string(raw), `"total"`)
+	require.NotContains(t, string(raw), `"Items"`)
 }
