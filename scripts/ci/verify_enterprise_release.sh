@@ -93,6 +93,22 @@ phase_python3_shim_safety() {
   echo "OK: python3 shim safety"
 }
 
+phase_db_audit_readonly() {
+  section "Phase 4c: DB audit toolchain (read-only)"
+  bash scripts/ci/check_db_audit_readonly.sh
+  echo "OK: DB audit read-only toolchain"
+}
+
+phase_db_wipe_safety() {
+  section "Phase 4d: DB wipe toolchain safety (destructive guards)"
+  if [[ -f scripts/ci/check_db_wipe_safety.sh ]]; then
+    bash scripts/ci/check_db_wipe_safety.sh
+    echo "OK: DB wipe safety toolchain"
+  else
+    echo "SKIP: check_db_wipe_safety.sh not present"
+  fi
+}
+
 phase_shell_syntax() {
   section "Phase 4: Bash syntax (bash -n) — scripts/**/*.sh and deployments/**/*.sh"
   local n files=()
@@ -330,6 +346,8 @@ main() {
   phase_github_workflow_cicd_contract
   phase_shell_syntax
   phase_python3_shim_safety
+  phase_db_audit_readonly
+  phase_db_wipe_safety
   phase_docker_compose
   phase_openapi_release
   phase_stale_p0_docs

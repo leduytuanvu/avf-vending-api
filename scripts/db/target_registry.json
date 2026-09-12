@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "targets": [
+    {
+      "id": "TARGET-DB-001",
+      "environment": "development",
+      "database": "avf_vending",
+      "default_hosts": ["127.0.0.1", "localhost"],
+      "default_ports": [15432, 5432],
+      "dedicated_to_avf": true,
+      "backup_required": false,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database",
+      "env_url_keys": ["DATABASE_URL", "TEST_DATABASE_URL"],
+      "config_default_url": "postgres://postgres:postgres@127.0.0.1:15432/avf_vending?sslmode=disable",
+      "source": "deployments/docker/docker-compose.yml, .env.example"
+    },
+    {
+      "id": "TARGET-DB-002",
+      "environment": "test",
+      "database": "avf_vending_test",
+      "default_hosts": ["127.0.0.1", "localhost"],
+      "default_ports": [15432, 5432],
+      "dedicated_to_avf": true,
+      "backup_required": false,
+      "ephemeral": true,
+      "destruction_strategy": "drop_database",
+      "env_url_keys": ["TEST_DATABASE_URL"],
+      "config_default_url": "postgres://postgres:postgres@127.0.0.1:15432/avf_vending_test?sslmode=disable",
+      "source": "scripts/local/run-full-go-tests.ps1"
+    },
+    {
+      "id": "TARGET-DB-003",
+      "environment": "staging",
+      "database": "avf_vending",
+      "default_hosts": ["postgres"],
+      "default_ports": [5432],
+      "dedicated_to_avf": true,
+      "backup_required": true,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database_or_volume",
+      "env_url_keys": ["STAGING_DATABASE_URL", "DATABASE_URL"],
+      "compose_volume": "avf-vending-staging_postgres_data",
+      "source": "deployments/staging/docker-compose.staging.yml"
+    },
+    {
+      "id": "TARGET-DB-004",
+      "environment": "staging",
+      "database": null,
+      "dedicated_to_avf": true,
+      "backup_required": true,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database",
+      "env_url_keys": ["STAGING_DATABASE_URL"],
+      "config_reference_only": true,
+      "mutually_exclusive_with": "TARGET-DB-003",
+      "source": "STAGING_DATABASE_URL managed Supabase"
+    },
+    {
+      "id": "TARGET-DB-005",
+      "environment": "production",
+      "database": "avf_vending_prod",
+      "dedicated_to_avf": true,
+      "backup_required": true,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database",
+      "env_url_keys": ["PRODUCTION_DATABASE_URL", "DATABASE_URL"],
+      "confirm_token": "AVF-VENDING-PROD-DB-DESTROY",
+      "source": "deployments/prod/app-node/.env.app-node.example"
+    },
+    {
+      "id": "TARGET-DB-006",
+      "environment": "production",
+      "database": "postgres",
+      "dedicated_to_avf": false,
+      "backup_required": true,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database_if_avf_schema",
+      "env_url_keys": ["BACKUP_DATABASE_URL"],
+      "alias_of_candidate": "TARGET-DB-005",
+      "config_reference_only": true,
+      "source": "BACKUP_DATABASE_URL example on Supabase"
+    },
+    {
+      "id": "TARGET-DB-007",
+      "environment": "production",
+      "database": null,
+      "dedicated_to_avf": true,
+      "backup_required": true,
+      "ephemeral": false,
+      "destruction_strategy": "drop_database_or_volume",
+      "env_url_keys": ["PRODUCTION_DATABASE_URL", "DATABASE_URL"],
+      "compose_volume": "avf-vending-prod_postgres_data",
+      "config_reference_only": true,
+      "source": "deployments/prod/docker-compose.prod.yml legacy"
+    },
+    {
+      "id": "TARGET-DB-008",
+      "environment": "test",
+      "database": "avf_vending_test_full_verify",
+      "dedicated_to_avf": true,
+      "backup_required": false,
+      "ephemeral": true,
+      "destruction_strategy": "drop_database",
+      "config_reference_only": true,
+      "source": "docs verification ephemeral names"
+    }
+  ],
+  "system_databases": ["postgres", "template0", "template1"],
+  "out_of_scope_databases": ["temporal", "temporal_visibility"]
+}

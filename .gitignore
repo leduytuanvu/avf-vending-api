@@ -198,3 +198,12 @@ flow-test/API_COVERAGE_AUDIT_CHECK_*.md
 flow-test/AVF_PRODUCTION_HAPPY_CASE_FULL/
 
 tests/e2e/.e2e-runs/
+
+# DB ops toolchain runtime evidence (never commit)
+.db-destroy-evidence/
+.cloudinary-wipe-evidence/
+.catalog-bootstrap-evidence/
+.rca-tmp/
+.local-archive/
+.deploy-candidate/
+.release-deploy-*/

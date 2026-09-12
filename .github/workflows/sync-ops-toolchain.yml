@@ -1,0 +1,118 @@
+# Manual sync of reviewed ops toolchain to production app-node(s).
+# Does NOT run audit or wipe — only copies files and writes TOOLCHAIN_SHA.
+name: Sync ops toolchain
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit_sha:
+        description: "Commit SHA to sync (default: branch HEAD)"
+        required: false
+        default: ""
+        type: string
+      sync_mode:
+        description: "audit-only (PR1) or full (includes wipe scripts after PR2 merge)"
+        required: true
+        default: audit-only
+        type: choice
+        options:
+          - audit-only
+          - full
+      sync_confirmation:
+        description: "Type SYNC_OPS_TOOLCHAIN to confirm"
+        required: true
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sync-ops-toolchain:
+    name: sync-ops-toolchain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event.inputs.sync_confirmation }}" != "SYNC_OPS_TOOLCHAIN" ]]; then
+            echo "sync_confirmation must be SYNC_OPS_TOOLCHAIN" >&2
+            exit 1
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.inputs.source_commit_sha != '' && github.event.inputs.source_commit_sha || github.sha }}
+
+      - name: Build ops toolchain archive
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SHA="$(git rev-parse HEAD)"
+          echo "${SHA}" > scripts/ops/TOOLCHAIN_SHA
+          mkdir -p /tmp/ops-sync
+          AUDIT_FILES=(
+            scripts/ops/TOOLCHAIN_SHA
+            scripts/ops/run-table-data-audit.sh
+            scripts/ops/run-clean-slate-audit.sh
+            scripts/ops/audit-all-table-rowcounts.sql
+            scripts/ops/verify-goose-migration.sh
+            scripts/ops/staging-discover.sh
+            scripts/ops/record-remote-audit-status.sh
+            scripts/ops/stateful_system_registry.json
+            scripts/ops/emqx-audit.sh
+            scripts/ops/nats-audit-streams.sh
+            scripts/ops/lib/python3_shim.sh
+            scripts/ops/lib/redis_resolve.sh
+            scripts/ops/lib/redact.sh
+            scripts/ops/tests/python3_shim.test.sh
+            scripts/db/verify_database_environment.sh
+            scripts/verify_database_environment.sh
+          )
+          WIPE_FILES=(
+            scripts/ops/run-environment-data-wipe.sh
+            scripts/ops/verify-table-data-empty.sql
+            scripts/ops/emqx-purge.sh
+            scripts/ops/nats-purge-streams.sh
+            scripts/ops/lib/redis_wipe.sh
+            scripts/ops/lib/ops_lock.sh
+            scripts/ops/lib/ops_evidence.sh
+            scripts/db/lib_db_destroy.sh
+            scripts/db/destroy_database_target.sh
+            scripts/db/destroy_all_avf_databases.sh
+            scripts/db/discover_database_targets.sh
+            scripts/db/quiesce_writers.sh
+            scripts/db/verify_backup_gate.sh
+            scripts/db/record_backup_gate_status.sh
+            scripts/db/verify_database_target.sh
+            scripts/db/verify_database_absent.sh
+            scripts/db/emit_destruction_evidence.sh
+            scripts/db/record_repopulation_blockers.sh
+            scripts/db/target_registry.json
+          )
+          FILES=("${AUDIT_FILES[@]}")
+          if [[ "${{ github.event.inputs.sync_mode }}" == "full" ]]; then
+            FILES+=("${WIPE_FILES[@]}")
+          fi
+          for f in "${FILES[@]}"; do
+            [[ -f "${f}" ]] || { echo "missing required file: ${f}" >&2; exit 1; }
+          done
+          tar -czf /tmp/ops-sync/ops-toolchain.tar.gz "${FILES[@]}"
+          echo "Built ops-toolchain.tar.gz for ${SHA} mode=${{ github.event.inputs.sync_mode }}"
+
+      - name: Upload ops toolchain artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ops-toolchain
+          path: /tmp/ops-sync/ops-toolchain.tar.gz
+          retention-days: 14
+
+      - name: Sync instructions
+        shell: bash
+        run: |
+          echo "Download artifact ops-toolchain and extract on app-node under /opt/avf-vending-api/"
+          echo "Verify: cat /opt/avf-vending-api/scripts/ops/TOOLCHAIN_SHA"
+          echo "Host sync is manual — this workflow does not SSH to production."

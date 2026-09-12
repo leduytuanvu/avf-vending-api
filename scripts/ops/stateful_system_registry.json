@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "description": "AVF persistent systems for clean-slate audit and wipe orchestration",
+  "systems": [
+    {
+      "target_id": "SS-001",
+      "environment": "development",
+      "system_type": "POSTGRESQL",
+      "host": "127.0.0.1:15432",
+      "logical_namespace": "avf_vending.public",
+      "dedicated": true,
+      "credential_source": "deployments/docker/docker-compose.yml",
+      "clear_mechanism": "TRUNCATE via production-reset-bootstrap-admin.sql",
+      "verification": "audit-all-table-rowcounts.sql"
+    },
+    {
+      "target_id": "SS-002",
+      "environment": "development",
+      "system_type": "REDIS",
+      "host": "avf-redis container",
+      "logical_namespace": "db0",
+      "dedicated": true,
+      "credential_source": "REDIS_URL or local default",
+      "clear_mechanism": "FLUSHDB",
+      "verification": "redis_resolve.sh DBSIZE=0"
+    },
+    {
+      "target_id": "SS-005",
+      "environment": "staging",
+      "system_type": "POSTGRESQL",
+      "host": "125.235.4.59 (staging-api.ldtv.dev)",
+      "logical_namespace": "avf_vending.public",
+      "dedicated": true,
+      "credential_source": "remote deployments/staging/.env.staging",
+      "clear_mechanism": "TRUNCATE",
+      "verification": "audit-all-table-rowcounts.sql"
+    },
+    {
+      "target_id": "SS-006",
+      "environment": "staging",
+      "system_type": "NATS_JETSTREAM",
+      "host": "staging VPS",
+      "logical_namespace": "AVF_* streams",
+      "dedicated": true,
+      "credential_source": "NATS_URL in .env.staging",
+      "clear_mechanism": "nats-purge-avf-streams.sh --purge",
+      "verification": "nats-purge-avf-streams.sh --audit-only"
+    },
+    {
+      "target_id": "SS-007",
+      "environment": "staging",
+      "system_type": "EMQX",
+      "host": "staging VPS :8883",
+      "logical_namespace": "machine MQTT users",
+      "dedicated": true,
+      "credential_source": "EMQX_API_* in .env.staging",
+      "clear_mechanism": "emqx-audit-and-purge.sh --purge",
+      "verification": "emqx-audit-and-purge.sh --audit-only"
+    },
+    {
+      "target_id": "SS-009",
+      "environment": "production",
+      "system_type": "POSTGRESQL",
+      "host": "Supabase via DATABASE_URL",
+      "logical_namespace": "avf_vending_prod.public",
+      "dedicated": true,
+      "credential_source": "deployments/prod/app-node/.env.app-node",
+      "clear_mechanism": "TRUNCATE",
+      "verification": "audit-all-table-rowcounts.sql"
+    },
+    {
+      "target_id": "SS-010",
+      "environment": "production",
+      "system_type": "REDIS",
+      "host": "avf-vending-prod-app-redis on app-node",
+      "logical_namespace": "db0",
+      "dedicated": true,
+      "credential_source": "REDIS_ADDR + REDIS_PASSWORD",
+      "clear_mechanism": "FLUSHDB via redis_resolve.sh",
+      "verification": "authenticated DBSIZE=0"
+    },
+    {
+      "target_id": "SS-011",
+      "environment": "production",
+      "system_type": "EMQX",
+      "host": "187.127.99.153 data-node",
+      "logical_namespace": "machine MQTT users + retained",
+      "dedicated": true,
+      "credential_source": "deployments/prod/data-node/.env.data-node",
+      "clear_mechanism": "emqx-audit-and-purge.sh --purge",
+      "verification": "emqx-audit-and-purge.sh --audit-only"
+    },
+    {
+      "target_id": "SS-012",
+      "environment": "production",
+      "system_type": "NATS_JETSTREAM",
+      "host": "187.127.99.153 data-node",
+      "logical_namespace": "AVF_* streams",
+      "dedicated": true,
+      "credential_source": "NATS_URL in .env.app-node",
+      "clear_mechanism": "nats-purge-avf-streams.sh --purge",
+      "verification": "nats-purge-avf-streams.sh --audit-only"
+    },
+    {
+      "target_id": "SS-014",
+      "environment": "production",
+      "system_type": "OBJECT_STORAGE",
+      "host": "S3 avf-vending-prod-assets",
+      "logical_namespace": "bucket prefixes",
+      "dedicated": true,
+      "credential_source": "OBJECT_STORAGE_*",
+      "clear_mechanism": "scoped aws s3 rm",
+      "verification": "object list count"
+    },
+    {
+      "target_id": "SS-017",
+      "environment": "production",
+      "system_type": "CLOUDINARY",
+      "host": "api.cloudinary.com",
+      "logical_namespace": "product environment (cloud_name from CLOUDINARY_CLOUD_NAME)",
+      "dedicated": "verify_via_inventory",
+      "credential_source": "GitHub secrets CLOUDINARY_*; VPS deployments/prod/app-node/.env.app-node",
+      "clear_mechanism": "scripts/ops/cloudinary/wipe.sh --delete-live-assets --delete-empty-folders",
+      "verification": "scripts/ops/cloudinary/verify-empty.sh"
+    },
+    {
+      "target_id": "SS-018",
+      "environment": "staging",
+      "system_type": "CLOUDINARY",
+      "host": "api.cloudinary.com",
+      "logical_namespace": "optional; same cloud_name as production if aliased",
+      "dedicated": "unknown_until_discovery",
+      "credential_source": "deployments/staging/.env.staging",
+      "clear_mechanism": "FOUND_ALIAS skip duplicate wipe OR full wipe if separate cloud",
+      "verification": "scripts/ops/cloudinary/verify-empty.sh"
+    },
+    {
+      "target_id": "SS-016",
+      "environment": "all deployed",
+      "system_type": "DEPLOYED_MACHINE_LOCAL_STATE",
+      "host": "Android devices",
+      "logical_namespace": "Room + DataStore",
+      "dedicated": true,
+      "credential_source": "device",
+      "clear_mechanism": "RequestReCommissioningUseCase factory reset",
+      "verification": "technician diagnostics outbox empty"
+    }
+  ]
+}
