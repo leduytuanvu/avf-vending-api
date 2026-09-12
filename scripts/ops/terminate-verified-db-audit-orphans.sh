@@ -84,7 +84,14 @@ proc_age_seconds() {
 
 proc_cmdline() {
 	local pid="$1"
-	tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true
+	local cmdline
+
+	cmdline="$(tr '\0' ' ' <"/proc/${pid}/cmdline" 2>/dev/null || true)"
+	if [[ -n "${cmdline//[[:space:]]/}" ]]; then
+		printf '%s' "${cmdline}"
+		return 0
+	fi
+	ps -p "${pid}" -o args= 2>/dev/null || true
 }
 
 in_docker_cgroup() {
