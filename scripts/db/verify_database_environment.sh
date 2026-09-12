@@ -23,8 +23,22 @@ export STAGING_DATABASE_URL="${STAGING_DATABASE_URL:-}"
 export STAGING_DATABASE_HOST="${STAGING_DATABASE_HOST:-}"
 export APP_ENV="${APP_ENV}"
 
+run_with_optional_timeout() {
+	if command -v timeout >/dev/null 2>&1; then
+		if ! timeout 120s "$@"; then
+			local rc=$?
+			if [[ "${rc}" -eq 124 ]]; then
+				fail "timeout after 120s"
+			fi
+			exit "${rc}"
+		fi
+		return 0
+	fi
+	"$@"
+}
+
 # shellcheck disable=SC2016
-python3 <<'PY'
+run_with_optional_timeout python3 <<'PY'
 import os, sys
 from urllib.parse import urlparse, unquote
 
