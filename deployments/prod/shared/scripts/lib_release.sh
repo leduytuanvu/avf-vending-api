@@ -297,26 +297,32 @@ run_remote_script() {
 	local migrate_flag="${6-0}"
 	local temporal_flag="${7-0}"
 	local extra_env="${8-}"
-	local remote_cmd
 	local -a ssh_opts=()
-	remote_cmd="cd '${remote_dir}' && "
-	if [[ -n "${GHCR_PULL_USERNAME:-}" ]]; then
-		remote_cmd+="GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' "
-	fi
-	if [[ -n "${GHCR_PULL_TOKEN:-}" ]]; then
-		remote_cmd+="GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' "
-	fi
-	remote_cmd+="RUN_MIGRATION='${migrate_flag}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${temporal_flag}' ${extra_env} bash '${script_rel}'"
+	local -a remote_argv=(bash -s -- "${remote_dir}" "${script_rel}")
 	if [[ -n "${app_ref}" ]]; then
-		remote_cmd+=" '${app_ref}'"
+		remote_argv+=("${app_ref}")
 	fi
 	if [[ -n "${goose_ref}" ]]; then
-		remote_cmd+=" '${goose_ref}'"
+		remote_argv+=("${goose_ref}")
 	fi
 	if [[ -n "${SSH_OPTS:-}" ]]; then
 		read -r -a ssh_opts <<<"${SSH_OPTS}"
 	fi
-	ssh "${ssh_opts[@]}" "${host}" "${remote_cmd}"
+	{
+		printf 'export GHCR_PULL_USERNAME=%q\n' "${GHCR_PULL_USERNAME:-}"
+		printf 'export GHCR_PULL_TOKEN=%q\n' "${GHCR_PULL_TOKEN:-}"
+		printf 'export RUN_MIGRATION=%q\n' "${migrate_flag}"
+		printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${temporal_flag}"
+		if [[ -n "${extra_env}" ]]; then
+			printf '%s\n' "${extra_env}"
+		fi
+		cat <<'REMOTE_BODY'
+set -euo pipefail
+cd "$1"
+shift
+exec bash "$1" "$@"
+REMOTE_BODY
+	} | ssh "${ssh_opts[@]}" "${host}" "${remote_argv[@]}"
 }
 
 ssh_target() {

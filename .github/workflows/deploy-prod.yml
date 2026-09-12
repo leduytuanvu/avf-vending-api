@@ -2902,10 +2902,33 @@ jobs:
           rollback_app_node() {
             local host="$1"
             local target="${SSH_USER}@${host}"
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' RUN_MIGRATION='0' bash 'scripts/rollback_app_node.sh' '${PREVIOUS_APP_IMAGE_REF}' '${PREVIOUS_GOOSE_IMAGE_REF}'"
-            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-              "cd '${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node' && APP_NODE_ENABLE_TEMPORAL_PROFILE='${ENABLE_TEMPORAL_PROFILE}' bash 'scripts/healthcheck_app_node.sh'"
+            {
+              printf 'export GHCR_PULL_USERNAME=%q\n' "${GHCR_PULL_USERNAME}"
+              printf 'export GHCR_PULL_TOKEN=%q\n' "${GHCR_PULL_TOKEN}"
+              printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
+              printf 'export RUN_MIGRATION=%q\n' "0"
+              cat <<'REMOTE_BODY'
+set -euo pipefail
+cd "$1"
+shift
+exec bash "$1" "$@"
+REMOTE_BODY
+            } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
+              "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
+              "scripts/rollback_app_node.sh" \
+              "${PREVIOUS_APP_IMAGE_REF}" \
+              "${PREVIOUS_GOOSE_IMAGE_REF}"
+            {
+              printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
+              cat <<'REMOTE_BODY'
+set -euo pipefail
+cd "$1"
+shift
+exec bash "$1" "$@"
+REMOTE_BODY
+            } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
+              "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
+              "scripts/healthcheck_app_node.sh"
           }
 
           read -r -a ssh_opts <<< "${SSH_OPTS}"
