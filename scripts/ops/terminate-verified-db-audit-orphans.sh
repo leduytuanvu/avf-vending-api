@@ -121,12 +121,24 @@ kill_verified_pid() {
 }
 
 candidate_pids=()
+append_candidate_pid() {
+	local pid="$1" existing
+	[[ "${pid}" =~ ^[0-9]+$ ]] || return 0
+	for existing in "${candidate_pids[@]}"; do
+		[[ "${existing}" == "${pid}" ]] && return 0
+	done
+	candidate_pids+=("${pid}")
+}
+
 while IFS= read -r line; do
 	[[ -n "${line}" ]] || continue
-	pid="${line%% *}"
-	[[ "${pid}" =~ ^[0-9]+$ ]] || continue
-	candidate_pids+=("${pid}")
+	append_candidate_pid "${line%% *}"
 done < <(pgrep -af 'db-destroy-evidence|verify_database_environment\.sh' 2>/dev/null || true)
+
+while IFS= read -r pid; do
+	[[ -n "${pid}" ]] || continue
+	append_candidate_pid "${pid}"
+done < <(pgrep -f '\.db-destroy-evidence/.bin/python3' 2>/dev/null || true)
 
 if [[ "${#candidate_pids[@]}" -eq 0 ]]; then
 	log "no candidate processes found"
