@@ -60,19 +60,26 @@ done
 
 proc_age_seconds() {
 	local pid="$1"
-	local start_ticks now_ticks clk_tck start_sec
-	start_ticks="$(awk '/^starttime:/ {print $2}' "/proc/${pid}/status" 2>/dev/null || true)"
-	now_ticks="$(awk '{print $22}' "/proc/${pid}/stat" 2>/dev/null || true)"
+	local etimes uptime start_ticks clk_tck age
+
+	etimes="$(ps -p "${pid}" -o etimes= 2>/dev/null | tr -d ' ')"
+	if [[ -n "${etimes}" && "${etimes}" =~ ^[0-9]+$ ]]; then
+		echo "${etimes}"
+		return 0
+	fi
+
+	uptime="$(awk '{print int($1)}' /proc/uptime 2>/dev/null || true)"
+	start_ticks="$(awk '{print $22}' "/proc/${pid}/stat" 2>/dev/null || true)"
 	clk_tck="$(getconf CLK_TCK 2>/dev/null || echo 100)"
-	if [[ -z "${start_ticks}" || -z "${now_ticks}" ]]; then
+	if [[ -z "${uptime}" || -z "${start_ticks}" ]]; then
 		echo 0
 		return 0
 	fi
-	start_sec=$((now_ticks / clk_tck - start_ticks / clk_tck))
-	if [[ "${start_sec}" -lt 0 ]]; then
-		start_sec=0
+	age=$((uptime - start_ticks / clk_tck))
+	if [[ "${age}" -lt 0 ]]; then
+		age=0
 	fi
-	echo "${start_sec}"
+	echo "${age}"
 }
 
 proc_cmdline() {
