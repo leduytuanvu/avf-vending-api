@@ -194,7 +194,7 @@ func (s *Service) SetDesiredActiveLayout(ctx context.Context, in SetDesiredActiv
 		return err
 	}
 	return q.SetMachineActiveLayoutPointers(ctx, db.SetMachineActiveLayoutPointersParams{
-		ID: in.MachineID,
+		ID:                    in.MachineID,
 		DesiredActiveLayoutID: pgtype.UUID{Bytes: in.LayoutID, Valid: true},
 	})
 }

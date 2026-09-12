@@ -549,13 +549,13 @@ func (s *machineBootstrapServer) GetMachineLayoutLibrary(ctx context.Context, re
 	summaries := make([]*machinev1.MachineLayoutSummary, 0, len(lib.Layouts))
 	for _, row := range lib.Layouts {
 		summaries = append(summaries, &machinev1.MachineLayoutSummary{
-			LayoutId:    row.LayoutID.String(),
-			Name:        row.Name,
-			Status:      row.Status,
-			GridRows:    row.GridRows,
-			GridCols:    row.GridCols,
+			LayoutId:       row.LayoutID.String(),
+			Name:           row.Name,
+			Status:         row.Status,
+			GridRows:       row.GridRows,
+			GridCols:       row.GridCols,
 			LayoutRevision: row.Revision,
-			Fingerprint: row.Fingerprint,
+			Fingerprint:    row.Fingerprint,
 		})
 	}
 	rid := ""
@@ -563,8 +563,8 @@ func (s *machineBootstrapServer) GetMachineLayoutLibrary(ctx context.Context, re
 		rid = req.GetMeta().GetRequestId()
 	}
 	resp := &machinev1.GetMachineLayoutLibraryResponse{
-		Meta:     responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
-		Layouts:  summaries,
+		Meta:    responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Layouts: summaries,
 	}
 	if lib.ActiveLayoutID != nil {
 		resp.ActiveLayoutId = lib.ActiveLayoutID.String()
@@ -659,9 +659,9 @@ func (s *machineBootstrapServer) AckLayoutActivation(ctx context.Context, req *m
 		rid = req.GetMeta().GetRequestId()
 	}
 	return &machinev1.AckLayoutActivationResponse{
-		Meta:                     responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
-		Accepted:                 out.Accepted,
-		ReportedActiveLayoutId:   out.ReportedActiveLayoutID.String(),
+		Meta:                   responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Accepted:               out.Accepted,
+		ReportedActiveLayoutId: out.ReportedActiveLayoutID.String(),
 	}, nil
 }
 

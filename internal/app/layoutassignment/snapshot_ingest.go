@@ -76,13 +76,13 @@ type SnapshotSlotInput struct {
 
 // ReportLayoutSnapshotResult is returned after ingest.
 type ReportLayoutSnapshotResult struct {
-	Accepted               bool
-	Duplicate              bool
-	StoredSnapshotID       uuid.UUID
-	StoredCaptureSequence  int64
-	StoredFingerprint      string
-	StoredRevision         int32
-	StoredGeneration       int64
+	Accepted              bool
+	Duplicate             bool
+	StoredSnapshotID      uuid.UUID
+	StoredCaptureSequence int64
+	StoredFingerprint     string
+	StoredRevision        int32
+	StoredGeneration      int64
 }
 
 // ReportLayoutSnapshot ingests one immutable history row and reconciles current device state.
@@ -154,33 +154,33 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		baseRev = pgtype.Int4{Int32: *in.BaseServerRevision, Valid: true}
 	}
 	histRow, err := q.InsertMachineLayoutSnapshotHistory(ctx, db.InsertMachineLayoutSnapshotHistoryParams{
-		SnapshotID:       in.SnapshotID,
-		MachineID:        in.MachineID,
-		LayoutID:         in.LayoutID,
-		DeviceInstanceID: strings.TrimSpace(in.DeviceInstanceID),
-		CaptureSequence:  in.CaptureSequence,
-		IntervalKey:      pgtype.Text{String: strings.TrimSpace(in.IntervalKey), Valid: strings.TrimSpace(in.IntervalKey) != ""},
-		CapturedAt:       in.CapturedAt.UTC(),
-		DeviceGeneration: in.DeviceGeneration,
+		SnapshotID:         in.SnapshotID,
+		MachineID:          in.MachineID,
+		LayoutID:           in.LayoutID,
+		DeviceInstanceID:   strings.TrimSpace(in.DeviceInstanceID),
+		CaptureSequence:    in.CaptureSequence,
+		IntervalKey:        pgtype.Text{String: strings.TrimSpace(in.IntervalKey), Valid: strings.TrimSpace(in.IntervalKey) != ""},
+		CapturedAt:         in.CapturedAt.UTC(),
+		DeviceGeneration:   in.DeviceGeneration,
 		BaseServerRevision: baseRev,
-		Fingerprint:      strings.TrimSpace(in.Fingerprint),
-		SnapshotReason:   normalizeSnapshotReason(in.SnapshotReason),
-		PayloadVersion:   in.PayloadVersion,
-		Payload:          payloadJSON,
+		Fingerprint:        strings.TrimSpace(in.Fingerprint),
+		SnapshotReason:     normalizeSnapshotReason(in.SnapshotReason),
+		PayloadVersion:     in.PayloadVersion,
+		Payload:            payloadJSON,
 	})
 	if err != nil {
 		return ReportLayoutSnapshotResult{}, err
 	}
 
 	deviceState, err := q.UpsertMachineLayoutDeviceState(ctx, db.UpsertMachineLayoutDeviceStateParams{
-		MachineID:              in.MachineID,
-		LayoutID:               in.LayoutID,
-		LatestSnapshotID:       pgtype.UUID{Bytes: in.SnapshotID, Valid: true},
-		LatestCaptureSequence:  in.CaptureSequence,
-		DeviceGeneration:       in.DeviceGeneration,
-		Fingerprint:            strings.TrimSpace(in.Fingerprint),
-		ReportedAt:             now,
-		DeviceInstanceID:       strings.TrimSpace(in.DeviceInstanceID),
+		MachineID:             in.MachineID,
+		LayoutID:              in.LayoutID,
+		LatestSnapshotID:      pgtype.UUID{Bytes: in.SnapshotID, Valid: true},
+		LatestCaptureSequence: in.CaptureSequence,
+		DeviceGeneration:      in.DeviceGeneration,
+		Fingerprint:           strings.TrimSpace(in.Fingerprint),
+		ReportedAt:            now,
+		DeviceInstanceID:      strings.TrimSpace(in.DeviceInstanceID),
 	})
 	if err != nil {
 		return ReportLayoutSnapshotResult{}, err
@@ -192,7 +192,7 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 	}
 	if deviceState.LatestCaptureSequence == in.CaptureSequence {
 		if err := q.SetMachineActiveLayoutPointers(ctx, db.SetMachineActiveLayoutPointersParams{
-			ID: in.MachineID,
+			ID:                     in.MachineID,
 			ReportedActiveLayoutID: pgtype.UUID{Bytes: activeLayoutID, Valid: true},
 		}); err != nil {
 			return ReportLayoutSnapshotResult{}, err
@@ -299,11 +299,11 @@ func normalizeSnapshotReason(reason string) string {
 func buildSnapshotPayloadJSON(in ReportLayoutSnapshotInput) ([]byte, error) {
 	if len(in.SlotsJSON) > 0 && json.Valid(in.SlotsJSON) {
 		body := map[string]any{
-			"slots":       json.RawMessage(in.SlotsJSON),
-			"mergePairs":  in.MergePairs,
-			"layoutName":  strings.TrimSpace(in.LayoutName),
-			"gridRows":    in.GridRows,
-			"gridCols":    in.GridCols,
+			"slots":          json.RawMessage(in.SlotsJSON),
+			"mergePairs":     in.MergePairs,
+			"layoutName":     strings.TrimSpace(in.LayoutName),
+			"gridRows":       in.GridRows,
+			"gridCols":       in.GridCols,
 			"activeLayoutId": in.ActiveLayoutID.String(),
 		}
 		return json.Marshal(body)
@@ -313,11 +313,11 @@ func buildSnapshotPayloadJSON(in ReportLayoutSnapshotInput) ([]byte, error) {
 		return nil, err
 	}
 	body := map[string]any{
-		"slots":       json.RawMessage(slotsJSON),
-		"mergePairs":  in.MergePairs,
-		"layoutName":  strings.TrimSpace(in.LayoutName),
-		"gridRows":    in.GridRows,
-		"gridCols":    in.GridCols,
+		"slots":          json.RawMessage(slotsJSON),
+		"mergePairs":     in.MergePairs,
+		"layoutName":     strings.TrimSpace(in.LayoutName),
+		"gridRows":       in.GridRows,
+		"gridCols":       in.GridCols,
 		"activeLayoutId": in.ActiveLayoutID.String(),
 	}
 	return json.Marshal(body)
@@ -368,20 +368,20 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 func ReportLayoutSnapshotFromLocalLayout(in ReportLocalLayoutInput) ReportLayoutSnapshotInput {
 	capturedAt := time.Now().UTC()
 	return ReportLayoutSnapshotInput{
-		MachineID:        in.MachineID,
-		SnapshotID:       in.LocalLayoutID,
-		LayoutID:         in.LocalLayoutID,
-		DeviceInstanceID: in.DeviceInstanceID,
-		CaptureSequence:  int64(in.Revision),
-		DeviceGeneration: in.LocalGeneration,
-		CapturedAt:       capturedAt,
+		MachineID:          in.MachineID,
+		SnapshotID:         in.LocalLayoutID,
+		LayoutID:           in.LocalLayoutID,
+		DeviceInstanceID:   in.DeviceInstanceID,
+		CaptureSequence:    int64(in.Revision),
+		DeviceGeneration:   in.LocalGeneration,
+		CapturedAt:         capturedAt,
 		BaseServerRevision: &in.Revision,
-		Fingerprint:      in.Fingerprint,
-		PayloadVersion:   DefaultSnapshotPayloadVersion,
-		SnapshotReason:   SnapshotReasonLegacyReport,
-		GridRows:         in.Rows,
-		GridCols:         in.Columns,
-		ActiveLayoutID:   in.LocalLayoutID,
-		SlotsJSON:        in.SlotsJSON,
+		Fingerprint:        in.Fingerprint,
+		PayloadVersion:     DefaultSnapshotPayloadVersion,
+		SnapshotReason:     SnapshotReasonLegacyReport,
+		GridRows:           in.Rows,
+		GridCols:           in.Columns,
+		ActiveLayoutID:     in.LocalLayoutID,
+		SlotsJSON:          in.SlotsJSON,
 	}
 }

@@ -118,8 +118,8 @@ func (s *Service) AckLayoutActivation(ctx context.Context, auth MachineAuthConte
 		return AckLayoutActivationResult{}, err
 	}
 	if err := q.SetMachineActiveLayoutPointers(ctx, db.SetMachineActiveLayoutPointersParams{
-		ID: in.MachineID,
-		ActiveLayoutID: pgtypeUUID(in.LayoutID),
+		ID:                     in.MachineID,
+		ActiveLayoutID:         pgtypeUUID(in.LayoutID),
 		ReportedActiveLayoutID: pgtypeUUID(in.LayoutID),
 	}); err != nil {
 		return AckLayoutActivationResult{}, err
