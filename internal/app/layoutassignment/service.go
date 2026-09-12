@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/avf/avf-vending-api/internal/app/planogram"
 	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
+	"github.com/avf/avf-vending-api/internal/app/planogram"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
