@@ -316,6 +316,7 @@ run_remote_script() {
 		if [[ -n "${extra_env}" ]]; then
 			printf '%s\n' "${extra_env}"
 		fi
+		# shellcheck disable=SC2016
 		printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$1" "$@"'
 	} | ssh "${ssh_opts[@]}" "${host}" "${remote_argv[@]}"
 }

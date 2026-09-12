@@ -2916,6 +2916,7 @@ jobs:
               "${PREVIOUS_GOOSE_IMAGE_REF}"
             {
               printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
+              # shellcheck disable=SC2016
               printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$1" "$@"'
             } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
               "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
