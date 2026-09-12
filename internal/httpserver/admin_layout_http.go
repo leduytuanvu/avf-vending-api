@@ -25,6 +25,9 @@ func mountAdminLayoutRoutes(r chi.Router, app *api.HTTPApplication, writeRL func
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermInventoryRead))
 		r.Get("/machines/{machineId}/layout-state", getAdminMachineLayoutState(app))
+		r.Get("/machines/{machineId}/layouts", getAdminMachineLayouts(app))
+		r.Get("/machines/{machineId}/layouts/{layoutId}/history", getAdminMachineLayoutHistory(app))
+		r.Get("/machines/{machineId}/snapshots/{snapshotId}", getAdminMachineLayoutSnapshot(app))
 		r.Get("/layout-dimension-migration-audit", getAdminLayoutDimensionMigrationAudit(app))
 	})
 	r.Group(func(r chi.Router) {
@@ -32,6 +35,10 @@ func mountAdminLayoutRoutes(r chi.Router, app *api.HTTPApplication, writeRL func
 		r.With(writeRL).Put("/machines/{machineId}/layout-assignments/server", putAdminMachineServerLayoutAssignment(app))
 		r.With(writeRL).Put("/machines/{machineId}/layout-desired-source", putAdminMachineLayoutDesiredSource(app))
 		r.With(writeRL).Post("/machines/{machineId}/layout-assignments/server:bulk", postAdminMachineServerLayoutBulk(app))
+		r.With(writeRL).Post("/machines/{machineId}/layouts", postAdminMachineLayout(app))
+		r.With(writeRL).Put("/machines/{machineId}/layouts/{layoutId}", putAdminMachineLayout(app))
+		r.With(writeRL).Delete("/machines/{machineId}/layouts/{layoutId}", deleteAdminMachineLayout(app))
+		r.With(writeRL).Put("/machines/{machineId}/desired-active-layout", putAdminMachineDesiredActiveLayout(app))
 	})
 }
 
@@ -339,6 +346,8 @@ func writeLayoutAssignmentError(w http.ResponseWriter, r *http.Request, err erro
 		writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_dimensions", err.Error())
 	case errors.Is(err, layoutassignment.ErrIdempotencyKeyConflict):
 		writeAPIError(w, r.Context(), http.StatusConflict, "idempotency_key_conflict", err.Error())
+	case errors.Is(err, layoutassignment.ErrLayoutNotFound):
+		writeAPIError(w, r.Context(), http.StatusNotFound, "layout_not_found", err.Error())
 	default:
 		writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 	}
@@ -352,7 +361,212 @@ func layoutErrorCode(err error) (code, msg string) {
 		return "layout_dimensions_unknown", err.Error()
 	case errors.Is(err, layoutassignment.ErrRevisionConflict):
 		return "revision_conflict", err.Error()
+	case errors.Is(err, layoutassignment.ErrLayoutNotFound):
+		return "layout_not_found", err.Error()
 	default:
 		return "internal", err.Error()
+	}
+}
+
+func getAdminMachineLayouts(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		lib, err := svc.GetMachineLayoutLibrary(r.Context(), machineID)
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, lib)
+	}
+}
+
+type createMachineLayoutBody struct {
+	Name     string `json:"name"`
+	Status   string `json:"status,omitempty"`
+	GridRows int32  `json:"gridRows,omitempty"`
+	GridCols int32  `json:"gridCols,omitempty"`
+}
+
+func postAdminMachineLayout(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		var body createMachineLayoutBody
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		out, err := svc.CreateMachineLayout(r.Context(), layoutassignment.CreateMachineLayoutInput{
+			MachineID: machineID,
+			Name:      body.Name,
+			Status:    body.Status,
+			GridRows:  body.GridRows,
+			GridCols:  body.GridCols,
+		})
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, out)
+	}
+}
+
+type updateMachineLayoutBody struct {
+	Name   *string `json:"name,omitempty"`
+	Status *string `json:"status,omitempty"`
+}
+
+func putAdminMachineLayout(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		layoutID, lerr := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "layoutId")))
+		if err != nil || machineID == uuid.Nil || lerr != nil || layoutID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_id", "invalid machineId or layoutId")
+			return
+		}
+		var body updateMachineLayoutBody
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		out, err := svc.UpdateMachineLayoutMetadata(r.Context(), layoutassignment.UpdateMachineLayoutInput{
+			MachineID: machineID,
+			LayoutID:  layoutID,
+			Name:      body.Name,
+			Status:    body.Status,
+		})
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+func deleteAdminMachineLayout(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		layoutID, lerr := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "layoutId")))
+		if err != nil || machineID == uuid.Nil || lerr != nil || layoutID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_id", "invalid machineId or layoutId")
+			return
+		}
+		if err := svc.ArchiveMachineLayout(r.Context(), machineID, layoutID); err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+type desiredActiveLayoutBody struct {
+	LayoutID string `json:"layoutId"`
+}
+
+func putAdminMachineDesiredActiveLayout(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		var body desiredActiveLayoutBody
+		if !decodeStrictJSON(w, r, &body) {
+			return
+		}
+		layoutID, err := uuid.Parse(strings.TrimSpace(body.LayoutID))
+		if err != nil || layoutID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_layout_id", "layoutId must be a UUID")
+			return
+		}
+		if err := svc.SetDesiredActiveLayout(r.Context(), layoutassignment.SetDesiredActiveLayoutInput{
+			MachineID: machineID,
+			LayoutID:  layoutID,
+		}); err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"layoutId": layoutID.String()})
+	}
+}
+
+func getAdminMachineLayoutHistory(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		layoutID, lerr := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "layoutId")))
+		if err != nil || machineID == uuid.Nil || lerr != nil || layoutID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_id", "invalid machineId or layoutId")
+			return
+		}
+		page, err := svc.ListLayoutSnapshotHistory(r.Context(), machineID, &layoutID, 50, 0)
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, page)
+	}
+}
+
+func getAdminMachineLayoutSnapshot(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		svc, ok := layoutService(app)
+		if !ok {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		snapshotID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "snapshotId")))
+		if err != nil || snapshotID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_snapshot_id", "invalid snapshotId")
+			return
+		}
+		row, err := svc.GetLayoutSnapshotDetail(r.Context(), snapshotID)
+		if err != nil {
+			writeLayoutAssignmentError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, row)
 	}
 }

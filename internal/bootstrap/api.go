@@ -146,6 +146,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	store := postgres.NewStore(rt.Pool(), postgres.WithEnterpriseAudit(auditSvc))
 	fleetRepo := postgres.NewFleetRepository(rt.Pool())
 	fleetSvc := appfleet.NewService(fleetRepo)
+	fleetSvc.SetDatabasePool(rt.Pool())
 	if emqxClient, err := emqxadmin.NewClient(cfg.MQTT.EMQXManagementURL, cfg.MQTT.EMQXAPIKey, cfg.MQTT.EMQXAPISecret); err == nil {
 		fleetSvc.SetEMQXProvisioner(emqxClient, rt.Pool())
 	}

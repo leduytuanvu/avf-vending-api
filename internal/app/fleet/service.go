@@ -8,8 +8,12 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	domainfleet "github.com/avf/avf-vending-api/internal/domain/fleet"
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/emqxadmin"
+	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -40,6 +44,14 @@ func NewService(repo FleetRepository) *Service {
 		panic("fleet.NewService: nil FleetRepository")
 	}
 	return &Service{repo: repo}
+}
+
+// SetDatabasePool wires the Postgres pool for transactional workflows (layout bootstrap).
+func (s *Service) SetDatabasePool(pool *pgxpool.Pool) {
+	if s == nil {
+		return
+	}
+	s.dbPool = pool
 }
 
 var _ FleetWorkflows = (*Service)(nil)
@@ -103,6 +115,9 @@ func (s *Service) CreateMachine(ctx context.Context, in CreateMachineInput) (dom
 	}
 	if err := s.repo.AssertSiteInCompany(ctx, uuid.Nil, in.SiteID); err != nil {
 		return domainfleet.Machine{}, err
+	}
+	if s.dbPool != nil {
+		return s.createMachineWithDefaultLayout(ctx, in)
 	}
 	return s.repo.InsertMachine(ctx, InsertMachineParams{
 		SiteID:            in.SiteID,
@@ -235,6 +250,57 @@ func validateMachineCodeForEnv(code string) error {
 		return nil
 	}
 	return errors.Join(ErrInvalidArgument, errors.New("machine code must match ^AVF[0-9]{6,}$ in production"))
+}
+
+func (s *Service) createMachineWithDefaultLayout(ctx context.Context, in CreateMachineInput) (domainfleet.Machine, error) {
+	tx, err := s.dbPool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return domainfleet.Machine{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	q := pgxutil.NewQueries(tx)
+	row, err := q.InsertMachine(ctx, db.InsertMachineParams{
+		SiteID:            in.SiteID,
+		HardwareProfileID: optionalUUIDToPg(in.HardwareProfileID),
+		SerialNumber:      strings.TrimSpace(in.SerialNumber),
+		Code:              strings.TrimSpace(in.Code),
+		Model:             optionalStringToPgText(in.Model),
+		CabinetType:       strings.TrimSpace(in.CabinetType),
+		TimezoneOverride:  optionalStringToPgText(in.Timezone),
+		Name:              strings.TrimSpace(in.Name),
+		Status:            in.Status,
+	})
+	if err != nil {
+		return domainfleet.Machine{}, err
+	}
+	rows, cols := defaultBootstrapGridRows, defaultBootstrapGridCols
+	if _, err := BootstrapDefaultLayout1(ctx, tx, row.ID, rows, cols); err != nil {
+		return domainfleet.Machine{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return domainfleet.Machine{}, err
+	}
+	machine, err := s.repo.GetMachine(ctx, row.ID)
+	if err != nil {
+		return domainfleet.Machine{}, err
+	}
+	return machine, nil
+}
+
+func optionalUUIDToPg(id *uuid.UUID) pgtype.UUID {
+	if id == nil || *id == uuid.Nil {
+		return pgtype.UUID{}
+	}
+	return pgtype.UUID{Bytes: *id, Valid: true}
+}
+
+func optionalStringToPgText(v string) pgtype.Text {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: v, Valid: true}
 }
 
 func trimStringPtr(p *string) *string {

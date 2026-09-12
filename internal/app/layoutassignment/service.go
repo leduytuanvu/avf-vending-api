@@ -23,8 +23,9 @@ var layoutKeyPattern = regexp.MustCompile(`^grid-(\d+)x(\d+)$`)
 
 // Service implements atomic SERVER layout assignment and layout state reads.
 type Service struct {
-	Pool  *pgxpool.Pool
-	Setup *postgres.SetupRepository
+	Pool         *pgxpool.Pool
+	Setup        *postgres.SetupRepository
+	FeatureFlags FeatureFlagReader
 }
 
 // AssignServerLayout atomically assigns a published planogram version as the current SERVER layout.

@@ -707,7 +707,7 @@ func (q *Queries) BumpMachineCredentialVersion(ctx context.Context, id uuid.UUID
 }
 
 const GetMachineByCode = `-- name: GetMachineByCode :one
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 FROM machines
 WHERE lower(btrim(code)) = lower(btrim($1::text))
   AND btrim(code) <> ''
@@ -745,12 +745,15 @@ func (q *Queries) GetMachineByCode(ctx context.Context, dollar_1 string) (Machin
 		&i.OnlineStatus,
 		&i.SaleEnabled,
 		&i.MachineType,
+		&i.ActiveLayoutID,
+		&i.DesiredActiveLayoutID,
+		&i.ReportedActiveLayoutID,
 	)
 	return i, err
 }
 
 const GetMachineByID = `-- name: GetMachineByID :one
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 FROM machines
 WHERE id = $1
 `
@@ -786,12 +789,15 @@ func (q *Queries) GetMachineByID(ctx context.Context, id uuid.UUID) (Machine, er
 		&i.OnlineStatus,
 		&i.SaleEnabled,
 		&i.MachineType,
+		&i.ActiveLayoutID,
+		&i.DesiredActiveLayoutID,
+		&i.ReportedActiveLayoutID,
 	)
 	return i, err
 }
 
 const GetMachineByIDForUpdate = `-- name: GetMachineByIDForUpdate :one
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 FROM machines
 WHERE id = $1
 FOR UPDATE
@@ -828,6 +834,9 @@ func (q *Queries) GetMachineByIDForUpdate(ctx context.Context, id uuid.UUID) (Ma
 		&i.OnlineStatus,
 		&i.SaleEnabled,
 		&i.MachineType,
+		&i.ActiveLayoutID,
+		&i.DesiredActiveLayoutID,
+		&i.ReportedActiveLayoutID,
 	)
 	return i, err
 }
@@ -933,7 +942,7 @@ INSERT INTO machines (
     $8,
     $9
 )
-RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 `
 
 type InsertMachineParams struct {
@@ -989,6 +998,9 @@ func (q *Queries) InsertMachine(ctx context.Context, arg InsertMachineParams) (M
 		&i.OnlineStatus,
 		&i.SaleEnabled,
 		&i.MachineType,
+		&i.ActiveLayoutID,
+		&i.DesiredActiveLayoutID,
+		&i.ReportedActiveLayoutID,
 	)
 	return i, err
 }
@@ -1047,7 +1059,7 @@ func (q *Queries) InsertTechnicianMachineAssignment(ctx context.Context, arg Ins
 }
 
 const ListMachinesBySiteAndCompany = `-- name: ListMachinesBySiteAndCompany :many
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 FROM machines
 WHERE
     site_id = $1
@@ -1093,6 +1105,9 @@ func (q *Queries) ListMachinesBySiteAndCompany(ctx context.Context, siteID uuid.
 			&i.OnlineStatus,
 			&i.SaleEnabled,
 			&i.MachineType,
+			&i.ActiveLayoutID,
+			&i.DesiredActiveLayoutID,
+			&i.ReportedActiveLayoutID,
 		); err != nil {
 			return nil, err
 		}
@@ -1267,7 +1282,7 @@ func (q *Queries) ListMachinesForTechnicianID(ctx context.Context, technicianID 
 }
 
 const ListMachinesOrderedByName = `-- name: ListMachinesOrderedByName :many
-SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+SELECT id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 FROM machines
 ORDER BY
     name ASC
@@ -1310,6 +1325,9 @@ func (q *Queries) ListMachinesOrderedByName(ctx context.Context) ([]Machine, err
 			&i.OnlineStatus,
 			&i.SaleEnabled,
 			&i.MachineType,
+			&i.ActiveLayoutID,
+			&i.DesiredActiveLayoutID,
+			&i.ReportedActiveLayoutID,
 		); err != nil {
 			return nil, err
 		}
@@ -1417,7 +1435,7 @@ SET
 WHERE
     id = $10
     AND TRUE
-RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type
+RETURNING id, site_id, hardware_profile_id, serial_number, code, model, cabinet_type, credential_version, last_seen_at, timezone_override, name, status, command_sequence, credential_revoked_at, credential_rotated_at, credential_last_used_at, activated_at, revoked_at, rotated_at, created_at, updated_at, published_planogram_version_id, current_device_attachment_id, current_runtime_app_session_id, online_status, sale_enabled, machine_type, active_layout_id, desired_active_layout_id, reported_active_layout_id
 `
 
 type UpdateMachineMetadataRowParams struct {
@@ -1479,6 +1497,9 @@ func (q *Queries) UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachin
 		&i.OnlineStatus,
 		&i.SaleEnabled,
 		&i.MachineType,
+		&i.ActiveLayoutID,
+		&i.DesiredActiveLayoutID,
+		&i.ReportedActiveLayoutID,
 	)
 	return i, err
 }
