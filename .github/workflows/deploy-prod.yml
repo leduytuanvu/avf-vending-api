@@ -2907,6 +2907,7 @@ jobs:
               printf 'export GHCR_PULL_TOKEN=%q\n' "${GHCR_PULL_TOKEN}"
               printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
               printf 'export RUN_MIGRATION=%q\n' "0"
+              # shellcheck disable=SC2016
               printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$1" "$@"'
             } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
               "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
