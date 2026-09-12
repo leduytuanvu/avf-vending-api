@@ -379,6 +379,242 @@ func (x *GetPlanogramResponse) GetSlots() []*InventorySlotRow {
 	return nil
 }
 
+type PhysicalSlotRow struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SlotCode      string                 `protobuf:"bytes,1,opt,name=slot_code,json=slotCode,proto3" json:"slot_code,omitempty"`
+	SlotIndex     int32                  `protobuf:"varint,2,opt,name=slot_index,json=slotIndex,proto3" json:"slot_index,omitempty"`
+	CabinetCode   string                 `protobuf:"bytes,3,opt,name=cabinet_code,json=cabinetCode,proto3" json:"cabinet_code,omitempty"`
+	CabinetIndex  int32                  `protobuf:"varint,4,opt,name=cabinet_index,json=cabinetIndex,proto3" json:"cabinet_index,omitempty"`
+	ProductId     *string                `protobuf:"bytes,5,opt,name=product_id,json=productId,proto3,oneof" json:"product_id,omitempty"`
+	MaxQuantity   int32                  `protobuf:"varint,6,opt,name=max_quantity,json=maxQuantity,proto3" json:"max_quantity,omitempty"`
+	PriceMinor    int64                  `protobuf:"varint,7,opt,name=price_minor,json=priceMinor,proto3" json:"price_minor,omitempty"`
+	MergeRole     string                 `protobuf:"bytes,8,opt,name=merge_role,json=mergeRole,proto3" json:"merge_role,omitempty"`
+	MergeWith     string                 `protobuf:"bytes,9,opt,name=merge_with,json=mergeWith,proto3" json:"merge_with,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PhysicalSlotRow) Reset() {
+	*x = PhysicalSlotRow{}
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PhysicalSlotRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PhysicalSlotRow) ProtoMessage() {}
+
+func (x *PhysicalSlotRow) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PhysicalSlotRow.ProtoReflect.Descriptor instead.
+func (*PhysicalSlotRow) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *PhysicalSlotRow) GetSlotCode() string {
+	if x != nil {
+		return x.SlotCode
+	}
+	return ""
+}
+
+func (x *PhysicalSlotRow) GetSlotIndex() int32 {
+	if x != nil {
+		return x.SlotIndex
+	}
+	return 0
+}
+
+func (x *PhysicalSlotRow) GetCabinetCode() string {
+	if x != nil {
+		return x.CabinetCode
+	}
+	return ""
+}
+
+func (x *PhysicalSlotRow) GetCabinetIndex() int32 {
+	if x != nil {
+		return x.CabinetIndex
+	}
+	return 0
+}
+
+func (x *PhysicalSlotRow) GetProductId() string {
+	if x != nil && x.ProductId != nil {
+		return *x.ProductId
+	}
+	return ""
+}
+
+func (x *PhysicalSlotRow) GetMaxQuantity() int32 {
+	if x != nil {
+		return x.MaxQuantity
+	}
+	return 0
+}
+
+func (x *PhysicalSlotRow) GetPriceMinor() int64 {
+	if x != nil {
+		return x.PriceMinor
+	}
+	return 0
+}
+
+func (x *PhysicalSlotRow) GetMergeRole() string {
+	if x != nil {
+		return x.MergeRole
+	}
+	return ""
+}
+
+func (x *PhysicalSlotRow) GetMergeWith() string {
+	if x != nil {
+		return x.MergeWith
+	}
+	return ""
+}
+
+type GetPhysicalSlotTopologyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPhysicalSlotTopologyRequest) Reset() {
+	*x = GetPhysicalSlotTopologyRequest{}
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPhysicalSlotTopologyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPhysicalSlotTopologyRequest) ProtoMessage() {}
+
+func (x *GetPhysicalSlotTopologyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPhysicalSlotTopologyRequest.ProtoReflect.Descriptor instead.
+func (*GetPhysicalSlotTopologyRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetPhysicalSlotTopologyRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+type GetPhysicalSlotTopologyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MachineId     string                 `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	GridRows      int32                  `protobuf:"varint,2,opt,name=grid_rows,json=gridRows,proto3" json:"grid_rows,omitempty"`
+	GridCols      int32                  `protobuf:"varint,3,opt,name=grid_cols,json=gridCols,proto3" json:"grid_cols,omitempty"`
+	ServerTime    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=server_time,json=serverTime,proto3" json:"server_time,omitempty"`
+	Slots         []*PhysicalSlotRow     `protobuf:"bytes,5,rep,name=slots,proto3" json:"slots,omitempty"`
+	Meta          *MachineResponseMeta   `protobuf:"bytes,6,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPhysicalSlotTopologyResponse) Reset() {
+	*x = GetPhysicalSlotTopologyResponse{}
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPhysicalSlotTopologyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPhysicalSlotTopologyResponse) ProtoMessage() {}
+
+func (x *GetPhysicalSlotTopologyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPhysicalSlotTopologyResponse.ProtoReflect.Descriptor instead.
+func (*GetPhysicalSlotTopologyResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetGridRows() int32 {
+	if x != nil {
+		return x.GridRows
+	}
+	return 0
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetGridCols() int32 {
+	if x != nil {
+		return x.GridCols
+	}
+	return 0
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetServerTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ServerTime
+	}
+	return nil
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetSlots() []*PhysicalSlotRow {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *GetPhysicalSlotTopologyResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
 type RestockLine struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	PlanogramId    string                 `protobuf:"bytes,1,opt,name=planogram_id,json=planogramId,proto3" json:"planogram_id,omitempty"`
@@ -394,7 +630,7 @@ type RestockLine struct {
 
 func (x *RestockLine) Reset() {
 	*x = RestockLine{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -406,7 +642,7 @@ func (x *RestockLine) String() string {
 func (*RestockLine) ProtoMessage() {}
 
 func (x *RestockLine) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -419,7 +655,7 @@ func (x *RestockLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RestockLine.ProtoReflect.Descriptor instead.
 func (*RestockLine) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{5}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *RestockLine) GetPlanogramId() string {
@@ -481,7 +717,7 @@ type SubmitRestockRequest struct {
 
 func (x *SubmitRestockRequest) Reset() {
 	*x = SubmitRestockRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[6]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -493,7 +729,7 @@ func (x *SubmitRestockRequest) String() string {
 func (*SubmitRestockRequest) ProtoMessage() {}
 
 func (x *SubmitRestockRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[6]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -506,7 +742,7 @@ func (x *SubmitRestockRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitRestockRequest.ProtoReflect.Descriptor instead.
 func (*SubmitRestockRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{6}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SubmitRestockRequest) GetContext() *IdempotencyContext {
@@ -533,7 +769,7 @@ type SubmitRestockResponse struct {
 
 func (x *SubmitRestockResponse) Reset() {
 	*x = SubmitRestockResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[7]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -545,7 +781,7 @@ func (x *SubmitRestockResponse) String() string {
 func (*SubmitRestockResponse) ProtoMessage() {}
 
 func (x *SubmitRestockResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[7]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -558,7 +794,7 @@ func (x *SubmitRestockResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitRestockResponse.ProtoReflect.Descriptor instead.
 func (*SubmitRestockResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{7}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SubmitRestockResponse) GetReplay() bool {
@@ -585,7 +821,7 @@ type SubmitFillResultRequest struct {
 
 func (x *SubmitFillResultRequest) Reset() {
 	*x = SubmitFillResultRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -597,7 +833,7 @@ func (x *SubmitFillResultRequest) String() string {
 func (*SubmitFillResultRequest) ProtoMessage() {}
 
 func (x *SubmitFillResultRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[8]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -610,7 +846,7 @@ func (x *SubmitFillResultRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitFillResultRequest.ProtoReflect.Descriptor instead.
 func (*SubmitFillResultRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{8}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SubmitFillResultRequest) GetContext() *IdempotencyContext {
@@ -637,7 +873,7 @@ type SubmitFillResultResponse struct {
 
 func (x *SubmitFillResultResponse) Reset() {
 	*x = SubmitFillResultResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -649,7 +885,7 @@ func (x *SubmitFillResultResponse) String() string {
 func (*SubmitFillResultResponse) ProtoMessage() {}
 
 func (x *SubmitFillResultResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[9]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -662,7 +898,7 @@ func (x *SubmitFillResultResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitFillResultResponse.ProtoReflect.Descriptor instead.
 func (*SubmitFillResultResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{9}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SubmitFillResultResponse) GetReplay() bool {
@@ -695,7 +931,7 @@ type AdjustmentLine struct {
 
 func (x *AdjustmentLine) Reset() {
 	*x = AdjustmentLine{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[10]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -707,7 +943,7 @@ func (x *AdjustmentLine) String() string {
 func (*AdjustmentLine) ProtoMessage() {}
 
 func (x *AdjustmentLine) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[10]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -720,7 +956,7 @@ func (x *AdjustmentLine) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustmentLine.ProtoReflect.Descriptor instead.
 func (*AdjustmentLine) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{10}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AdjustmentLine) GetPlanogramId() string {
@@ -791,7 +1027,7 @@ type SubmitInventoryAdjustmentRequest struct {
 
 func (x *SubmitInventoryAdjustmentRequest) Reset() {
 	*x = SubmitInventoryAdjustmentRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -803,7 +1039,7 @@ func (x *SubmitInventoryAdjustmentRequest) String() string {
 func (*SubmitInventoryAdjustmentRequest) ProtoMessage() {}
 
 func (x *SubmitInventoryAdjustmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[11]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -816,7 +1052,7 @@ func (x *SubmitInventoryAdjustmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitInventoryAdjustmentRequest.ProtoReflect.Descriptor instead.
 func (*SubmitInventoryAdjustmentRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{11}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SubmitInventoryAdjustmentRequest) GetContext() *IdempotencyContext {
@@ -850,7 +1086,7 @@ type SubmitInventoryAdjustmentResponse struct {
 
 func (x *SubmitInventoryAdjustmentResponse) Reset() {
 	*x = SubmitInventoryAdjustmentResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -862,7 +1098,7 @@ func (x *SubmitInventoryAdjustmentResponse) String() string {
 func (*SubmitInventoryAdjustmentResponse) ProtoMessage() {}
 
 func (x *SubmitInventoryAdjustmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[12]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -875,7 +1111,7 @@ func (x *SubmitInventoryAdjustmentResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use SubmitInventoryAdjustmentResponse.ProtoReflect.Descriptor instead.
 func (*SubmitInventoryAdjustmentResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{12}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SubmitInventoryAdjustmentResponse) GetReplay() bool {
@@ -902,7 +1138,7 @@ type SubmitStockSnapshotRequest struct {
 
 func (x *SubmitStockSnapshotRequest) Reset() {
 	*x = SubmitStockSnapshotRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -914,7 +1150,7 @@ func (x *SubmitStockSnapshotRequest) String() string {
 func (*SubmitStockSnapshotRequest) ProtoMessage() {}
 
 func (x *SubmitStockSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[13]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -927,7 +1163,7 @@ func (x *SubmitStockSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitStockSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*SubmitStockSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{13}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *SubmitStockSnapshotRequest) GetContext() *IdempotencyContext {
@@ -954,7 +1190,7 @@ type SubmitStockSnapshotResponse struct {
 
 func (x *SubmitStockSnapshotResponse) Reset() {
 	*x = SubmitStockSnapshotResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -966,7 +1202,7 @@ func (x *SubmitStockSnapshotResponse) String() string {
 func (*SubmitStockSnapshotResponse) ProtoMessage() {}
 
 func (x *SubmitStockSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[14]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -979,7 +1215,7 @@ func (x *SubmitStockSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitStockSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*SubmitStockSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{14}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SubmitStockSnapshotResponse) GetReplay() bool {
@@ -1008,7 +1244,7 @@ type ReportInventoryDeltaRequest struct {
 
 func (x *ReportInventoryDeltaRequest) Reset() {
 	*x = ReportInventoryDeltaRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1020,7 +1256,7 @@ func (x *ReportInventoryDeltaRequest) String() string {
 func (*ReportInventoryDeltaRequest) ProtoMessage() {}
 
 func (x *ReportInventoryDeltaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[15]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1033,7 +1269,7 @@ func (x *ReportInventoryDeltaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportInventoryDeltaRequest.ProtoReflect.Descriptor instead.
 func (*ReportInventoryDeltaRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{15}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ReportInventoryDeltaRequest) GetContext() *IdempotencyContext {
@@ -1075,7 +1311,7 @@ type ReportInventoryDeltaResponse struct {
 
 func (x *ReportInventoryDeltaResponse) Reset() {
 	*x = ReportInventoryDeltaResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1087,7 +1323,7 @@ func (x *ReportInventoryDeltaResponse) String() string {
 func (*ReportInventoryDeltaResponse) ProtoMessage() {}
 
 func (x *ReportInventoryDeltaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[16]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1100,7 +1336,7 @@ func (x *ReportInventoryDeltaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportInventoryDeltaResponse.ProtoReflect.Descriptor instead.
 func (*ReportInventoryDeltaResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{16}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ReportInventoryDeltaResponse) GetReplay() bool {
@@ -1134,7 +1370,7 @@ type AckInventorySyncRequest struct {
 
 func (x *AckInventorySyncRequest) Reset() {
 	*x = AckInventorySyncRequest{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[17]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1146,7 +1382,7 @@ func (x *AckInventorySyncRequest) String() string {
 func (*AckInventorySyncRequest) ProtoMessage() {}
 
 func (x *AckInventorySyncRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[17]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1159,7 +1395,7 @@ func (x *AckInventorySyncRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckInventorySyncRequest.ProtoReflect.Descriptor instead.
 func (*AckInventorySyncRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{17}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AckInventorySyncRequest) GetMeta() *MachineRequestMeta {
@@ -1185,7 +1421,7 @@ type AckInventorySyncResponse struct {
 
 func (x *AckInventorySyncResponse) Reset() {
 	*x = AckInventorySyncResponse{}
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[18]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1197,7 +1433,7 @@ func (x *AckInventorySyncResponse) String() string {
 func (*AckInventorySyncResponse) ProtoMessage() {}
 
 func (x *AckInventorySyncResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_inventory_proto_msgTypes[18]
+	mi := &file_avf_machine_v1_inventory_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1210,7 +1446,7 @@ func (x *AckInventorySyncResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckInventorySyncResponse.ProtoReflect.Descriptor instead.
 func (*AckInventorySyncResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{18}
+	return file_avf_machine_v1_inventory_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *AckInventorySyncResponse) GetMeta() *MachineResponseMeta {
@@ -1261,7 +1497,34 @@ const file_avf_machine_v1_inventory_proto_rawDesc = "" +
 	"machine_id\x18\x01 \x01(\tR\tmachineId\x12;\n" +
 	"\vserver_time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"serverTime\x126\n" +
-	"\x05slots\x18\x04 \x03(\v2 .avf.machine.v1.InventorySlotRowR\x05slots\"\x92\x02\n" +
+	"\x05slots\x18\x04 \x03(\v2 .avf.machine.v1.InventorySlotRowR\x05slots\"\xca\x02\n" +
+	"\x0fPhysicalSlotRow\x12\x1b\n" +
+	"\tslot_code\x18\x01 \x01(\tR\bslotCode\x12\x1d\n" +
+	"\n" +
+	"slot_index\x18\x02 \x01(\x05R\tslotIndex\x12!\n" +
+	"\fcabinet_code\x18\x03 \x01(\tR\vcabinetCode\x12#\n" +
+	"\rcabinet_index\x18\x04 \x01(\x05R\fcabinetIndex\x12\"\n" +
+	"\n" +
+	"product_id\x18\x05 \x01(\tH\x00R\tproductId\x88\x01\x01\x12!\n" +
+	"\fmax_quantity\x18\x06 \x01(\x05R\vmaxQuantity\x12\x1f\n" +
+	"\vprice_minor\x18\a \x01(\x03R\n" +
+	"priceMinor\x12\x1d\n" +
+	"\n" +
+	"merge_role\x18\b \x01(\tR\tmergeRole\x12\x1d\n" +
+	"\n" +
+	"merge_with\x18\t \x01(\tR\tmergeWithB\r\n" +
+	"\v_product_id\"X\n" +
+	"\x1eGetPhysicalSlotTopologyRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\"\xa7\x02\n" +
+	"\x1fGetPhysicalSlotTopologyResponse\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12\x1b\n" +
+	"\tgrid_rows\x18\x02 \x01(\x05R\bgridRows\x12\x1b\n" +
+	"\tgrid_cols\x18\x03 \x01(\x05R\bgridCols\x12;\n" +
+	"\vserver_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"serverTime\x125\n" +
+	"\x05slots\x18\x05 \x03(\v2\x1f.avf.machine.v1.PhysicalSlotRowR\x05slots\x127\n" +
+	"\x04meta\x18\x06 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\x92\x02\n" +
 	"\vRestockLine\x12!\n" +
 	"\fplanogram_id\x18\x01 \x01(\tR\vplanogramId\x12\x1d\n" +
 	"\n" +
@@ -1325,12 +1588,13 @@ const file_avf_machine_v1_inventory_proto_rawDesc = "" +
 	"\vsync_cursor\x18\x02 \x01(\tR\n" +
 	"syncCursor\"S\n" +
 	"\x18AckInventorySyncResponse\x127\n" +
-	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta2\xdc\b\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta2\xd8\t\n" +
 	"\x17MachineInventoryService\x12o\n" +
 	"\x12PushInventoryDelta\x12+.avf.machine.v1.ReportInventoryDeltaRequest\x1a,.avf.machine.v1.ReportInventoryDeltaResponse\x12q\n" +
 	"\x14GetInventorySnapshot\x12+.avf.machine.v1.GetInventorySnapshotRequest\x1a,.avf.machine.v1.GetInventorySnapshotResponse\x12e\n" +
 	"\x10AckInventorySync\x12'.avf.machine.v1.AckInventorySyncRequest\x1a(.avf.machine.v1.AckInventorySyncResponse\x12Y\n" +
-	"\fGetPlanogram\x12#.avf.machine.v1.GetPlanogramRequest\x1a$.avf.machine.v1.GetPlanogramResponse\x12n\n" +
+	"\fGetPlanogram\x12#.avf.machine.v1.GetPlanogramRequest\x1a$.avf.machine.v1.GetPlanogramResponse\x12z\n" +
+	"\x17GetPhysicalSlotTopology\x12..avf.machine.v1.GetPhysicalSlotTopologyRequest\x1a/.avf.machine.v1.GetPhysicalSlotTopologyResponse\x12n\n" +
 	"\x13SubmitStockSnapshot\x12*.avf.machine.v1.SubmitStockSnapshotRequest\x1a+.avf.machine.v1.SubmitStockSnapshotResponse\x12e\n" +
 	"\x10SubmitFillResult\x12'.avf.machine.v1.SubmitFillResultRequest\x1a(.avf.machine.v1.SubmitFillResultResponse\x12e\n" +
 	"\x10SubmitFillReport\x12'.avf.machine.v1.SubmitFillResultRequest\x1a(.avf.machine.v1.SubmitFillResultResponse\x12\\\n" +
@@ -1350,78 +1614,87 @@ func file_avf_machine_v1_inventory_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_inventory_proto_rawDescData
 }
 
-var file_avf_machine_v1_inventory_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_avf_machine_v1_inventory_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_avf_machine_v1_inventory_proto_goTypes = []any{
 	(*GetInventorySnapshotRequest)(nil),       // 0: avf.machine.v1.GetInventorySnapshotRequest
 	(*InventorySlotRow)(nil),                  // 1: avf.machine.v1.InventorySlotRow
 	(*GetInventorySnapshotResponse)(nil),      // 2: avf.machine.v1.GetInventorySnapshotResponse
 	(*GetPlanogramRequest)(nil),               // 3: avf.machine.v1.GetPlanogramRequest
 	(*GetPlanogramResponse)(nil),              // 4: avf.machine.v1.GetPlanogramResponse
-	(*RestockLine)(nil),                       // 5: avf.machine.v1.RestockLine
-	(*SubmitRestockRequest)(nil),              // 6: avf.machine.v1.SubmitRestockRequest
-	(*SubmitRestockResponse)(nil),             // 7: avf.machine.v1.SubmitRestockResponse
-	(*SubmitFillResultRequest)(nil),           // 8: avf.machine.v1.SubmitFillResultRequest
-	(*SubmitFillResultResponse)(nil),          // 9: avf.machine.v1.SubmitFillResultResponse
-	(*AdjustmentLine)(nil),                    // 10: avf.machine.v1.AdjustmentLine
-	(*SubmitInventoryAdjustmentRequest)(nil),  // 11: avf.machine.v1.SubmitInventoryAdjustmentRequest
-	(*SubmitInventoryAdjustmentResponse)(nil), // 12: avf.machine.v1.SubmitInventoryAdjustmentResponse
-	(*SubmitStockSnapshotRequest)(nil),        // 13: avf.machine.v1.SubmitStockSnapshotRequest
-	(*SubmitStockSnapshotResponse)(nil),       // 14: avf.machine.v1.SubmitStockSnapshotResponse
-	(*ReportInventoryDeltaRequest)(nil),       // 15: avf.machine.v1.ReportInventoryDeltaRequest
-	(*ReportInventoryDeltaResponse)(nil),      // 16: avf.machine.v1.ReportInventoryDeltaResponse
-	(*AckInventorySyncRequest)(nil),           // 17: avf.machine.v1.AckInventorySyncRequest
-	(*AckInventorySyncResponse)(nil),          // 18: avf.machine.v1.AckInventorySyncResponse
-	(*MachineRequestMeta)(nil),                // 19: avf.machine.v1.MachineRequestMeta
-	(*timestamppb.Timestamp)(nil),             // 20: google.protobuf.Timestamp
-	(*MachineResponseMeta)(nil),               // 21: avf.machine.v1.MachineResponseMeta
-	(*IdempotencyContext)(nil),                // 22: avf.machine.v1.IdempotencyContext
+	(*PhysicalSlotRow)(nil),                   // 5: avf.machine.v1.PhysicalSlotRow
+	(*GetPhysicalSlotTopologyRequest)(nil),    // 6: avf.machine.v1.GetPhysicalSlotTopologyRequest
+	(*GetPhysicalSlotTopologyResponse)(nil),   // 7: avf.machine.v1.GetPhysicalSlotTopologyResponse
+	(*RestockLine)(nil),                       // 8: avf.machine.v1.RestockLine
+	(*SubmitRestockRequest)(nil),              // 9: avf.machine.v1.SubmitRestockRequest
+	(*SubmitRestockResponse)(nil),             // 10: avf.machine.v1.SubmitRestockResponse
+	(*SubmitFillResultRequest)(nil),           // 11: avf.machine.v1.SubmitFillResultRequest
+	(*SubmitFillResultResponse)(nil),          // 12: avf.machine.v1.SubmitFillResultResponse
+	(*AdjustmentLine)(nil),                    // 13: avf.machine.v1.AdjustmentLine
+	(*SubmitInventoryAdjustmentRequest)(nil),  // 14: avf.machine.v1.SubmitInventoryAdjustmentRequest
+	(*SubmitInventoryAdjustmentResponse)(nil), // 15: avf.machine.v1.SubmitInventoryAdjustmentResponse
+	(*SubmitStockSnapshotRequest)(nil),        // 16: avf.machine.v1.SubmitStockSnapshotRequest
+	(*SubmitStockSnapshotResponse)(nil),       // 17: avf.machine.v1.SubmitStockSnapshotResponse
+	(*ReportInventoryDeltaRequest)(nil),       // 18: avf.machine.v1.ReportInventoryDeltaRequest
+	(*ReportInventoryDeltaResponse)(nil),      // 19: avf.machine.v1.ReportInventoryDeltaResponse
+	(*AckInventorySyncRequest)(nil),           // 20: avf.machine.v1.AckInventorySyncRequest
+	(*AckInventorySyncResponse)(nil),          // 21: avf.machine.v1.AckInventorySyncResponse
+	(*MachineRequestMeta)(nil),                // 22: avf.machine.v1.MachineRequestMeta
+	(*timestamppb.Timestamp)(nil),             // 23: google.protobuf.Timestamp
+	(*MachineResponseMeta)(nil),               // 24: avf.machine.v1.MachineResponseMeta
+	(*IdempotencyContext)(nil),                // 25: avf.machine.v1.IdempotencyContext
 }
 var file_avf_machine_v1_inventory_proto_depIdxs = []int32{
-	19, // 0: avf.machine.v1.GetInventorySnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	20, // 1: avf.machine.v1.GetInventorySnapshotResponse.server_time:type_name -> google.protobuf.Timestamp
+	22, // 0: avf.machine.v1.GetInventorySnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	23, // 1: avf.machine.v1.GetInventorySnapshotResponse.server_time:type_name -> google.protobuf.Timestamp
 	1,  // 2: avf.machine.v1.GetInventorySnapshotResponse.slots:type_name -> avf.machine.v1.InventorySlotRow
-	21, // 3: avf.machine.v1.GetInventorySnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	20, // 4: avf.machine.v1.GetPlanogramResponse.server_time:type_name -> google.protobuf.Timestamp
+	24, // 3: avf.machine.v1.GetInventorySnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	23, // 4: avf.machine.v1.GetPlanogramResponse.server_time:type_name -> google.protobuf.Timestamp
 	1,  // 5: avf.machine.v1.GetPlanogramResponse.slots:type_name -> avf.machine.v1.InventorySlotRow
-	22, // 6: avf.machine.v1.SubmitRestockRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	5,  // 7: avf.machine.v1.SubmitRestockRequest.lines:type_name -> avf.machine.v1.RestockLine
-	22, // 8: avf.machine.v1.SubmitFillResultRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	5,  // 9: avf.machine.v1.SubmitFillResultRequest.lines:type_name -> avf.machine.v1.RestockLine
-	22, // 10: avf.machine.v1.SubmitInventoryAdjustmentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	10, // 11: avf.machine.v1.SubmitInventoryAdjustmentRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
-	22, // 12: avf.machine.v1.SubmitStockSnapshotRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	10, // 13: avf.machine.v1.SubmitStockSnapshotRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
-	22, // 14: avf.machine.v1.ReportInventoryDeltaRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	19, // 15: avf.machine.v1.ReportInventoryDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	10, // 16: avf.machine.v1.ReportInventoryDeltaRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
-	21, // 17: avf.machine.v1.ReportInventoryDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	19, // 18: avf.machine.v1.AckInventorySyncRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	21, // 19: avf.machine.v1.AckInventorySyncResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	15, // 20: avf.machine.v1.MachineInventoryService.PushInventoryDelta:input_type -> avf.machine.v1.ReportInventoryDeltaRequest
-	0,  // 21: avf.machine.v1.MachineInventoryService.GetInventorySnapshot:input_type -> avf.machine.v1.GetInventorySnapshotRequest
-	17, // 22: avf.machine.v1.MachineInventoryService.AckInventorySync:input_type -> avf.machine.v1.AckInventorySyncRequest
-	3,  // 23: avf.machine.v1.MachineInventoryService.GetPlanogram:input_type -> avf.machine.v1.GetPlanogramRequest
-	13, // 24: avf.machine.v1.MachineInventoryService.SubmitStockSnapshot:input_type -> avf.machine.v1.SubmitStockSnapshotRequest
-	8,  // 25: avf.machine.v1.MachineInventoryService.SubmitFillResult:input_type -> avf.machine.v1.SubmitFillResultRequest
-	8,  // 26: avf.machine.v1.MachineInventoryService.SubmitFillReport:input_type -> avf.machine.v1.SubmitFillResultRequest
-	6,  // 27: avf.machine.v1.MachineInventoryService.SubmitRestock:input_type -> avf.machine.v1.SubmitRestockRequest
-	11, // 28: avf.machine.v1.MachineInventoryService.SubmitInventoryAdjustment:input_type -> avf.machine.v1.SubmitInventoryAdjustmentRequest
-	11, // 29: avf.machine.v1.MachineInventoryService.SubmitStockAdjustment:input_type -> avf.machine.v1.SubmitInventoryAdjustmentRequest
-	16, // 30: avf.machine.v1.MachineInventoryService.PushInventoryDelta:output_type -> avf.machine.v1.ReportInventoryDeltaResponse
-	2,  // 31: avf.machine.v1.MachineInventoryService.GetInventorySnapshot:output_type -> avf.machine.v1.GetInventorySnapshotResponse
-	18, // 32: avf.machine.v1.MachineInventoryService.AckInventorySync:output_type -> avf.machine.v1.AckInventorySyncResponse
-	4,  // 33: avf.machine.v1.MachineInventoryService.GetPlanogram:output_type -> avf.machine.v1.GetPlanogramResponse
-	14, // 34: avf.machine.v1.MachineInventoryService.SubmitStockSnapshot:output_type -> avf.machine.v1.SubmitStockSnapshotResponse
-	9,  // 35: avf.machine.v1.MachineInventoryService.SubmitFillResult:output_type -> avf.machine.v1.SubmitFillResultResponse
-	9,  // 36: avf.machine.v1.MachineInventoryService.SubmitFillReport:output_type -> avf.machine.v1.SubmitFillResultResponse
-	7,  // 37: avf.machine.v1.MachineInventoryService.SubmitRestock:output_type -> avf.machine.v1.SubmitRestockResponse
-	12, // 38: avf.machine.v1.MachineInventoryService.SubmitInventoryAdjustment:output_type -> avf.machine.v1.SubmitInventoryAdjustmentResponse
-	12, // 39: avf.machine.v1.MachineInventoryService.SubmitStockAdjustment:output_type -> avf.machine.v1.SubmitInventoryAdjustmentResponse
-	30, // [30:40] is the sub-list for method output_type
-	20, // [20:30] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	22, // 6: avf.machine.v1.GetPhysicalSlotTopologyRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	23, // 7: avf.machine.v1.GetPhysicalSlotTopologyResponse.server_time:type_name -> google.protobuf.Timestamp
+	5,  // 8: avf.machine.v1.GetPhysicalSlotTopologyResponse.slots:type_name -> avf.machine.v1.PhysicalSlotRow
+	24, // 9: avf.machine.v1.GetPhysicalSlotTopologyResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	25, // 10: avf.machine.v1.SubmitRestockRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	8,  // 11: avf.machine.v1.SubmitRestockRequest.lines:type_name -> avf.machine.v1.RestockLine
+	25, // 12: avf.machine.v1.SubmitFillResultRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	8,  // 13: avf.machine.v1.SubmitFillResultRequest.lines:type_name -> avf.machine.v1.RestockLine
+	25, // 14: avf.machine.v1.SubmitInventoryAdjustmentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	13, // 15: avf.machine.v1.SubmitInventoryAdjustmentRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
+	25, // 16: avf.machine.v1.SubmitStockSnapshotRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	13, // 17: avf.machine.v1.SubmitStockSnapshotRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
+	25, // 18: avf.machine.v1.ReportInventoryDeltaRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	22, // 19: avf.machine.v1.ReportInventoryDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	13, // 20: avf.machine.v1.ReportInventoryDeltaRequest.lines:type_name -> avf.machine.v1.AdjustmentLine
+	24, // 21: avf.machine.v1.ReportInventoryDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	22, // 22: avf.machine.v1.AckInventorySyncRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	24, // 23: avf.machine.v1.AckInventorySyncResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	18, // 24: avf.machine.v1.MachineInventoryService.PushInventoryDelta:input_type -> avf.machine.v1.ReportInventoryDeltaRequest
+	0,  // 25: avf.machine.v1.MachineInventoryService.GetInventorySnapshot:input_type -> avf.machine.v1.GetInventorySnapshotRequest
+	20, // 26: avf.machine.v1.MachineInventoryService.AckInventorySync:input_type -> avf.machine.v1.AckInventorySyncRequest
+	3,  // 27: avf.machine.v1.MachineInventoryService.GetPlanogram:input_type -> avf.machine.v1.GetPlanogramRequest
+	6,  // 28: avf.machine.v1.MachineInventoryService.GetPhysicalSlotTopology:input_type -> avf.machine.v1.GetPhysicalSlotTopologyRequest
+	16, // 29: avf.machine.v1.MachineInventoryService.SubmitStockSnapshot:input_type -> avf.machine.v1.SubmitStockSnapshotRequest
+	11, // 30: avf.machine.v1.MachineInventoryService.SubmitFillResult:input_type -> avf.machine.v1.SubmitFillResultRequest
+	11, // 31: avf.machine.v1.MachineInventoryService.SubmitFillReport:input_type -> avf.machine.v1.SubmitFillResultRequest
+	9,  // 32: avf.machine.v1.MachineInventoryService.SubmitRestock:input_type -> avf.machine.v1.SubmitRestockRequest
+	14, // 33: avf.machine.v1.MachineInventoryService.SubmitInventoryAdjustment:input_type -> avf.machine.v1.SubmitInventoryAdjustmentRequest
+	14, // 34: avf.machine.v1.MachineInventoryService.SubmitStockAdjustment:input_type -> avf.machine.v1.SubmitInventoryAdjustmentRequest
+	19, // 35: avf.machine.v1.MachineInventoryService.PushInventoryDelta:output_type -> avf.machine.v1.ReportInventoryDeltaResponse
+	2,  // 36: avf.machine.v1.MachineInventoryService.GetInventorySnapshot:output_type -> avf.machine.v1.GetInventorySnapshotResponse
+	21, // 37: avf.machine.v1.MachineInventoryService.AckInventorySync:output_type -> avf.machine.v1.AckInventorySyncResponse
+	4,  // 38: avf.machine.v1.MachineInventoryService.GetPlanogram:output_type -> avf.machine.v1.GetPlanogramResponse
+	7,  // 39: avf.machine.v1.MachineInventoryService.GetPhysicalSlotTopology:output_type -> avf.machine.v1.GetPhysicalSlotTopologyResponse
+	17, // 40: avf.machine.v1.MachineInventoryService.SubmitStockSnapshot:output_type -> avf.machine.v1.SubmitStockSnapshotResponse
+	12, // 41: avf.machine.v1.MachineInventoryService.SubmitFillResult:output_type -> avf.machine.v1.SubmitFillResultResponse
+	12, // 42: avf.machine.v1.MachineInventoryService.SubmitFillReport:output_type -> avf.machine.v1.SubmitFillResultResponse
+	10, // 43: avf.machine.v1.MachineInventoryService.SubmitRestock:output_type -> avf.machine.v1.SubmitRestockResponse
+	15, // 44: avf.machine.v1.MachineInventoryService.SubmitInventoryAdjustment:output_type -> avf.machine.v1.SubmitInventoryAdjustmentResponse
+	15, // 45: avf.machine.v1.MachineInventoryService.SubmitStockAdjustment:output_type -> avf.machine.v1.SubmitInventoryAdjustmentResponse
+	35, // [35:46] is the sub-list for method output_type
+	24, // [24:35] is the sub-list for method input_type
+	24, // [24:24] is the sub-list for extension type_name
+	24, // [24:24] is the sub-list for extension extendee
+	0,  // [0:24] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_inventory_proto_init() }
@@ -1431,14 +1704,15 @@ func file_avf_machine_v1_inventory_proto_init() {
 	}
 	file_avf_machine_v1_common_proto_init()
 	file_avf_machine_v1_inventory_proto_msgTypes[5].OneofWrappers = []any{}
-	file_avf_machine_v1_inventory_proto_msgTypes[10].OneofWrappers = []any{}
+	file_avf_machine_v1_inventory_proto_msgTypes[8].OneofWrappers = []any{}
+	file_avf_machine_v1_inventory_proto_msgTypes[13].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_inventory_proto_rawDesc), len(file_avf_machine_v1_inventory_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

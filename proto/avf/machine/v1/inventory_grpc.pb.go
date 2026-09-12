@@ -23,6 +23,7 @@ const (
 	MachineInventoryService_GetInventorySnapshot_FullMethodName      = "/avf.machine.v1.MachineInventoryService/GetInventorySnapshot"
 	MachineInventoryService_AckInventorySync_FullMethodName          = "/avf.machine.v1.MachineInventoryService/AckInventorySync"
 	MachineInventoryService_GetPlanogram_FullMethodName              = "/avf.machine.v1.MachineInventoryService/GetPlanogram"
+	MachineInventoryService_GetPhysicalSlotTopology_FullMethodName   = "/avf.machine.v1.MachineInventoryService/GetPhysicalSlotTopology"
 	MachineInventoryService_SubmitStockSnapshot_FullMethodName       = "/avf.machine.v1.MachineInventoryService/SubmitStockSnapshot"
 	MachineInventoryService_SubmitFillResult_FullMethodName          = "/avf.machine.v1.MachineInventoryService/SubmitFillResult"
 	MachineInventoryService_SubmitFillReport_FullMethodName          = "/avf.machine.v1.MachineInventoryService/SubmitFillReport"
@@ -41,6 +42,8 @@ type MachineInventoryServiceClient interface {
 	GetInventorySnapshot(ctx context.Context, in *GetInventorySnapshotRequest, opts ...grpc.CallOption) (*GetInventorySnapshotResponse, error)
 	AckInventorySync(ctx context.Context, in *AckInventorySyncRequest, opts ...grpc.CallOption) (*AckInventorySyncResponse, error)
 	GetPlanogram(ctx context.Context, in *GetPlanogramRequest, opts ...grpc.CallOption) (*GetPlanogramResponse, error)
+	// All current physical slot configs (includes unassigned / merge companions; not a sale catalog).
+	GetPhysicalSlotTopology(ctx context.Context, in *GetPhysicalSlotTopologyRequest, opts ...grpc.CallOption) (*GetPhysicalSlotTopologyResponse, error)
 	SubmitStockSnapshot(ctx context.Context, in *SubmitStockSnapshotRequest, opts ...grpc.CallOption) (*SubmitStockSnapshotResponse, error)
 	SubmitFillResult(ctx context.Context, in *SubmitFillResultRequest, opts ...grpc.CallOption) (*SubmitFillResultResponse, error)
 	// SubmitFillReport is an alias of SubmitFillResult (direct request/response; spec-native name).
@@ -93,6 +96,16 @@ func (c *machineInventoryServiceClient) GetPlanogram(ctx context.Context, in *Ge
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPlanogramResponse)
 	err := c.cc.Invoke(ctx, MachineInventoryService_GetPlanogram_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineInventoryServiceClient) GetPhysicalSlotTopology(ctx context.Context, in *GetPhysicalSlotTopologyRequest, opts ...grpc.CallOption) (*GetPhysicalSlotTopologyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPhysicalSlotTopologyResponse)
+	err := c.cc.Invoke(ctx, MachineInventoryService_GetPhysicalSlotTopology_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +182,8 @@ type MachineInventoryServiceServer interface {
 	GetInventorySnapshot(context.Context, *GetInventorySnapshotRequest) (*GetInventorySnapshotResponse, error)
 	AckInventorySync(context.Context, *AckInventorySyncRequest) (*AckInventorySyncResponse, error)
 	GetPlanogram(context.Context, *GetPlanogramRequest) (*GetPlanogramResponse, error)
+	// All current physical slot configs (includes unassigned / merge companions; not a sale catalog).
+	GetPhysicalSlotTopology(context.Context, *GetPhysicalSlotTopologyRequest) (*GetPhysicalSlotTopologyResponse, error)
 	SubmitStockSnapshot(context.Context, *SubmitStockSnapshotRequest) (*SubmitStockSnapshotResponse, error)
 	SubmitFillResult(context.Context, *SubmitFillResultRequest) (*SubmitFillResultResponse, error)
 	// SubmitFillReport is an alias of SubmitFillResult (direct request/response; spec-native name).
@@ -198,6 +213,9 @@ func (UnimplementedMachineInventoryServiceServer) AckInventorySync(context.Conte
 }
 func (UnimplementedMachineInventoryServiceServer) GetPlanogram(context.Context, *GetPlanogramRequest) (*GetPlanogramResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPlanogram not implemented")
+}
+func (UnimplementedMachineInventoryServiceServer) GetPhysicalSlotTopology(context.Context, *GetPhysicalSlotTopologyRequest) (*GetPhysicalSlotTopologyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPhysicalSlotTopology not implemented")
 }
 func (UnimplementedMachineInventoryServiceServer) SubmitStockSnapshot(context.Context, *SubmitStockSnapshotRequest) (*SubmitStockSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SubmitStockSnapshot not implemented")
@@ -307,6 +325,24 @@ func _MachineInventoryService_GetPlanogram_Handler(srv interface{}, ctx context.
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MachineInventoryServiceServer).GetPlanogram(ctx, req.(*GetPlanogramRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineInventoryService_GetPhysicalSlotTopology_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPhysicalSlotTopologyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineInventoryServiceServer).GetPhysicalSlotTopology(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineInventoryService_GetPhysicalSlotTopology_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineInventoryServiceServer).GetPhysicalSlotTopology(ctx, req.(*GetPhysicalSlotTopologyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -441,6 +477,10 @@ var MachineInventoryService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPlanogram",
 			Handler:    _MachineInventoryService_GetPlanogram_Handler,
+		},
+		{
+			MethodName: "GetPhysicalSlotTopology",
+			Handler:    _MachineInventoryService_GetPhysicalSlotTopology_Handler,
 		},
 		{
 			MethodName: "SubmitStockSnapshot",

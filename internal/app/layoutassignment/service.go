@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/planogram"
+	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
@@ -104,6 +105,15 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 	}
 	if err := s.Setup.SaveDraftOrCurrentSlotConfigsInTx(ctx, tx, in.MachineID, saveIn); err != nil {
 		return AssignServerLayoutResult{}, err
+	}
+	cfgRows, cfgErr := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, in.MachineID)
+	if cfgErr != nil {
+		return AssignServerLayoutResult{}, cfgErr
+	}
+	if tmpl, ok := physicaltopology.PickTemplateRow(cfgRows); ok {
+		if err := physicaltopology.EnsureMissingGridConfigs(ctx, tx, in.MachineID, rows, cols, tmpl); err != nil {
+			return AssignServerLayoutResult{}, err
+		}
 	}
 
 	if err := q.PlanogramSetMachinePublishedVersion(ctx, db.PlanogramSetMachinePublishedVersionParams{

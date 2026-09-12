@@ -645,6 +645,7 @@ func isMachineHotGRPCMethod(fullMethod string) bool {
 		machinev1.MachineMediaService_GetMediaManifest_FullMethodName,
 		machinev1.MachineInventoryService_GetInventorySnapshot_FullMethodName,
 		machinev1.MachineInventoryService_GetPlanogram_FullMethodName,
+		machinev1.MachineInventoryService_GetPhysicalSlotTopology_FullMethodName,
 		machinev1.MachineOperatorService_HeartbeatOperatorSession_FullMethodName,
 		machinev1.MachineCommerceService_GetOrderStatus_FullMethodName,
 		machinev1.MachineCommerceService_GetPaymentStatus_FullMethodName:
@@ -718,6 +719,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineInventoryService_GetInventorySnapshot_FullMethodName,
 		machinev1.MachineInventoryService_AckInventorySync_FullMethodName,
 		machinev1.MachineInventoryService_GetPlanogram_FullMethodName,
+		machinev1.MachineInventoryService_GetPhysicalSlotTopology_FullMethodName,
 		machinev1.MachineInventoryService_SubmitStockSnapshot_FullMethodName,
 		machinev1.MachineInventoryService_SubmitFillResult_FullMethodName,
 		machinev1.MachineInventoryService_SubmitFillReport_FullMethodName,
