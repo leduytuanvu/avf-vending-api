@@ -44,5 +44,25 @@ if [[ "${stdin}" != *"${SENTINEL}"* ]]; then
 	exit 1
 fi
 
+if [[ "${stdin}" == *'exec bash "$1" "$@"'* ]]; then
+	echo "FAIL: remote wrapper duplicates script path into release argv" >&2
+	exit 1
+fi
+
+SIM_ROOT="${CAPTURE_DIR}/remote-root"
+mkdir -p "${SIM_ROOT}/scripts"
+cat >"${SIM_ROOT}/scripts/release_app_node.sh" <<'EOF'
+#!/usr/bin/env bash
+printf 'ARGS:%s\n' "$*"
+EOF
+chmod +x "${SIM_ROOT}/scripts/release_app_node.sh"
+
+remote_out="$(printf '%s' "${stdin}" | bash -s -- "${SIM_ROOT}" "scripts/release_app_node.sh" "app@sha" "goose@sha")"
+if [[ "${remote_out}" != "ARGS:app@sha goose@sha" ]]; then
+	echo "FAIL: release script received wrong argv: ${remote_out}" >&2
+	exit 1
+fi
+
 echo "PASS  run_remote_script keeps GHCR token out of ssh argv"
 echo "PASS  run_remote_script delivers GHCR token via stdin only"
+echo "PASS  run_remote_script forwards image refs without duplicating script path"

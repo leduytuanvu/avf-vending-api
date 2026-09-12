@@ -2908,7 +2908,7 @@ jobs:
               printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
               printf 'export RUN_MIGRATION=%q\n' "0"
               # shellcheck disable=SC2016
-              printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$1" "$@"'
+              printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$@"'
             } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
               "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
               "scripts/rollback_app_node.sh" \
@@ -2917,7 +2917,7 @@ jobs:
             {
               printf 'export APP_NODE_ENABLE_TEMPORAL_PROFILE=%q\n' "${ENABLE_TEMPORAL_PROFILE}"
               # shellcheck disable=SC2016
-              printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$1" "$@"'
+              printf '%s\n' 'set -euo pipefail' 'cd "$1"' 'shift' 'exec bash "$@"'
             } | ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- \
               "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node" \
               "scripts/healthcheck_app_node.sh"
