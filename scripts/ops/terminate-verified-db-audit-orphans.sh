@@ -96,22 +96,9 @@ in_docker_cgroup() {
 }
 
 is_audit_shim_orphan() {
-	local pid="$1"
 	local cmdline="$2"
-	local ppid pcmd
 
-	if [[ "${cmdline}" == *".db-destroy-evidence/.bin/python3"* ]]; then
-		return 0
-	fi
-
-	ppid="$(awk '{print $4}' "/proc/${pid}/stat" 2>/dev/null || true)"
-	if [[ -n "${ppid}" && -r "/proc/${ppid}/cmdline" ]]; then
-		pcmd="$(proc_cmdline "${ppid}")"
-		if [[ "${pcmd}" == *"verify_database_environment.sh"* ]]; then
-			return 0
-		fi
-	fi
-	return 1
+	[[ "${cmdline}" == *".db-destroy-evidence/.bin/python3"* ]]
 }
 
 kill_verified_pid() {
