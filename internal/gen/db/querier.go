@@ -72,6 +72,7 @@ type Querier interface {
 	AnomaliesInsertTelemetryMissing(ctx context.Context) (int64, error)
 	ApplyMachineCommandAckTimeouts(ctx context.Context, ackDeadlineAt pgtype.Timestamptz) (int64, error)
 	ApplyMachineCommandLedgerExpired(ctx context.Context, timeoutAt pgtype.Timestamptz) (int64, error)
+	ArchiveMachineLayout(ctx context.Context, arg ArchiveMachineLayoutParams) (int64, error)
 	AuthAdminCountAccounts(ctx context.Context) (int64, error)
 	AuthAdminCountActiveOrgAdmins(ctx context.Context) (int64, error)
 	AuthAdminCountActiveOrgAdminsExcluding(ctx context.Context, id uuid.UUID) (int64, error)
@@ -221,6 +222,8 @@ type Querier interface {
 	CountFinanceDailyCloses(ctx context.Context) (int64, error)
 	CountMachineActivationCodesAll(ctx context.Context) (int64, error)
 	CountMachineCommandAttemptsByCommandID(ctx context.Context, commandID uuid.UUID) (int64, error)
+	CountMachineLayoutSnapshotHistory(ctx context.Context, arg CountMachineLayoutSnapshotHistoryParams) (int64, error)
+	CountMachineLayoutsForMachine(ctx context.Context, machineID uuid.UUID) (int64, error)
 	CountMachineSlotLayoutsMissingDimensionAudit(ctx context.Context) (int64, error)
 	CountMachineSlotLayoutsMissingDimensions(ctx context.Context) (int64, error)
 	CountPaymentDisputesForOrg(ctx context.Context) (int64, error)
@@ -338,6 +341,10 @@ type Querier interface {
 	GetMachineCredentialByMachineAndVersion(ctx context.Context, arg GetMachineCredentialByMachineAndVersionParams) (MachineCredential, error)
 	GetMachineCredentialGate(ctx context.Context, id uuid.UUID) (GetMachineCredentialGateRow, error)
 	GetMachineDeviceAttachmentByID(ctx context.Context, id uuid.UUID) (MachineDeviceAttachment, error)
+	GetMachineLayoutByID(ctx context.Context, arg GetMachineLayoutByIDParams) (MachineLayout, error)
+	GetMachineLayoutDeviceState(ctx context.Context, machineID uuid.UUID) (MachineLayoutDeviceState, error)
+	GetMachineLayoutSnapshotHistoryByDeviceSequence(ctx context.Context, arg GetMachineLayoutSnapshotHistoryByDeviceSequenceParams) (MachineLayoutSnapshotHistory, error)
+	GetMachineLayoutSnapshotHistoryBySnapshotID(ctx context.Context, snapshotID uuid.UUID) (MachineLayoutSnapshotHistory, error)
 	GetMachineLayoutState(ctx context.Context, machineID uuid.UUID) (MachineLayoutState, error)
 	GetMachineLocalLayoutMirror(ctx context.Context, machineID uuid.UUID) (MachineLocalLayoutMirror, error)
 	GetMachineMQTTCredentials(ctx context.Context, machineID uuid.UUID) (MachineMqttCredential, error)
@@ -409,7 +416,11 @@ type Querier interface {
 	InsertMachineConfigApplication(ctx context.Context, arg InsertMachineConfigApplicationParams) (MachineConfig, error)
 	InsertMachineCredential(ctx context.Context, arg InsertMachineCredentialParams) (MachineCredential, error)
 	InsertMachineDeviceAttachment(ctx context.Context, arg InsertMachineDeviceAttachmentParams) (MachineDeviceAttachment, error)
+	InsertMachineLayout(ctx context.Context, arg InsertMachineLayoutParams) (MachineLayout, error)
 	InsertMachineLayoutAssignment(ctx context.Context, arg InsertMachineLayoutAssignmentParams) (MachineLayoutAssignment, error)
+	InsertMachineLayoutMergePair(ctx context.Context, arg InsertMachineLayoutMergePairParams) error
+	InsertMachineLayoutSlot(ctx context.Context, arg InsertMachineLayoutSlotParams) error
+	InsertMachineLayoutSnapshotHistory(ctx context.Context, arg InsertMachineLayoutSnapshotHistoryParams) (MachineLayoutSnapshotHistory, error)
 	InsertMachineOfflineEvent(ctx context.Context, arg InsertMachineOfflineEventParams) (InsertMachineOfflineEventRow, error)
 	InsertMachineOperatorAuthEvent(ctx context.Context, arg InsertMachineOperatorAuthEventParams) (MachineOperatorAuthEvent, error)
 	InsertMachineOperatorSession(ctx context.Context, arg InsertMachineOperatorSessionParams) (MachineOperatorSession, error)
@@ -470,6 +481,10 @@ type Querier interface {
 	ListMachineActivationCodesForMachine(ctx context.Context, machineID uuid.UUID) ([]ListMachineActivationCodesForMachineRow, error)
 	ListMachineActivationCodesPaged(ctx context.Context, arg ListMachineActivationCodesPagedParams) ([]ListMachineActivationCodesPagedRow, error)
 	ListMachineDeviceAttachments(ctx context.Context, arg ListMachineDeviceAttachmentsParams) ([]MachineDeviceAttachment, error)
+	ListMachineLayoutMergePairs(ctx context.Context, layoutID uuid.UUID) ([]MachineLayoutMergePair, error)
+	ListMachineLayoutSlots(ctx context.Context, layoutID uuid.UUID) ([]MachineLayoutSlot, error)
+	ListMachineLayoutSnapshotHistoryPage(ctx context.Context, arg ListMachineLayoutSnapshotHistoryPageParams) ([]MachineLayoutSnapshotHistory, error)
+	ListMachineLayoutsForMachine(ctx context.Context, machineID uuid.UUID) ([]MachineLayout, error)
 	ListMachineOperatorAuthEventsByMachineID(ctx context.Context, arg ListMachineOperatorAuthEventsByMachineIDParams) ([]MachineOperatorAuthEvent, error)
 	ListMachinePaymentMethods(ctx context.Context, machineID uuid.UUID) ([]MachinePaymentMethod, error)
 	ListMachineRuntimeAppSessionHistory(ctx context.Context, arg ListMachineRuntimeAppSessionHistoryParams) ([]MachineRuntimeAppSession, error)
@@ -479,6 +494,7 @@ type Querier interface {
 	ListMachinesForTechnicianExternalSubject(ctx context.Context, externalSubject pgtype.Text) ([]ListMachinesForTechnicianExternalSubjectRow, error)
 	ListMachinesForTechnicianID(ctx context.Context, technicianID uuid.UUID) ([]ListMachinesForTechnicianIDRow, error)
 	ListMachinesOrderedByName(ctx context.Context) ([]Machine, error)
+	ListMachinesWithoutNamedLayout(ctx context.Context) ([]uuid.UUID, error)
 	ListOperatorSessionsByMachineID(ctx context.Context, arg ListOperatorSessionsByMachineIDParams) ([]MachineOperatorSession, error)
 	ListOperatorSessionsByTechnicianID(ctx context.Context, arg ListOperatorSessionsByTechnicianIDParams) ([]MachineOperatorSession, error)
 	ListOperatorSessionsByUserPrincipal(ctx context.Context, arg ListOperatorSessionsByUserPrincipalParams) ([]MachineOperatorSession, error)
@@ -709,6 +725,7 @@ type Querier interface {
 	// checksums, etag, and deterministic thumb/display keys (presigned HTTPS refresh on gRPC snapshot/manifest).
 	RuntimeListProductImagesForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeListProductImagesForProductsRow, error)
 	RuntimeProductPrimaryMediaReady(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeProductPrimaryMediaReadyRow, error)
+	SetMachineActiveLayoutPointers(ctx context.Context, arg SetMachineActiveLayoutPointersParams) error
 	SetVendSessionVerificationStatus(ctx context.Context, arg SetVendSessionVerificationStatusParams) (VendSession, error)
 	SettlementReferencedPaymentsTotalForOrg(ctx context.Context, arg SettlementReferencedPaymentsTotalForOrgParams) (SettlementReferencedPaymentsTotalForOrgRow, error)
 	SnapshotUpdateDeviceConfigFieldAck(ctx context.Context, arg SnapshotUpdateDeviceConfigFieldAckParams) error
@@ -754,6 +771,7 @@ type Querier interface {
 	UpdateMachineCurrentRuntimeAppSession(ctx context.Context, arg UpdateMachineCurrentRuntimeAppSessionParams) error
 	UpdateMachineCurrentSnapshotLastCheckIn(ctx context.Context, arg UpdateMachineCurrentSnapshotLastCheckInParams) error
 	UpdateMachineCurrentSnapshotRuntime(ctx context.Context, arg UpdateMachineCurrentSnapshotRuntimeParams) error
+	UpdateMachineLayoutMetadata(ctx context.Context, arg UpdateMachineLayoutMetadataParams) (MachineLayout, error)
 	UpdateMachineLayoutStateReported(ctx context.Context, arg UpdateMachineLayoutStateReportedParams) (int64, error)
 	UpdateMachineMetadataRow(ctx context.Context, arg UpdateMachineMetadataRowParams) (Machine, error)
 	UpdateMachineOfflineEventStatus(ctx context.Context, arg UpdateMachineOfflineEventStatusParams) error
@@ -775,6 +793,7 @@ type Querier interface {
 	UpsertCommerceReconciliationCase(ctx context.Context, arg UpsertCommerceReconciliationCaseParams) (CommerceReconciliationCase, error)
 	UpsertCriticalTelemetryEventStatus(ctx context.Context, arg UpsertCriticalTelemetryEventStatusParams) error
 	UpsertMachineIdempotencyKey(ctx context.Context, arg UpsertMachineIdempotencyKeyParams) (UpsertMachineIdempotencyKeyRow, error)
+	UpsertMachineLayoutDeviceState(ctx context.Context, arg UpsertMachineLayoutDeviceStateParams) (MachineLayoutDeviceState, error)
 	UpsertMachineLayoutStateDesired(ctx context.Context, arg UpsertMachineLayoutStateDesiredParams) error
 	UpsertMachineLocalLayoutMirror(ctx context.Context, arg UpsertMachineLocalLayoutMirrorParams) error
 	UpsertMachineMQTTCredentials(ctx context.Context, arg UpsertMachineMQTTCredentialsParams) error

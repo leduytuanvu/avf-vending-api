@@ -536,6 +536,254 @@ func marshalReportLocalLayoutSlots(slots []*machinev1.ReportLocalLayoutSlot) ([]
 	return json.Marshal(out)
 }
 
+func (s *machineBootstrapServer) GetMachineLayoutLibrary(ctx context.Context, req *machinev1.GetMachineLayoutLibraryRequest) (*machinev1.GetMachineLayoutLibraryResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	svc := &layoutassignment.Service{Pool: s.deps.Pool}
+	lib, err := svc.GetMachineLayoutLibrary(ctx, claims.MachineID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "layout_library_not_found")
+	}
+	summaries := make([]*machinev1.MachineLayoutSummary, 0, len(lib.Layouts))
+	for _, row := range lib.Layouts {
+		summaries = append(summaries, &machinev1.MachineLayoutSummary{
+			LayoutId:    row.LayoutID.String(),
+			Name:        row.Name,
+			Status:      row.Status,
+			GridRows:    row.GridRows,
+			GridCols:    row.GridCols,
+			LayoutRevision: row.Revision,
+			Fingerprint: row.Fingerprint,
+		})
+	}
+	rid := ""
+	if req != nil && req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	resp := &machinev1.GetMachineLayoutLibraryResponse{
+		Meta:     responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Layouts:  summaries,
+	}
+	if lib.ActiveLayoutID != nil {
+		resp.ActiveLayoutId = lib.ActiveLayoutID.String()
+	}
+	if lib.DesiredActiveLayoutID != nil {
+		resp.DesiredActiveLayoutId = lib.DesiredActiveLayoutID.String()
+	}
+	if lib.ReportedActiveLayoutID != nil {
+		resp.ReportedActiveLayoutId = lib.ReportedActiveLayoutID.String()
+	}
+	return resp, nil
+}
+
+func (s *machineBootstrapServer) ReportLayoutSnapshot(ctx context.Context, req *machinev1.ReportLayoutSnapshotRequest) (*machinev1.ReportLayoutSnapshotResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	in, err := mapReportLayoutSnapshotRequest(claims.MachineID, req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	svc := &layoutassignment.Service{Pool: s.deps.Pool}
+	out, rerr := svc.ReportLayoutSnapshot(ctx, layoutassignment.MachineAuthContext{MachineID: claims.MachineID}, in)
+	if rerr != nil {
+		return nil, mapReportLayoutSnapshotError(rerr)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.ReportLayoutSnapshotResponse{
+		Meta:                  responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Accepted:              out.Accepted,
+		Duplicate:             out.Duplicate,
+		StoredSnapshotId:      out.StoredSnapshotID.String(),
+		StoredCaptureSequence: out.StoredCaptureSequence,
+		StoredFingerprint:     out.StoredFingerprint,
+	}, nil
+}
+
+func (s *machineBootstrapServer) ReportLayoutSnapshotBatch(ctx context.Context, req *machinev1.ReportLayoutSnapshotBatchRequest) (*machinev1.ReportLayoutSnapshotBatchResponse, error) {
+	if req == nil || len(req.GetSnapshots()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "snapshots required")
+	}
+	results := make([]*machinev1.ReportLayoutSnapshotResponse, 0, len(req.GetSnapshots()))
+	for _, snap := range req.GetSnapshots() {
+		out, err := s.ReportLayoutSnapshot(ctx, snap)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, out)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.ReportLayoutSnapshotBatchResponse{
+		Meta:    responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Results: results,
+	}, nil
+}
+
+func (s *machineBootstrapServer) AckLayoutActivation(ctx context.Context, req *machinev1.AckLayoutActivationRequest) (*machinev1.AckLayoutActivationResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	layoutID, err := uuid.Parse(strings.TrimSpace(req.GetLayoutId()))
+	if err != nil || layoutID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid_layout_id")
+	}
+	svc := &layoutassignment.Service{Pool: s.deps.Pool}
+	out, rerr := svc.AckLayoutActivation(ctx, layoutassignment.MachineAuthContext{MachineID: claims.MachineID}, layoutassignment.AckLayoutActivationInput{
+		MachineID:        claims.MachineID,
+		LayoutID:         layoutID,
+		CaptureSequence:  req.GetCaptureSequence(),
+		Fingerprint:      req.GetFingerprint(),
+		DeviceInstanceID: req.GetDeviceInstanceId(),
+	})
+	if rerr != nil {
+		return nil, mapReportLayoutSnapshotError(rerr)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.AckLayoutActivationResponse{
+		Meta:                     responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Accepted:                 out.Accepted,
+		ReportedActiveLayoutId:   out.ReportedActiveLayoutID.String(),
+	}, nil
+}
+
+func mapReportLayoutSnapshotRequest(machineID uuid.UUID, req *machinev1.ReportLayoutSnapshotRequest) (layoutassignment.ReportLayoutSnapshotInput, error) {
+	snapshotID, err := uuid.Parse(strings.TrimSpace(req.GetSnapshotId()))
+	if err != nil || snapshotID == uuid.Nil {
+		return layoutassignment.ReportLayoutSnapshotInput{}, fmt.Errorf("invalid_snapshot_id")
+	}
+	layoutID, err := uuid.Parse(strings.TrimSpace(req.GetLayoutId()))
+	if err != nil || layoutID == uuid.Nil {
+		return layoutassignment.ReportLayoutSnapshotInput{}, fmt.Errorf("invalid_layout_id")
+	}
+	activeLayoutID := layoutID
+	if strings.TrimSpace(req.GetActiveLayoutId()) != "" {
+		activeLayoutID, err = uuid.Parse(strings.TrimSpace(req.GetActiveLayoutId()))
+		if err != nil || activeLayoutID == uuid.Nil {
+			return layoutassignment.ReportLayoutSnapshotInput{}, fmt.Errorf("invalid_active_layout_id")
+		}
+	}
+	slotsJSON, err := marshalLayoutSnapshotSlots(req.GetSlots())
+	if err != nil {
+		return layoutassignment.ReportLayoutSnapshotInput{}, err
+	}
+	capturedAt := time.Now().UTC()
+	if req.GetCapturedAt() != nil {
+		capturedAt = req.GetCapturedAt().AsTime().UTC()
+	}
+	var baseRev *int32
+	if req.GetBaseServerRevision() > 0 {
+		v := req.GetBaseServerRevision()
+		baseRev = &v
+	}
+	return layoutassignment.ReportLayoutSnapshotInput{
+		MachineID:          machineID,
+		SnapshotID:         snapshotID,
+		LayoutID:           layoutID,
+		LayoutName:         req.GetLayoutName(),
+		DeviceInstanceID:   req.GetDeviceInstanceId(),
+		CaptureSequence:    req.GetCaptureSequence(),
+		DeviceGeneration:   req.GetDeviceGeneration(),
+		CapturedAt:         capturedAt,
+		IntervalKey:        req.GetIntervalKey(),
+		BaseServerRevision: baseRev,
+		Fingerprint:        req.GetFingerprint(),
+		PayloadVersion:     req.GetPayloadVersion(),
+		SnapshotReason:     mapSnapshotReasonProto(req.GetSnapshotReason()),
+		GridRows:           req.GetGridRows(),
+		GridCols:           req.GetGridCols(),
+		ActiveLayoutID:     activeLayoutID,
+		SlotsJSON:          slotsJSON,
+	}, nil
+}
+
+func mapSnapshotReasonProto(reason machinev1.LayoutSnapshotReason) string {
+	switch reason {
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_30M:
+		return layoutassignment.SnapshotReasonPeriodic30M
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC:
+		return layoutassignment.SnapshotReasonManualSync
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_RECONNECT:
+		return layoutassignment.SnapshotReasonReconnect
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_ACTIVATION:
+		return layoutassignment.SnapshotReasonActivation
+	default:
+		return layoutassignment.SnapshotReasonLegacyReport
+	}
+}
+
+func marshalLayoutSnapshotSlots(slots []*machinev1.LayoutSnapshotSlot) ([]byte, error) {
+	if len(slots) == 0 {
+		return nil, fmt.Errorf("slots required")
+	}
+	type slotJSON struct {
+		SlotCode             string `json:"slotCode"`
+		SlotOrdinal          int32  `json:"slotOrdinal,omitempty"`
+		LogicalCoordinate    string `json:"logicalCoordinate,omitempty"`
+		PhysicalLane         int32  `json:"physicalLane,omitempty"`
+		ProductID            string `json:"productId,omitempty"`
+		MaxQuantity          int32  `json:"maxQuantity,omitempty"`
+		PriceMinor           int64  `json:"priceMinor,omitempty"`
+		LocalPricingRevision int64  `json:"localPricingRevision,omitempty"`
+		CurrentInventory     int32  `json:"currentInventory,omitempty"`
+		Enabled              bool   `json:"enabled,omitempty"`
+		OperationalState     string `json:"operationalState,omitempty"`
+	}
+	out := make([]slotJSON, 0, len(slots))
+	for _, sl := range slots {
+		if sl == nil {
+			return nil, fmt.Errorf("slot entry required")
+		}
+		out = append(out, slotJSON{
+			SlotCode:             strings.TrimSpace(sl.GetSlotCode()),
+			SlotOrdinal:          sl.GetSlotOrdinal(),
+			LogicalCoordinate:    strings.TrimSpace(sl.GetLogicalCoordinate()),
+			PhysicalLane:         sl.GetPhysicalLane(),
+			ProductID:            strings.TrimSpace(sl.GetProductId()),
+			MaxQuantity:          sl.GetMaxQuantity(),
+			PriceMinor:           sl.GetPriceMinor(),
+			LocalPricingRevision: sl.GetLocalPricingRevision(),
+			CurrentInventory:     sl.GetCurrentInventory(),
+			Enabled:              sl.GetEnabled(),
+			OperationalState:     strings.TrimSpace(sl.GetOperationalState()),
+		})
+	}
+	return json.Marshal(out)
+}
+
+func mapReportLayoutSnapshotError(err error) error {
+	switch {
+	case errors.Is(err, layoutassignment.ErrLayoutNotFound):
+		return status.Error(codes.NotFound, "layout_not_found")
+	case errors.Is(err, layoutassignment.ErrSnapshotSchemaUnsupported):
+		return status.Error(codes.InvalidArgument, "snapshot_schema_unsupported")
+	case errors.Is(err, layoutassignment.ErrStaleLayoutRevision):
+		return status.Error(codes.FailedPrecondition, "stale_layout_revision")
+	case errors.Is(err, layoutassignment.ErrInvalidDimensions):
+		return status.Error(codes.InvalidArgument, "invalid_dimensions")
+	default:
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+}
+
 func mapReportLocalLayoutError(err error) error {
 	switch {
 	case errors.Is(err, layoutassignment.ErrLayoutRevisionConflict):

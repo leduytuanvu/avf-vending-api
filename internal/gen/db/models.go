@@ -584,6 +584,9 @@ type Machine struct {
 	OnlineStatus                string
 	SaleEnabled                 bool
 	MachineType                 pgtype.Text
+	ActiveLayoutID              pgtype.UUID
+	DesiredActiveLayoutID       pgtype.UUID
+	ReportedActiveLayoutID      pgtype.UUID
 }
 
 // Links domain actions to operator_session_id when known; resource_type/resource_id are polymorphic (e.g. command_ledger uuid as text).
@@ -928,6 +931,21 @@ type MachineLaneMergePair struct {
 	UpdatedAt         time.Time
 }
 
+type MachineLayout struct {
+	ID                      uuid.UUID
+	MachineID               uuid.UUID
+	Name                    string
+	Status                  string
+	GridRows                int32
+	GridCols                int32
+	LayoutRevision          int32
+	Fingerprint             string
+	SourceTemplateVersionID pgtype.UUID
+	IsArchived              bool
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+}
+
 type MachineLayoutAssignment struct {
 	ID                 uuid.UUID
 	MachineID          uuid.UUID
@@ -944,6 +962,64 @@ type MachineLayoutAssignment struct {
 	EffectiveTo        pgtype.Timestamptz
 	CreatedAt          time.Time
 	CreatedBy          pgtype.UUID
+}
+
+type MachineLayoutDeviceState struct {
+	MachineID             uuid.UUID
+	LayoutID              uuid.UUID
+	LatestSnapshotID      pgtype.UUID
+	LatestCaptureSequence int64
+	DeviceGeneration      int64
+	Fingerprint           string
+	ReportedAt            time.Time
+	DeviceInstanceID      string
+	UpdatedAt             time.Time
+}
+
+type MachineLayoutMergePair struct {
+	ID            uuid.UUID
+	LayoutID      uuid.UUID
+	LeftSlotCode  string
+	RightSlotCode string
+	CreatedAt     time.Time
+}
+
+type MachineLayoutSlot struct {
+	LayoutID         uuid.UUID
+	SlotCode         string
+	SlotOrdinal      int32
+	SlotRow          pgtype.Int4
+	SlotColumn       pgtype.Int4
+	PhysicalLane     pgtype.Int4
+	BoardAddress     pgtype.Text
+	ChannelAddress   pgtype.Text
+	ProductID        pgtype.UUID
+	MaxQuantity      int32
+	PriceMinor       pgtype.Int8
+	CurrentInventory int32
+	Enabled          bool
+	OperationalState string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type MachineLayoutSnapshotHistory struct {
+	ID                 uuid.UUID
+	SnapshotID         uuid.UUID
+	MachineID          uuid.UUID
+	LayoutID           uuid.UUID
+	DeviceInstanceID   string
+	CaptureSequence    int64
+	IntervalKey        pgtype.Text
+	CapturedAt         time.Time
+	ReceivedAt         time.Time
+	DeviceGeneration   int64
+	BaseServerRevision pgtype.Int4
+	Fingerprint        string
+	SnapshotReason     string
+	PayloadVersion     int32
+	Payload            []byte
+	CreatedAt          time.Time
 }
 
 type MachineLayoutState struct {

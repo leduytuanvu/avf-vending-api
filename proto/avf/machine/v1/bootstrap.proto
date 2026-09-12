@@ -15,6 +15,10 @@ service MachineBootstrapService {
   rpc AckConfigVersion(AckConfigVersionRequest) returns (AckConfigVersionResponse);
   rpc CheckForUpdates(CheckForUpdatesRequest) returns (CheckForUpdatesResponse);
   rpc ReportLocalLayout(ReportLocalLayoutRequest) returns (ReportLocalLayoutResponse);
+  rpc GetMachineLayoutLibrary(GetMachineLayoutLibraryRequest) returns (GetMachineLayoutLibraryResponse);
+  rpc ReportLayoutSnapshot(ReportLayoutSnapshotRequest) returns (ReportLayoutSnapshotResponse);
+  rpc ReportLayoutSnapshotBatch(ReportLayoutSnapshotBatchRequest) returns (ReportLayoutSnapshotBatchResponse);
+  rpc AckLayoutActivation(AckLayoutActivationRequest) returns (AckLayoutActivationResponse);
 }
 
 enum LayoutSource {
@@ -268,4 +272,108 @@ message ReportLocalLayoutResponse {
   int32 stored_revision = 3;
   int64 stored_generation = 4;
   string stored_fingerprint = 5;
+}
+
+enum LayoutSnapshotReason {
+  LAYOUT_SNAPSHOT_REASON_UNSPECIFIED = 0;
+  LAYOUT_SNAPSHOT_REASON_PERIODIC_30M = 1;
+  LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC = 2;
+  LAYOUT_SNAPSHOT_REASON_RECONNECT = 3;
+  LAYOUT_SNAPSHOT_REASON_ACTIVATION = 4;
+  LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT = 5;
+}
+
+message LayoutSnapshotMergePair {
+  string left_slot_code = 1;
+  string right_slot_code = 2;
+}
+
+message LayoutSnapshotSlot {
+  string slot_code = 1;
+  int32 slot_ordinal = 2;
+  string logical_coordinate = 3;
+  int32 physical_lane = 4;
+  string product_id = 5;
+  int32 max_quantity = 6;
+  int64 price_minor = 7;
+  int64 local_pricing_revision = 8;
+  int32 current_inventory = 9;
+  bool enabled = 10;
+  string operational_state = 11;
+}
+
+message MachineLayoutSummary {
+  string layout_id = 1;
+  string name = 2;
+  string status = 3;
+  int32 grid_rows = 4;
+  int32 grid_cols = 5;
+  int32 layout_revision = 6;
+  string fingerprint = 7;
+}
+
+message GetMachineLayoutLibraryRequest {
+  MachineRequestMeta meta = 1;
+}
+
+message GetMachineLayoutLibraryResponse {
+  MachineResponseMeta meta = 1;
+  repeated MachineLayoutSummary layouts = 2;
+  string active_layout_id = 3;
+  string desired_active_layout_id = 4;
+  string reported_active_layout_id = 5;
+}
+
+message ReportLayoutSnapshotRequest {
+  MachineRequestMeta meta = 1;
+  string snapshot_id = 2;
+  string layout_id = 3;
+  string layout_name = 4;
+  string device_instance_id = 5;
+  int64 capture_sequence = 6;
+  int64 device_generation = 7;
+  google.protobuf.Timestamp captured_at = 8;
+  string interval_key = 9;
+  int32 base_server_revision = 10;
+  string fingerprint = 11;
+  int32 payload_version = 12;
+  LayoutSnapshotReason snapshot_reason = 13;
+  int32 grid_rows = 14;
+  int32 grid_cols = 15;
+  string active_layout_id = 16;
+  repeated LayoutSnapshotMergePair merge_pairs = 17;
+  repeated LayoutSnapshotSlot slots = 18;
+}
+
+message ReportLayoutSnapshotResponse {
+  MachineResponseMeta meta = 1;
+  bool accepted = 2;
+  bool duplicate = 3;
+  string stored_snapshot_id = 4;
+  int64 stored_capture_sequence = 5;
+  string stored_fingerprint = 6;
+}
+
+message ReportLayoutSnapshotBatchRequest {
+  MachineRequestMeta meta = 1;
+  repeated ReportLayoutSnapshotRequest snapshots = 2;
+}
+
+message ReportLayoutSnapshotBatchResponse {
+  MachineResponseMeta meta = 1;
+  repeated ReportLayoutSnapshotResponse results = 2;
+}
+
+message AckLayoutActivationRequest {
+  MachineRequestMeta meta = 1;
+  string layout_id = 2;
+  int64 capture_sequence = 3;
+  string fingerprint = 4;
+  string device_instance_id = 5;
+}
+
+message AckLayoutActivationResponse {
+  MachineResponseMeta meta = 1;
+  bool accepted = 2;
+  string reported_active_layout_id = 3;
 }

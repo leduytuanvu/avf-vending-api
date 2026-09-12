@@ -3,6 +3,7 @@ package layoutassignment
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -16,7 +17,35 @@ import (
 )
 
 // ReportLocalLayout upserts the LOCAL mirror and reported layout state in one transaction.
+// When snapshot ingest is enabled, also appends immutable history via ReportLayoutSnapshot.
 func (s *Service) ReportLocalLayout(ctx context.Context, auth MachineAuthContext, in ReportLocalLayoutInput) (ReportLocalLayoutResult, error) {
+	if SnapshotIngestEnabled(ctx, s.FeatureFlags, in.MachineID) {
+		snapIn := ReportLayoutSnapshotFromLocalLayout(in)
+		if snapIn.CapturedAt.IsZero() {
+			snapIn.CapturedAt = time.Now().UTC()
+		}
+		snapOut, snapErr := s.ReportLayoutSnapshot(ctx, auth, snapIn)
+		if snapErr != nil {
+			if errors.Is(snapErr, ErrLayoutRevisionConflict) {
+				return ReportLocalLayoutResult{}, snapErr
+			}
+			// Fall through to legacy mirror path when layout row missing during rollout.
+			if !errors.Is(snapErr, ErrLayoutNotFound) {
+				return ReportLocalLayoutResult{}, snapErr
+			}
+		} else {
+			return ReportLocalLayoutResult{
+				Accepted:          snapOut.Accepted,
+				StoredRevision:    snapOut.StoredRevision,
+				StoredGeneration:  snapOut.StoredGeneration,
+				StoredFingerprint: snapOut.StoredFingerprint,
+			}, nil
+		}
+	}
+	return s.reportLocalLayoutLegacy(ctx, auth, in)
+}
+
+func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthContext, in ReportLocalLayoutInput) (ReportLocalLayoutResult, error) {
 	if s.Pool == nil {
 		return ReportLocalLayoutResult{}, fmt.Errorf("database pool is not configured")
 	}
