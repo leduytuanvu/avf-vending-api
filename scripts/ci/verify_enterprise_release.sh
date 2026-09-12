@@ -87,6 +87,12 @@ phase_github_workflow_cicd_contract() {
   echo "OK: workflow CICD contract"
 }
 
+phase_python3_shim_safety() {
+  section "Phase 4b: python3 shim safety (audit/wipe tooling)"
+  bash scripts/ci/check_python3_shim_safety.sh
+  echo "OK: python3 shim safety"
+}
+
 phase_shell_syntax() {
   section "Phase 4: Bash syntax (bash -n) — scripts/**/*.sh and deployments/**/*.sh"
   local n files=()
@@ -323,6 +329,7 @@ main() {
   phase_postman_check
   phase_github_workflow_cicd_contract
   phase_shell_syntax
+  phase_python3_shim_safety
   phase_docker_compose
   phase_openapi_release
   phase_stale_p0_docs
