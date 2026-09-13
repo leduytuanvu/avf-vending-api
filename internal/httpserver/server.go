@@ -365,13 +365,15 @@ func mountV1(r chi.Router, app *api.HTTPApplication, log *zap.Logger, cfg *confi
 				})
 			})
 
+			// Machine-auth merge-pairs (not legacy runtime): required by deployed APKs when legacy REST is disabled.
+			mountMachinePlanogramMergePairRoute(r, app)
+
 			if cfg.TransportBoundary.MachineRESTLegacyEnabled {
 				// Legacy machine REST runtime (deprecated): setup, catalog HTTP, shadow, telemetry reads — superseded by gRPC.
 				r.Group(func(r chi.Router) {
 					r.Use(machineLegacyRESTGuard(cfg))
 					mountSetupBootstrapRoutes(r, app)
 					mountSaleCatalogRoute(r, app)
-					mountMachinePlanogramMergePairRoute(r, app)
 					r.With(RequireMachineCompanyAccess(app, "machineId")).Get("/machines/{machineId}/shadow", machineShadowGet(app.MachineShadow))
 					mountMachineTelemetryRoutes(r, app, abuse)
 				})

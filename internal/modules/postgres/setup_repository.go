@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/app/sellreadiness"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -177,12 +178,29 @@ func syncPrimaryAssortmentFromPublishedSlots(ctx context.Context, tx pgx.Tx, mac
 
 func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, in setupapp.SlotConfigSaveInput) error {
 	q := pgxutil.NewQueries(tx)
-	_, err := q.GetMachineByIDForUpdate(ctx, machineID)
+	machine, err := q.GetMachineByIDForUpdate(ctx, machineID)
 	if err != nil {
 		if isNoRows(err) {
 			return setupapp.ErrNotFound
 		}
 		return err
+	}
+
+	if len(in.Items) > 0 {
+		gridRows, gridCols := fleet.DefaultBootstrapGridDimensions()
+		if machine.ActiveLayoutID.Valid {
+			layoutID := uuid.UUID(machine.ActiveLayoutID.Bytes)
+			if layout, layErr := q.GetMachineLayoutByID(ctx, db.GetMachineLayoutByIDParams{
+				ID:        layoutID,
+				MachineID: machineID,
+			}); layErr == nil {
+				gridRows, gridCols = layout.GridRows, layout.GridCols
+			}
+		}
+		if _, matErr := fleet.MaterializeCommerceTopologyInTx(ctx, tx, machineID, gridRows, gridCols, "planogram_publish"); matErr != nil {
+			return matErr
+		}
+		_ = machine // used above
 	}
 
 	if in.PublishAsCurrent {

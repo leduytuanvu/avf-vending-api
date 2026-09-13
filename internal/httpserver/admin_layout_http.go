@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/app/layoutassignment"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
@@ -391,7 +392,19 @@ func getAdminMachineLayouts(app *api.HTTPApplication) http.HandlerFunc {
 			writeLayoutAssignmentError(w, r, err)
 			return
 		}
-		writeJSON(w, http.StatusOK, lib)
+		payload := map[string]any{
+			"machineId":              lib.MachineID.String(),
+			"layouts":                lib.Layouts,
+			"activeLayoutId":         lib.ActiveLayoutID,
+			"desiredActiveLayoutId":  lib.DesiredActiveLayoutID,
+			"reportedActiveLayoutId": lib.ReportedActiveLayoutID,
+		}
+		if app.TelemetryStore != nil && app.TelemetryStore.Pool() != nil {
+			if readiness, rerr := fleet.LoadCommerceReadiness(r.Context(), app.TelemetryStore.Pool(), machineID); rerr == nil {
+				payload["commerceReadiness"] = readiness
+			}
+		}
+		writeJSON(w, http.StatusOK, payload)
 	}
 }
 

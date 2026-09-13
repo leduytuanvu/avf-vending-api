@@ -17,6 +17,11 @@ const defaultSlotCapacity = int32(6)
 const defaultBootstrapGridRows = int32(6)
 const defaultBootstrapGridCols = int32(10)
 
+// DefaultBootstrapGridDimensions returns the default grid size for commerce topology materialization.
+func DefaultBootstrapGridDimensions() (int32, int32) {
+	return defaultBootstrapGridRows, defaultBootstrapGridCols
+}
+
 // BootstrapDefaultLayout1 creates the initial named layout for a newly provisioned machine.
 func BootstrapDefaultLayout1(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, rows, cols int32) (uuid.UUID, error) {
 	if machineID == uuid.Nil {
@@ -64,6 +69,9 @@ func BootstrapDefaultLayout1(ctx context.Context, tx pgx.Tx, machineID uuid.UUID
 		DesiredActiveLayoutID:  pgtype.UUID{Bytes: layoutRow.ID, Valid: true},
 		ReportedActiveLayoutID: pgtype.UUID{Bytes: layoutRow.ID, Valid: true},
 	}); err != nil {
+		return uuid.Nil, err
+	}
+	if _, err := MaterializeCommerceTopologyInTx(ctx, tx, machineID, rows, cols, "bootstrap"); err != nil {
 		return uuid.Nil, err
 	}
 	return layoutRow.ID, nil
