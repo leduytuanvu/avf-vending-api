@@ -4,13 +4,23 @@
 
 SELECT id AS machine_id
 FROM machines
-WHERE code = :'machine_code'
+WHERE
+    (
+        btrim(:'machine_id') <> ''
+        AND id = :'machine_id'::uuid
+    )
+    OR (
+        btrim(code) <> ''
+        AND lower(btrim(code)) = lower(btrim(:'machine_code'))
+    )
+ORDER BY
+    CASE WHEN btrim(:'machine_id') <> '' AND id = :'machine_id'::uuid THEN 0 ELSE 1 END
 LIMIT 1
 \gset
 
 \if :{?machine_id}
 \else
-\echo enable-qr-snapshot: error: machine not found for code :machine_code
+\echo enable-qr-snapshot: error: machine not found for code :machine_code id=:machine_id
 \quit 1
 \endif
 
