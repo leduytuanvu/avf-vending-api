@@ -27,6 +27,9 @@ POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
 : "${ADMIN_TOKEN:=${E2E_PROD_ADMIN_TOKEN:-}}"
 
 e2e_require_cmd curl jq
+if [[ -n "${GITHUB_ACTIONS:-}" || "${FORCE_DB:-0}" == "1" ]]; then
+  E2E_OUTPUT_DIR="${E2E_OUTPUT_DIR:-/tmp/avf-production-enable-qr-snapshot}"
+fi
 e2e_init_run_dir "production-enable-qr-snapshot"
 
 fail() { echo "enable-qr-snapshot: error: $*" >&2; exit 1; }
