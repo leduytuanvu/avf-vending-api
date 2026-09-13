@@ -83,12 +83,7 @@ func (s *Store) InsertMQTTDispatchAttemptWithLedgerMeta(ctx context.Context, com
 	if correlationID != nil {
 		corr = pgtype.UUID{Bytes: *correlationID, Valid: true}
 	}
-	att, err := q.InsertMachineCommandAttempt(ctx, db.InsertMachineCommandAttemptParams{
-		CommandID:          commandID,
-		MachineID:          machineID,
-		CorrelationID:      corr,
-		RequestPayloadJson: requestWireJSON,
-	})
+	att, err := insertMachineCommandAttemptJSON(ctx, tx, commandID, machineID, corr, requestWireJSON)
 	if err != nil {
 		return db.MachineCommandAttempt{}, err
 	}

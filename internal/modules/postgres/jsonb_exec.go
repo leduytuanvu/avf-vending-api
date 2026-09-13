@@ -7,6 +7,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // insertInventoryEventsBatchJSON inserts inventory_events from a JSON array string.
@@ -151,6 +152,87 @@ RETURNING
 		&i.SourceEventID,
 		&i.OperatorSessionID,
 		&i.MaxDispatchAttempts,
+	)
+	return i, err
+}
+
+func insertMachineCommandAttemptJSON(
+	ctx context.Context,
+	tx pgx.Tx,
+	commandID, machineID uuid.UUID,
+	correlationID pgtype.UUID,
+	wire []byte,
+) (db.MachineCommandAttempt, error) {
+	const q = `
+INSERT INTO machine_command_attempts (
+    command_id,
+    machine_id,
+    attempt_no,
+    sent_at,
+    status,
+    correlation_id,
+    request_payload_json
+)
+VALUES (
+    $1,
+    $2,
+    (
+        SELECT COALESCE(MAX(attempt_no), 0) + 1
+        FROM machine_command_attempts mc
+        WHERE
+            mc.command_id = $1
+    ),
+    now(),
+    'pending',
+    $3,
+    COALESCE(NULLIF($4::text, '')::jsonb, '{}'::jsonb)
+)
+RETURNING
+    id,
+    command_id,
+    machine_id,
+    transport_session_id,
+    attempt_no,
+    sent_at,
+    ack_deadline_at,
+    acked_at,
+    result_received_at,
+    status,
+    timeout_reason,
+    protocol_pack_no,
+    sequence_no,
+    correlation_id,
+    request_payload_json,
+    raw_request,
+    raw_response,
+    latency_ms`
+	var i db.MachineCommandAttempt
+	err := tx.QueryRow(
+		ctx,
+		q,
+		commandID,
+		machineID,
+		correlationID,
+		pgjson.RequiredString(wire),
+	).Scan(
+		&i.ID,
+		&i.CommandID,
+		&i.MachineID,
+		&i.TransportSessionID,
+		&i.AttemptNo,
+		&i.SentAt,
+		&i.AckDeadlineAt,
+		&i.AckedAt,
+		&i.ResultReceivedAt,
+		&i.Status,
+		&i.TimeoutReason,
+		&i.ProtocolPackNo,
+		&i.SequenceNo,
+		&i.CorrelationID,
+		&i.RequestPayloadJson,
+		&i.RawRequest,
+		&i.RawResponse,
+		&i.LatencyMs,
 	)
 	return i, err
 }
