@@ -979,12 +979,12 @@ func TestInsertMQTTDispatchAttemptWithLedgerMeta_PlanogramPublishWireJSON(t *tes
 
 	wire := map[string]any{
 		"command_id":      appendRes.CommandID.String(),
-		"machine_id":        mid.String(),
-		"sequence":          appendRes.Sequence,
-		"command_type":      "machine_planogram_publish",
-		"payload":           json.RawMessage(payloadBytes),
-		"correlation_id":    corr.String(),
-		"idempotency_key":   "planogram-pub-wire-" + uuid.NewString(),
+		"machine_id":      mid.String(),
+		"sequence":        appendRes.Sequence,
+		"command_type":    "machine_planogram_publish",
+		"payload":         json.RawMessage(payloadBytes),
+		"correlation_id":  corr.String(),
+		"idempotency_key": "planogram-pub-wire-" + uuid.NewString(),
 	}
 	wireBytes, err := json.Marshal(wire)
 	require.NoError(t, err)
