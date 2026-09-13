@@ -6,6 +6,7 @@ e2e_apply_production_destructive_aliases() {
   if [[ -z "${ADMIN_TOKEN:-}" && -n "${E2E_ADMIN_TOKEN:-}" ]]; then
     export ADMIN_TOKEN="${E2E_ADMIN_TOKEN}"
   fi
+  [[ -n "${E2E_PROD_ADMIN_USERNAME:-}" && -z "${ADMIN_USERNAME:-}" ]] && export ADMIN_USERNAME="${E2E_PROD_ADMIN_USERNAME}"
   [[ -n "${E2E_PROD_ADMIN_EMAIL:-}" && -z "${ADMIN_EMAIL:-}" ]] && export ADMIN_EMAIL="${E2E_PROD_ADMIN_EMAIL}"
   [[ -n "${E2E_PROD_ADMIN_PASSWORD:-}" && -z "${ADMIN_PASSWORD:-}" ]] && export ADMIN_PASSWORD="${E2E_PROD_ADMIN_PASSWORD}"
   [[ -n "${E2E_PROD_ADMIN_TOKEN:-}" && -z "${ADMIN_TOKEN:-}" ]] && export ADMIN_TOKEN="${E2E_PROD_ADMIN_TOKEN}"

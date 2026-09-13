@@ -42,10 +42,12 @@ jobs:
       DEVICE_SERIAL: ${{ inputs.device_serial }}
       FORCE_DB: "1"
       E2E_OUTPUT_DIR: /tmp/avf-production-enable-qr-snapshot
-      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
       ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
-      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
       E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
 

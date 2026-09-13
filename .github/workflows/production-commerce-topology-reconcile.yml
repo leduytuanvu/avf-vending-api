@@ -35,10 +35,12 @@ jobs:
       MACHINE_ID: ${{ inputs.machine_id }}
       DRY_RUN: ${{ inputs.dry_run }}
       E2E_OUTPUT_DIR: /tmp/avf-production-commerce-reconcile
-      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
       ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
-      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
       E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
 
     steps:
       - name: Check out repository

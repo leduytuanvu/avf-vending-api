@@ -1,8 +1,13 @@
 ﻿#!/usr/bin/env bash
 # Idempotent commerce topology repair for machines missing cabinet/slot_layout/current configs.
 # Usage:
-#   ./scripts/ops/reconcile_commerce_topology.sh --machine-id 01a089ec-c7bb-7e0d-83a9-6f599f061f12 [--dry-run] [--api-base https://api.ldtv.dev]
+#   ADMIN_USERNAME=admin ADMIN_PASSWORD=... \
+#     ./scripts/ops/reconcile_commerce_topology.sh --machine-id 01a089ec-c7bb-7e0d-83a9-6f599f061f12 [--dry-run] [--api-base https://api.ldtv.dev]
 set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../e2e/lib/common.sh
+source "${ROOT}/scripts/e2e/lib/common.sh"
 
 MACHINE_ID=""
 DRY_RUN=false
@@ -22,6 +27,10 @@ if [[ -z "$MACHINE_ID" ]]; then
   exit 1
 fi
 
+export BASE_URL="${API_BASE%/}"
+e2e_require_cmd curl jq
+e2e_init_run_dir "commerce-topology-reconcile"
+
 echo "=== Read-only diagnostics (run against production DB separately) ==="
 cat <<EOF
 SELECT id, code, active_layout_id FROM machines WHERE id = '${MACHINE_ID}';
@@ -32,8 +41,13 @@ SELECT count(*) AS snapshots FROM machine_layout_snapshot_history WHERE machine_
 EOF
 
 if [[ -z "${ADMIN_BEARER_TOKEN:-}" ]]; then
-  echo "Set ADMIN_BEARER_TOKEN to call admin reconcile API." >&2
-  exit 1
+  : "${ADMIN_USERNAME:=${E2E_PROD_ADMIN_USERNAME:-}}"
+  : "${ADMIN_PASSWORD:=${E2E_PROD_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}}"
+  ADMIN_BEARER_TOKEN="$(e2e_admin_token)" || {
+    echo "Set ADMIN_BEARER_TOKEN or ADMIN_USERNAME+ADMIN_PASSWORD (or ADMIN_EMAIL+ADMIN_PASSWORD)." >&2
+    exit 1
+  }
+  export ADMIN_BEARER_TOKEN
 fi
 
 BODY='{}'
@@ -50,7 +64,7 @@ reconcile_json="$(curl -sS -X POST \
 echo "${reconcile_json}" | jq .
 
 if [[ "$DRY_RUN" == "true" ]]; then
-  echo "Dry-run complete â€” re-run without --dry-run to apply."
+  echo "Dry-run complete — re-run without --dry-run to apply."
   exit 0
 fi
 

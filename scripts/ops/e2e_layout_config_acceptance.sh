@@ -1,14 +1,19 @@
 ﻿#!/usr/bin/env bash
 # Post-deploy acceptance checks for layout/config consistency incident fix.
 # Usage:
-#   ADMIN_BEARER_TOKEN=... MACHINE_ID=01a089ec-... ./scripts/ops/e2e_layout_config_acceptance.sh
+#   ADMIN_USERNAME=admin ADMIN_PASSWORD=... ./scripts/ops/e2e_layout_config_acceptance.sh
 # Optional:
 #   API_BASE=https://api.ldtv.dev LAYOUT_ID=01a096ed-... MACHINE_JWT=...
 set -euo pipefail
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../e2e/lib/common.sh
+source "${ROOT}/scripts/e2e/lib/common.sh"
+
 MACHINE_ID="${MACHINE_ID:-01a089ec-c7bb-7e0d-83a9-6f599f061f12}"
 LAYOUT_ID="${LAYOUT_ID:-01a096ed-f77b-75c3-ba0b-4eda79639029}"
 API_BASE="${API_BASE:-https://api.ldtv.dev}"
+export BASE_URL="${API_BASE%/}"
 
 pass=0
 fail=0
@@ -28,8 +33,15 @@ check() {
 echo "=== AVF layout/config acceptance (machine=${MACHINE_ID}) ==="
 
 if [[ -z "${ADMIN_BEARER_TOKEN:-}" ]]; then
-  echo "WARN: ADMIN_BEARER_TOKEN unset â€” admin API checks skipped" >&2
-else
+  : "${ADMIN_USERNAME:=${E2E_PROD_ADMIN_USERNAME:-}}"
+  : "${ADMIN_PASSWORD:=${E2E_PROD_ADMIN_PASSWORD:-${ADMIN_PASSWORD:-}}}"
+  ADMIN_BEARER_TOKEN="$(e2e_admin_token)" || {
+    echo "WARN: ADMIN_BEARER_TOKEN unset — admin API checks skipped" >&2
+  }
+  export ADMIN_BEARER_TOKEN
+fi
+
+if [[ -n "${ADMIN_BEARER_TOKEN:-}" ]]; then
   library_json="$(curl -sS \
     -H "Authorization: Bearer ${ADMIN_BEARER_TOKEN}" \
     "${API_BASE}/v1/admin/machines/${MACHINE_ID}/layouts")"
@@ -58,17 +70,17 @@ if [[ -n "${MACHINE_JWT:-}" ]]; then
       \"${API_BASE}/v1/machines/${MACHINE_ID}/planogram/merge-pairs\"); \
       test \"\$code\" != '404'"
 else
-  echo "WARN: MACHINE_JWT unset â€” merge-pairs machine route check skipped" >&2
+  echo "WARN: MACHINE_JWT unset — merge-pairs machine route check skipped" >&2
 fi
 
 echo
 echo "=== Manual / device checks (record in ops ticket) ==="
 cat <<EOF
-[ ] Planogram publish (admin or device) returns 2xx â€” no slot_layout_not_found
+[ ] Planogram publish (admin or device) returns 2xx — no slot_layout_not_found
 [ ] Device log: no LAYOUT_SNAPSHOT_SKIP reason=missing_active_layout after bootstrap
 [ ] Storefront checkout quote succeeds for configured product+slot
 [ ] Payment dialog shows QR rails after order is created (MoMo/ZaloPay/VietQR)
-[ ] Web layout history shows snapshot within periodic capture window (5â€“12 min)
+[ ] Web layout history shows snapshot within periodic capture window (5–12 min)
 EOF
 
 echo

@@ -189,24 +189,34 @@ e2e_admin_token() {
     printf '%s' "$trimmed"
     return 0
   fi
-  if [[ -z "${ADMIN_EMAIL:-}" || -z "${ADMIN_PASSWORD:-}" ]]; then
+  : "${ADMIN_USERNAME:=${E2E_PROD_ADMIN_USERNAME:-}}"
+  if [[ -z "${ADMIN_PASSWORD:-}" ]]; then
+    E2E_ADMIN_AUTH_HTTP_CODE=""
+    return 1
+  fi
+  if [[ -z "${ADMIN_USERNAME:-}" && -z "${ADMIN_EMAIL:-}" ]]; then
     E2E_ADMIN_AUTH_HTTP_CODE=""
     return 1
   fi
   mkdir -p "${E2E_RUN_DIR}/raw"
-  local body_tmp
+  local body_tmp login_json
   body_tmp="$(mktemp)"
   local code
+  if [[ -n "${ADMIN_USERNAME:-}" ]]; then
+    login_json="$(jq -nc --arg u "${ADMIN_USERNAME}" --arg p "${ADMIN_PASSWORD}" '{username:$u,password:$p}')"
+  else
+    login_json="$(jq -nc --arg e "${ADMIN_EMAIL}" --arg p "${ADMIN_PASSWORD}" '{email:$e,password:$p}')"
+  fi
   code="$(curl -sS -o "$body_tmp" -w '%{http_code}' -X POST \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     --connect-timeout 8 --max-time 20 \
-    -d "$(jq -nc --arg e "${ADMIN_EMAIL}" --arg p "${ADMIN_PASSWORD}" '{email:$e,password:$p}')" \
+    -d "${login_json}" \
     "${BASE_URL%/}/v1/auth/login")"
   E2E_ADMIN_AUTH_HTTP_CODE="$code"
   local tok=""
   if [[ "$code" == "200" ]]; then
-    tok="$(jq -r '.accessToken // .access_token // .tokens.accessToken // empty' "$body_tmp")"
+    tok="$(jq -r '.tokens.accessToken // .accessToken // .access_token // empty' "$body_tmp")"
   fi
   e2e_admin_write_redacted_login_summary "$code" "$body_tmp"
   rm -f "$body_tmp"
