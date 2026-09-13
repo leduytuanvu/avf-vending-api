@@ -16,6 +16,11 @@ on:
         required: false
         default: "019fb731-6eec-725c-9179-6201a99c09f7"
         type: string
+      device_serial:
+        description: "Device serial fallback lookup (field unit 0OVP8AYEFQ)"
+        required: false
+        default: "0OVP8AYEFQ"
+        type: string
 
 permissions:
   contents: read
@@ -34,6 +39,7 @@ jobs:
       BASE_URL: https://api.ldtv.dev
       MACHINE_CODE: ${{ inputs.machine_code }}
       MACHINE_ID: ${{ inputs.machine_id }}
+      DEVICE_SERIAL: ${{ inputs.device_serial }}
       FORCE_DB: "1"
       E2E_OUTPUT_DIR: /tmp/avf-production-enable-qr-snapshot
       ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
@@ -125,7 +131,7 @@ jobs:
 
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export BASE_URL='${BASE_URL}' MACHINE_CODE='${MACHINE_CODE}' MACHINE_ID='${MACHINE_ID}' FORCE_DB='${FORCE_DB}' E2E_OUTPUT_DIR='${E2E_OUTPUT_DIR}' && \
+              "cd '${GITHUB_WORKSPACE}' && export BASE_URL='${BASE_URL}' MACHINE_CODE='${MACHINE_CODE}' MACHINE_ID='${MACHINE_ID}' DEVICE_SERIAL='${DEVICE_SERIAL}' FORCE_DB='${FORCE_DB}' E2E_OUTPUT_DIR='${E2E_OUTPUT_DIR}' && \
               if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: enable_production_qr_and_snapshot.sh not found' >&2; exit 1; fi" \
               | tee enable-qr-snapshot.log
           elif docker info >/dev/null 2>&1; then

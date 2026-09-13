@@ -1,26 +1,48 @@
--- Enable MoMo/ZaloPay/VietQR payment methods and periodic 5m snapshot flag for one machine.
+-- Enable MoMo/ZaloPay/VietQR payment methods and periodic 5m layout snapshot flag for one machine.
 -- Invoked by scripts/ops/enable_production_qr_and_snapshot.sh (DB fallback on production runner).
 \set ON_ERROR_STOP on
 
-SELECT id AS machine_id
+\set ON_ERROR_STOP off
+SELECT id AS resolved_machine_id
 FROM machines
 WHERE
     (
-        btrim(:'machine_id') <> ''
-        AND id = :'machine_id'::uuid
+        btrim(:'lookup_machine_id') <> ''
+        AND id = :'lookup_machine_id'::uuid
+    )
+    OR (
+        btrim(:'device_serial') <> ''
+        AND lower(btrim(serial_number)) = lower(btrim(:'device_serial'))
     )
     OR (
         btrim(code) <> ''
         AND lower(btrim(code)) = lower(btrim(:'machine_code'))
     )
 ORDER BY
-    CASE WHEN btrim(:'machine_id') <> '' AND id = :'machine_id'::uuid THEN 0 ELSE 1 END
+    CASE
+        WHEN btrim(:'lookup_machine_id') <> '' AND id = :'lookup_machine_id'::uuid THEN 0
+        WHEN btrim(:'device_serial') <> '' AND lower(btrim(serial_number)) = lower(btrim(:'device_serial')) THEN 1
+        ELSE 2
+    END
 LIMIT 1
 \gset
+\set ON_ERROR_STOP on
 
-\if :{?machine_id}
+\if :{?resolved_machine_id}
 \else
-\echo enable-qr-snapshot: error: machine not found for code :machine_code id=:machine_id
+\echo enable-qr-snapshot: error: machine not found for code=:machine_code id=:lookup_machine_id serial=:device_serial
+\echo enable-qr-snapshot: candidate machines (recent active/provisioned):
+SELECT id, code, serial_number, status, updated_at
+FROM machines
+WHERE
+    lower(code) LIKE lower('%' || btrim(:'machine_code') || '%')
+    OR (
+        btrim(:'device_serial') <> ''
+        AND lower(serial_number) LIKE lower('%' || btrim(:'device_serial') || '%')
+    )
+    OR code ILIKE 'AVF%'
+ORDER BY updated_at DESC NULLS LAST
+LIMIT 10;
 \quit 1
 \endif
 
@@ -39,19 +61,19 @@ LIMIT 1
 BEGIN;
 
 DELETE FROM machine_payment_methods
-WHERE machine_id = :'machine_id'::uuid;
+WHERE machine_id = :'resolved_machine_id'::uuid;
 
 INSERT INTO machine_payment_methods (machine_id, method_key, enabled, sort_order)
 VALUES
-    (:'machine_id'::uuid, 'cash', true, 0),
-    (:'machine_id'::uuid, 'momo', true, 1),
-    (:'machine_id'::uuid, 'zalopay', true, 2),
-    (:'machine_id'::uuid, 'vietqr', true, 3);
+    (:'resolved_machine_id'::uuid, 'cash', true, 0),
+    (:'resolved_machine_id'::uuid, 'momo', true, 1),
+    (:'resolved_machine_id'::uuid, 'zalopay', true, 2),
+    (:'resolved_machine_id'::uuid, 'vietqr', true, 3);
 
 DELETE FROM feature_flag_targets
 WHERE feature_flag_id = :'flag_id'::uuid
   AND target_type = 'machine'
-  AND machine_id = :'machine_id'::uuid;
+  AND machine_id = :'resolved_machine_id'::uuid;
 
 INSERT INTO feature_flag_targets (
     feature_flag_id,
@@ -60,20 +82,22 @@ INSERT INTO feature_flag_targets (
     priority,
     enabled
 )
-VALUES (:'flag_id'::uuid, 'machine', :'machine_id'::uuid, 100, true);
+VALUES (:'flag_id'::uuid, 'machine', :'resolved_machine_id'::uuid, 100, true);
 
 COMMIT;
 
-\echo enable-qr-snapshot: configured machine_id=:machine_id code=:machine_code periodic_flag=:periodic_flag_key
+\echo enable-qr-snapshot: configured machine_id=:resolved_machine_id code=:machine_code periodic_flag=:periodic_flag_key
 
 SELECT
+    m.id AS machine_id,
     m.code AS machine_code,
+    m.serial_number,
     mpm.method_key,
     mpm.enabled,
     mpm.sort_order
 FROM machines m
 JOIN machine_payment_methods mpm ON mpm.machine_id = m.id
-WHERE m.id = :'machine_id'::uuid
+WHERE m.id = :'resolved_machine_id'::uuid
 ORDER BY mpm.sort_order ASC, mpm.method_key ASC;
 
 SELECT
@@ -84,4 +108,4 @@ SELECT
 FROM feature_flags ff
 JOIN feature_flag_targets fft ON fft.feature_flag_id = ff.id
 WHERE ff.id = :'flag_id'::uuid
-  AND fft.machine_id = :'machine_id'::uuid;
+  AND fft.machine_id = :'resolved_machine_id'::uuid;
