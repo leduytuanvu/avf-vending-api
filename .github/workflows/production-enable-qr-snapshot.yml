@@ -33,16 +33,81 @@ jobs:
       ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
       E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
       E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Configure machine payment methods and snapshot flag
+      - name: Configure privileged command helper
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          bash scripts/ops/enable_production_qr_and_snapshot.sh | tee enable-qr-snapshot.log
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Configure machine payment methods and snapshot flag
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          script="${deploy_root}/scripts/ops/enable_production_qr_and_snapshot.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/enable_production_qr_and_snapshot.sh"
+
+          run_enable() {
+            if [[ -f "${script}" ]]; then
+              bash "${script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              bash "${checkout_script}"
+            else
+              echo "error: enable_production_qr_and_snapshot.sh not found" >&2
+              exit 1
+            fi
+          }
+
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export BASE_URL='${BASE_URL}' MACHINE_CODE='${MACHINE_CODE}' FORCE_DB='${FORCE_DB}' && \
+              if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: enable_production_qr_and_snapshot.sh not found' >&2; exit 1; fi" \
+              | tee enable-qr-snapshot.log
+          elif docker info >/dev/null 2>&1; then
+            run_enable | tee enable-qr-snapshot.log
+          else
+            echo "error: no root credentials (set PRODUCTION_ROOT_PASSWORD on environment production) and docker is unavailable to github-runner" >&2
+            exit 1
+          fi
 
       - name: Upload log
         if: always()
