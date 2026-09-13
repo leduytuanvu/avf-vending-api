@@ -141,6 +141,8 @@ jobs:
             "echo '${GHCR_PULL_TOKEN}' | docker login ghcr.io -u '${GHCR_PULL_USERNAME}' --password-stdin"
 
       - name: Revert app-node payment env to cash_only before recover rollout
+        # Intentional safety default for recover rollouts; re-apply live payment env after deploy
+        # if QR/wallet is required — see docs/runbooks/enable-live-payment-production.md
         if: inputs.recover_sshd_only != true
         shell: bash
         env:
