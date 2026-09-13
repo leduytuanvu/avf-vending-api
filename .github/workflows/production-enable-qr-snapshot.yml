@@ -28,6 +28,7 @@ jobs:
     env:
       BASE_URL: https://api.ldtv.dev
       MACHINE_CODE: ${{ inputs.machine_code }}
+      FORCE_DB: "1"
       ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
       E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
