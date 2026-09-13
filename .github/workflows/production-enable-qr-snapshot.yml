@@ -1,0 +1,49 @@
+name: Production enable QR and 5m snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      machine_code:
+        description: "Machine code to configure (default AVF000195 field unit)"
+        required: false
+        default: "AVF000195"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-enable-qr-snapshot
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    name: Enable live QR rails and periodic snapshot flag
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      BASE_URL: https://api.ldtv.dev
+      MACHINE_CODE: ${{ inputs.machine_code }}
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure machine payment methods and snapshot flag
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/ops/enable_production_qr_and_snapshot.sh | tee enable-qr-snapshot.log
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enable-qr-snapshot-log
+          path: enable-qr-snapshot.log
+          retention-days: 14
