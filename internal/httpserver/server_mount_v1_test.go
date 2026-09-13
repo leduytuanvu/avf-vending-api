@@ -145,13 +145,19 @@ func TestMountV1_productionLegacyMachineHTTPOff_skipsLegacyRuntimeRoutes(t *test
 
 	// Fleet command dispatch remains available (not legacy vending runtime).
 	foundDispatch := false
+	foundMergePairs := false
 	for _, line := range routes {
 		if strings.Contains(line, "POST /v1/machines/{machineId}/commands/dispatch") {
 			foundDispatch = true
-			break
+		}
+		if strings.Contains(line, "GET /v1/machines/{machineId}/planogram/merge-pairs") {
+			foundMergePairs = true
 		}
 	}
 	if !foundDispatch {
 		t.Fatalf("expected command dispatch route, routes:\n%s", strings.Join(routes, "\n"))
+	}
+	if !foundMergePairs {
+		t.Fatalf("expected machine merge-pairs route when legacy off, routes:\n%s", strings.Join(routes, "\n"))
 	}
 }

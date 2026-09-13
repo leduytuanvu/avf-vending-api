@@ -14,6 +14,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
+	"github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/app/inventoryapp"
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
@@ -63,6 +64,7 @@ func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL f
 		r.With(writeRL).Put("/machines/{machineId}/topology", putAdminMachineTopology(app))
 		r.With(writeRL).Put("/machines/{machineId}/planograms/draft", putAdminMachinePlanogramDraft(app))
 		r.With(writeRL).Post("/machines/{machineId}/planograms/publish", postAdminMachinePlanogramPublish(app))
+		r.With(writeRL).Post("/machines/{machineId}/commerce-topology/reconcile", postAdminMachineCommerceTopologyReconcile(app))
 		r.With(writeRL).Post("/machines/{machineId}/sync", postAdminMachineSetupSync(app))
 	})
 	mountAdminLayoutRoutes(r, app, writeRL)
@@ -1390,6 +1392,51 @@ func mapDispatchToCommandInfo(d appdevice.RemoteCommandDispatchResult) V1AdminPl
 		Sequence:      d.Sequence,
 		DispatchState: d.DispatchState,
 		Replay:        d.Replay,
+	}
+}
+
+func postAdminMachineCommerceTopologyReconcile(app *api.HTTPApplication) http.HandlerFunc {
+	type reconcileRequest struct {
+		DryRun *bool `json:"dryRun"`
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if app == nil || app.TelemetryStore == nil || app.TelemetryStore.Pool() == nil {
+			writeCapabilityNotConfigured(w, r.Context(), "database", "database pool is not configured for this API process")
+			return
+		}
+		machineID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "machineId")))
+		if err != nil || machineID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "invalid machineId")
+			return
+		}
+		if _, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID); err != nil {
+			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		dryRun := false
+		if r.ContentLength > 0 || strings.Contains(strings.ToLower(r.Header.Get("Content-Type")), "json") {
+			var body reconcileRequest
+			if decErr := json.NewDecoder(r.Body).Decode(&body); decErr == nil && body.DryRun != nil {
+				dryRun = *body.DryRun
+			}
+		}
+		mat, synced, err := fleet.ReconcileCommerceTopology(r.Context(), app.TelemetryStore.Pool(), machineID, dryRun)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				writeAPIError(w, r.Context(), http.StatusNotFound, "machine_not_found", "machine not found")
+				return
+			}
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "reconcile_failed", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"machineId":          machineID.String(),
+			"dryRun":             dryRun,
+			"cabinetsCreated":    mat.CabinetsCreated,
+			"slotLayoutsCreated": mat.SlotLayoutsCreated,
+			"slotConfigsCreated": mat.SlotConfigsCreated,
+			"layoutSlotsSynced":  synced,
+		})
 	}
 }
 
