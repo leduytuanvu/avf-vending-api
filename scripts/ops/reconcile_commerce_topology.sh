@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # Idempotent commerce topology repair for machines missing cabinet/slot_layout/current configs.
 # Usage:
 #   ./scripts/ops/reconcile_commerce_topology.sh --machine-id 01a089ec-c7bb-7e0d-83a9-6f599f061f12 [--dry-run] [--api-base https://api.ldtv.dev]
@@ -50,7 +50,7 @@ reconcile_json="$(curl -sS -X POST \
 echo "${reconcile_json}" | jq .
 
 if [[ "$DRY_RUN" == "true" ]]; then
-  echo "Dry-run complete — re-run without --dry-run to apply."
+  echo "Dry-run complete â€” re-run without --dry-run to apply."
   exit 0
 fi
 

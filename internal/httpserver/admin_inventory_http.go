@@ -13,8 +13,8 @@ import (
 
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
-	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/app/fleet"
+	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	"github.com/avf/avf-vending-api/internal/app/inventoryapp"
 	"github.com/avf/avf-vending-api/internal/app/listscope"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"

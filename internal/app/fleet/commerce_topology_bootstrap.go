@@ -21,8 +21,8 @@ import (
 )
 
 const (
-	defaultCommerceCabinetCode   = "CAB-A"
-	defaultCommerceLayoutKey     = "default"
+	defaultCommerceCabinetCode    = "CAB-A"
+	defaultCommerceLayoutKey      = "default"
 	defaultCommerceLayoutRevision = int32(1)
 )
 
