@@ -224,6 +224,18 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 	}
 	clearedDraftScopes := make(map[layoutDraftScope]struct{})
 
+	var existingCurrentByCode map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow
+	if in.PublishAsCurrent {
+		existingRows, listErr := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)
+		if listErr != nil {
+			return listErr
+		}
+		existingCurrentByCode = make(map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, len(existingRows))
+		for _, row := range existingRows {
+			existingCurrentByCode[strings.TrimSpace(row.SlotCode)] = row
+		}
+	}
+
 	for _, it := range in.Items {
 		cabRow, err := lookupMachineCabinet(ctx, q, machineID, it.CabinetCode)
 		if err != nil {
@@ -245,18 +257,21 @@ func applySlotConfigSaveTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, 
 		meta := pgjson.RequiredString(it.Metadata)
 
 		if in.PublishAsCurrent {
-			_, err = q.FleetAdminApplyMachineSlotConfigCurrent(ctx, db.FleetAdminApplyMachineSlotConfigCurrentParams{
-				MachineID:           machineID,
-				SlotCode:            strings.TrimSpace(it.SlotCode),
-				MachineCabinetID:    cabRow.ID,
-				MachineSlotLayoutID: layoutRow.ID,
-				SlotIndex:           optionalInt32ToPgInt4(it.LegacySlotIndex),
-				ProductID:           optionalUUIDToPg(it.ProductID),
-				MaxQuantity:         it.MaxQuantity,
-				PriceMinor:          it.PriceMinor,
-				EffectiveFrom:       eff,
-				Metadata:            meta,
-			})
+			_, _, err = fleet.ApplyOrRelinkCurrentMachineSlotConfig(
+				ctx,
+				tx,
+				existingCurrentByCode,
+				machineID,
+				strings.TrimSpace(it.SlotCode),
+				cabRow.ID,
+				layoutRow.ID,
+				optionalInt32ToPgInt4(it.LegacySlotIndex),
+				optionalUUIDToPg(it.ProductID),
+				it.MaxQuantity,
+				it.PriceMinor,
+				eff,
+				meta,
+			)
 		} else {
 			scope := layoutDraftScope{cabinetID: cabRow.ID, layoutID: layoutRow.ID}
 			if _, ok := clearedDraftScopes[scope]; !ok {

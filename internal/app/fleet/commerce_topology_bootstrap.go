@@ -241,7 +241,9 @@ WHERE id = $1 AND is_current = true
 	return err
 }
 
-func applyOrRelinkCurrentMachineSlotConfig(
+// ApplyOrRelinkCurrentMachineSlotConfig skips matching current configs, relinks cabinet/layout
+// when commerce fields are unchanged, or applies a new current row when commerce changed.
+func ApplyOrRelinkCurrentMachineSlotConfig(
 	ctx context.Context,
 	tx pgx.Tx,
 	existingByCode map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow,
@@ -387,7 +389,7 @@ func SyncNamedLayoutSlotsToCurrentConfigs(
 			updated++
 			continue
 		}
-		created, relinked, applyErr := applyOrRelinkCurrentMachineSlotConfig(
+		created, relinked, applyErr := ApplyOrRelinkCurrentMachineSlotConfig(
 			ctx, tx, existingByCode, machineID, code, cabID, layoutRow.ID,
 			slotIdx, pid, maxQty, price, eff, meta,
 		)
