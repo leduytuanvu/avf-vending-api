@@ -952,3 +952,59 @@ func TestInsertMQTTDispatchAttemptWithLedgerMeta_RespectsMaxDispatchAttempts(t *
 	_, err = store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, mid, nil, []byte(`{}`), deadline, "")
 	require.ErrorIs(t, err, postgres.ErrMQTTMaxDispatchAttemptsExceeded)
 }
+
+func TestInsertMQTTDispatchAttemptWithLedgerMeta_PlanogramPublishWireJSON(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+	mid := testfixtures.DevMachineID
+	corr := uuid.New()
+	planogramPayload := map[string]any{
+		"planogramId":          uuid.New().String(),
+		"planogramRevision":    1,
+		"desiredConfigVersion": 42,
+	}
+	payloadBytes, err := json.Marshal(planogramPayload)
+	require.NoError(t, err)
+
+	appendRes, err := store.AppendCommandUpdateShadow(ctx, device.AppendCommandInput{
+		MachineID:      mid,
+		CommandType:    "machine_planogram_publish",
+		Payload:        payloadBytes,
+		IdempotencyKey: "planogram-pub-" + uuid.NewString(),
+		DesiredState:   []byte(`{"desiredConfigVersion":42,"planogramId":"` + planogramPayload["planogramId"].(string) + `","planogramRevision":1}`),
+		CorrelationID:  &corr,
+	})
+	require.NoError(t, err)
+
+	wire := map[string]any{
+		"command_id":      appendRes.CommandID.String(),
+		"machine_id":        mid.String(),
+		"sequence":          appendRes.Sequence,
+		"command_type":      "machine_planogram_publish",
+		"payload":           json.RawMessage(payloadBytes),
+		"correlation_id":    corr.String(),
+		"idempotency_key":   "planogram-pub-wire-" + uuid.NewString(),
+	}
+	wireBytes, err := json.Marshal(wire)
+	require.NoError(t, err)
+
+	routeMeta := `{"transport":"mqtt","payload_sha256_hex":"abc123","mqtt_topic":"avf/machines/` + mid.String() + `/commands"}`
+	deadline := time.Now().UTC().Add(time.Hour)
+	att, err := store.InsertMQTTDispatchAttemptWithLedgerMeta(ctx, appendRes.CommandID, mid, &corr, wireBytes, deadline, routeMeta)
+	require.NoError(t, err)
+	require.NotEqual(t, uuid.Nil, att.ID)
+	require.Equal(t, appendRes.CommandID, att.CommandID)
+
+	var stored json.RawMessage
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT request_payload_json FROM machine_command_attempts WHERE id = $1`,
+		att.ID,
+	).Scan(&stored))
+	require.True(t, json.Valid(stored), "request_payload_json must be valid JSON, got %s", string(stored))
+
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(stored, &decoded))
+	require.Equal(t, "machine_planogram_publish", decoded["command_type"])
+	require.Equal(t, appendRes.Sequence, int64(decoded["sequence"].(float64)))
+}
