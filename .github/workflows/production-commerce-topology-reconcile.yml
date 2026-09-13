@@ -1,0 +1,80 @@
+name: Production commerce topology reconcile
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      machine_id:
+        description: "Machine UUID to reconcile"
+        required: true
+        default: "01a089ec-c7bb-7e0d-83a9-6f599f061f12"
+        type: string
+      dry_run:
+        description: "Dry run only (no writes)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-commerce-topology-reconcile-${{ inputs.machine_id }}
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    name: Reconcile commerce topology
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      API_BASE: https://api.ldtv.dev
+      MACHINE_ID: ${{ inputs.machine_id }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      E2E_OUTPUT_DIR: /tmp/avf-production-commerce-reconcile
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Mint admin token and reconcile
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="${GITHUB_WORKSPACE}"
+          # shellcheck source=scripts/e2e/lib/common.sh
+          source "${ROOT}/scripts/e2e/lib/common.sh"
+          export BASE_URL="${API_BASE}"
+          e2e_init_run_dir "production-commerce-reconcile"
+
+          token="$(e2e_admin_token)" || {
+            echo "error: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})" >&2
+            exit 1
+          }
+          export ADMIN_BEARER_TOKEN="${token}"
+
+          args=(--machine-id "${MACHINE_ID}")
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            args+=(--dry-run)
+          fi
+
+          bash "${ROOT}/scripts/ops/reconcile_commerce_topology.sh" "${args[@]}" | tee commerce-reconcile.log
+
+          if [[ "${DRY_RUN}" != "true" ]]; then
+            bash "${ROOT}/scripts/ops/e2e_layout_config_acceptance.sh" | tee -a commerce-reconcile.log
+          fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: commerce-reconcile-log-${{ inputs.machine_id }}
+          path: commerce-reconcile.log
+          retention-days: 14
