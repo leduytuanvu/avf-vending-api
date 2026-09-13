@@ -44,9 +44,6 @@ jobs:
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
       - name: Configure privileged command helper
         shell: bash
         env:
@@ -82,6 +79,28 @@ jobs:
           EOF
           chmod +x /tmp/avf-prod-root.sh
           SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Clean stale root-owned workspace artifacts
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          stale="${GITHUB_WORKSPACE}/reports/e2e/production-enable-qr-snapshot"
+          if [[ ! -e "${stale}" ]]; then
+            echo "no stale workspace artifacts at ${stale}"
+            exit 0
+          fi
+          echo "removing stale root-owned path ${stale}"
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "rm -rf '${stale}'"
+          else
+            rm -rf "${stale}"
+          fi
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Configure machine payment methods and snapshot flag
         shell: bash
