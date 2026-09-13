@@ -18,6 +18,7 @@ export BASE_URL
 
 MACHINE_CODE="${MACHINE_CODE:-AVF000195}"
 MACHINE_ID="${MACHINE_ID:-019fb731-6eec-725c-9179-6201a99c09f7}"
+DEVICE_SERIAL="${DEVICE_SERIAL:-0OVP8AYEFQ}"
 PERIODIC_FLAG_KEY="${PERIODIC_FLAG_KEY:-periodic_snapshot_capture_enabled}"
 SQL_FILE="${ROOT}/scripts/ops/enable_production_qr_and_snapshot.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
@@ -95,7 +96,8 @@ enable_via_db() {
     psql "${psql_url}" \
       -v ON_ERROR_STOP=1 \
       -v "machine_code=${MACHINE_CODE}" \
-      -v "machine_id=${MACHINE_ID}" \
+      -v "lookup_machine_id=${MACHINE_ID}" \
+      -v "device_serial=${DEVICE_SERIAL}" \
       -v "periodic_flag_key=${PERIODIC_FLAG_KEY}" \
       -f /ops/enable_production_qr_and_snapshot.sql \
     | tee "${E2E_RUN_DIR}/logs/db-apply.log"
