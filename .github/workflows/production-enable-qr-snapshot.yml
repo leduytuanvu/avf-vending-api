@@ -35,6 +35,7 @@ jobs:
       MACHINE_CODE: ${{ inputs.machine_code }}
       MACHINE_ID: ${{ inputs.machine_id }}
       FORCE_DB: "1"
+      E2E_OUTPUT_DIR: /tmp/avf-production-enable-qr-snapshot
       ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
       E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
@@ -105,7 +106,7 @@ jobs:
 
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export BASE_URL='${BASE_URL}' MACHINE_CODE='${MACHINE_CODE}' MACHINE_ID='${MACHINE_ID}' FORCE_DB='${FORCE_DB}' && \
+              "cd '${GITHUB_WORKSPACE}' && export BASE_URL='${BASE_URL}' MACHINE_CODE='${MACHINE_CODE}' MACHINE_ID='${MACHINE_ID}' FORCE_DB='${FORCE_DB}' E2E_OUTPUT_DIR='${E2E_OUTPUT_DIR}' && \
               if [[ -f '${script}' ]]; then bash '${script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: enable_production_qr_and_snapshot.sh not found' >&2; exit 1; fi" \
               | tee enable-qr-snapshot.log
           elif docker info >/dev/null 2>&1; then
