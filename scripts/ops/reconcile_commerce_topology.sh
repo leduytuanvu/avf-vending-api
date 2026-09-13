@@ -74,8 +74,15 @@ library_json="$(curl -sS \
   "${API_BASE}/v1/admin/machines/${MACHINE_ID}/layouts")"
 echo "${library_json}" | jq '.commerceReadiness, .activeLayoutId'
 
-needs_reconcile="$(echo "${library_json}" | jq -r '.commerceReadiness.needsReconcile // true')"
-if [[ "${needs_reconcile}" == "true" ]]; then
+needs_reconcile="$(echo "${library_json}" | jq -r 'if .commerceReadiness.needsReconcile == false then "false" else "true" end' | tr -d '\r\n')"
+if echo "${reconcile_json}" | jq -e '.error' >/dev/null 2>&1; then
+  if [[ "${needs_reconcile}" == "false" ]]; then
+    echo "WARN: reconcile API returned error but commerceReadiness.needsReconcile=false (machine already materialized)." >&2
+  else
+    echo "ERROR: reconcile failed and commerceReadiness still needs reconcile" >&2
+    exit 2
+  fi
+elif [[ "${needs_reconcile}" == "true" ]]; then
   echo "WARN: commerceReadiness.needsReconcile is still true after reconcile" >&2
   exit 2
 fi
