@@ -101,6 +101,8 @@ enable_via_db() {
       -v "periodic_flag_key=${PERIODIC_FLAG_KEY}" \
       -f /ops/enable_production_qr_and_snapshot.sql \
     | tee "${E2E_RUN_DIR}/logs/db-apply.log"
+  db_rc=${PIPESTATUS[0]}
+  [[ "${db_rc}" -eq 0 ]] || fail "postgres apply failed (exit ${db_rc})"
 
   print_version_probe
   note "done (db) machine=${MACHINE_CODE} periodic_flag=${PERIODIC_FLAG_KEY}"
