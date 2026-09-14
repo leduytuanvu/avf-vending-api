@@ -526,10 +526,14 @@ func (x *MachinePricingSnapshotLine) GetPricingSyncState() string {
 }
 
 type MachinePricingSnapshot struct {
-	state                    protoimpl.MessageState        `protogen:"open.v1"`
-	SubtotalMinor            int64                         `protobuf:"varint,1,opt,name=subtotal_minor,json=subtotalMinor,proto3" json:"subtotal_minor,omitempty"`
-	TaxMinor                 int64                         `protobuf:"varint,2,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
-	TotalMinor               int64                         `protobuf:"varint,3,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SubtotalMinor int64                  `protobuf:"varint,1,opt,name=subtotal_minor,json=subtotalMinor,proto3" json:"subtotal_minor,omitempty"`
+	TaxMinor      int64                  `protobuf:"varint,2,opt,name=tax_minor,json=taxMinor,proto3" json:"tax_minor,omitempty"`
+	TotalMinor    int64                  `protobuf:"varint,3,opt,name=total_minor,json=totalMinor,proto3" json:"total_minor,omitempty"`
+	// Legacy single-line unit price. This is NOT an order subtotal/total.
+	// Multi-line snapshots must populate `lines` and keep this as a line unit price
+	// (typically the first line) or leave it unset. Server validation uses `lines`
+	// whenever they are present.
 	UnitPriceMinor           int64                         `protobuf:"varint,4,opt,name=unit_price_minor,json=unitPriceMinor,proto3" json:"unit_price_minor,omitempty"`
 	LocalPricingRevision     int64                         `protobuf:"varint,5,opt,name=local_pricing_revision,json=localPricingRevision,proto3" json:"local_pricing_revision,omitempty"`
 	PricingFingerprint       string                        `protobuf:"bytes,6,opt,name=pricing_fingerprint,json=pricingFingerprint,proto3" json:"pricing_fingerprint,omitempty"`

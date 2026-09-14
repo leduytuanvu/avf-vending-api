@@ -114,14 +114,17 @@ func validateReplayPricingSnapshot(snap *MachinePricingSnapshotInput, order doma
 }
 
 func validateMachinePricingSnapshot(snap MachinePricingSnapshotInput) error {
-	if snap.TotalMinor <= 0 {
-		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot total_minor must be positive"))
+	if len(snap.Lines) > 0 {
+		return validateMachinePricingSnapshotMultiLine(snap, len(snap.Lines))
 	}
-	if snap.SubtotalMinor < 0 || snap.TaxMinor < 0 {
-		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot amounts must be non-negative"))
-	}
-	if snap.SubtotalMinor+snap.TaxMinor != snap.TotalMinor {
-		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line sum does not match total_minor"))
+	return validateMachinePricingSnapshotLegacySingleLine(snap)
+}
+
+// validateMachinePricingSnapshotLegacySingleLine enforces the historical no-lines contract:
+// implied quantity 1, so order-level unit_price_minor equals subtotal_minor.
+func validateMachinePricingSnapshotLegacySingleLine(snap MachinePricingSnapshotInput) error {
+	if err := validateMachinePricingSnapshotTotals(snap); err != nil {
+		return err
 	}
 	if snap.UnitPriceMinor <= 0 {
 		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot unit_price_minor must be positive"))

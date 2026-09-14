@@ -64,6 +64,24 @@ func TestValidateMachinePricingSnapshot_rejectsUnitSubtotalMismatch(t *testing.T
 	require.Error(t, err)
 }
 
+func TestValidateMachinePricingSnapshot_acceptsMultiLineWithoutUnitEqualsSubtotal(t *testing.T) {
+	t.Parallel()
+	productA := uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	productB := uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  150000,
+		TaxMinor:       0,
+		TotalMinor:     150000,
+		UnitPriceMinor: 50000,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			{LineSequence: 3, ProductID: productA, SlotCode: "A3", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+		},
+	})
+	require.NoError(t, err)
+}
+
 func TestMachinePricingSnapshotFromProto_mapsFields(t *testing.T) {
 	t.Parallel()
 	captured := time.Date(2026, 3, 5, 12, 0, 0, 0, time.UTC)

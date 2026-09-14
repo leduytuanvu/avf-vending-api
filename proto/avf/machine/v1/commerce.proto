@@ -100,6 +100,10 @@ message MachinePricingSnapshot {
   int64 subtotal_minor = 1;
   int64 tax_minor = 2;
   int64 total_minor = 3;
+  // Legacy single-line unit price. This is NOT an order subtotal/total.
+  // Multi-line snapshots must populate `lines` and keep this as a line unit price
+  // (typically the first line) or leave it unset. Server validation uses `lines`
+  // whenever they are present.
   int64 unit_price_minor = 4;
   int64 local_pricing_revision = 5;
   string pricing_fingerprint = 6;

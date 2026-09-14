@@ -11,6 +11,97 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestValidateMachinePricingSnapshot_acceptsMultiLineWhenUnitDiffersFromSubtotal(t *testing.T) {
+	t.Parallel()
+	productA := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	productB := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  100000,
+		TaxMinor:       0,
+		TotalMinor:     100000,
+		UnitPriceMinor: 50000, // legacy first-line unit price, not the aggregate
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateMachinePricingSnapshot_acceptsSingleLineQuantityGreaterThanOne(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  40000,
+		TaxMinor:       0,
+		TotalMinor:     40000,
+		UnitPriceMinor: 20000,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, SlotCode: "A1", Quantity: 2, UnitPriceMinor: 20000, LineSubtotalMinor: 40000},
+		},
+	})
+	require.NoError(t, err)
+}
+
+func TestValidateMachinePricingSnapshot_legacyNoLinesStillRequiresUnitEqualsSubtotal(t *testing.T) {
+	t.Parallel()
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  2000,
+		TaxMinor:       0,
+		TotalMinor:     2000,
+		UnitPriceMinor: 1500,
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	require.Contains(t, err.Error(), "unit_price_minor must match subtotal_minor for single-line order")
+}
+
+func TestValidateMachinePricingSnapshotMultiLine_rejectsZeroQuantity(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshotMultiLine(MachinePricingSnapshotInput{
+		SubtotalMinor: 2000,
+		TaxMinor:      0,
+		TotalMinor:    2000,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, SlotCode: "A1", Quantity: 0, UnitPriceMinor: 2000, LineSubtotalMinor: 2000},
+		},
+	}, 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "quantity must be positive")
+}
+
+func TestValidateMachinePricingSnapshotMultiLine_rejectsDuplicateLineIdentity(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshotMultiLine(MachinePricingSnapshotInput{
+		SubtotalMinor: 4000,
+		TaxMinor:      0,
+		TotalMinor:    4000,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 2000, LineSubtotalMinor: 2000},
+			{LineSequence: 2, ProductID: productID, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 2000, LineSubtotalMinor: 2000},
+		},
+	}, 2)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "duplicate line identity")
+}
+
+func TestValidateMachinePricingSnapshotMultiLine_rejectsTamperedLineSubtotal(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshotMultiLine(MachinePricingSnapshotInput{
+		SubtotalMinor: 9999,
+		TaxMinor:      0,
+		TotalMinor:    9999,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 2000, LineSubtotalMinor: 9999},
+		},
+	}, 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "line subtotal mismatch")
+}
+
 func TestValidateMachinePricingSnapshotMultiLine_acceptsConsistentLines(t *testing.T) {
 	t.Parallel()
 	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
@@ -183,6 +274,180 @@ func TestCreateQuote_adoptsSnapshotPayableWhenPresent(t *testing.T) {
 	require.Equal(t, int64(2000), quotes.lastInput.SubtotalMinor)
 	require.NotNil(t, quotes.lastInput.ServerReferencePayableMinor)
 	require.Equal(t, int64(15000), *quotes.lastInput.ServerReferencePayableMinor)
+}
+
+func TestCreateQuote_acceptsMultiLineSnapshotWhenUnitDiffersFromSubtotal(t *testing.T) {
+	t.Parallel()
+	machineID := uuidNew()
+	productA := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	productB := uuid.MustParse("44444444-4444-4444-4444-444444444444")
+	slotID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	quotes := &captureQuoteStore{}
+	svc := NewService(Deps{
+		OrderVend: quotes,
+		SaleLines: &recordingSaleLineResolver{
+			line: ResolvedSaleLine{
+				SlotConfigID:  slotID,
+				CabinetCode:   "A",
+				SlotCode:      "1",
+				SlotIndex:     1,
+				PriceMinor:    50000,
+				SubtotalMinor: 50000,
+				TotalMinor:    50000,
+			},
+		},
+	})
+	out, err := svc.CreateQuote(t.Context(), CreateQuoteInput{
+		MachineID:      machineID,
+		Currency:       "VND",
+		IdempotencyKey: "quote-snapshot-multi",
+		Lines: []QuoteLineInput{
+			{ProductID: productA, SlotCode: "A1", Quantity: 1},
+			{ProductID: productB, SlotCode: "A2", Quantity: 1},
+		},
+		PricingSnapshot: &MachinePricingSnapshotInput{
+			SubtotalMinor:        100000,
+			TaxMinor:             0,
+			TotalMinor:           100000,
+			UnitPriceMinor:       50000,
+			LocalPricingRevision: 3,
+			CapturedAt:           time.Now().UTC(),
+			Lines: []MachinePricingSnapshotLineInput{
+				{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+				{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(100000), out.PayableMinor)
+	require.Equal(t, int64(100000), out.SubtotalMinor)
+	require.Len(t, out.Lines, 2)
+	require.Equal(t, int64(50000), out.Lines[0].UnitPriceMinor)
+	require.Equal(t, int64(50000), out.Lines[1].UnitPriceMinor)
+	require.Equal(t, int64(50000), out.Lines[0].LineSubtotalMinor)
+	require.Equal(t, int64(50000), out.Lines[1].LineSubtotalMinor)
+}
+
+func TestCreateQuote_acceptsThreeLineMixedQuantities(t *testing.T) {
+	t.Parallel()
+	machineID := uuidNew()
+	productA := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	productB := uuid.MustParse("44444444-4444-4444-4444-444444444444")
+	productC := uuid.MustParse("55555555-5555-5555-5555-555555555555")
+	slotID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	quotes := &captureQuoteStore{}
+	svc := NewService(Deps{
+		OrderVend: quotes,
+		SaleLines: &recordingSaleLineResolver{
+			line: ResolvedSaleLine{
+				SlotConfigID:  slotID,
+				CabinetCode:   "A",
+				SlotCode:      "1",
+				SlotIndex:     1,
+				PriceMinor:    20000,
+				SubtotalMinor: 20000,
+				TotalMinor:    20000,
+			},
+		},
+	})
+	out, err := svc.CreateQuote(t.Context(), CreateQuoteInput{
+		MachineID:      machineID,
+		Currency:       "VND",
+		IdempotencyKey: "quote-snapshot-three-mixed",
+		Lines: []QuoteLineInput{
+			{ProductID: productA, SlotCode: "A1", Quantity: 1},
+			{ProductID: productB, SlotCode: "A2", Quantity: 2},
+			{ProductID: productC, SlotCode: "A3", Quantity: 1},
+		},
+		PricingSnapshot: &MachinePricingSnapshotInput{
+			SubtotalMinor:        80000,
+			TaxMinor:             0,
+			TotalMinor:           80000,
+			UnitPriceMinor:       20000,
+			LocalPricingRevision: 3,
+			CapturedAt:           time.Now().UTC(),
+			Lines: []MachinePricingSnapshotLineInput{
+				{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 20000, LineSubtotalMinor: 20000},
+				{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 2, UnitPriceMinor: 20000, LineSubtotalMinor: 40000},
+				{LineSequence: 3, ProductID: productC, SlotCode: "A3", Quantity: 1, UnitPriceMinor: 20000, LineSubtotalMinor: 20000},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, int64(80000), out.PayableMinor)
+	require.Len(t, out.Lines, 3)
+	require.Equal(t, int32(2), out.Lines[1].Quantity)
+	require.Equal(t, int64(40000), out.Lines[1].LineSubtotalMinor)
+}
+
+func TestValidateMachinePricingSnapshot_rejectsNegativeUnitPrice(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  2000,
+		TaxMinor:       0,
+		TotalMinor:     2000,
+		UnitPriceMinor: -1,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, SlotCode: "A1", Quantity: 1, UnitPriceMinor: -1, LineSubtotalMinor: -1},
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unit_price_minor out of range")
+}
+
+func TestValidateMachinePricingSnapshot_rejectsAggregateTotalMismatch(t *testing.T) {
+	t.Parallel()
+	productA := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	productB := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	err := validateMachinePricingSnapshot(MachinePricingSnapshotInput{
+		SubtotalMinor:  100000,
+		TaxMinor:       0,
+		TotalMinor:     99999,
+		UnitPriceMinor: 50000,
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+		},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "line sum does not match total_minor")
+}
+
+func TestCreateQuote_rejectsMultiLineSnapshotWhenSubtotalDoesNotMatchLineSum(t *testing.T) {
+	t.Parallel()
+	machineID := uuidNew()
+	productA := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	productB := uuid.MustParse("44444444-4444-4444-4444-444444444444")
+	svc := NewService(Deps{
+		OrderVend: &captureQuoteStore{},
+		SaleLines: &recordingSaleLineResolver{
+			line: ResolvedSaleLine{PriceMinor: 50000, SubtotalMinor: 50000, TotalMinor: 50000},
+		},
+	})
+	_, err := svc.CreateQuote(t.Context(), CreateQuoteInput{
+		MachineID:      machineID,
+		Currency:       "VND",
+		IdempotencyKey: "quote-snapshot-tampered-subtotal",
+		Lines: []QuoteLineInput{
+			{ProductID: productA, SlotCode: "A1", Quantity: 1},
+			{ProductID: productB, SlotCode: "A2", Quantity: 1},
+		},
+		PricingSnapshot: &MachinePricingSnapshotInput{
+			SubtotalMinor:  999999,
+			TaxMinor:       0,
+			TotalMinor:     999999,
+			UnitPriceMinor: 50000,
+			CapturedAt:     time.Now().UTC(),
+			Lines: []MachinePricingSnapshotLineInput{
+				{LineSequence: 1, ProductID: productA, SlotCode: "A1", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+				{LineSequence: 2, ProductID: productB, SlotCode: "A2", Quantity: 1, UnitPriceMinor: 50000, LineSubtotalMinor: 50000},
+			},
+		},
+	})
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	require.Contains(t, err.Error(), "subtotal does not match line sum")
 }
 
 type captureQuoteStore struct {

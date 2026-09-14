@@ -41,6 +41,64 @@ func (s stubMirrorReader) GetLocalLayoutMirror(context.Context, uuid.UUID) (Loca
 	return s.mirror, nil
 }
 
+func TestResolveCheckoutSaleLine_multiLineSnapshotDoesNotRequireUnitEqualsSubtotal(t *testing.T) {
+	slotID := uuid.New()
+	productA := uuid.New()
+	productB := uuid.New()
+	machineID := uuid.New()
+	slotIdx := int32(12)
+	slotsJSON := []byte(`[{"slotCode":"A1","productId":"` + productA.String() + `","priceMinor":50000,"localPricingRevision":3}]`)
+	svc := &Service{
+		saleLines: mirrorFallbackResolver{
+			fail: true,
+			byCode: map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow{
+				"A1": {
+					ID:          slotID,
+					SlotCode:    "A1",
+					CabinetCode: "A",
+					SlotIndex:   pgtype.Int4{Int32: slotIdx, Valid: true},
+				},
+			},
+		},
+		layoutMirror: stubMirrorReader{
+			mirror: LocalLayoutMirror{Revision: 3, SlotsJSON: slotsJSON},
+		},
+	}
+	snap := MachinePricingSnapshotInput{
+		SubtotalMinor:        100000,
+		TotalMinor:           100000,
+		UnitPriceMinor:       50000,
+		LocalPricingRevision: 3,
+		Lines: []MachinePricingSnapshotLineInput{
+			{
+				LineSequence:      1,
+				ProductID:         productA,
+				SlotCode:          "A1",
+				Quantity:          1,
+				UnitPriceMinor:    50000,
+				LineSubtotalMinor: 50000,
+			},
+			{
+				LineSequence:      2,
+				ProductID:         productB,
+				SlotCode:          "A2",
+				Quantity:          1,
+				UnitPriceMinor:    50000,
+				LineSubtotalMinor: 50000,
+			},
+		},
+	}
+	line, err := svc.resolveCheckoutSaleLine(t.Context(), ResolveSaleLineInput{
+		MachineID: machineID,
+		ProductID: productA,
+		SlotCode:  "A1",
+	}, &snap, 1)
+	require.NoError(t, err)
+	require.Equal(t, slotID, line.SlotConfigID)
+	require.Equal(t, int64(50000), line.PriceMinor)
+	require.Equal(t, slotIdx, line.SlotIndex)
+}
+
 func TestResolveCheckoutSaleLine_fallsBackToPricingSnapshotWhenAssortmentStale(t *testing.T) {
 	slotID := uuid.New()
 	productID := uuid.New()
