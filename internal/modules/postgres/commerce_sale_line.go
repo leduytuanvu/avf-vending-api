@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
@@ -44,6 +45,32 @@ func (s *Store) ResolveSaleLine(ctx context.Context, in appcommerce.ResolveSaleL
 		return appcommerce.ResolvedSaleLine{}, errors.New("postgres: slot config has no slot_index")
 	}
 	return pricingengine.MapToResolvedSaleLine(row.ID, row.CabinetCode, row.SlotCode, si, line), nil
+}
+
+// LookupCurrentSlotConfigByCode returns the current slot config row for slotCode (product match not required).
+func (s *Store) LookupCurrentSlotConfigByCode(
+	ctx context.Context,
+	machineID uuid.UUID,
+	slotCode string,
+) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	var zero db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow
+	if s == nil || s.pool == nil {
+		return zero, errors.New("postgres: nil store")
+	}
+	code := strings.TrimSpace(slotCode)
+	if machineID == uuid.Nil || code == "" {
+		return zero, errors.Join(appcommerce.ErrInvalidArgument, errors.New("machine_id and slot_code required"))
+	}
+	rows, err := db.New(s.pool).InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)
+	if err != nil {
+		return zero, err
+	}
+	for _, row := range rows {
+		if strings.EqualFold(strings.TrimSpace(row.SlotCode), code) {
+			return row, nil
+		}
+	}
+	return zero, appcommerce.ErrNotFound
 }
 
 // LookupSlotDisplay returns current slot identity for an order line without re-checking assortment (replay / read enrichment).

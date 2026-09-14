@@ -139,15 +139,7 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		}
 		var resolved ResolvedSaleLine
 		var err error
-		if qa, ok := s.saleLines.(QuantityAwareSaleLineResolver); ok {
-			resolved, err = qa.ResolveSaleLineWithQuantity(ctx, resIn, qty)
-		} else {
-			resolved, err = s.saleLines.ResolveSaleLine(ctx, resIn)
-			if err == nil && qty > 1 {
-				resolved.TotalMinor = resolved.PriceMinor * int64(qty)
-				resolved.SubtotalMinor = resolved.TotalMinor
-			}
-		}
+		resolved, err = s.resolveCheckoutSaleLine(ctx, resIn, in.PricingSnapshot, qty)
 		if err != nil {
 			return CreateQuoteResult{}, err
 		}
