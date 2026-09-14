@@ -19,13 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MachineCatalogService_GetSaleCatalog_FullMethodName     = "/avf.machine.v1.MachineCatalogService/GetSaleCatalog"
-	MachineCatalogService_SyncSaleCatalog_FullMethodName    = "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog"
-	MachineCatalogService_GetCatalogSnapshot_FullMethodName = "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot"
-	MachineCatalogService_SyncCatalogBundle_FullMethodName  = "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle"
-	MachineCatalogService_GetCatalogDelta_FullMethodName    = "/avf.machine.v1.MachineCatalogService/GetCatalogDelta"
-	MachineCatalogService_AckCatalogVersion_FullMethodName  = "/avf.machine.v1.MachineCatalogService/AckCatalogVersion"
-	MachineCatalogService_GetMediaManifest_FullMethodName   = "/avf.machine.v1.MachineCatalogService/GetMediaManifest"
+	MachineCatalogService_GetSaleCatalog_FullMethodName               = "/avf.machine.v1.MachineCatalogService/GetSaleCatalog"
+	MachineCatalogService_SyncSaleCatalog_FullMethodName              = "/avf.machine.v1.MachineCatalogService/SyncSaleCatalog"
+	MachineCatalogService_GetCatalogSnapshot_FullMethodName           = "/avf.machine.v1.MachineCatalogService/GetCatalogSnapshot"
+	MachineCatalogService_SyncCatalogBundle_FullMethodName            = "/avf.machine.v1.MachineCatalogService/SyncCatalogBundle"
+	MachineCatalogService_GetCatalogDelta_FullMethodName              = "/avf.machine.v1.MachineCatalogService/GetCatalogDelta"
+	MachineCatalogService_AckCatalogVersion_FullMethodName            = "/avf.machine.v1.MachineCatalogService/AckCatalogVersion"
+	MachineCatalogService_GetMediaManifest_FullMethodName             = "/avf.machine.v1.MachineCatalogService/GetMediaManifest"
+	MachineCatalogService_GetAssignmentCatalogSnapshot_FullMethodName = "/avf.machine.v1.MachineCatalogService/GetAssignmentCatalogSnapshot"
+	MachineCatalogService_SyncAssignmentCatalogBundle_FullMethodName  = "/avf.machine.v1.MachineCatalogService/SyncAssignmentCatalogBundle"
+	MachineCatalogService_GetAssignmentCatalogDelta_FullMethodName    = "/avf.machine.v1.MachineCatalogService/GetAssignmentCatalogDelta"
 )
 
 // MachineCatalogServiceClient is the client API for MachineCatalogService service.
@@ -51,6 +54,12 @@ type MachineCatalogServiceClient interface {
 	AckCatalogVersion(ctx context.Context, in *AckCatalogVersionRequest, opts ...grpc.CallOption) (*AckCatalogVersionResponse, error)
 	// GetMediaManifest lists primary display media metadata per product on the machine catalog.
 	GetMediaManifest(ctx context.Context, in *GetMediaManifestRequest, opts ...grpc.CallOption) (*GetMediaManifestResponse, error)
+	// GetAssignmentCatalogSnapshot returns the company-wide product master for technician slot assignment.
+	GetAssignmentCatalogSnapshot(ctx context.Context, in *GetAssignmentCatalogSnapshotRequest, opts ...grpc.CallOption) (*GetAssignmentCatalogSnapshotResponse, error)
+	// SyncAssignmentCatalogBundle returns assignment-catalog products plus thumb media metadata for offline picker sync.
+	SyncAssignmentCatalogBundle(ctx context.Context, in *SyncAssignmentCatalogBundleRequest, opts ...grpc.CallOption) (*SyncAssignmentCatalogBundleResponse, error)
+	// GetAssignmentCatalogDelta compares basis_catalog_version to the published assignment catalog on the server.
+	GetAssignmentCatalogDelta(ctx context.Context, in *GetAssignmentCatalogDeltaRequest, opts ...grpc.CallOption) (*GetAssignmentCatalogDeltaResponse, error)
 }
 
 type machineCatalogServiceClient struct {
@@ -131,6 +140,36 @@ func (c *machineCatalogServiceClient) GetMediaManifest(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *machineCatalogServiceClient) GetAssignmentCatalogSnapshot(ctx context.Context, in *GetAssignmentCatalogSnapshotRequest, opts ...grpc.CallOption) (*GetAssignmentCatalogSnapshotResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAssignmentCatalogSnapshotResponse)
+	err := c.cc.Invoke(ctx, MachineCatalogService_GetAssignmentCatalogSnapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCatalogServiceClient) SyncAssignmentCatalogBundle(ctx context.Context, in *SyncAssignmentCatalogBundleRequest, opts ...grpc.CallOption) (*SyncAssignmentCatalogBundleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SyncAssignmentCatalogBundleResponse)
+	err := c.cc.Invoke(ctx, MachineCatalogService_SyncAssignmentCatalogBundle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCatalogServiceClient) GetAssignmentCatalogDelta(ctx context.Context, in *GetAssignmentCatalogDeltaRequest, opts ...grpc.CallOption) (*GetAssignmentCatalogDeltaResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAssignmentCatalogDeltaResponse)
+	err := c.cc.Invoke(ctx, MachineCatalogService_GetAssignmentCatalogDelta_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineCatalogServiceServer is the server API for MachineCatalogService service.
 // All implementations must embed UnimplementedMachineCatalogServiceServer
 // for forward compatibility.
@@ -154,6 +193,12 @@ type MachineCatalogServiceServer interface {
 	AckCatalogVersion(context.Context, *AckCatalogVersionRequest) (*AckCatalogVersionResponse, error)
 	// GetMediaManifest lists primary display media metadata per product on the machine catalog.
 	GetMediaManifest(context.Context, *GetMediaManifestRequest) (*GetMediaManifestResponse, error)
+	// GetAssignmentCatalogSnapshot returns the company-wide product master for technician slot assignment.
+	GetAssignmentCatalogSnapshot(context.Context, *GetAssignmentCatalogSnapshotRequest) (*GetAssignmentCatalogSnapshotResponse, error)
+	// SyncAssignmentCatalogBundle returns assignment-catalog products plus thumb media metadata for offline picker sync.
+	SyncAssignmentCatalogBundle(context.Context, *SyncAssignmentCatalogBundleRequest) (*SyncAssignmentCatalogBundleResponse, error)
+	// GetAssignmentCatalogDelta compares basis_catalog_version to the published assignment catalog on the server.
+	GetAssignmentCatalogDelta(context.Context, *GetAssignmentCatalogDeltaRequest) (*GetAssignmentCatalogDeltaResponse, error)
 	mustEmbedUnimplementedMachineCatalogServiceServer()
 }
 
@@ -184,6 +229,15 @@ func (UnimplementedMachineCatalogServiceServer) AckCatalogVersion(context.Contex
 }
 func (UnimplementedMachineCatalogServiceServer) GetMediaManifest(context.Context, *GetMediaManifestRequest) (*GetMediaManifestResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMediaManifest not implemented")
+}
+func (UnimplementedMachineCatalogServiceServer) GetAssignmentCatalogSnapshot(context.Context, *GetAssignmentCatalogSnapshotRequest) (*GetAssignmentCatalogSnapshotResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAssignmentCatalogSnapshot not implemented")
+}
+func (UnimplementedMachineCatalogServiceServer) SyncAssignmentCatalogBundle(context.Context, *SyncAssignmentCatalogBundleRequest) (*SyncAssignmentCatalogBundleResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SyncAssignmentCatalogBundle not implemented")
+}
+func (UnimplementedMachineCatalogServiceServer) GetAssignmentCatalogDelta(context.Context, *GetAssignmentCatalogDeltaRequest) (*GetAssignmentCatalogDeltaResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAssignmentCatalogDelta not implemented")
 }
 func (UnimplementedMachineCatalogServiceServer) mustEmbedUnimplementedMachineCatalogServiceServer() {}
 func (UnimplementedMachineCatalogServiceServer) testEmbeddedByValue()                               {}
@@ -332,6 +386,60 @@ func _MachineCatalogService_GetMediaManifest_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineCatalogService_GetAssignmentCatalogSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAssignmentCatalogSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCatalogServiceServer).GetAssignmentCatalogSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCatalogService_GetAssignmentCatalogSnapshot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCatalogServiceServer).GetAssignmentCatalogSnapshot(ctx, req.(*GetAssignmentCatalogSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineCatalogService_SyncAssignmentCatalogBundle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncAssignmentCatalogBundleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCatalogServiceServer).SyncAssignmentCatalogBundle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCatalogService_SyncAssignmentCatalogBundle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCatalogServiceServer).SyncAssignmentCatalogBundle(ctx, req.(*SyncAssignmentCatalogBundleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineCatalogService_GetAssignmentCatalogDelta_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAssignmentCatalogDeltaRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCatalogServiceServer).GetAssignmentCatalogDelta(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCatalogService_GetAssignmentCatalogDelta_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCatalogServiceServer).GetAssignmentCatalogDelta(ctx, req.(*GetAssignmentCatalogDeltaRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineCatalogService_ServiceDesc is the grpc.ServiceDesc for MachineCatalogService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -366,6 +474,18 @@ var MachineCatalogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMediaManifest",
 			Handler:    _MachineCatalogService_GetMediaManifest_Handler,
+		},
+		{
+			MethodName: "GetAssignmentCatalogSnapshot",
+			Handler:    _MachineCatalogService_GetAssignmentCatalogSnapshot_Handler,
+		},
+		{
+			MethodName: "SyncAssignmentCatalogBundle",
+			Handler:    _MachineCatalogService_SyncAssignmentCatalogBundle_Handler,
+		},
+		{
+			MethodName: "GetAssignmentCatalogDelta",
+			Handler:    _MachineCatalogService_GetAssignmentCatalogDelta_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/alerts"
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appartifacts "github.com/avf/avf-vending-api/internal/app/artifacts"
+	appassignmentcatalog "github.com/avf/avf-vending-api/internal/app/assignmentcatalog"
 	appaudit "github.com/avf/avf-vending-api/internal/app/audit"
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	appdevice "github.com/avf/avf-vending-api/internal/app/device"
@@ -390,6 +391,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 			MachineQueries:        machineQueries,
 			FeatureFlags:          httpApp.FeatureFlags,
 			SaleCatalog:           saleCatalog,
+			AssignmentCatalog:     appassignmentcatalog.NewService(httpApp.CatalogAdmin, machineMediaStore, machineMediaPresignTTL),
 			Pool:                  rt.Pool(),
 			MQTTBrokerURL:         cfg.MQTT.BrokerURL,
 			MQTTTopicPrefix:       cfg.MQTT.TopicPrefix,
