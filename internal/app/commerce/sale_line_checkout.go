@@ -133,11 +133,11 @@ func snapshotLineForSelector(snap MachinePricingSnapshotInput, in ResolveSaleLin
 			return MachinePricingSnapshotLineInput{}, false
 		}
 		return MachinePricingSnapshotLineInput{
-			LineSequence:   1,
-			ProductID:      productID,
-			SlotCode:       slotCode,
-			Quantity:       1,
-			UnitPriceMinor: snap.UnitPriceMinor,
+			LineSequence:      1,
+			ProductID:         productID,
+			SlotCode:          slotCode,
+			Quantity:          1,
+			UnitPriceMinor:    snap.UnitPriceMinor,
 			LineSubtotalMinor: snap.SubtotalMinor,
 		}, true
 	}
