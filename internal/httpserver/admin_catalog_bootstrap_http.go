@@ -1,5 +1,7 @@
 package httpserver
 
+// rbac:inherited-mount — bootstrap routes are mounted under PermCatalogRead in admin_catalog_http.go.
+
 import (
 	"net/http"
 	"strconv"

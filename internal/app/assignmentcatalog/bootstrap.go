@@ -14,10 +14,10 @@ const bootstrapManifestName = "manifest.json"
 
 // BootstrapManifestDTO matches the Android ProductBootstrapBundleManifestDto JSON shape.
 type BootstrapManifestDTO struct {
-	CatalogVersion int32  `json:"catalogVersion"`
-	GeneratedAt    string `json:"generatedAt"`
-	Variant        string `json:"variant"`
-	ProductCount   int    `json:"productCount"`
+	CatalogVersion int32                 `json:"catalogVersion"`
+	GeneratedAt    string                `json:"generatedAt"`
+	Variant        string                `json:"variant"`
+	ProductCount   int                   `json:"productCount"`
 	Products       []BootstrapProductDTO `json:"products"`
 }
 
@@ -44,14 +44,14 @@ type BootstrapProductDTO struct {
 
 // ManifestHeaderDTO matches Android ProductBootstrapManifestDto without bundle URLs.
 type ManifestHeaderDTO struct {
-	CatalogVersion  int32                        `json:"catalogVersion"`
-	GeneratedAt     string                       `json:"generatedAt"`
-	ProductCount    int                          `json:"productCount"`
-	AssetCount      int                          `json:"assetCount"`
-	BundleURL       string                       `json:"bundleUrl"`
-	ThumbBundleURL  string                       `json:"thumbBundleUrl"`
-	DisplayBundleURL string                      `json:"displayBundleUrl"`
-	EstimatedBytes  BootstrapEstimatedBytesDTO   `json:"estimatedBytes"`
+	CatalogVersion   int32                      `json:"catalogVersion"`
+	GeneratedAt      string                     `json:"generatedAt"`
+	ProductCount     int                        `json:"productCount"`
+	AssetCount       int                        `json:"assetCount"`
+	BundleURL        string                     `json:"bundleUrl"`
+	ThumbBundleURL   string                     `json:"thumbBundleUrl"`
+	DisplayBundleURL string                     `json:"displayBundleUrl"`
+	EstimatedBytes   BootstrapEstimatedBytesDTO `json:"estimatedBytes"`
 }
 
 type BootstrapEstimatedBytesDTO struct {
@@ -144,11 +144,11 @@ func mapBootstrapProductsFromList(products []Product, catalogVersion int32) []Bo
 	out := make([]BootstrapProductDTO, 0, len(products))
 	for _, p := range products {
 		dto := BootstrapProductDTO{
-			ID:         p.ID.String(),
-			SKU:        p.SKU,
-			Name:       p.Name,
-			IsActive:   p.Active,
-			Currency:   strPtr(p.Currency),
+			ID:             p.ID.String(),
+			SKU:            p.SKU,
+			Name:           p.Name,
+			IsActive:       p.Active,
+			Currency:       strPtr(p.Currency),
 			CatalogVersion: int32Ptr(catalogVersion),
 		}
 		if p.Barcode != "" {
