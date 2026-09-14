@@ -3,6 +3,7 @@ package commerce
 import (
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"time"
 )
@@ -25,11 +26,11 @@ func validateMachinePricingSnapshotMultiLine(snap MachinePricingSnapshotInput, l
 	}
 	if len(snap.Lines) == 0 {
 		if lineCount == 1 {
-			return validateMachinePricingSnapshot(snap)
+			return validateMachinePricingSnapshotLegacySingleLine(snap)
 		}
 		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot lines required for multi-line quote"))
 	}
-	if len(snap.Lines) != lineCount {
+	if lineCount > 0 && len(snap.Lines) != lineCount {
 		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line count mismatch"))
 	}
 	if !snap.CapturedAt.IsZero() {
@@ -40,6 +41,7 @@ func validateMachinePricingSnapshotMultiLine(snap MachinePricingSnapshotInput, l
 	}
 	var lineSum int64
 	seenSeq := map[int32]struct{}{}
+	seenIdentity := map[string]struct{}{}
 	for _, ln := range snap.Lines {
 		if ln.LineSequence <= 0 {
 			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line_sequence must be positive"))
@@ -48,20 +50,35 @@ func validateMachinePricingSnapshotMultiLine(snap MachinePricingSnapshotInput, l
 			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot duplicate line_sequence"))
 		}
 		seenSeq[ln.LineSequence] = struct{}{}
-		qty := ln.Quantity
-		if qty <= 0 {
-			qty = 1
+		identity := strings.ToUpper(strings.TrimSpace(ln.CabinetCode)) + "|" +
+			strings.ToUpper(strings.TrimSpace(ln.SlotCode)) + "|" + ln.ProductID.String()
+		if _, dup := seenIdentity[identity]; dup {
+			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot duplicate line identity"))
 		}
+		seenIdentity[identity] = struct{}{}
+		if ln.Quantity <= 0 {
+			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot quantity must be positive"))
+		}
+		qty := int64(ln.Quantity)
 		if ln.UnitPriceMinor <= 0 || ln.UnitPriceMinor > pricingMaxUnitPriceMinor {
 			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot unit_price_minor out of range"))
 		}
-		if ln.LineSubtotalMinor != ln.UnitPriceMinor*int64(qty) {
+		if ln.UnitPriceMinor > math.MaxInt64/qty {
+			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line subtotal overflow"))
+		}
+		if ln.LineSubtotalMinor != ln.UnitPriceMinor*qty {
 			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot line subtotal mismatch"))
+		}
+		if lineSum > math.MaxInt64-ln.LineSubtotalMinor {
+			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot subtotal overflow"))
 		}
 		lineSum += ln.LineSubtotalMinor
 	}
 	if lineSum != snap.SubtotalMinor {
 		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot subtotal does not match line sum"))
+	}
+	if len(snap.Lines) == 1 && snap.UnitPriceMinor > 0 && snap.UnitPriceMinor != snap.Lines[0].UnitPriceMinor {
+		return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot unit_price_minor must match the single line unit price"))
 	}
 	return nil
 }

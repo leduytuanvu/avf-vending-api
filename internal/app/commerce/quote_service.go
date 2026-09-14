@@ -185,6 +185,11 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 			slog.Warn("PRICING_SNAPSHOT_REJECTED_STRUCTURAL",
 				"machine_id", in.MachineID.String(),
 				"snapshot_id", snap.SnapshotID,
+				"quote_line_count", len(in.Lines),
+				"snapshot_line_count", len(snap.Lines),
+				"subtotal_minor", snap.SubtotalMinor,
+				"total_minor", snap.TotalMinor,
+				"unit_price_minor", snap.UnitPriceMinor,
 				"error", err.Error(),
 			)
 			return CreateQuoteResult{}, err
