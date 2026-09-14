@@ -128,7 +128,7 @@ func (s *Service) enrichProducts(ctx context.Context, rows []db.CatalogAdminList
 	for i := range rows {
 		pids[i] = rows[i].ID
 	}
-	assetByProd, err := s.catalogAdmin.PrimaryMediaAssetByProductIDs(ctx, pids)
+	imgByProd, err := s.catalogAdmin.RuntimePrimaryImagesByProductIDs(ctx, pids)
 	if err != nil {
 		return nil, err
 	}
@@ -144,10 +144,19 @@ func (s *Service) enrichProducts(ctx context.Context, rows []db.CatalogAdminList
 			Currency:    "VND",
 			UpdatedAt:   row.UpdatedAt.UTC(),
 		}
-		if aid, ok := assetByProd[row.ID]; ok {
-			p.ImageKey = fmt.Sprintf("product:%s", row.ID)
-			p.ImageHash = aid.String()
-			p.ImageContentRevision = row.UpdatedAt.UTC().Unix()
+		if im, ok := imgByProd[row.ID]; ok {
+			thumb, display := resolveProductImageURLs(ctx, s.mediaStore, s.presignTTL, im)
+			if thumb != "" || display != "" {
+				p.ImageKey = fmt.Sprintf("product:%s", row.ID)
+				p.ThumbURL = thumb
+				p.DisplayURL = display
+				p.ImageContentRevision = row.UpdatedAt.UTC().Unix()
+				if im.MediaAssetID.Valid {
+					p.ImageHash = uuid.UUID(im.MediaAssetID.Bytes).String()
+				} else if hash := imageContentHash(im); hash != "" {
+					p.ImageHash = hash
+				}
+			}
 		}
 		products = append(products, p)
 	}
@@ -176,6 +185,10 @@ func CatalogVersionInt(products []Product) int32 {
 		_, _ = h.Write([]byte(p.UpdatedAt.UTC().Format(time.RFC3339Nano)))
 		_, _ = h.Write([]byte("|"))
 		_, _ = h.Write([]byte(p.ImageHash))
+		_, _ = h.Write([]byte("|"))
+		_, _ = h.Write([]byte(p.ThumbURL))
+		_, _ = h.Write([]byte("|"))
+		_, _ = h.Write([]byte(p.DisplayURL))
 		_, _ = h.Write([]byte("\n"))
 	}
 	v := int32(h.Sum32() & 0x7fffffff)
