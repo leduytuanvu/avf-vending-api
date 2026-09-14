@@ -627,6 +627,9 @@ type Querier interface {
 	PlanogramSplitActiveMergePair(ctx context.Context, arg PlanogramSplitActiveMergePairParams) (int64, error)
 	// Latest active per-machine price override per product at evaluation time.
 	PricingRuntimeListMachineOverridesAt(ctx context.Context, arg PricingRuntimeListMachineOverridesAtParams) ([]PricingRuntimeListMachineOverridesAtRow, error)
+	ProductMasterCountActiveProducts(ctx context.Context) (int64, error)
+	ProductMasterDefaultPriceByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]ProductMasterDefaultPriceByProductIDsRow, error)
+	ProductMasterListActiveProductsPage(ctx context.Context, arg ProductMasterListActiveProductsPageParams) ([]ProductMasterListActiveProductsPageRow, error)
 	PromotionAdminCountPromotions(ctx context.Context, dollar_1 bool) (int64, error)
 	PromotionAdminDeletePromotionTarget(ctx context.Context, arg PromotionAdminDeletePromotionTargetParams) (int64, error)
 	PromotionAdminDeleteRulesForPromotion(ctx context.Context, promotionID uuid.UUID) error

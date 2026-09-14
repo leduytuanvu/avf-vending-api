@@ -18,6 +18,7 @@ import (
 	applegacypayment "github.com/avf/avf-vending-api/internal/app/legacypayment"
 	appmachinepaymentmethods "github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	appmediaadmin "github.com/avf/avf-vending-api/internal/app/mediaadmin"
+	appproductmastercatalog "github.com/avf/avf-vending-api/internal/app/productmastercatalog"
 	appsalecatalog "github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
@@ -204,6 +205,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}
 	saleCatalogInner := appsalecatalog.NewService(rt.Pool())
 	var saleCatalog appsalecatalog.SnapshotBuilder = saleCatalogInner
+	productMasterCatalog := appproductmastercatalog.NewService(rt.Pool())
 	var cloudinaryUploader appmediaadmin.ProductImageFileUploader
 	if cfg.MediaUpload.CloudinaryConfigured() {
 		upl, uerr := platformcloudinary.NewUploader(
@@ -390,6 +392,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 			MachineQueries:        machineQueries,
 			FeatureFlags:          httpApp.FeatureFlags,
 			SaleCatalog:           saleCatalog,
+			ProductMasterCatalog:  productMasterCatalog,
 			Pool:                  rt.Pool(),
 			MQTTBrokerURL:         cfg.MQTT.BrokerURL,
 			MQTTTopicPrefix:       cfg.MQTT.TopicPrefix,

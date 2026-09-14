@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
+	"github.com/avf/avf-vending-api/internal/app/productmastercatalog"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -28,15 +29,16 @@ type MachinePaymentRuntimeSource interface {
 
 // MachineGRPCServicesDeps wires machine-facing gRPC services without importing cmd/bootstrap.
 type MachineGRPCServicesDeps struct {
-	Activation      *activation.Service
-	MachineRuntime  *machineruntime.Service
-	MachineQueries  api.InternalMachineQueryService
-	FeatureFlags    *featureflags.Service
-	SaleCatalog     salecatalog.SnapshotBuilder
-	Pool            *pgxpool.Pool
-	MQTTBrokerURL   string
-	MQTTTopicPrefix string
-	Config          *config.Config
+	Activation           *activation.Service
+	MachineRuntime       *machineruntime.Service
+	MachineQueries       api.InternalMachineQueryService
+	FeatureFlags         *featureflags.Service
+	SaleCatalog          salecatalog.SnapshotBuilder
+	ProductMasterCatalog *productmastercatalog.Service
+	Pool                 *pgxpool.Pool
+	MQTTBrokerURL        string
+	MQTTTopicPrefix      string
+	Config               *config.Config
 	// InventoryLedger writes machine-originated stock movements (required when machine inventory gRPC is registered).
 	InventoryLedger appinventory.LedgerRepository
 	// EnterpriseAudit is optional; when nil, inventory/operator RPCs skip audit_events writes.

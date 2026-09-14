@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package avf.machine.v1;
+
+import "avf/machine/v1/catalog.proto";
+import "avf/machine/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1";
+
+// MachineProductMasterCatalogService distributes the global active product master catalog
+// (all active products available for planogram selection), distinct from MachineCatalogService
+// slot-oriented sale catalog projection.
+service MachineProductMasterCatalogService {
+  // Returns the authoritative full active product master snapshot for this machine.
+  rpc GetProductMasterCatalogSnapshot(GetProductMasterCatalogSnapshotRequest) returns (GetProductMasterCatalogSnapshotResponse);
+
+  // Compares basis_catalog_version to the current server product-master version.
+  rpc GetProductMasterCatalogDelta(GetProductMasterCatalogDeltaRequest) returns (GetProductMasterCatalogDeltaResponse);
+}
+
+message ProductMasterRecord {
+  string product_id = 1;
+  string sku = 2;
+  string barcode = 3;
+  string name = 4;
+  string short_name = 5;
+  string description = 6;
+  int64 base_price_minor = 7;
+  string currency = 8;
+  bool active = 9;
+  string category_id = 10;
+  string brand_id = 11;
+  ProductMediaRef primary_media = 12;
+}
+
+message ProductMasterCatalogSnapshot {
+  string catalog_version = 1;
+  google.protobuf.Timestamp generated_at = 2;
+  int32 total_active_count = 3;
+  repeated ProductMasterRecord products = 4;
+}
+
+message GetProductMasterCatalogSnapshotRequest {
+  MachineRequestMeta meta = 1;
+  // Optional override; must equal the authenticated machine or the call is rejected.
+  string machine_id = 2;
+  // When > 0, paginate explicitly. When 0, server returns the complete active set in one response.
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message GetProductMasterCatalogSnapshotResponse {
+  ProductMasterCatalogSnapshot snapshot = 1;
+  string next_page_token = 2;
+  MachineResponseMeta meta = 3;
+}
+
+message GetProductMasterCatalogDeltaRequest {
+  MachineRequestMeta meta = 1;
+  string machine_id = 2;
+  string basis_catalog_version = 3;
+  // Optional local active product IDs for tombstone reconciliation.
+  repeated string basis_product_ids = 4;
+}
+
+message GetProductMasterCatalogDeltaResponse {
+  MachineResponseMeta meta = 1;
+  bool basis_matches = 2;
+  string basis_catalog_version = 3;
+  string to_catalog_version = 4;
+  int32 total_active_count = 5;
+  repeated ProductMasterRecord upserts = 6;
+  repeated string deleted_or_deactivated_product_ids = 7;
+  google.protobuf.Timestamp generated_at = 8;
+  bool reset_required = 9;
+}

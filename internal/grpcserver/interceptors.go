@@ -716,6 +716,8 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCatalogService_GetCatalogDelta_FullMethodName,
 		machinev1.MachineCatalogService_AckCatalogVersion_FullMethodName,
 		machinev1.MachineCatalogService_GetMediaManifest_FullMethodName,
+		machinev1.MachineProductMasterCatalogService_GetProductMasterCatalogSnapshot_FullMethodName,
+		machinev1.MachineProductMasterCatalogService_GetProductMasterCatalogDelta_FullMethodName,
 		machinev1.MachineMediaService_GetMediaManifest_FullMethodName,
 		machinev1.MachineMediaService_GetMediaDelta_FullMethodName,
 		machinev1.MachineMediaService_AckMediaVersion_FullMethodName,
