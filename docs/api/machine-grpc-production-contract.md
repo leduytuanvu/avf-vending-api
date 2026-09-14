@@ -108,6 +108,7 @@ Canonical mapping from Android kiosk flows to **primary gRPC RPC** (aliases note
 | sync catalog bundle | `SyncCatalogBundle` | `MachineCatalogService` | Machine JWT | Read | Same as sale-catalog HTTP — legacy-only |
 | get catalog delta | `GetCatalogDelta` | `MachineCatalogService` | Machine JWT | Read | Same — legacy-only |
 | ack catalog version | `AckCatalogVersion` | `MachineCatalogService` | Machine JWT | **Yes** | None |
+| sync product master catalog | `GetProductMasterCatalogSnapshot` / `GetProductMasterCatalogDelta` | `MachineProductMasterCatalogService` | Machine JWT | Read | None — gRPC-only, distinct from slot sale catalog |
 | get media manifest | `GetMediaManifest` | `MachineMediaService` | Machine JWT | Read | Sale-catalog HTTP — legacy-only |
 | get media delta | `GetMediaDelta` | `MachineMediaService` | Machine JWT | Read | Same — legacy-only |
 | ack media version | `AckMediaVersion` | `MachineMediaService` | Machine JWT | **Yes** | None |
@@ -225,6 +226,20 @@ Legend — **Legacy REST fallback:** `legacy-only` = not mounted in production d
 | **Idempotency** | Reads: no; `AckCatalogVersion`: **yes** |
 | **Persistence** | Room catalog cache keyed by `catalog_version`; ack after successful apply |
 | **Legacy REST** | `GET /v1/machines/{id}/sale-catalog` — **legacy-only** |
+
+### 6b. Product master catalog snapshot / delta
+
+Global active product master for planogram selection. Distinct from `MachineCatalogService` slot sale catalog.
+
+| Item | Value |
+|------|-------|
+| **Primary RPCs** | `MachineProductMasterCatalogService.GetProductMasterCatalogSnapshot`, `GetProductMasterCatalogDelta` |
+| **Key request fields** | `page_size` / `page_token` (snapshot), `basis_catalog_version`, `basis_product_ids` (delta) |
+| **Key response fields** | `catalog_version`, `ProductMasterRecord` (sku, name, price, `primary_media`), `upserts`, `deleted_or_deactivated_product_ids`, `reset_required` |
+| **Auth** | Machine JWT |
+| **Idempotency** | Read-only |
+| **Persistence** | Local product-master cache keyed by `catalog_version`; full snapshot when `reset_required` or empty basis |
+| **Legacy REST** | None — gRPC-only |
 
 ### 7. Media manifest / delta
 
@@ -464,6 +479,13 @@ Per-RPC contract for `avf.machine.v1`. **Auth** = Machine JWT unless noted. **Id
 | `GetMediaDelta` | Incremental media | basis fingerprint | added/changed/removed | JWT | Read | Safe | Image cache | — | sale-catalog GET | legacy-only |
 | `AckMediaVersion` | Confirm media apply | version, idempotency | replay | JWT | **Yes** | Same key | Acked media version | — | None | — |
 
+### MachineProductMasterCatalogService
+
+| RPC | Purpose | Request | Response | Auth | Idempotency | Retry | Persistence | Errors | REST | Fallback |
+|-----|---------|---------|----------|------|-------------|-------|-------------|--------|------|----------|
+| `GetProductMasterCatalogSnapshot` | Full active product master | page_size, page_token | products, `catalog_version` | JWT | Read | Safe | Product-master cache | too large / unauthenticated | None | gRPC-only |
+| `GetProductMasterCatalogDelta` | Incremental product master | basis version, optional product IDs | upserts, tombstones, `reset_required` | JWT | Read | Safe | Merge delta or full reset | unauthenticated | None | gRPC-only |
+
 ### MachineInventoryService
 
 | RPC | Purpose | Request | Response | Auth | Idempotency | Retry | Persistence | Errors | REST | Fallback |
@@ -529,7 +551,8 @@ All services below are registered when machine gRPC starts. See [`android-proto-
 | `MachineTokenService` | **Primary** token refresh |
 | `MachineAuthService` | Compatibility aliases for activation/refresh |
 | `MachineBootstrapService` | **Primary** bootstrap / check-in / config ack |
-| `MachineCatalogService` | **Primary** catalog |
+| `MachineCatalogService` | **Primary** slot sale catalog |
+| `MachineProductMasterCatalogService` | **Primary** global product master (planogram selection) |
 | `MachineMediaService` | **Primary** media offline cache |
 | `MachineInventoryService` | **Primary** inventory |
 | `MachineCommerceService` | **Primary** checkout |
