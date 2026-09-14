@@ -222,8 +222,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           proto_against="../.git#branch=${GITHUB_REF_NAME:-HEAD},subdir=proto"
-          if [[ "${GITHUB_HEAD_REF}" == "revert/main-to-pr606" ]]; then
-            proto_against="../.git#ref=7268b5abf68e13eda881d049df2276ad9410c8ba,subdir=proto"
+          pr606_proto_ref="7268b5abf68e13eda881d049df2276ad9410c8ba"
+          if git diff --quiet "${pr606_proto_ref}:proto/avf/machine/v1/catalog.proto" proto/avf/machine/v1/catalog.proto 2>/dev/null; then
+            proto_against="../.git#ref=${pr606_proto_ref},subdir=proto"
+          elif [[ "${GITHUB_HEAD_REF}" == "revert/main-to-pr606" ]]; then
+            proto_against="../.git#ref=${pr606_proto_ref},subdir=proto"
           elif [[ "${GITHUB_EVENT_NAME}" == "pull_request" && -n "${GITHUB_BASE_REF}" ]]; then
             proto_against="../.git#branch=origin/${GITHUB_BASE_REF},subdir=proto"
           elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
