@@ -32,15 +32,6 @@ service MachineCatalogService {
 
   // GetMediaManifest lists primary display media metadata per product on the machine catalog.
   rpc GetMediaManifest(GetMediaManifestRequest) returns (GetMediaManifestResponse);
-
-  // GetAssignmentCatalogSnapshot returns the company-wide product master for technician slot assignment.
-  rpc GetAssignmentCatalogSnapshot(GetAssignmentCatalogSnapshotRequest) returns (GetAssignmentCatalogSnapshotResponse);
-
-  // SyncAssignmentCatalogBundle returns assignment-catalog products plus thumb media metadata for offline picker sync.
-  rpc SyncAssignmentCatalogBundle(SyncAssignmentCatalogBundleRequest) returns (SyncAssignmentCatalogBundleResponse);
-
-  // GetAssignmentCatalogDelta compares basis_catalog_version to the published assignment catalog on the server.
-  rpc GetAssignmentCatalogDelta(GetAssignmentCatalogDeltaRequest) returns (GetAssignmentCatalogDeltaResponse);
 }
 
 message GetCatalogSnapshotRequest {
@@ -224,69 +215,4 @@ message SyncCatalogBundleResponse {
   repeated string removed_product_ids = 7;
   repeated MediaAsset changed_media_assets = 8;
   repeated string removed_media_asset_ids = 9;
-}
-
-message AssignmentCatalogProduct {
-  string product_id = 1;
-  string sku = 2;
-  string barcode = 3;
-  string name = 4;
-  string short_name = 5;
-  string description = 6;
-  bool is_active = 7;
-  int64 base_price_minor = 8;
-  string currency = 9;
-  string image_key = 10;
-  string image_hash = 11;
-  string thumb_url = 12;
-  string display_url = 13;
-  int64 image_content_revision = 14;
-}
-
-message AssignmentCatalogSnapshot {
-  string machine_id = 1;
-  int32 catalog_version = 2;
-  google.protobuf.Timestamp generated_at = 3;
-  int32 product_count = 4;
-  repeated AssignmentCatalogProduct products = 5;
-}
-
-message GetAssignmentCatalogSnapshotRequest {
-  MachineRequestMeta meta = 1;
-  string machine_id = 2;
-  optional int32 if_none_match_catalog_version = 3;
-}
-
-message GetAssignmentCatalogSnapshotResponse {
-  MachineResponseMeta meta = 1;
-  bool not_modified = 2;
-  AssignmentCatalogSnapshot snapshot = 3;
-}
-
-message SyncAssignmentCatalogBundleRequest {
-  MachineRequestMeta meta = 1;
-  string machine_id = 2;
-  int32 current_catalog_version = 3;
-}
-
-message SyncAssignmentCatalogBundleResponse {
-  MachineResponseMeta meta = 1;
-  bool unchanged = 2;
-  AssignmentCatalogSnapshot snapshot = 3;
-}
-
-message GetAssignmentCatalogDeltaRequest {
-  MachineRequestMeta meta = 1;
-  string machine_id = 2;
-  int32 basis_catalog_version = 3;
-}
-
-message GetAssignmentCatalogDeltaResponse {
-  MachineResponseMeta meta = 1;
-  bool basis_matches = 2;
-  int32 from_catalog_version = 3;
-  int32 to_catalog_version = 4;
-  google.protobuf.Timestamp generated_at = 5;
-  repeated AssignmentCatalogProduct upserts = 6;
-  repeated string deleted_product_ids = 7;
 }

@@ -28,7 +28,6 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCatalogRead))
 		r.Get("/products", listAdminProducts(app))
-		mountAdminProductBootstrapRoutes(r, app)
 		r.Get("/products/{productId}", getAdminProduct(app))
 		r.Get("/brands", listAdminBrands(svc))
 		r.Get("/categories", listAdminCategories(svc))
