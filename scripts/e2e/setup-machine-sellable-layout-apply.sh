@@ -190,9 +190,17 @@ EXISTING_PRODUCTS_BODY="${E2E_RUN_DIR}/raw/products-list.body"
 while IFS= read -r sku; do
   sku="${sku//$'\r'/}"
   [[ -n "$sku" ]] || continue
+  catalog_json="$(jq -c --arg sku "$sku" '.catalog_products[]? | select(.sku==$sku)' "$LAYOUT_JSON" | head -n1)"
   slot_json="$(jq -c --arg sku "$sku" '.slots[] | select((.product.sku // "") == $sku) | .product' "$LAYOUT_JSON" | head -n1)"
-  pname="$(echo "$slot_json" | jq -r '.name // empty')"
+  pname="$(echo "$catalog_json" | jq -r '.name // empty')"
+  if [[ -z "$pname" ]]; then
+    pname="$(echo "$slot_json" | jq -r '.name // empty')"
+  fi
   [[ -n "$pname" ]] || pname="E2E ${sku}"
+  img_url="$(echo "$catalog_json" | jq -r '.primary_image_url // empty')"
+  if [[ -z "$img_url" ]]; then
+    img_url="$(echo "$slot_json" | jq -r '.primary_image_url // empty')"
+  fi
   pid=""
   if [[ "$code" == "200" ]]; then
     pid="$(jq -r --arg sku "$sku" '(.items // [])[] | select(.sku==$sku) | .id' "$EXISTING_PRODUCTS_BODY" 2>/dev/null | head -n1)"
@@ -200,6 +208,9 @@ while IFS= read -r sku; do
   if [[ -z "$pid" ]]; then
     pbody="$(jq -nc --arg name "$pname" --arg sku "$sku" \
       '{name:$name,sku:$sku,description:"e2e layout seed",active:true,ageRestricted:false,allergenCodes:[]}')"
+    if [[ -n "$img_url" ]]; then
+      pbody="$(echo "$pbody" | jq --arg url "$img_url" '. + {primaryImageUrl:$url}')"
+    fi
     if [[ -n "$CAT_ID" ]]; then
       pbody="$(echo "$pbody" | jq --arg cid "$CAT_ID" '. + {categoryId:$cid}')"
     fi
@@ -217,7 +228,7 @@ while IFS= read -r sku; do
   [[ -n "$pid" ]] || fail_step "product ${sku} missing id"
   tmp="$(mktemp)"
   jq --arg sku "$sku" --arg pid "$pid" '. + {($sku):$pid}' "$PRODUCT_IDS_JSON" >"$tmp" && mv "$tmp" "$PRODUCT_IDS_JSON"
-done < <(jq -r '.slots[].product.sku // empty' "$LAYOUT_JSON" | tr -d '\r' | sort -u)
+done < <(jq -r '(.catalog_products[]?.sku // empty), (.slots[].product.sku // empty)' "$LAYOUT_JSON" | tr -d '\r' | sort -u)
 
 # --- Operator session (admin inventory write path) ---
 OP_BODY='{"force_admin_takeover":true,"auth_method":"oidc"}'
@@ -331,6 +342,15 @@ if [[ "$(echo "$STOCK_ITEMS" | jq 'length')" -gt 0 ]]; then
   STOCK_JSON="$(jq -nc --arg sid "$OP_SID" --argjson items "$STOCK_ITEMS" '{operator_session_id:$sid,reason:"restock",items:$items}')"
   code="$(e2e_curl_json POST stock-adjust "${BASE_URL}/v1/admin/machines/${MACHINE_ID}/stock-adjustments" "$STOCK_JSON" "e2e-layout-stock-${MACHINE_ID}-${E2E_RUN_TS}")"
   [[ "$code" == "200" ]] || fail_step "stock adjustment http=${code}"
+fi
+
+if jq -e '(.catalog_products // []) | length > 0' "$LAYOUT_JSON" >/dev/null 2>&1; then
+  export ATTACH_CATALOG_SKIP_WRITE_GUARD=true
+  export E2E_RUN_DIR="${E2E_RUN_DIR}/catalog-attach"
+  mkdir -p "${E2E_RUN_DIR}/raw"
+  if ! bash "${ROOT}/scripts/ops/attach_layout_catalog_products.sh" "$LAYOUT_JSON"; then
+    fail_step "catalog_products image/price attach failed"
+  fi
 fi
 
 if [[ ${#FAILURES[@]} -gt 0 ]]; then
