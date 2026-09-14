@@ -1548,6 +1548,622 @@ func (x *SyncCatalogBundleResponse) GetRemovedMediaAssetIds() []string {
 	return nil
 }
 
+type AssignmentCatalogProduct struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	ProductId            string                 `protobuf:"bytes,1,opt,name=product_id,json=productId,proto3" json:"product_id,omitempty"`
+	Sku                  string                 `protobuf:"bytes,2,opt,name=sku,proto3" json:"sku,omitempty"`
+	Barcode              string                 `protobuf:"bytes,3,opt,name=barcode,proto3" json:"barcode,omitempty"`
+	Name                 string                 `protobuf:"bytes,4,opt,name=name,proto3" json:"name,omitempty"`
+	ShortName            string                 `protobuf:"bytes,5,opt,name=short_name,json=shortName,proto3" json:"short_name,omitempty"`
+	Description          string                 `protobuf:"bytes,6,opt,name=description,proto3" json:"description,omitempty"`
+	IsActive             bool                   `protobuf:"varint,7,opt,name=is_active,json=isActive,proto3" json:"is_active,omitempty"`
+	BasePriceMinor       int64                  `protobuf:"varint,8,opt,name=base_price_minor,json=basePriceMinor,proto3" json:"base_price_minor,omitempty"`
+	Currency             string                 `protobuf:"bytes,9,opt,name=currency,proto3" json:"currency,omitempty"`
+	ImageKey             string                 `protobuf:"bytes,10,opt,name=image_key,json=imageKey,proto3" json:"image_key,omitempty"`
+	ImageHash            string                 `protobuf:"bytes,11,opt,name=image_hash,json=imageHash,proto3" json:"image_hash,omitempty"`
+	ThumbUrl             string                 `protobuf:"bytes,12,opt,name=thumb_url,json=thumbUrl,proto3" json:"thumb_url,omitempty"`
+	DisplayUrl           string                 `protobuf:"bytes,13,opt,name=display_url,json=displayUrl,proto3" json:"display_url,omitempty"`
+	ImageContentRevision int64                  `protobuf:"varint,14,opt,name=image_content_revision,json=imageContentRevision,proto3" json:"image_content_revision,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *AssignmentCatalogProduct) Reset() {
+	*x = AssignmentCatalogProduct{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignmentCatalogProduct) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignmentCatalogProduct) ProtoMessage() {}
+
+func (x *AssignmentCatalogProduct) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignmentCatalogProduct.ProtoReflect.Descriptor instead.
+func (*AssignmentCatalogProduct) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *AssignmentCatalogProduct) GetProductId() string {
+	if x != nil {
+		return x.ProductId
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetSku() string {
+	if x != nil {
+		return x.Sku
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetBarcode() string {
+	if x != nil {
+		return x.Barcode
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetShortName() string {
+	if x != nil {
+		return x.ShortName
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetIsActive() bool {
+	if x != nil {
+		return x.IsActive
+	}
+	return false
+}
+
+func (x *AssignmentCatalogProduct) GetBasePriceMinor() int64 {
+	if x != nil {
+		return x.BasePriceMinor
+	}
+	return 0
+}
+
+func (x *AssignmentCatalogProduct) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetImageKey() string {
+	if x != nil {
+		return x.ImageKey
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetImageHash() string {
+	if x != nil {
+		return x.ImageHash
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetThumbUrl() string {
+	if x != nil {
+		return x.ThumbUrl
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetDisplayUrl() string {
+	if x != nil {
+		return x.DisplayUrl
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogProduct) GetImageContentRevision() int64 {
+	if x != nil {
+		return x.ImageContentRevision
+	}
+	return 0
+}
+
+type AssignmentCatalogSnapshot struct {
+	state          protoimpl.MessageState      `protogen:"open.v1"`
+	MachineId      string                      `protobuf:"bytes,1,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	CatalogVersion int32                       `protobuf:"varint,2,opt,name=catalog_version,json=catalogVersion,proto3" json:"catalog_version,omitempty"`
+	GeneratedAt    *timestamppb.Timestamp      `protobuf:"bytes,3,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	ProductCount   int32                       `protobuf:"varint,4,opt,name=product_count,json=productCount,proto3" json:"product_count,omitempty"`
+	Products       []*AssignmentCatalogProduct `protobuf:"bytes,5,rep,name=products,proto3" json:"products,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *AssignmentCatalogSnapshot) Reset() {
+	*x = AssignmentCatalogSnapshot{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssignmentCatalogSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssignmentCatalogSnapshot) ProtoMessage() {}
+
+func (x *AssignmentCatalogSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssignmentCatalogSnapshot.ProtoReflect.Descriptor instead.
+func (*AssignmentCatalogSnapshot) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *AssignmentCatalogSnapshot) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *AssignmentCatalogSnapshot) GetCatalogVersion() int32 {
+	if x != nil {
+		return x.CatalogVersion
+	}
+	return 0
+}
+
+func (x *AssignmentCatalogSnapshot) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+func (x *AssignmentCatalogSnapshot) GetProductCount() int32 {
+	if x != nil {
+		return x.ProductCount
+	}
+	return 0
+}
+
+func (x *AssignmentCatalogSnapshot) GetProducts() []*AssignmentCatalogProduct {
+	if x != nil {
+		return x.Products
+	}
+	return nil
+}
+
+type GetAssignmentCatalogSnapshotRequest struct {
+	state                     protoimpl.MessageState `protogen:"open.v1"`
+	Meta                      *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId                 string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	IfNoneMatchCatalogVersion *int32                 `protobuf:"varint,3,opt,name=if_none_match_catalog_version,json=ifNoneMatchCatalogVersion,proto3,oneof" json:"if_none_match_catalog_version,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *GetAssignmentCatalogSnapshotRequest) Reset() {
+	*x = GetAssignmentCatalogSnapshotRequest{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAssignmentCatalogSnapshotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAssignmentCatalogSnapshotRequest) ProtoMessage() {}
+
+func (x *GetAssignmentCatalogSnapshotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAssignmentCatalogSnapshotRequest.ProtoReflect.Descriptor instead.
+func (*GetAssignmentCatalogSnapshotRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *GetAssignmentCatalogSnapshotRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogSnapshotRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *GetAssignmentCatalogSnapshotRequest) GetIfNoneMatchCatalogVersion() int32 {
+	if x != nil && x.IfNoneMatchCatalogVersion != nil {
+		return *x.IfNoneMatchCatalogVersion
+	}
+	return 0
+}
+
+type GetAssignmentCatalogSnapshotResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Meta          *MachineResponseMeta       `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	NotModified   bool                       `protobuf:"varint,2,opt,name=not_modified,json=notModified,proto3" json:"not_modified,omitempty"`
+	Snapshot      *AssignmentCatalogSnapshot `protobuf:"bytes,3,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAssignmentCatalogSnapshotResponse) Reset() {
+	*x = GetAssignmentCatalogSnapshotResponse{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAssignmentCatalogSnapshotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAssignmentCatalogSnapshotResponse) ProtoMessage() {}
+
+func (x *GetAssignmentCatalogSnapshotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAssignmentCatalogSnapshotResponse.ProtoReflect.Descriptor instead.
+func (*GetAssignmentCatalogSnapshotResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetAssignmentCatalogSnapshotResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogSnapshotResponse) GetNotModified() bool {
+	if x != nil {
+		return x.NotModified
+	}
+	return false
+}
+
+func (x *GetAssignmentCatalogSnapshotResponse) GetSnapshot() *AssignmentCatalogSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+type SyncAssignmentCatalogBundleRequest struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Meta                  *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId             string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	CurrentCatalogVersion int32                  `protobuf:"varint,3,opt,name=current_catalog_version,json=currentCatalogVersion,proto3" json:"current_catalog_version,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *SyncAssignmentCatalogBundleRequest) Reset() {
+	*x = SyncAssignmentCatalogBundleRequest{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncAssignmentCatalogBundleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncAssignmentCatalogBundleRequest) ProtoMessage() {}
+
+func (x *SyncAssignmentCatalogBundleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncAssignmentCatalogBundleRequest.ProtoReflect.Descriptor instead.
+func (*SyncAssignmentCatalogBundleRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SyncAssignmentCatalogBundleRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *SyncAssignmentCatalogBundleRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *SyncAssignmentCatalogBundleRequest) GetCurrentCatalogVersion() int32 {
+	if x != nil {
+		return x.CurrentCatalogVersion
+	}
+	return 0
+}
+
+type SyncAssignmentCatalogBundleResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Meta          *MachineResponseMeta       `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Unchanged     bool                       `protobuf:"varint,2,opt,name=unchanged,proto3" json:"unchanged,omitempty"`
+	Snapshot      *AssignmentCatalogSnapshot `protobuf:"bytes,3,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SyncAssignmentCatalogBundleResponse) Reset() {
+	*x = SyncAssignmentCatalogBundleResponse{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SyncAssignmentCatalogBundleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SyncAssignmentCatalogBundleResponse) ProtoMessage() {}
+
+func (x *SyncAssignmentCatalogBundleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SyncAssignmentCatalogBundleResponse.ProtoReflect.Descriptor instead.
+func (*SyncAssignmentCatalogBundleResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SyncAssignmentCatalogBundleResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *SyncAssignmentCatalogBundleResponse) GetUnchanged() bool {
+	if x != nil {
+		return x.Unchanged
+	}
+	return false
+}
+
+func (x *SyncAssignmentCatalogBundleResponse) GetSnapshot() *AssignmentCatalogSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+type GetAssignmentCatalogDeltaRequest struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Meta                *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId           string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	BasisCatalogVersion int32                  `protobuf:"varint,3,opt,name=basis_catalog_version,json=basisCatalogVersion,proto3" json:"basis_catalog_version,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *GetAssignmentCatalogDeltaRequest) Reset() {
+	*x = GetAssignmentCatalogDeltaRequest{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAssignmentCatalogDeltaRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAssignmentCatalogDeltaRequest) ProtoMessage() {}
+
+func (x *GetAssignmentCatalogDeltaRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAssignmentCatalogDeltaRequest.ProtoReflect.Descriptor instead.
+func (*GetAssignmentCatalogDeltaRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *GetAssignmentCatalogDeltaRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogDeltaRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *GetAssignmentCatalogDeltaRequest) GetBasisCatalogVersion() int32 {
+	if x != nil {
+		return x.BasisCatalogVersion
+	}
+	return 0
+}
+
+type GetAssignmentCatalogDeltaResponse struct {
+	state              protoimpl.MessageState      `protogen:"open.v1"`
+	Meta               *MachineResponseMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	BasisMatches       bool                        `protobuf:"varint,2,opt,name=basis_matches,json=basisMatches,proto3" json:"basis_matches,omitempty"`
+	FromCatalogVersion int32                       `protobuf:"varint,3,opt,name=from_catalog_version,json=fromCatalogVersion,proto3" json:"from_catalog_version,omitempty"`
+	ToCatalogVersion   int32                       `protobuf:"varint,4,opt,name=to_catalog_version,json=toCatalogVersion,proto3" json:"to_catalog_version,omitempty"`
+	GeneratedAt        *timestamppb.Timestamp      `protobuf:"bytes,5,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	Upserts            []*AssignmentCatalogProduct `protobuf:"bytes,6,rep,name=upserts,proto3" json:"upserts,omitempty"`
+	DeletedProductIds  []string                    `protobuf:"bytes,7,rep,name=deleted_product_ids,json=deletedProductIds,proto3" json:"deleted_product_ids,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) Reset() {
+	*x = GetAssignmentCatalogDeltaResponse{}
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAssignmentCatalogDeltaResponse) ProtoMessage() {}
+
+func (x *GetAssignmentCatalogDeltaResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_catalog_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAssignmentCatalogDeltaResponse.ProtoReflect.Descriptor instead.
+func (*GetAssignmentCatalogDeltaResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_catalog_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetBasisMatches() bool {
+	if x != nil {
+		return x.BasisMatches
+	}
+	return false
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetFromCatalogVersion() int32 {
+	if x != nil {
+		return x.FromCatalogVersion
+	}
+	return 0
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetToCatalogVersion() int32 {
+	if x != nil {
+		return x.ToCatalogVersion
+	}
+	return 0
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetUpserts() []*AssignmentCatalogProduct {
+	if x != nil {
+		return x.Upserts
+	}
+	return nil
+}
+
+func (x *GetAssignmentCatalogDeltaResponse) GetDeletedProductIds() []string {
+	if x != nil {
+		return x.DeletedProductIds
+	}
+	return nil
+}
+
 var File_avf_machine_v1_catalog_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_catalog_proto_rawDesc = "" +
@@ -1709,12 +2325,71 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	"\x10changed_products\x18\x06 \x03(\v2\x1f.avf.machine.v1.CatalogSlotItemR\x0fchangedProducts\x12.\n" +
 	"\x13removed_product_ids\x18\a \x03(\tR\x11removedProductIds\x12L\n" +
 	"\x14changed_media_assets\x18\b \x03(\v2\x1a.avf.machine.v1.MediaAssetR\x12changedMediaAssets\x125\n" +
-	"\x17removed_media_asset_ids\x18\t \x03(\tR\x14removedMediaAssetIds*\x95\x01\n" +
+	"\x17removed_media_asset_ids\x18\t \x03(\tR\x14removedMediaAssetIds\"\xcd\x03\n" +
+	"\x18AssignmentCatalogProduct\x12\x1d\n" +
+	"\n" +
+	"product_id\x18\x01 \x01(\tR\tproductId\x12\x10\n" +
+	"\x03sku\x18\x02 \x01(\tR\x03sku\x12\x18\n" +
+	"\abarcode\x18\x03 \x01(\tR\abarcode\x12\x12\n" +
+	"\x04name\x18\x04 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"short_name\x18\x05 \x01(\tR\tshortName\x12 \n" +
+	"\vdescription\x18\x06 \x01(\tR\vdescription\x12\x1b\n" +
+	"\tis_active\x18\a \x01(\bR\bisActive\x12(\n" +
+	"\x10base_price_minor\x18\b \x01(\x03R\x0ebasePriceMinor\x12\x1a\n" +
+	"\bcurrency\x18\t \x01(\tR\bcurrency\x12\x1b\n" +
+	"\timage_key\x18\n" +
+	" \x01(\tR\bimageKey\x12\x1d\n" +
+	"\n" +
+	"image_hash\x18\v \x01(\tR\timageHash\x12\x1b\n" +
+	"\tthumb_url\x18\f \x01(\tR\bthumbUrl\x12\x1f\n" +
+	"\vdisplay_url\x18\r \x01(\tR\n" +
+	"displayUrl\x124\n" +
+	"\x16image_content_revision\x18\x0e \x01(\x03R\x14imageContentRevision\"\x8d\x02\n" +
+	"\x19AssignmentCatalogSnapshot\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x01 \x01(\tR\tmachineId\x12'\n" +
+	"\x0fcatalog_version\x18\x02 \x01(\x05R\x0ecatalogVersion\x12=\n" +
+	"\fgenerated_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12#\n" +
+	"\rproduct_count\x18\x04 \x01(\x05R\fproductCount\x12D\n" +
+	"\bproducts\x18\x05 \x03(\v2(.avf.machine.v1.AssignmentCatalogProductR\bproducts\"\xe5\x01\n" +
+	"#GetAssignmentCatalogSnapshotRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12E\n" +
+	"\x1dif_none_match_catalog_version\x18\x03 \x01(\x05H\x00R\x19ifNoneMatchCatalogVersion\x88\x01\x01B \n" +
+	"\x1e_if_none_match_catalog_version\"\xc9\x01\n" +
+	"$GetAssignmentCatalogSnapshotResponse\x127\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12!\n" +
+	"\fnot_modified\x18\x02 \x01(\bR\vnotModified\x12E\n" +
+	"\bsnapshot\x18\x03 \x01(\v2).avf.machine.v1.AssignmentCatalogSnapshotR\bsnapshot\"\xb3\x01\n" +
+	"\"SyncAssignmentCatalogBundleRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x126\n" +
+	"\x17current_catalog_version\x18\x03 \x01(\x05R\x15currentCatalogVersion\"\xc3\x01\n" +
+	"#SyncAssignmentCatalogBundleResponse\x127\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12\x1c\n" +
+	"\tunchanged\x18\x02 \x01(\bR\tunchanged\x12E\n" +
+	"\bsnapshot\x18\x03 \x01(\v2).avf.machine.v1.AssignmentCatalogSnapshotR\bsnapshot\"\xad\x01\n" +
+	" GetAssignmentCatalogDeltaRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x122\n" +
+	"\x15basis_catalog_version\x18\x03 \x01(\x05R\x13basisCatalogVersion\"\x94\x03\n" +
+	"!GetAssignmentCatalogDeltaResponse\x127\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12#\n" +
+	"\rbasis_matches\x18\x02 \x01(\bR\fbasisMatches\x120\n" +
+	"\x14from_catalog_version\x18\x03 \x01(\x05R\x12fromCatalogVersion\x12,\n" +
+	"\x12to_catalog_version\x18\x04 \x01(\x05R\x10toCatalogVersion\x12=\n" +
+	"\fgenerated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12B\n" +
+	"\aupserts\x18\x06 \x03(\v2(.avf.machine.v1.AssignmentCatalogProductR\aupserts\x12.\n" +
+	"\x13deleted_product_ids\x18\a \x03(\tR\x11deletedProductIds*\x95\x01\n" +
 	"\x10MediaVariantKind\x12\"\n" +
 	"\x1eMEDIA_VARIANT_KIND_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bMEDIA_VARIANT_KIND_ORIGINAL\x10\x01\x12\x1c\n" +
 	"\x18MEDIA_VARIANT_KIND_THUMB\x10\x02\x12\x1e\n" +
-	"\x1aMEDIA_VARIANT_KIND_DISPLAY\x10\x032\xf6\x05\n" +
+	"\x1aMEDIA_VARIANT_KIND_DISPLAY\x10\x032\x8e\t\n" +
 	"\x15MachineCatalogService\x12g\n" +
 	"\x0eGetSaleCatalog\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12h\n" +
 	"\x0fSyncSaleCatalog\x12).avf.machine.v1.GetCatalogSnapshotRequest\x1a*.avf.machine.v1.GetCatalogSnapshotResponse\x12k\n" +
@@ -1722,7 +2397,10 @@ const file_avf_machine_v1_catalog_proto_rawDesc = "" +
 	"\x11SyncCatalogBundle\x12(.avf.machine.v1.SyncCatalogBundleRequest\x1a).avf.machine.v1.SyncCatalogBundleResponse\x12b\n" +
 	"\x0fGetCatalogDelta\x12&.avf.machine.v1.GetCatalogDeltaRequest\x1a'.avf.machine.v1.GetCatalogDeltaResponse\x12h\n" +
 	"\x11AckCatalogVersion\x12(.avf.machine.v1.AckCatalogVersionRequest\x1a).avf.machine.v1.AckCatalogVersionResponse\x12e\n" +
-	"\x10GetMediaManifest\x12'.avf.machine.v1.GetMediaManifestRequest\x1a(.avf.machine.v1.GetMediaManifestResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
+	"\x10GetMediaManifest\x12'.avf.machine.v1.GetMediaManifestRequest\x1a(.avf.machine.v1.GetMediaManifestResponse\x12\x89\x01\n" +
+	"\x1cGetAssignmentCatalogSnapshot\x123.avf.machine.v1.GetAssignmentCatalogSnapshotRequest\x1a4.avf.machine.v1.GetAssignmentCatalogSnapshotResponse\x12\x86\x01\n" +
+	"\x1bSyncAssignmentCatalogBundle\x122.avf.machine.v1.SyncAssignmentCatalogBundleRequest\x1a3.avf.machine.v1.SyncAssignmentCatalogBundleResponse\x12\x80\x01\n" +
+	"\x19GetAssignmentCatalogDelta\x120.avf.machine.v1.GetAssignmentCatalogDeltaRequest\x1a1.avf.machine.v1.GetAssignmentCatalogDeltaResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 
 var (
 	file_avf_machine_v1_catalog_proto_rawDescOnce sync.Once
@@ -1737,76 +2415,102 @@ func file_avf_machine_v1_catalog_proto_rawDescGZIP() []byte {
 }
 
 var file_avf_machine_v1_catalog_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_avf_machine_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_avf_machine_v1_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_avf_machine_v1_catalog_proto_goTypes = []any{
-	(MediaVariantKind)(0),              // 0: avf.machine.v1.MediaVariantKind
-	(*GetCatalogSnapshotRequest)(nil),  // 1: avf.machine.v1.GetCatalogSnapshotRequest
-	(*GetCatalogSnapshotResponse)(nil), // 2: avf.machine.v1.GetCatalogSnapshotResponse
-	(*CatalogSnapshot)(nil),            // 3: avf.machine.v1.CatalogSnapshot
-	(*CatalogSlotItem)(nil),            // 4: avf.machine.v1.CatalogSlotItem
-	(*ProductMediaVariant)(nil),        // 5: avf.machine.v1.ProductMediaVariant
-	(*ProductMediaRef)(nil),            // 6: avf.machine.v1.ProductMediaRef
-	(*GetCatalogDeltaRequest)(nil),     // 7: avf.machine.v1.GetCatalogDeltaRequest
-	(*GetCatalogDeltaResponse)(nil),    // 8: avf.machine.v1.GetCatalogDeltaResponse
-	(*AckCatalogVersionRequest)(nil),   // 9: avf.machine.v1.AckCatalogVersionRequest
-	(*AckCatalogVersionResponse)(nil),  // 10: avf.machine.v1.AckCatalogVersionResponse
-	(*GetMediaManifestRequest)(nil),    // 11: avf.machine.v1.GetMediaManifestRequest
-	(*GetMediaManifestResponse)(nil),   // 12: avf.machine.v1.GetMediaManifestResponse
-	(*MediaManifestEntry)(nil),         // 13: avf.machine.v1.MediaManifestEntry
-	(*MediaAsset)(nil),                 // 14: avf.machine.v1.MediaAsset
-	(*SyncCatalogBundleRequest)(nil),   // 15: avf.machine.v1.SyncCatalogBundleRequest
-	(*SyncCatalogBundleResponse)(nil),  // 16: avf.machine.v1.SyncCatalogBundleResponse
-	(*MachineRequestMeta)(nil),         // 17: avf.machine.v1.MachineRequestMeta
-	(*MachineResponseMeta)(nil),        // 18: avf.machine.v1.MachineResponseMeta
-	(*timestamppb.Timestamp)(nil),      // 19: google.protobuf.Timestamp
+	(MediaVariantKind)(0),                        // 0: avf.machine.v1.MediaVariantKind
+	(*GetCatalogSnapshotRequest)(nil),            // 1: avf.machine.v1.GetCatalogSnapshotRequest
+	(*GetCatalogSnapshotResponse)(nil),           // 2: avf.machine.v1.GetCatalogSnapshotResponse
+	(*CatalogSnapshot)(nil),                      // 3: avf.machine.v1.CatalogSnapshot
+	(*CatalogSlotItem)(nil),                      // 4: avf.machine.v1.CatalogSlotItem
+	(*ProductMediaVariant)(nil),                  // 5: avf.machine.v1.ProductMediaVariant
+	(*ProductMediaRef)(nil),                      // 6: avf.machine.v1.ProductMediaRef
+	(*GetCatalogDeltaRequest)(nil),               // 7: avf.machine.v1.GetCatalogDeltaRequest
+	(*GetCatalogDeltaResponse)(nil),              // 8: avf.machine.v1.GetCatalogDeltaResponse
+	(*AckCatalogVersionRequest)(nil),             // 9: avf.machine.v1.AckCatalogVersionRequest
+	(*AckCatalogVersionResponse)(nil),            // 10: avf.machine.v1.AckCatalogVersionResponse
+	(*GetMediaManifestRequest)(nil),              // 11: avf.machine.v1.GetMediaManifestRequest
+	(*GetMediaManifestResponse)(nil),             // 12: avf.machine.v1.GetMediaManifestResponse
+	(*MediaManifestEntry)(nil),                   // 13: avf.machine.v1.MediaManifestEntry
+	(*MediaAsset)(nil),                           // 14: avf.machine.v1.MediaAsset
+	(*SyncCatalogBundleRequest)(nil),             // 15: avf.machine.v1.SyncCatalogBundleRequest
+	(*SyncCatalogBundleResponse)(nil),            // 16: avf.machine.v1.SyncCatalogBundleResponse
+	(*AssignmentCatalogProduct)(nil),             // 17: avf.machine.v1.AssignmentCatalogProduct
+	(*AssignmentCatalogSnapshot)(nil),            // 18: avf.machine.v1.AssignmentCatalogSnapshot
+	(*GetAssignmentCatalogSnapshotRequest)(nil),  // 19: avf.machine.v1.GetAssignmentCatalogSnapshotRequest
+	(*GetAssignmentCatalogSnapshotResponse)(nil), // 20: avf.machine.v1.GetAssignmentCatalogSnapshotResponse
+	(*SyncAssignmentCatalogBundleRequest)(nil),   // 21: avf.machine.v1.SyncAssignmentCatalogBundleRequest
+	(*SyncAssignmentCatalogBundleResponse)(nil),  // 22: avf.machine.v1.SyncAssignmentCatalogBundleResponse
+	(*GetAssignmentCatalogDeltaRequest)(nil),     // 23: avf.machine.v1.GetAssignmentCatalogDeltaRequest
+	(*GetAssignmentCatalogDeltaResponse)(nil),    // 24: avf.machine.v1.GetAssignmentCatalogDeltaResponse
+	(*MachineRequestMeta)(nil),                   // 25: avf.machine.v1.MachineRequestMeta
+	(*MachineResponseMeta)(nil),                  // 26: avf.machine.v1.MachineResponseMeta
+	(*timestamppb.Timestamp)(nil),                // 27: google.protobuf.Timestamp
 }
 var file_avf_machine_v1_catalog_proto_depIdxs = []int32{
-	17, // 0: avf.machine.v1.GetCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	25, // 0: avf.machine.v1.GetCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	3,  // 1: avf.machine.v1.GetCatalogSnapshotResponse.snapshot:type_name -> avf.machine.v1.CatalogSnapshot
-	18, // 2: avf.machine.v1.GetCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	19, // 3: avf.machine.v1.CatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
+	26, // 2: avf.machine.v1.GetCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	27, // 3: avf.machine.v1.CatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
 	4,  // 4: avf.machine.v1.CatalogSnapshot.items:type_name -> avf.machine.v1.CatalogSlotItem
 	6,  // 5: avf.machine.v1.CatalogSlotItem.primary_media:type_name -> avf.machine.v1.ProductMediaRef
 	0,  // 6: avf.machine.v1.ProductMediaVariant.kind:type_name -> avf.machine.v1.MediaVariantKind
-	19, // 7: avf.machine.v1.ProductMediaVariant.expires_at:type_name -> google.protobuf.Timestamp
-	19, // 8: avf.machine.v1.ProductMediaVariant.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 9: avf.machine.v1.ProductMediaRef.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 10: avf.machine.v1.ProductMediaRef.expires_at:type_name -> google.protobuf.Timestamp
+	27, // 7: avf.machine.v1.ProductMediaVariant.expires_at:type_name -> google.protobuf.Timestamp
+	27, // 8: avf.machine.v1.ProductMediaVariant.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 9: avf.machine.v1.ProductMediaRef.updated_at:type_name -> google.protobuf.Timestamp
+	27, // 10: avf.machine.v1.ProductMediaRef.expires_at:type_name -> google.protobuf.Timestamp
 	5,  // 11: avf.machine.v1.ProductMediaRef.media_variants:type_name -> avf.machine.v1.ProductMediaVariant
-	17, // 12: avf.machine.v1.GetCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	18, // 13: avf.machine.v1.GetCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	25, // 12: avf.machine.v1.GetCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 13: avf.machine.v1.GetCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	3,  // 14: avf.machine.v1.GetCatalogDeltaResponse.snapshot:type_name -> avf.machine.v1.CatalogSnapshot
-	17, // 15: avf.machine.v1.AckCatalogVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	18, // 16: avf.machine.v1.AckCatalogVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	17, // 17: avf.machine.v1.GetMediaManifestRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	19, // 18: avf.machine.v1.GetMediaManifestResponse.generated_at:type_name -> google.protobuf.Timestamp
+	25, // 15: avf.machine.v1.AckCatalogVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 16: avf.machine.v1.AckCatalogVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	25, // 17: avf.machine.v1.GetMediaManifestRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	27, // 18: avf.machine.v1.GetMediaManifestResponse.generated_at:type_name -> google.protobuf.Timestamp
 	13, // 19: avf.machine.v1.GetMediaManifestResponse.entries:type_name -> avf.machine.v1.MediaManifestEntry
-	18, // 20: avf.machine.v1.GetMediaManifestResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	26, // 20: avf.machine.v1.GetMediaManifestResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	6,  // 21: avf.machine.v1.MediaManifestEntry.primary_media:type_name -> avf.machine.v1.ProductMediaRef
-	17, // 22: avf.machine.v1.SyncCatalogBundleRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	18, // 23: avf.machine.v1.SyncCatalogBundleResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	19, // 24: avf.machine.v1.SyncCatalogBundleResponse.generated_at:type_name -> google.protobuf.Timestamp
+	25, // 22: avf.machine.v1.SyncCatalogBundleRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 23: avf.machine.v1.SyncCatalogBundleResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	27, // 24: avf.machine.v1.SyncCatalogBundleResponse.generated_at:type_name -> google.protobuf.Timestamp
 	4,  // 25: avf.machine.v1.SyncCatalogBundleResponse.changed_products:type_name -> avf.machine.v1.CatalogSlotItem
 	14, // 26: avf.machine.v1.SyncCatalogBundleResponse.changed_media_assets:type_name -> avf.machine.v1.MediaAsset
-	1,  // 27: avf.machine.v1.MachineCatalogService.GetSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	1,  // 28: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	1,  // 29: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
-	15, // 30: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:input_type -> avf.machine.v1.SyncCatalogBundleRequest
-	7,  // 31: avf.machine.v1.MachineCatalogService.GetCatalogDelta:input_type -> avf.machine.v1.GetCatalogDeltaRequest
-	9,  // 32: avf.machine.v1.MachineCatalogService.AckCatalogVersion:input_type -> avf.machine.v1.AckCatalogVersionRequest
-	11, // 33: avf.machine.v1.MachineCatalogService.GetMediaManifest:input_type -> avf.machine.v1.GetMediaManifestRequest
-	2,  // 34: avf.machine.v1.MachineCatalogService.GetSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	2,  // 35: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	2,  // 36: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
-	16, // 37: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:output_type -> avf.machine.v1.SyncCatalogBundleResponse
-	8,  // 38: avf.machine.v1.MachineCatalogService.GetCatalogDelta:output_type -> avf.machine.v1.GetCatalogDeltaResponse
-	10, // 39: avf.machine.v1.MachineCatalogService.AckCatalogVersion:output_type -> avf.machine.v1.AckCatalogVersionResponse
-	12, // 40: avf.machine.v1.MachineCatalogService.GetMediaManifest:output_type -> avf.machine.v1.GetMediaManifestResponse
-	34, // [34:41] is the sub-list for method output_type
-	27, // [27:34] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	27, // 27: avf.machine.v1.AssignmentCatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
+	17, // 28: avf.machine.v1.AssignmentCatalogSnapshot.products:type_name -> avf.machine.v1.AssignmentCatalogProduct
+	25, // 29: avf.machine.v1.GetAssignmentCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 30: avf.machine.v1.GetAssignmentCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	18, // 31: avf.machine.v1.GetAssignmentCatalogSnapshotResponse.snapshot:type_name -> avf.machine.v1.AssignmentCatalogSnapshot
+	25, // 32: avf.machine.v1.SyncAssignmentCatalogBundleRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 33: avf.machine.v1.SyncAssignmentCatalogBundleResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	18, // 34: avf.machine.v1.SyncAssignmentCatalogBundleResponse.snapshot:type_name -> avf.machine.v1.AssignmentCatalogSnapshot
+	25, // 35: avf.machine.v1.GetAssignmentCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	26, // 36: avf.machine.v1.GetAssignmentCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	27, // 37: avf.machine.v1.GetAssignmentCatalogDeltaResponse.generated_at:type_name -> google.protobuf.Timestamp
+	17, // 38: avf.machine.v1.GetAssignmentCatalogDeltaResponse.upserts:type_name -> avf.machine.v1.AssignmentCatalogProduct
+	1,  // 39: avf.machine.v1.MachineCatalogService.GetSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	1,  // 40: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	1,  // 41: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:input_type -> avf.machine.v1.GetCatalogSnapshotRequest
+	15, // 42: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:input_type -> avf.machine.v1.SyncCatalogBundleRequest
+	7,  // 43: avf.machine.v1.MachineCatalogService.GetCatalogDelta:input_type -> avf.machine.v1.GetCatalogDeltaRequest
+	9,  // 44: avf.machine.v1.MachineCatalogService.AckCatalogVersion:input_type -> avf.machine.v1.AckCatalogVersionRequest
+	11, // 45: avf.machine.v1.MachineCatalogService.GetMediaManifest:input_type -> avf.machine.v1.GetMediaManifestRequest
+	19, // 46: avf.machine.v1.MachineCatalogService.GetAssignmentCatalogSnapshot:input_type -> avf.machine.v1.GetAssignmentCatalogSnapshotRequest
+	21, // 47: avf.machine.v1.MachineCatalogService.SyncAssignmentCatalogBundle:input_type -> avf.machine.v1.SyncAssignmentCatalogBundleRequest
+	23, // 48: avf.machine.v1.MachineCatalogService.GetAssignmentCatalogDelta:input_type -> avf.machine.v1.GetAssignmentCatalogDeltaRequest
+	2,  // 49: avf.machine.v1.MachineCatalogService.GetSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	2,  // 50: avf.machine.v1.MachineCatalogService.SyncSaleCatalog:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	2,  // 51: avf.machine.v1.MachineCatalogService.GetCatalogSnapshot:output_type -> avf.machine.v1.GetCatalogSnapshotResponse
+	16, // 52: avf.machine.v1.MachineCatalogService.SyncCatalogBundle:output_type -> avf.machine.v1.SyncCatalogBundleResponse
+	8,  // 53: avf.machine.v1.MachineCatalogService.GetCatalogDelta:output_type -> avf.machine.v1.GetCatalogDeltaResponse
+	10, // 54: avf.machine.v1.MachineCatalogService.AckCatalogVersion:output_type -> avf.machine.v1.AckCatalogVersionResponse
+	12, // 55: avf.machine.v1.MachineCatalogService.GetMediaManifest:output_type -> avf.machine.v1.GetMediaManifestResponse
+	20, // 56: avf.machine.v1.MachineCatalogService.GetAssignmentCatalogSnapshot:output_type -> avf.machine.v1.GetAssignmentCatalogSnapshotResponse
+	22, // 57: avf.machine.v1.MachineCatalogService.SyncAssignmentCatalogBundle:output_type -> avf.machine.v1.SyncAssignmentCatalogBundleResponse
+	24, // 58: avf.machine.v1.MachineCatalogService.GetAssignmentCatalogDelta:output_type -> avf.machine.v1.GetAssignmentCatalogDeltaResponse
+	49, // [49:59] is the sub-list for method output_type
+	39, // [39:49] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_catalog_proto_init() }
@@ -1817,13 +2521,14 @@ func file_avf_machine_v1_catalog_proto_init() {
 	file_avf_machine_v1_common_proto_init()
 	file_avf_machine_v1_catalog_proto_msgTypes[0].OneofWrappers = []any{}
 	file_avf_machine_v1_catalog_proto_msgTypes[14].OneofWrappers = []any{}
+	file_avf_machine_v1_catalog_proto_msgTypes[18].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_catalog_proto_rawDesc), len(file_avf_machine_v1_catalog_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   16,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

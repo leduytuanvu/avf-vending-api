@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	appassignmentcatalog "github.com/avf/avf-vending-api/internal/app/assignmentcatalog"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -715,4 +716,126 @@ func mediaVariantsProto(im *salecatalog.ImageMeta) []*machinev1.ProductMediaVari
 		out = append(out, pv)
 	}
 	return out
+}
+
+func (s *machineCatalogServer) GetAssignmentCatalogSnapshot(ctx context.Context, req *machinev1.GetAssignmentCatalogSnapshotRequest) (*machinev1.GetAssignmentCatalogSnapshotResponse, error) {
+	if req == nil {
+		req = &machinev1.GetAssignmentCatalogSnapshotRequest{}
+	}
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	if s.deps.AssignmentCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "assignment catalog not configured")
+	}
+	snap, err := s.deps.AssignmentCatalog.BuildSnapshot(ctx, machineID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "assignment catalog snapshot failed: %v", err)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	if req.IfNoneMatchCatalogVersion != nil && *req.IfNoneMatchCatalogVersion > 0 && *req.IfNoneMatchCatalogVersion == snap.CatalogVersion {
+		return &machinev1.GetAssignmentCatalogSnapshotResponse{
+			NotModified: true,
+			Meta:        responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_NOT_MODIFIED),
+		}, nil
+	}
+	return &machinev1.GetAssignmentCatalogSnapshotResponse{
+		Snapshot: appassignmentcatalog.MapSnapshotProto(snap),
+		Meta:     responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+	}, nil
+}
+
+func (s *machineCatalogServer) SyncAssignmentCatalogBundle(ctx context.Context, req *machinev1.SyncAssignmentCatalogBundleRequest) (*machinev1.SyncAssignmentCatalogBundleResponse, error) {
+	if req == nil {
+		req = &machinev1.SyncAssignmentCatalogBundleRequest{}
+	}
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	if s.deps.AssignmentCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "assignment catalog not configured")
+	}
+	snap, err := s.deps.AssignmentCatalog.BuildSnapshot(ctx, machineID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "assignment catalog bundle failed: %v", err)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	unchanged := req.GetCurrentCatalogVersion() > 0 && req.GetCurrentCatalogVersion() == snap.CatalogVersion
+	return &machinev1.SyncAssignmentCatalogBundleResponse{
+		Unchanged: unchanged,
+		Snapshot:  appassignmentcatalog.MapSnapshotProto(snap),
+		Meta:      responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+	}, nil
+}
+
+func (s *machineCatalogServer) GetAssignmentCatalogDelta(ctx context.Context, req *machinev1.GetAssignmentCatalogDeltaRequest) (*machinev1.GetAssignmentCatalogDeltaResponse, error) {
+	if req == nil {
+		req = &machinev1.GetAssignmentCatalogDeltaRequest{}
+	}
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	if s.deps.AssignmentCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "assignment catalog not configured")
+	}
+	delta, err := s.deps.AssignmentCatalog.BuildDelta(ctx, machineID, req.GetBasisCatalogVersion())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "assignment catalog delta failed: %v", err)
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	basisMatches := req.GetBasisCatalogVersion() > 0 && req.GetBasisCatalogVersion() == delta.ToCatalogVersion
+	resp := &machinev1.GetAssignmentCatalogDeltaResponse{
+		BasisMatches:       basisMatches,
+		FromCatalogVersion: delta.FromCatalogVersion,
+		ToCatalogVersion:   delta.ToCatalogVersion,
+		GeneratedAt:        timestamppb.New(delta.GeneratedAt.UTC()),
+		Meta:               responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+	}
+	if !basisMatches {
+		resp.Upserts = appassignmentcatalog.MapDeltaProductsProto(delta.Upserts)
+		resp.DeletedProductIds = appassignmentcatalog.MapDeletedProductIDsProto(delta.DeletedProductIDs)
+	}
+	return resp, nil
 }
