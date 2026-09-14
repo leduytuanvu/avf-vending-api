@@ -54,14 +54,14 @@ type Snapshot struct {
 
 // Delta is a versioned product master change set.
 type Delta struct {
-	BasisMatches                    bool
-	BasisCatalogVersion             string
-	ToCatalogVersion                string
-	TotalActiveCount                int32
-	Upserts                         []Record
-	DeletedOrDeactivatedProductIDs  []uuid.UUID
-	GeneratedAt                     time.Time
-	ResetRequired                   bool
+	BasisMatches                   bool
+	BasisCatalogVersion            string
+	ToCatalogVersion               string
+	TotalActiveCount               int32
+	Upserts                        []Record
+	DeletedOrDeactivatedProductIDs []uuid.UUID
+	GeneratedAt                    time.Time
+	ResetRequired                  bool
 }
 
 // Service builds machine-facing global product master catalogs.

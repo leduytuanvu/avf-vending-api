@@ -48,9 +48,9 @@ func (s *machineProductMasterCatalogServer) GetProductMasterCatalogSnapshot(
 		rid = req.GetMeta().GetRequestId()
 	}
 	return &machinev1.GetProductMasterCatalogSnapshotResponse{
-		Snapshot:        productMasterSnapshotProto(snap),
-		NextPageToken:   nextToken,
-		Meta:            responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Snapshot:      productMasterSnapshotProto(snap),
+		NextPageToken: nextToken,
+		Meta:          responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
 	}, nil
 }
 
@@ -95,15 +95,15 @@ func (s *machineProductMasterCatalogServer) GetProductMasterCatalogDelta(
 		statusCode = machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_NOT_MODIFIED
 	}
 	return &machinev1.GetProductMasterCatalogDeltaResponse{
-		BasisMatches:                    delta.BasisMatches,
-		BasisCatalogVersion:               delta.BasisCatalogVersion,
-		ToCatalogVersion:                delta.ToCatalogVersion,
-		TotalActiveCount:                delta.TotalActiveCount,
-		Upserts:                         productMasterRecordsProto(delta.Upserts),
-		DeletedOrDeactivatedProductIds:  uuidStrings(delta.DeletedOrDeactivatedProductIDs),
-		GeneratedAt:                     timestamppb.New(delta.GeneratedAt),
-		ResetRequired:                   delta.ResetRequired,
-		Meta:                            responseMetaCtx(ctx, rid, statusCode),
+		BasisMatches:                   delta.BasisMatches,
+		BasisCatalogVersion:            delta.BasisCatalogVersion,
+		ToCatalogVersion:               delta.ToCatalogVersion,
+		TotalActiveCount:               delta.TotalActiveCount,
+		Upserts:                        productMasterRecordsProto(delta.Upserts),
+		DeletedOrDeactivatedProductIds: uuidStrings(delta.DeletedOrDeactivatedProductIDs),
+		GeneratedAt:                    timestamppb.New(delta.GeneratedAt),
+		ResetRequired:                  delta.ResetRequired,
+		Meta:                           responseMetaCtx(ctx, rid, statusCode),
 	}, nil
 }
 
