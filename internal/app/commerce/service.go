@@ -122,14 +122,14 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 		if err := validateMachinePricingSnapshot(snap); err != nil {
 			return CreateOrderResult{}, err
 		}
-		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+		identity, err := s.resolveCheckoutSaleLine(ctx, ResolveSaleLineInput{
 			MachineID:   in.MachineID,
 			ProductID:   in.ProductID,
 			SlotID:      in.SlotID,
 			CabinetCode: in.CabinetCode,
 			SlotCode:    in.SlotCode,
 			SlotIndex:   in.SlotIndex,
-		})
+		}, in.PricingSnapshot, 1)
 		if err != nil {
 			return CreateOrderResult{}, err
 		}
