@@ -12,6 +12,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/machinepaymentmethods"
 	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	appoperator "github.com/avf/avf-vending-api/internal/app/operator"
+	"github.com/avf/avf-vending-api/internal/app/productmastercatalog"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -32,7 +33,8 @@ type MachineGRPCServicesDeps struct {
 	MachineRuntime  *machineruntime.Service
 	MachineQueries  api.InternalMachineQueryService
 	FeatureFlags    *featureflags.Service
-	SaleCatalog     salecatalog.SnapshotBuilder
+	SaleCatalog          salecatalog.SnapshotBuilder
+	ProductMasterCatalog *productmastercatalog.Service
 	Pool            *pgxpool.Pool
 	MQTTBrokerURL   string
 	MQTTTopicPrefix string

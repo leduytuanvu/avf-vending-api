@@ -70,6 +70,7 @@ func RegisterMachineGRPCServices(deps MachineGRPCServicesDeps) ServiceRegistrar 
 		machinev1.RegisterMachineAuthServiceServer(s, &machineAuthServer{deps: deps})
 		machinev1.RegisterMachineBootstrapServiceServer(s, &machineBootstrapServer{deps: deps})
 		machinev1.RegisterMachineCatalogServiceServer(s, &machineCatalogServer{deps: deps})
+		machinev1.RegisterMachineProductMasterCatalogServiceServer(s, &machineProductMasterCatalogServer{deps: deps})
 		machinev1.RegisterMachineMediaServiceServer(s, &machineMediaServer{deps: deps})
 		machinev1.RegisterMachineInventoryServiceServer(s, &machineInventoryServer{deps: deps})
 		machinev1.RegisterMachineTelemetryServiceServer(s, &machineTelemetryServer{deps: deps})

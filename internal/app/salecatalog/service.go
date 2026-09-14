@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -429,6 +430,43 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		Currency:      currencyUpper,
 		Items:         items,
 	}
+	uniqueProducts := make(map[uuid.UUID]struct{})
+	availableCount := 0
+	excludedInactive := 0
+	excludedNoPrice := 0
+	excludedOOS := 0
+	excludedMedia := 0
+	for _, it := range items {
+		uniqueProducts[it.ProductID] = struct{}{}
+		if it.IsAvailable {
+			availableCount++
+			continue
+		}
+		reason := it.UnavailableReason
+		switch {
+		case strings.Contains(reason, "inactive"):
+			excludedInactive++
+		case strings.Contains(reason, "no_price"):
+			excludedNoPrice++
+		case strings.Contains(reason, "out_of_stock"):
+			excludedOOS++
+		case strings.Contains(reason, "missing_primary_media"):
+			excludedMedia++
+		}
+	}
+	slog.Info("CATALOG_API_QUERY_SUMMARY",
+		"machineId", machineID.String(),
+		"slotLines", len(items),
+		"uniqueProducts", len(uniqueProducts),
+		"available", availableCount,
+		"excludedInactive", excludedInactive,
+		"excludedNoPrice", excludedNoPrice,
+		"excludedOutOfStock", excludedOOS,
+		"excludedMissingMedia", excludedMedia,
+		"includeUnavailable", opts.IncludeUnavailable,
+		"includeImages", opts.IncludeImages,
+		"pagination", "none_single_snapshot",
+	)
 	return Snapshot{
 		MachineID:      machineID,
 		SiteID:         bootstrap.Machine.SiteID,
