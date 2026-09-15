@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	pricingSnapshotMaxSkew   = 24 * time.Hour
-	pricingMaxUnitPriceMinor = 100_000_000
+	pricingSnapshotMaxSkew       = 24 * time.Hour
+	pricingSnapshotMaxFutureSkew = 5 * time.Minute
+	pricingMaxUnitPriceMinor     = 100_000_000
 )
 
 type mirrorSlotPrice struct {
@@ -35,7 +36,7 @@ func validateMachinePricingSnapshotMultiLine(snap MachinePricingSnapshotInput, l
 	}
 	if !snap.CapturedAt.IsZero() {
 		age := time.Now().UTC().Sub(snap.CapturedAt.UTC())
-		if age < 0 || age > pricingSnapshotMaxSkew {
+		if age < -pricingSnapshotMaxFutureSkew || age > pricingSnapshotMaxSkew {
 			return errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot captured_at outside allowed skew"))
 		}
 	}
