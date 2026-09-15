@@ -147,6 +147,37 @@ func TestValidateMachinePricingSnapshotMultiLine_rejectsSubtotalMismatch(t *test
 	require.ErrorIs(t, err, ErrInvalidArgument)
 }
 
+func TestValidateMachinePricingSnapshotMultiLine_acceptsCapturedAtWithinFutureSkew(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshotMultiLine(MachinePricingSnapshotInput{
+		SubtotalMinor: 2000,
+		TaxMinor:      0,
+		TotalMinor:    2000,
+		CapturedAt:    time.Now().UTC().Add(2 * time.Minute),
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, UnitPriceMinor: 2000, LineSubtotalMinor: 2000, Quantity: 1},
+		},
+	}, 1)
+	require.NoError(t, err)
+}
+
+func TestValidateMachinePricingSnapshotMultiLine_rejectsCapturedAtBeyondFutureSkew(t *testing.T) {
+	t.Parallel()
+	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+	err := validateMachinePricingSnapshotMultiLine(MachinePricingSnapshotInput{
+		SubtotalMinor: 2000,
+		TaxMinor:      0,
+		TotalMinor:    2000,
+		CapturedAt:    time.Now().UTC().Add(10 * time.Minute),
+		Lines: []MachinePricingSnapshotLineInput{
+			{LineSequence: 1, ProductID: productID, UnitPriceMinor: 2000, LineSubtotalMinor: 2000, Quantity: 1},
+		},
+	}, 1)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+}
+
 func TestValidateMachinePricingSnapshotMultiLine_rejectsDuplicateLineSequence(t *testing.T) {
 	t.Parallel()
 	productID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
