@@ -341,10 +341,15 @@ INSERT INTO machine_incident_occurrences (
 	}
 	decision := policy.DecideForOccurrence(normalized, true, prevAlertPtr, now)
 	if decision.ShouldAlert {
-		var machineCode, machineName, serialNumber string
+		var machineCode, machineName, serialNumber, siteName, siteAddress string
 		var siteID uuid.UUID
-		_ = tx.QueryRow(ctx, `SELECT code, name, serial_number, site_id FROM machines WHERE id = $1`, machineID).
-			Scan(&machineCode, &machineName, &serialNumber, &siteID)
+		_ = tx.QueryRow(ctx, `
+SELECT m.code, m.name, m.serial_number, m.site_id, COALESCE(s.name, ''), COALESCE(s.address->>'formatted', s.address->>'line1', '')
+FROM machines m
+LEFT JOIN sites s ON s.id = m.site_id
+WHERE m.id = $1`, machineID).
+			Scan(&machineCode, &machineName, &serialNumber, &siteID, &siteName, &siteAddress)
+		enrichedDetail := enrichIncidentDetailMachineMetadata(decision.Detail, machineName, siteName, siteAddress)
 		reportedMachineID := extractReportedMachineID(decision.Detail)
 		siteIDStr := ""
 		if siteID != uuid.Nil {
@@ -367,7 +372,7 @@ INSERT INTO machine_incident_occurrences (
 			"title":               decision.Title,
 			"dedupe_key":          decision.DedupeKey,
 			"group_key":           decision.GroupKey,
-			"detail":              json.RawMessage(redactIncidentDetail(decision.Detail)),
+			"detail":              json.RawMessage(redactIncidentDetail(enrichedDetail)),
 		})
 		if err != nil {
 			return out, err
@@ -400,6 +405,43 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+// enrichIncidentDetailMachineMetadata fills authoritative machine/site fields when device payload omitted them.
+func enrichIncidentDetailMachineMetadata(detail []byte, machineName, siteName, siteAddress string) []byte {
+	if len(detail) == 0 {
+		detail = []byte("{}")
+	}
+	var root map[string]any
+	if err := json.Unmarshal(detail, &root); err != nil {
+		return detail
+	}
+	putIfEmpty(root, "machine_name", strings.TrimSpace(machineName))
+	location := strings.TrimSpace(siteAddress)
+	if location == "" {
+		location = strings.TrimSpace(siteName)
+	}
+	putIfEmpty(root, "machine_location", location)
+	putIfEmpty(root, "site_name", strings.TrimSpace(siteName))
+	out, err := json.Marshal(root)
+	if err != nil {
+		return detail
+	}
+	return out
+}
+
+func putIfEmpty(m map[string]any, key, value string) {
+	if strings.TrimSpace(value) == "" {
+		return
+	}
+	existing, ok := m[key]
+	if !ok {
+		m[key] = value
+		return
+	}
+	if s, ok := existing.(string); ok && strings.TrimSpace(s) == "" {
+		m[key] = value
+	}
 }
 
 // redactIncidentDetail removes common secret keys from JSON detail before durable Telegram payload.

@@ -84,6 +84,39 @@ func TestClientDisabledNotSilentSuccess(t *testing.T) {
 	require.True(t, IsPermanent(err))
 }
 
+func TestFormatIncident_operationalPayload(t *testing.T) {
+	detail := []byte(`{
+		"status":"OPEN",
+		"machine_location":"Lobby A",
+		"occurred_at":"2026-09-16T10:00:00Z",
+		"event_time_source":"SERVER_ALIGNED",
+		"sell_readiness":"BLOCKED",
+		"primary_blocker":"HARDWARE_NOT_READY",
+		"blocker_codes":"HARDWARE_NOT_READY,BILL_DISCONNECTED",
+		"bill_state":"DISCONNECTED",
+		"network_state":"OFFLINE",
+		"duration_ms":"120000",
+		"resolved_occurrence_id":"incident_network_lost:1"
+	}`)
+	text := FormatIncident(IncidentAlert{
+		Source:       "app",
+		MachineID:    "mid",
+		MachineCode:  "AVF-01",
+		OccurrenceID: "incident_network_recovered:2",
+		Severity:     "medium",
+		Code:         "incident_network_recovered",
+		Title:        "Network recovered",
+		Detail:       detail,
+	})
+	require.Contains(t, text, "SELLING")
+	require.Contains(t, text, "BLOCKED")
+	require.Contains(t, text, "PRIMARY REASON")
+	require.Contains(t, text, "HARDWARE_NOT_READY")
+	require.Contains(t, text, "LOCATION")
+	require.Contains(t, text, "Lobby A")
+	require.Contains(t, text, "RECOVERY")
+}
+
 func TestFormatIncidentIncludesOccurrence(t *testing.T) {
 	text := FormatIncident(IncidentAlert{
 		Source:       "app",
@@ -97,7 +130,7 @@ func TestFormatIncidentIncludesOccurrence(t *testing.T) {
 		DedupeKey:    "d1",
 	})
 	require.Contains(t, text, "[APP][ERROR]")
-	require.Contains(t, text, "Occurrence ID: incident_timeout:99")
+	require.Contains(t, text, "Occurrence: incident_timeout:99")
 	require.Contains(t, text, "AVF-01")
 }
 
