@@ -81,7 +81,7 @@ func (p Policy) DecideForOccurrence(in Incident, isNewOccurrence bool, previousL
 		p.RepeatMode = RepeatEvery
 	}
 
-	should := alertsForSeverity(in.Severity) && isNewOccurrence
+	should := isNewOccurrence && ShouldPageTelegram(in.Code) && telegramSeverityQualifies(in.Severity, in.Code)
 	if should && p.RepeatMode == RepeatAggregate {
 		if previousLastAlerted != nil && now.UTC().Sub(previousLastAlerted.UTC()) < p.Cooldown {
 			should = false
@@ -132,6 +132,49 @@ func alertsForSeverity(severity string) bool {
 	return severity == "high" || severity == "critical"
 }
 
+// telegramPageableCodes is the authoritative allow-list for APP operational Telegram paging.
+var telegramPageableCodes = map[string]bool{
+	"incident_app_process_stopped":      true,
+	"incident_app_crashed":              true,
+	"incident_app_started":              true,
+	"incident_network_lost":             true,
+	"incident_network_recovered":        true,
+	"incident_bill_disconnected":        true,
+	"incident_bill_connected":           true,
+	"incident_tcn_disconnected":         true,
+	"incident_tcn_connected":            true,
+	"incident_sales_locked":             true,
+	"incident_sales_unlocked":           true,
+	"incident_app_did_not_auto_recover": true,
+	"incident_sales_unavailable":        true,
+	"incident_sales_recovered":          true,
+}
+
+var telegramRecoveryCodes = map[string]bool{
+	"incident_app_started":       true,
+	"incident_network_recovered": true,
+	"incident_bill_connected":    true,
+	"incident_tcn_connected":     true,
+	"incident_sales_unlocked":    true,
+	"incident_sales_recovered":   true,
+}
+
+// ShouldPageTelegram reports whether an incident code may create a Telegram outbox intent.
+func ShouldPageTelegram(code string) bool {
+	return telegramPageableCodes[strings.ToLower(strings.TrimSpace(code))]
+}
+
+func telegramSeverityQualifies(severity, code string) bool {
+	if alertsForSeverity(severity) {
+		return true
+	}
+	c := strings.ToLower(strings.TrimSpace(code))
+	if severity == "medium" && telegramRecoveryCodes[c] {
+		return true
+	}
+	return false
+}
+
 // Fingerprint returns a stable group key when a device did not provide fingerprint/dedupe_key.
 // Incidents are already scoped by machine in storage, so code and title are sufficient grouping inputs.
 func Fingerprint(in Incident) string {
@@ -144,7 +187,21 @@ func Fingerprint(in Incident) string {
 func IsProjectableIncidentEventType(eventType string) bool {
 	t := strings.ToLower(strings.TrimSpace(eventType))
 	switch t {
-	case "incident_hardware_fault",
+	case "incident_app_process_stopped",
+		"incident_app_crashed",
+		"incident_app_started",
+		"incident_network_lost",
+		"incident_network_recovered",
+		"incident_bill_disconnected",
+		"incident_bill_connected",
+		"incident_tcn_disconnected",
+		"incident_tcn_connected",
+		"incident_sales_locked",
+		"incident_sales_unlocked",
+		"incident_app_did_not_auto_recover",
+		"incident_sales_unavailable",
+		"incident_sales_recovered",
+		"incident_hardware_fault",
 		"incident_payment_mismatch",
 		"incident_peripheral_disconnected",
 		"incident_serial_fault",

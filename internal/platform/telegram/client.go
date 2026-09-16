@@ -251,51 +251,105 @@ func FormatIncident(a IncidentAlert) string {
 		source = "APP"
 	}
 	sev := strings.ToUpper(strings.TrimSpace(a.Severity))
+	detail := parseIncidentDetail(a.Detail)
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "🚨 [%s][%s] %s\n\n", source, sev, title)
+	eventLabel := detailString(detail, "status", "event_type", "event")
+	if eventLabel == "" {
+		eventLabel = strings.TrimSpace(a.Code)
+	}
+	fmt.Fprintf(&b, "🚨 [%s][%s] %s\n", source, sev, title)
+	if eventLabel != "" {
+		fmt.Fprintf(&b, "EVENT: %s\n", eventLabel)
+	}
+	b.WriteString("\n")
 
 	if strings.TrimSpace(a.MachineID) != "" || strings.TrimSpace(a.MachineCode) != "" {
-		b.WriteString("Machine\n")
-		if v := strings.TrimSpace(a.MachineCode); v != "" {
+		b.WriteString("MACHINE\n")
+		if v := firstNonEmptyString(strings.TrimSpace(a.MachineCode), detailString(detail, "machine_code")); v != "" {
 			fmt.Fprintf(&b, "Code: %s\n", v)
 		}
 		if v := strings.TrimSpace(a.MachineID); v != "" {
-			fmt.Fprintf(&b, "Machine ID: %s\n", v)
+			fmt.Fprintf(&b, "ID: %s\n", v)
 		}
-		if v := strings.TrimSpace(a.MachineName); v != "" {
+		if v := firstNonEmptyString(strings.TrimSpace(a.MachineName), detailString(detail, "machine_name")); v != "" {
 			fmt.Fprintf(&b, "Name: %s\n", v)
 		}
 		if v := strings.TrimSpace(a.SerialNumber); v != "" {
 			fmt.Fprintf(&b, "Serial: %s\n", v)
 		}
-		if v := strings.TrimSpace(a.SiteID); v != "" {
-			fmt.Fprintf(&b, "Site: %s\n", v)
+		b.WriteString("\n")
+	}
+
+	if v := firstNonEmptyString(detailString(detail, "machine_location", "site_name"), strings.TrimSpace(a.SiteID)); v != "" {
+		b.WriteString("LOCATION\n")
+		fmt.Fprintf(&b, "%s\n\n", v)
+	}
+
+	if v := firstNonEmptyString(detailString(detail, "occurred_at"), detailString(detail, "detected_at")); v != "" {
+		b.WriteString("TIME\n")
+		fmt.Fprintf(&b, "%s", v)
+		if tz := detailString(detail, "timezone", "time_zone"); tz != "" {
+			fmt.Fprintf(&b, " (%s)", tz)
+		}
+		b.WriteString("\n")
+		if src := detailString(detail, "event_time_source"); src != "" {
+			fmt.Fprintf(&b, "Source: %s\n", src)
 		}
 		b.WriteString("\n")
 	}
 
-	b.WriteString("Occurrence\n")
 	if v := strings.TrimSpace(a.OccurrenceID); v != "" {
-		fmt.Fprintf(&b, "Occurrence ID: %s\n", v)
+		b.WriteString("INCIDENT\n")
+		fmt.Fprintf(&b, "Occurrence: %s\n", v)
+		fp := strings.TrimSpace(a.Fingerprint)
+		if fp == "" {
+			fp = strings.TrimSpace(a.DedupeKey)
+		}
+		if fp != "" {
+			fmt.Fprintf(&b, "Fingerprint: %s\n", fp)
+		}
+		if a.OccurrenceCount > 0 {
+			fmt.Fprintf(&b, "Count: %d\n", a.OccurrenceCount)
+		}
+		b.WriteString("\n")
 	}
-	fp := strings.TrimSpace(a.Fingerprint)
-	if fp == "" {
-		fp = strings.TrimSpace(a.DedupeKey)
+
+	if v := detailString(detail, "sell_readiness", "selling_impact"); v != "" {
+		b.WriteString("SELLING\n")
+		fmt.Fprintf(&b, "%s\n\n", v)
 	}
-	if fp != "" {
-		fmt.Fprintf(&b, "Fingerprint: %s\n", fp)
+	if v := detailString(detail, "primary_blocker", "primary_reason", "primaryBlocker"); v != "" {
+		b.WriteString("PRIMARY REASON\n")
+		fmt.Fprintf(&b, "%s\n\n", v)
 	}
-	if a.OccurrenceCount > 0 {
-		fmt.Fprintf(&b, "Occurrence count: %d\n", a.OccurrenceCount)
+	if v := detailString(detail, "blocker_codes", "blockers", "block_reasons"); v != "" {
+		b.WriteString("BLOCKERS\n")
+		fmt.Fprintf(&b, "%s\n\n", truncateField(v, 400))
 	}
-	fmt.Fprintf(&b, "Code: %s\n", strings.TrimSpace(a.Code))
-	if v := strings.TrimSpace(a.Service); v != "" {
-		fmt.Fprintf(&b, "Service: %s\n", v)
+
+	hardware := joinDetailFields(detail, "bill_state", "tcn_state", "network_state")
+	if hardware != "" {
+		b.WriteString("HARDWARE / NETWORK\n")
+		fmt.Fprintf(&b, "%s\n\n", hardware)
 	}
-	if v := strings.TrimSpace(a.Operation); v != "" {
-		fmt.Fprintf(&b, "Operation: %s\n", v)
+	if v := detailString(detail, "clock_skew_ms", "clockSkewMs"); v != "" {
+		b.WriteString("CLOCK\n")
+		fmt.Fprintf(&b, "Skew: %s ms\n\n", v)
 	}
+	if v := detailString(detail, "maintenance_source", "maintenanceSource"); v != "" {
+		b.WriteString("MAINTENANCE\n")
+		fmt.Fprintf(&b, "%s\n\n", v)
+	}
+	if v := detailString(detail, "recovery_status", "resolved_occurrence_id", "resolvedOccurrenceId"); v != "" {
+		b.WriteString("RECOVERY\n")
+		fmt.Fprintf(&b, "%s", v)
+		if dur := detailString(detail, "duration_ms", "durationMs"); dur != "" {
+			fmt.Fprintf(&b, " (%sms)", dur)
+		}
+		b.WriteString("\n\n")
+	}
+
 	if v := strings.TrimSpace(a.TraceID); v != "" {
 		fmt.Fprintf(&b, "Trace: %s\n", v)
 	}
@@ -304,6 +358,99 @@ func FormatIncident(a IncidentAlert) string {
 	}
 
 	return BoundMessage(strings.TrimRight(b.String(), "\n"))
+}
+
+func parseIncidentDetail(raw json.RawMessage) map[string]string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil
+	}
+	out := make(map[string]string)
+	flattenIncidentDetail("", root, out)
+	return out
+}
+
+func flattenIncidentDetail(prefix string, v any, out map[string]string) {
+	switch x := v.(type) {
+	case map[string]any:
+		for k, child := range x {
+			key := k
+			if prefix != "" {
+				key = prefix + "." + k
+			}
+			flattenIncidentDetail(key, child, out)
+		}
+	case []any:
+		if len(x) == 0 {
+			return
+		}
+		parts := make([]string, 0, len(x))
+		for _, child := range x {
+			switch c := child.(type) {
+			case string:
+				parts = append(parts, c)
+			default:
+				parts = append(parts, fmt.Sprint(c))
+			}
+		}
+		out[prefix] = strings.Join(parts, ", ")
+	default:
+		if prefix == "" {
+			return
+		}
+		out[prefix] = strings.TrimSpace(fmt.Sprint(x))
+	}
+}
+
+func detailString(detail map[string]string, keys ...string) string {
+	if detail == nil {
+		return ""
+	}
+	for _, k := range keys {
+		if v := strings.TrimSpace(detail[k]); v != "" {
+			return v
+		}
+		alt := strings.ToLower(strings.ReplaceAll(k, "_", ""))
+		for dk, dv := range detail {
+			nk := strings.ToLower(strings.ReplaceAll(dk, "_", ""))
+			if nk == alt && strings.TrimSpace(dv) != "" {
+				return strings.TrimSpace(dv)
+			}
+		}
+	}
+	return ""
+}
+
+func joinDetailFields(detail map[string]string, keys ...string) string {
+	if detail == nil {
+		return ""
+	}
+	var parts []string
+	for _, k := range keys {
+		if v := detailString(detail, k); v != "" {
+			parts = append(parts, fmt.Sprintf("%s=%s", k, v))
+		}
+	}
+	return strings.Join(parts, "; ")
+}
+
+func firstNonEmptyString(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+func truncateField(s string, max int) string {
+	if max <= 0 || len(s) <= max {
+		return s
+	}
+	return s[:max] + "…"
 }
 
 // IsRetryable reports whether err should Nak/retry.

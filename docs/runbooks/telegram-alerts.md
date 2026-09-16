@@ -20,7 +20,12 @@ Deprecated shared fallback: `TELEGRAM_ALERT_CHAT_ID` is used only when the sourc
 
 gRPC `PushCriticalEvent` / `SubmitTelemetryBatch` (canonical) / MQTT JetStream `handleIncident` / HTTP `POST /machines/{id}/incidents`
 → `ProjectMachineIncident` → `machine_incident_occurrences` + grouped `machine_incidents`
+→ `alerts.ShouldPageTelegram(code)` gate (14 approved operational families only)
 → `notification.telegram` outbox (`source=app`) → worker `TelegramDispatcher` → APP bot + APP chat
+
+Approved Telegram codes: `incident_app_process_stopped`, `incident_app_crashed`, `incident_app_started`, `incident_network_lost`, `incident_network_recovered`, `incident_bill_disconnected`, `incident_bill_connected`, `incident_tcn_disconnected`, `incident_tcn_connected`, `incident_sales_locked`, `incident_sales_unlocked`, `incident_app_did_not_auto_recover`, `incident_sales_unavailable`, `incident_sales_recovered`.
+
+Legacy `incident_*` types may still persist for forensics but must not page Telegram.
 
 Occurrence identity is App `event_id` (string, e.g. `incident_anr:…`). Transport duplicates share `(machine_id, occurrence_id)`. Fingerprint groups rows; it is never the occurrence key.
 
