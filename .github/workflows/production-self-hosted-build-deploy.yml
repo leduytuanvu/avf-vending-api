@@ -84,14 +84,60 @@ jobs:
           chmod +x /tmp/avf-prod-root.sh
           SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
 
+      - name: Install loopback SSH credentials
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY }}
+          SSH_PORT: ${{ secrets.VPS_SSH_PORT || secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || { echo "error: SSH private key secret is required for loopback deploy"; exit 1; }
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > "${identity_file}"
+          chmod 600 "${identity_file}"
+          touch ~/.ssh/known_hosts
+          ssh-keyscan -T 10 -p "${SSH_PORT}" -H 127.0.0.1 >> ~/.ssh/known_hosts 2>/dev/null || true
+          echo "SSH_IDENTITY_FILE=${identity_file}" >> "$GITHUB_ENV"
+          echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+
+      - name: Ensure loopback SSH access
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          if ssh -o BatchMode=yes -o ConnectTimeout=10 -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" true 2>/dev/null; then
+            echo "loopback SSH is ready"
+            exit 0
+          fi
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            chmod +x scripts/deploy/recover_loopback_ssh.sh
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" PRIV_HELPER=/tmp/avf-prod-root.sh \
+              SSH_IDENTITY_FILE="${SSH_IDENTITY_FILE}" SSH_USER="${SSH_USER}" SSH_PORT="${SSH_PORT}" \
+              bash scripts/deploy/recover_loopback_ssh.sh
+          fi
+          ssh -o BatchMode=yes -o ConnectTimeout=10 -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" true
+
       - name: Build and push production images
         id: build
         shell: bash
         env:
           GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            elif docker info >/dev/null 2>&1; then
+              bash -lc "$*"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
           git_sha="$(git rev-parse HEAD)"
           build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
@@ -99,32 +145,34 @@ jobs:
           goose_image="ghcr.io/${repo}-goose"
           app_tag="${app_image}:main-${git_sha}"
           goose_tag="${goose_image}:main-${git_sha}"
+          build_dir="/tmp/avf-vending-api-build-${git_sha}"
 
           token="${GHCR_PULL_TOKEN:-${{ secrets.GITHUB_TOKEN }}}"
           user="${GHCR_PULL_USERNAME:-${{ github.repository_owner }}}"
-          echo "${token}" | docker login ghcr.io -u "${user}" --password-stdin
 
-          docker build \
+          tar -cf - -C "${GITHUB_WORKSPACE}" . | run_root "mkdir -p '${build_dir}' && tar -xf - -C '${build_dir}' --overwrite"
+          run_root "echo '${token}' | docker login ghcr.io -u '${user}' --password-stdin"
+          run_root "cd '${build_dir}' && docker build \
             -f deployments/prod/Dockerfile \
-            --build-arg "GIT_SHA=${git_sha}" \
-            --build-arg "BUILD_TIME=${build_time}" \
-            -t "${app_tag}" \
-            -t "${app_image}:main" \
-            .
-
-          docker build \
+            --build-arg GIT_SHA='${git_sha}' \
+            --build-arg BUILD_TIME='${build_time}' \
+            -t '${app_tag}' \
+            -t '${app_image}:main' \
+            ."
+          run_root "cd '${build_dir}' && docker build \
             -f deployments/prod/Dockerfile.goose \
-            -t "${goose_tag}" \
-            -t "${goose_image}:main" \
-            .
+            -t '${goose_tag}' \
+            -t '${goose_image}:main' \
+            ."
+          run_root "docker push '${app_tag}'"
+          run_root "docker push '${app_image}:main'"
+          run_root "docker push '${goose_tag}'"
+          run_root "docker push '${goose_image}:main'"
 
-          docker push "${app_tag}"
-          docker push "${app_image}:main"
-          docker push "${goose_tag}"
-          docker push "${goose_image}:main"
-
-          app_ref="${app_tag}@$(docker inspect --format='{{index .RepoDigests 0}}' "${app_tag}" | cut -d@ -f2)"
-          goose_ref="${goose_tag}@$(docker inspect --format='{{index .RepoDigests 0}}' "${goose_tag}" | cut -d@ -f2)"
+          app_digest="$(run_root "docker inspect --format='{{index .RepoDigests 0}}' '${app_tag}'" | cut -d@ -f2)"
+          goose_digest="$(run_root "docker inspect --format='{{index .RepoDigests 0}}' '${goose_tag}'" | cut -d@ -f2)"
+          app_ref="${app_tag}@${app_digest}"
+          goose_ref="${goose_tag}@${goose_digest}"
           {
             echo "app_ref=${app_ref}"
             echo "goose_ref=${goose_ref}"
@@ -132,6 +180,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Built ${app_ref}" >> "$GITHUB_STEP_SUMMARY"
           echo "Built ${goose_ref}" >> "$GITHUB_STEP_SUMMARY"
+          run_root "rm -rf '${build_dir}'" || true
 
       - name: Sync app-node assets locally
         shell: bash
@@ -139,16 +188,21 @@ jobs:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          sync_tar="$(mktemp)"
-          tar -cf "${sync_tar}" deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
-            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+          tar -cf - -C "${GITHUB_WORKSPACE}" \
+            deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
+            run_root "mkdir -p '${deploy_root}' && tar -xf - -C '${deploy_root}' --overwrite && chmod +x \
               '${deploy_root}/scripts/deploy/production-migrate.sh' \
               '${deploy_root}/scripts/verify_database_environment.sh' \
               '${deploy_root}/scripts/db/verify_database_environment.sh'"
-          rm -f "${sync_tar}"
 
       - name: Roll out app node A locally
         shell: bash
@@ -160,9 +214,15 @@ jobs:
           GOOSE_IMAGE_REF: ${{ steps.build.outputs.goose_ref }}
         run: |
           set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+          run_root "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
 
       - name: Verify app node A health locally
         shell: bash
@@ -170,9 +230,15 @@ jobs:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-            "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+          run_root "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
 
       - name: Public smoke check
         shell: bash
