@@ -190,10 +190,11 @@ jobs:
           build_dir="/tmp/avf-vending-api-build-${git_sha}"
 
           token="${GHCR_PULL_TOKEN:-${{ secrets.GITHUB_TOKEN }}}"
+          push_token="${{ secrets.GITHUB_TOKEN }}"
           user="${GHCR_PULL_USERNAME:-${{ github.repository_owner }}}"
 
           if docker info >/dev/null 2>&1 || sg docker -c "docker info" >/dev/null 2>&1; then
-            echo "${token}" | docker_cmd login ghcr.io -u "${user}" --password-stdin
+            echo "${push_token}" | docker_cmd login ghcr.io -u "${user}" --password-stdin
             docker_cmd build \
               -f deployments/prod/Dockerfile \
               --build-arg "GIT_SHA=${git_sha}" \
@@ -218,7 +219,7 @@ jobs:
             chmod a+r "${context_tar}"
             run_root "mkdir -p '${build_dir}' && tar -xf '${context_tar}' -C '${build_dir}' --overwrite"
             rm -f "${context_tar}"
-            run_root "echo '${token}' | docker login ghcr.io -u '${user}' --password-stdin"
+            run_root "echo '${push_token}' | docker login ghcr.io -u '${user}' --password-stdin"
             run_root "cd '${build_dir}' && docker build \
               -f deployments/prod/Dockerfile \
               --build-arg GIT_SHA='${git_sha}' \
