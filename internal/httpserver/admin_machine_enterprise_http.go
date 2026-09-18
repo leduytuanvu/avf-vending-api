@@ -697,6 +697,15 @@ func appRuntimeSessionJSON(sess db.MachineRuntimeAppSession) map[string]any {
 		"last_network_state": sess.LastNetworkState,
 		"last_mqtt_state":    sess.LastMqttState,
 	}
+	if len(sess.HardwareStatus) > 0 {
+		out["hardware_status"] = jsonBytesToMap(sess.HardwareStatus)
+	}
+	if len(sess.RecoveryStatus) > 0 {
+		out["recovery_status"] = jsonBytesToMap(sess.RecoveryStatus)
+	}
+	if len(sess.Blockers) > 0 {
+		out["blockers"] = jsonBytesToAny(sess.Blockers)
+	}
 	if sess.LastHeartbeatAt.Valid {
 		out["last_heartbeat_at"] = sess.LastHeartbeatAt.Time.UTC().Format(time.RFC3339Nano)
 	}
@@ -708,6 +717,28 @@ func appRuntimeSessionJSON(sess db.MachineRuntimeAppSession) map[string]any {
 	}
 	if sess.EndReason.Valid {
 		out["end_reason"] = sess.EndReason.String
+	}
+	return out
+}
+
+func jsonBytesToMap(b []byte) map[string]any {
+	if len(b) == 0 {
+		return map[string]any{}
+	}
+	var out map[string]any
+	if err := json.Unmarshal(b, &out); err != nil || out == nil {
+		return map[string]any{}
+	}
+	return out
+}
+
+func jsonBytesToAny(b []byte) any {
+	if len(b) == 0 {
+		return []any{}
+	}
+	var out any
+	if err := json.Unmarshal(b, &out); err != nil {
+		return []any{}
 	}
 	return out
 }

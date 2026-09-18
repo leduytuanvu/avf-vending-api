@@ -51,6 +51,7 @@ type AdminOperationalOverview struct {
 	FinalSellReady    bool            `json:"finalSellReady"`
 	Readiness         json.RawMessage `json:"readiness,omitempty"`
 	Connectivity      json.RawMessage `json:"connectivity,omitempty"`
+	BillHealth        json.RawMessage `json:"billHealth,omitempty"`
 }
 
 // AndroidBoard is a safe view of the active device attachment.
@@ -302,6 +303,11 @@ func mapOverviewRow(ctx context.Context, q *db.Queries, row db.AdminListMachineO
 		if len(row.Blockers) > 0 {
 			sv.Blockers = json.RawMessage(row.Blockers)
 		}
+		if q != nil {
+			if full, err := q.GetMachineRuntimeAppSessionByID(ctx, id); err == nil {
+				out.BillHealth = buildBillHealthSummary(full.HardwareStatus, full.RecoveryStatus)
+			}
+		}
 		out.RuntimeAppSession = sv
 		out.FinalSellReady = computeFinalSellReady(row.LifecycleStatus, row.SaleEnabled, sellReady, row.Blockers)
 	}
@@ -337,6 +343,63 @@ func mapOverviewRow(ctx context.Context, q *db.Queries, row db.AdminListMachineO
 		out.Readiness = json.RawMessage(out.RuntimeAppSession.Blockers)
 	}
 	return out, nil
+}
+
+func buildBillHealthSummary(hardwareStatus, recoveryStatus []byte) json.RawMessage {
+	hw := map[string]any{}
+	rec := map[string]any{}
+	_ = json.Unmarshal(hardwareStatus, &hw)
+	_ = json.Unmarshal(recoveryStatus, &rec)
+	out := map[string]any{
+		"connection": firstString(hw, "bill_connection", "unknown"),
+		"pollAgeMs":  firstNumber(hw, "bill_last_poll_age_ms"),
+		"pollLoopRunning": firstBool(hw, "bill_poll_loop_running"),
+		"enableMaskHex":   firstString(hw, "bill_enable_mask_hex", ""),
+		"billFaultActive": firstBool(hw, "bill_fault_active"),
+		"ambiguousLocked": firstBool(hw, "bill_ambiguous_locked"),
+		"idleMaskVerifiedSafe": firstBool(hw, "idle_mask_verified_safe"),
+		"classification": firstString(hw, "bill_health_classification",
+			firstString(rec, "bill_recovery_classification", "unknown")),
+		"lastRecoveryAction": firstString(rec, "bill_last_recovery_action", ""),
+		"lastRecoveryResult": firstString(rec, "bill_last_recovery_result", ""),
+		"recoveryBlockedReason": firstString(rec, "bill_recovery_blocked_reason", ""),
+		"lastAmbiguousReason": firstString(hw, "last_bill_ambiguous_reason", ""),
+	}
+	b, err := json.Marshal(out)
+	if err != nil {
+		return json.RawMessage(`{}`)
+	}
+	return b
+}
+
+func firstString(m map[string]any, key, fallback string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
+			return s
+		}
+	}
+	return fallback
+}
+
+func firstBool(m map[string]any, key string) bool {
+	if v, ok := m[key]; ok {
+		switch t := v.(type) {
+		case bool:
+			return t
+		case string:
+			return strings.EqualFold(strings.TrimSpace(t), "true")
+		case float64:
+			return t != 0
+		}
+	}
+	return false
+}
+
+func firstNumber(m map[string]any, key string) any {
+	if v, ok := m[key]; ok {
+		return v
+	}
+	return nil
 }
 
 func computeFinalSellReady(lifecycleStatus string, saleEnabled, runtimeSellReady bool, blockers []byte) bool {

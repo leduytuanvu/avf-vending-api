@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -435,6 +436,71 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 			DeviceEventID:     r.DeviceEventID,
 		})
 	}
+	lifecycleRows, err := q.ListCashBillLifecycleEventsForLedger(ctx, db.ListCashBillLifecycleEventsForLedgerParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
+		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
+		OrderID:   optionalUUIDToPg(in.OrderID),
+		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
+		AfterID:   ledgerAfterID(in.AfterID),
+		Limit:     in.Limit,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	for _, r := range lifecycleRows {
+		items = append(items, appcommerce.CashLedgerRow{
+			ID:                r.ID,
+			MachineID:         r.MachineID,
+			OrderID:           pgUUIDToPtr(r.OrderID),
+			MovementClass:     r.MovementClass,
+			EventType:         strings.ToUpper(strings.TrimSpace(r.LifecycleType)),
+			Destination:       r.Destination,
+			DenominationMinor: r.DenominationMinor,
+			AmountMinor:       r.DenominationMinor,
+			Currency:          r.Currency,
+			OccurredAtDevice:  r.OccurredAtDevice.UTC(),
+			RecordedAt:        r.CreatedAt.UTC(),
+			EvidenceStatus:    "OBSERVED",
+			DeviceEventID:     r.DeviceEventID,
+		})
+	}
+	obsRows, err := q.ListCashHardwareObservationsForLedger(ctx, db.ListCashHardwareObservationsForLedgerParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
+		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
+		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
+		AfterID:   ledgerAfterID(in.AfterID),
+		Limit:     in.Limit,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	for _, r := range obsRows {
+		items = append(items, appcommerce.CashLedgerRow{
+			ID:                r.ID,
+			MachineID:         r.MachineID,
+			MovementClass:     r.MovementClass,
+			EventType:         strings.ToUpper(strings.TrimSpace(r.Source)),
+			Destination:       r.Destination,
+			DenominationMinor: r.RecyclerDenominationMinor,
+			AmountMinor:       int64(r.RecyclerCount) * r.RecyclerDenominationMinor,
+			Currency:          r.Currency,
+			OccurredAtDevice:  r.ObservedAtDevice.UTC(),
+			RecordedAt:        r.CreatedAt.UTC(),
+			EvidenceStatus:    "OBSERVED",
+			DeviceEventID:     r.DeviceEventID,
+		})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].OccurredAtDevice.Equal(items[j].OccurredAtDevice) {
+			return items[i].ID.String() > items[j].ID.String()
+		}
+		return items[i].OccurredAtDevice.After(items[j].OccurredAtDevice)
+	})
+	if int32(len(items)) > in.Limit {
+		items = items[:in.Limit]
+	}
 	var next *appcommerce.CashLedgerCursor
 	if len(items) > 0 {
 		last := items[len(items)-1]
@@ -530,6 +596,40 @@ func (s *Store) GetOrderCashForensics(ctx context.Context, orderID uuid.UUID) (a
 	if err != nil {
 		return appcommerce.OrderCashForensicsView{}, err
 	}
+	q := db.New(s.pool)
+	lifecycleRows, err := q.ListCashBillLifecycleEventsForOrder(ctx, uuidToPg(orderID))
+	if err != nil {
+		return appcommerce.OrderCashForensicsView{}, err
+	}
+	payoutRows, err := q.ListCashPayoutEventsForOrder(ctx, uuidToPg(orderID))
+	if err != nil {
+		return appcommerce.OrderCashForensicsView{}, err
+	}
+	lifecycle := make([]appcommerce.CashLifecycleEventView, 0, len(lifecycleRows))
+	for _, row := range lifecycleRows {
+		lifecycle = append(lifecycle, appcommerce.CashLifecycleEventView{
+			DeviceEventID:     row.DeviceEventID,
+			LifecycleType:     row.LifecycleType,
+			DenominationMinor: row.DenominationMinor,
+			RawRecordHex:      row.RawRecordHex,
+			OccurredAt:        row.OccurredAtDevice.UTC(),
+		})
+	}
+	payouts := make([]appcommerce.CashPayoutEventView, 0, len(payoutRows))
+	for _, row := range payoutRows {
+		payouts = append(payouts, appcommerce.CashPayoutEventView{
+			ID:                  row.ID,
+			WithdrawalID:        row.WithdrawalID,
+			NoteSequence:        row.NoteSequence,
+			EventType:           row.EventType,
+			DenominationMinor:   row.DenominationMinor,
+			AmountMinor:         row.AmountMinor,
+			OutcomeFinality:     row.OutcomeFinality,
+			RecyclerCountBefore: pgInt4ToPtr(row.RecyclerCountBefore),
+			RecyclerCountAfter:  pgInt4ToPtr(row.RecyclerCountAfter),
+			OccurredAt:          row.OccurredAtDevice.UTC(),
+		})
+	}
 	var gross int64
 	for _, ev := range money.AcceptanceEvents {
 		gross += ev.DenominationMinor
@@ -542,9 +642,19 @@ func (s *Store) GetOrderCashForensics(ctx context.Context, orderID uuid.UUID) (a
 		}
 	}
 	return appcommerce.OrderCashForensicsView{
-		OrderMoneyView: money,
-		RemainderMinor: remainder,
+		OrderMoneyView:  money,
+		RemainderMinor:  remainder,
+		LifecycleEvents: lifecycle,
+		PayoutEvents:    payouts,
 	}, nil
+}
+
+func pgInt4ToPtr(v pgtype.Int4) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	x := v.Int32
+	return &x
 }
 
 func ledgerAfterID(id *uuid.UUID) pgtype.Text {

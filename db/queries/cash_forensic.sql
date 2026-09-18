@@ -296,6 +296,81 @@ WHERE
     AND occurred_at_device > $3
 ORDER BY occurred_at_device ASC;
 
+-- name: ListCashBillLifecycleEventsForLedger :many
+SELECT
+    id,
+    machine_id,
+    order_id,
+    device_event_id,
+    lifecycle_type,
+    denomination_minor,
+    currency,
+    occurred_at_device,
+    created_at,
+    'lifecycle'::text AS movement_class,
+    'bill'::text AS destination
+FROM cash_bill_lifecycle_events
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND occurred_at_device >= sqlc.narg('from_time')::timestamptz
+    AND occurred_at_device < sqlc.narg('to_time')::timestamptz
+    AND (
+        sqlc.narg('order_id')::uuid IS NULL
+        OR order_id = sqlc.narg('order_id')::uuid
+    )
+    AND (
+        sqlc.narg('after_time')::timestamptz IS NULL
+        OR occurred_at_device < sqlc.narg('after_time')::timestamptz
+        OR (
+            occurred_at_device = sqlc.narg('after_time')::timestamptz
+            AND id::text < sqlc.narg('after_id')::text
+        )
+    )
+ORDER BY occurred_at_device DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListCashHardwareObservationsForLedger :many
+SELECT
+    id,
+    machine_id,
+    device_event_id,
+    observed_at_device,
+    recycler_denomination_minor,
+    recycler_count,
+    cashbox_count,
+    source,
+    currency,
+    created_at,
+    'observation'::text AS movement_class,
+    'hardware'::text AS destination
+FROM cash_hardware_observations
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND observed_at_device >= sqlc.narg('from_time')::timestamptz
+    AND observed_at_device < sqlc.narg('to_time')::timestamptz
+    AND (
+        sqlc.narg('after_time')::timestamptz IS NULL
+        OR observed_at_device < sqlc.narg('after_time')::timestamptz
+        OR (
+            observed_at_device = sqlc.narg('after_time')::timestamptz
+            AND id::text < sqlc.narg('after_id')::text
+        )
+    )
+ORDER BY observed_at_device DESC, id DESC
+LIMIT sqlc.arg('limit');
+
+-- name: ListCashBillLifecycleEventsForOrder :many
+SELECT *
+FROM cash_bill_lifecycle_events
+WHERE order_id = $1
+ORDER BY occurred_at_device ASC;
+
+-- name: ListCashPayoutEventsForOrder :many
+SELECT *
+FROM cash_payout_events
+WHERE order_id = $1
+ORDER BY occurred_at_device ASC;
+
 -- name: ListUnresolvedCashPayoutAmbiguous :many
 SELECT *
 FROM cash_payout_events
