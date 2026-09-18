@@ -31,6 +31,7 @@ jobs:
   build-deploy:
     name: Build images and roll out on app-node A
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}

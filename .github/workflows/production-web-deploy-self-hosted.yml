@@ -18,6 +18,7 @@ jobs:
   deploy-web:
     name: Deploy web to VPS B
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     steps:
       - name: Install SSH credentials
         env:
