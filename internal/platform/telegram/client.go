@@ -319,6 +319,18 @@ func FormatIncident(a IncidentAlert) string {
 		b.WriteString("SELLING\n")
 		fmt.Fprintf(&b, "%s\n\n", v)
 	}
+	if v := detailString(detail, "technician_hint", "technicianHint"); v != "" {
+		b.WriteString("TECHNICIAN\n")
+		fmt.Fprintf(&b, "%s\n\n", truncateField(v, 500))
+	}
+	if v := detailString(detail, "operator_summary", "operatorSummary"); v != "" {
+		b.WriteString("OPERATOR\n")
+		fmt.Fprintf(&b, "%s\n\n", truncateField(v, 400))
+	}
+	if v := detailString(detail, "bill_health_classification", "billHealthClassification"); v != "" {
+		b.WriteString("BILL HEALTH\n")
+		fmt.Fprintf(&b, "%s\n\n", v)
+	}
 	if v := detailString(detail, "primary_blocker", "primary_reason", "primaryBlocker"); v != "" {
 		b.WriteString("PRIMARY REASON\n")
 		fmt.Fprintf(&b, "%s\n\n", v)

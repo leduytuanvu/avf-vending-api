@@ -117,6 +117,26 @@ func TestFormatIncident_operationalPayload(t *testing.T) {
 	require.Contains(t, text, "RECOVERY")
 }
 
+func TestFormatIncident_technicianHint(t *testing.T) {
+	detail := []byte(`{
+		"technician_hint":"Cần kỹ thuật viên kiểm tra tiền mặt",
+		"operator_summary":"Verify bill recycler latch before new sale.",
+		"bill_health_classification":"TECHNICIAN_REQUIRED"
+	}`)
+	text := FormatIncident(IncidentAlert{
+		Source:   "app",
+		Severity: "critical",
+		Code:     "incident_sales_locked",
+		Title:    "Cần kỹ thuật viên kiểm tra tiền mặt",
+		Detail:   detail,
+	})
+	require.Contains(t, text, "TECHNICIAN")
+	require.Contains(t, text, "kỹ thuật viên")
+	require.Contains(t, text, "OPERATOR")
+	require.Contains(t, text, "BILL HEALTH")
+	require.Contains(t, text, "TECHNICIAN_REQUIRED")
+}
+
 func TestFormatIncidentIncludesOccurrence(t *testing.T) {
 	text := FormatIncident(IncidentAlert{
 		Source:       "app",
