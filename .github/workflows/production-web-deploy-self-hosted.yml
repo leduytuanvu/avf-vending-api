@@ -32,10 +32,12 @@ jobs:
           echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
 
       - name: Clone web repo bundle
+        env:
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           rm -rf /tmp/avf-vending-web-src
-          git clone --depth 1 https://github.com/${{ env.WEB_REPO }}.git /tmp/avf-vending-web-src
+          git clone --depth 1 "https://x-access-token:${GHCR_PULL_TOKEN}@github.com/${{ env.WEB_REPO }}.git" /tmp/avf-vending-web-src
 
       - name: Sync deployment bundle
         run: |
