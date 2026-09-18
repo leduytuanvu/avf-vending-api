@@ -18,17 +18,25 @@ jobs:
   deploy-web:
     name: Deploy web to VPS B
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
     steps:
       - name: Install SSH credentials
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY || secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY }}
-          SSH_PORT: ${{ secrets.VPS_SSH_PORT || vars.VPS_SSH_PORT || '22' }}
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.VPS_SSH_PORT || '22' }}
         run: |
           set -euo pipefail
           install -m 700 -d ~/.ssh
           printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H -p "${SSH_PORT}" "${{ env.WEB_VPS_HOST }}" >> ~/.ssh/known_hosts
+          if [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]]; then
+            printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          else
+            touch ~/.ssh/known_hosts
+          fi
+          ssh-keyscan -H -p "${SSH_PORT}" "${{ env.WEB_VPS_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts
           echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
 
       - name: Clone web repo bundle

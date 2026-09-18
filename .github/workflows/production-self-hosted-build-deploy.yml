@@ -213,7 +213,11 @@ jobs:
             app_digest="$(docker_cmd inspect --format='{{index .RepoDigests 0}}' "${app_tag}" | cut -d@ -f2)"
             goose_digest="$(docker_cmd inspect --format='{{index .RepoDigests 0}}' "${goose_tag}" | cut -d@ -f2)"
           else
-            tar -cf - -C "${GITHUB_WORKSPACE}" . | run_root "mkdir -p '${build_dir}' && tar -xf - -C '${build_dir}' --overwrite"
+            context_tar="$(mktemp)"
+            tar -cf "${context_tar}" -C "${GITHUB_WORKSPACE}" .
+            chmod a+r "${context_tar}"
+            run_root "mkdir -p '${build_dir}' && tar -xf '${context_tar}' -C '${build_dir}' --overwrite"
+            rm -f "${context_tar}"
             run_root "echo '${token}' | docker login ghcr.io -u '${user}' --password-stdin"
             run_root "cd '${build_dir}' && docker build \
               -f deployments/prod/Dockerfile \
@@ -260,13 +264,16 @@ jobs:
             fi
           }
           deploy_root="${PRODUCTION_DEPLOY_ROOT}"
-          tar -cf - -C "${GITHUB_WORKSPACE}" \
+          sync_tar="$(mktemp)"
+          tar -cf "${sync_tar}" -C "${GITHUB_WORKSPACE}" \
             deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
-            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh | \
-            run_root "mkdir -p '${deploy_root}' && tar -xf - -C '${deploy_root}' --overwrite && chmod +x \
-              '${deploy_root}/scripts/deploy/production-migrate.sh' \
-              '${deploy_root}/scripts/verify_database_environment.sh' \
-              '${deploy_root}/scripts/db/verify_database_environment.sh'"
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh
+          chmod a+r "${sync_tar}"
+          run_root "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+            '${deploy_root}/scripts/deploy/production-migrate.sh' \
+            '${deploy_root}/scripts/verify_database_environment.sh' \
+            '${deploy_root}/scripts/db/verify_database_environment.sh'"
+          rm -f "${sync_tar}"
 
       - name: Roll out app node A locally
         shell: bash
