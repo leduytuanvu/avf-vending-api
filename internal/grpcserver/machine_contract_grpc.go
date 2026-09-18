@@ -300,6 +300,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 	}
 	expected := cursor.LastSequence + 1
 	results := make([]*machinev1.OfflineEventResult, 0, len(events))
+	batchRetryable := false
 	for _, ev := range events {
 		if ev == nil || ev.GetMeta() == nil {
 			return nil, status.Error(codes.InvalidArgument, "offline event meta required")
@@ -344,7 +345,10 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 			})
 			break
 		}
-		result := s.processOfflineEvent(ctx, q, claims, ev)
+		result, retryable := s.processOfflineEvent(ctx, q, claims, ev)
+		if retryable {
+			batchRetryable = true
+		}
 		if lag := time.Since(occAt); lag >= 0 {
 			productionmetrics.ObserveMachineSyncLag(lag)
 		}
@@ -360,13 +364,24 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		}
 	}
 	return &machinev1.SyncOfflineEventsResponse{
-		Meta:           responseMetaCtx(ctx, req.GetMeta().GetRequestId(), machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Meta: responseMetaCtxWithOptions(
+			ctx,
+			req.GetMeta().GetRequestId(),
+			machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
+			batchRetryable,
+			"",
+		),
 		Results:        results,
 		NextSyncCursor: strings.TrimPrefix(strings.TrimSpace(time.Now().UTC().Format(time.RFC3339Nano)), ""),
 	}, nil
 }
 
-func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *db.Queries, claims plauth.MachineAccessClaims, ev *machinev1.OfflineEvent) *machinev1.OfflineEventResult {
+func (s *machineOfflineSyncServer) processOfflineEvent(
+	ctx context.Context,
+	q *db.Queries,
+	claims plauth.MachineAccessClaims,
+	ev *machinev1.OfflineEvent,
+) (*machinev1.OfflineEventResult, bool) {
 	meta := ev.GetMeta()
 	seq := meta.GetOfflineSequence()
 	idem := strings.TrimSpace(meta.GetIdempotencyKey())
@@ -395,7 +410,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 					IdempotencyKey:  idem,
 					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
 					Reason:          fmt.Sprintf("duplicate client_event_id %q already recorded at offline_sequence %d", clientEventID, prior.OfflineSequence),
-				}
+				}, false
 			}
 			if offlineLedgerTerminalStatus(prior.ProcessingStatus) {
 				return &machinev1.OfflineEventResult{
@@ -403,7 +418,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 					IdempotencyKey:  idem,
 					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
 					Reason:          "offline event replayed",
-				}
+				}, false
 			}
 		case errors.Is(err, pgx.ErrNoRows):
 		default:
@@ -412,7 +427,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 				IdempotencyKey:  idem,
 				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
 				Reason:          "offline duplicate lookup failed",
-			}
+			}, false
 		}
 	}
 
@@ -442,7 +457,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 						IdempotencyKey:  idem,
 						Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
 						Reason:          fmt.Sprintf("duplicate client_event_id %q already recorded at offline_sequence %d", clientEventID, prior.OfflineSequence),
-					}
+					}, false
 				}
 				if offlineLedgerTerminalStatus(prior.ProcessingStatus) {
 					return &machinev1.OfflineEventResult{
@@ -450,30 +465,42 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 						IdempotencyKey:  idem,
 						Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
 						Reason:          "offline event replayed",
-					}
+					}, false
 				}
 			}
 		}
-		return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED, Reason: "offline event insert failed"}
+		return &machinev1.OfflineEventResult{
+			OfflineSequence: seq,
+			IdempotencyKey:  idem,
+			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+			Reason:          "offline event insert failed",
+		}, false
 	}
 	if !row.Inserted && offlineLedgerTerminalStatus(row.ProcessingStatus) {
-		return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED, Reason: "offline event replayed"}
+		return &machinev1.OfflineEventResult{
+			OfflineSequence: seq,
+			IdempotencyKey:  idem,
+			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+			Reason:          "offline event replayed",
+		}, false
 	}
 	if err := s.dispatchOfflineEvent(ctx, eventType, payload, meta); err != nil {
 		code := status.Code(err)
 		productionmetrics.RecordOfflineReplayFailure(code.String())
-		st := "failed"
+		st, retryable := offlineDispatchFailureProcessingStatus(code)
 		resultStatus := machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED
-		if code == codes.Unimplemented || code == codes.InvalidArgument {
-			st = "rejected"
-		}
 		_ = q.UpdateMachineOfflineEventStatus(ctx, db.UpdateMachineOfflineEventStatusParams{
 			MachineID:        claims.MachineID,
 			OfflineSequence:  seq,
 			ProcessingStatus: st,
 			ProcessingError:  err.Error(),
 		})
-		return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: resultStatus, Reason: err.Error()}
+		return &machinev1.OfflineEventResult{
+			OfflineSequence: seq,
+			IdempotencyKey:  idem,
+			Status:          resultStatus,
+			Reason:          err.Error(),
+		}, retryable
 	}
 	_ = q.UpdateMachineOfflineEventStatus(ctx, db.UpdateMachineOfflineEventStatusParams{
 		MachineID:        claims.MachineID,
@@ -481,7 +508,11 @@ func (s *machineOfflineSyncServer) processOfflineEvent(ctx context.Context, q *d
 		ProcessingStatus: "processed",
 		ProcessingError:  "",
 	})
-	return &machinev1.OfflineEventResult{OfflineSequence: seq, IdempotencyKey: idem, Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED}
+	return &machinev1.OfflineEventResult{
+		OfflineSequence: seq,
+		IdempotencyKey:  idem,
+		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
+	}, false
 }
 
 func recordOfflineOutcomeMetrics(result *machinev1.OfflineEventResult) {
@@ -502,10 +533,23 @@ func recordOfflineOutcomeMetrics(result *machinev1.OfflineEventResult) {
 
 func offlineLedgerTerminalStatus(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "succeeded", "processed", "replayed", "duplicate", "rejected":
+	case "succeeded", "processed", "replayed", "duplicate", "rejected", "failed_terminal":
 		return true
 	default:
 		return false
+	}
+}
+
+func offlineDispatchFailureProcessingStatus(code codes.Code) (string, bool) {
+	switch code {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted, codes.Internal:
+		return "failed_retryable", true
+	case codes.Unimplemented, codes.InvalidArgument, codes.NotFound, codes.PermissionDenied, codes.Unauthenticated:
+		return "rejected", false
+	case codes.Aborted, codes.FailedPrecondition:
+		return "failed_terminal", false
+	default:
+		return "failed_retryable", true
 	}
 }
 
