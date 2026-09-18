@@ -2,6 +2,7 @@ package commerce
 
 import (
 	"context"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/workfloworch"
 	"github.com/avf/avf-vending-api/internal/config"
@@ -68,6 +69,8 @@ type Deps struct {
 	PaymentSessionRegistry PaymentSessionRegistry
 	// FinancialCorrectness optional store for winner arbitration and cash evidence (nil falls back to legacy latest-payment).
 	FinancialCorrectness FinancialCorrectnessStore
+	// CashForensic optional store for movement ingest and ledger read model (typically same postgres Store).
+	CashForensic CashForensicStore
 	// WinnerArbitrationEnabled gates atomic winner claim (COMMERCE_WINNER_ARBITRATION_ENABLED).
 	WinnerArbitrationEnabled bool
 	// LocalLayoutMirror optional reader for machine-reported layout pricing provenance.
@@ -102,6 +105,12 @@ type Orchestrator interface {
 	ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentInput) (ConfirmCashPaymentResult, error)
 	CancelPaymentSession(ctx context.Context, in CancelPaymentSessionInput) (CancelPaymentSessionResult, error)
 	GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (OrderMoneyView, error)
+	ReportCashMovements(ctx context.Context, in RecordCashMovementsInput) (RecordCashMovementsResult, error)
+	GetMachinePhysicalCashPosition(ctx context.Context, machineID uuid.UUID, currency string, asOf *time.Time) (MachinePhysicalCashPosition, error)
+	ListCashLedger(ctx context.Context, in ListCashLedgerInput) (ListCashLedgerResult, error)
+	GetCashLedgerEventDetail(ctx context.Context, eventID uuid.UUID, movementClass string) (CashLedgerEventDetail, error)
+	GetOrderCashForensics(ctx context.Context, orderID uuid.UUID) (OrderCashForensicsView, error)
+	InsertCashAdjustment(ctx context.Context, in InsertCashAdjustmentInput) (CashAdjustmentView, error)
 	CreateRefund(ctx context.Context, in CreateRefundInput) (RefundRowView, error)
 	ListRefundsForOrder(ctx context.Context, companyID, orderID uuid.UUID) ([]RefundRowView, error)
 	GetRefundForOrder(ctx context.Context, companyID, orderID, refundID uuid.UUID) (RefundRowView, error)

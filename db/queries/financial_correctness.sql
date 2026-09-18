@@ -89,6 +89,8 @@ INSERT INTO cash_acceptance_events (
     credit_source,
     currency,
     accepted_at,
+    boot_id,
+    occurred_at_device,
     raw_metadata
 ) VALUES (
     $1,
@@ -98,6 +100,8 @@ INSERT INTO cash_acceptance_events (
     $4,
     $5,
     $6,
+    sqlc.narg('boot_id')::text,
+    COALESCE(sqlc.narg('occurred_at_device')::timestamptz, $6),
     COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, device_event_id) DO UPDATE

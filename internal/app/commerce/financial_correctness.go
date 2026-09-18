@@ -40,6 +40,7 @@ type CashAcceptanceEventInput struct {
 	DenominationMinor int64
 	CreditSource      string
 	AcceptedAt        time.Time
+	BootID            string
 	RawMetadata       []byte
 }
 

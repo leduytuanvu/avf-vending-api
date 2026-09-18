@@ -772,6 +772,91 @@ func (s *machineCommerceServer) CreateCashCheckout(ctx context.Context, req *mac
 	return s.ConfirmCashPayment(ctx, req)
 }
 
+func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *machinev1.ReportCashMovementsRequest) (*machinev1.ReportCashMovementsResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	wctx, err := parseMachineMutationContext(ctx, req.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	claims, svc, _, err := s.requireCommerce(ctx)
+	if err != nil {
+		return nil, err
+	}
+	events := make([]appcommerce.CashMovementEventInput, 0, len(req.GetEvents()))
+	for _, ev := range req.GetEvents() {
+		if ev == nil {
+			continue
+		}
+		at := time.Now().UTC()
+		if ev.GetOccurredAt() != nil {
+			at = ev.GetOccurredAt().AsTime().UTC()
+		}
+		var orderID *uuid.UUID
+		if oid := strings.TrimSpace(ev.GetOrderId()); oid != "" {
+			parsed, perr := uuid.Parse(oid)
+			if perr == nil && parsed != uuid.Nil {
+				orderID = &parsed
+			}
+		}
+		var rcBefore, rcAfter, cashboxCount *int32
+		if ev.RecyclerCountBefore != nil {
+			v := ev.GetRecyclerCountBefore()
+			rcBefore = &v
+		}
+		if ev.RecyclerCountAfter != nil {
+			v := ev.GetRecyclerCountAfter()
+			rcAfter = &v
+		}
+		if ev.CashboxCount != nil {
+			v := ev.GetCashboxCount()
+			cashboxCount = &v
+		}
+		meta := map[string]any{
+			"rawRecordHex": strings.TrimSpace(ev.GetRawRecordHex()),
+			"bootId":       strings.TrimSpace(ev.GetBootId()),
+		}
+		rawMeta, _ := json.Marshal(meta)
+		events = append(events, appcommerce.CashMovementEventInput{
+			Kind:                      strings.TrimSpace(ev.GetKind()),
+			DeviceEventID:             strings.TrimSpace(ev.GetDeviceEventId()),
+			OccurredAt:                at,
+			DenominationMinor:         ev.GetDenominationMinor(),
+			AmountMinor:               ev.GetAmountMinor(),
+			CreditSource:              strings.TrimSpace(ev.GetCreditSource()),
+			LifecycleType:             strings.TrimSpace(ev.GetLifecycleType()),
+			WithdrawalID:              strings.TrimSpace(ev.GetWithdrawalId()),
+			NoteSequence:              ev.GetNoteSequence(),
+			EventType:                 strings.TrimSpace(ev.GetEventType()),
+			RecyclerCountBefore:       rcBefore,
+			RecyclerCountAfter:        rcAfter,
+			OutcomeFinality:           strings.TrimSpace(ev.GetOutcomeFinality()),
+			RawRecordHex:              strings.TrimSpace(ev.GetRawRecordHex()),
+			BootID:                    strings.TrimSpace(ev.GetBootId()),
+			OrderID:                   orderID,
+			Currency:                  strings.TrimSpace(ev.GetCurrency()),
+			CashboxCount:              cashboxCount,
+			ObservationSource:         strings.TrimSpace(ev.GetObservationSource()),
+			RecyclerDenominationMinor: ev.GetRecyclerDenominationMinor(),
+			RawMetadata:               rawMeta,
+		})
+	}
+	res, err := svc.ReportCashMovements(ctx, appcommerce.RecordCashMovementsInput{
+		MachineID:      claims.MachineID,
+		IdempotencyKey: wctx.IdempotencyKey,
+		Events:         events,
+	})
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	return &machinev1.ReportCashMovementsResponse{
+		Replay:         res.Replay,
+		AcceptedCount:  res.AcceptedCount,
+		DuplicateCount: res.DuplicateCount,
+	}, nil
+}
+
 func (s *machineCommerceServer) getStatus(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, orderID uuid.UUID, slotIndex int32) (appcommerce.CheckoutStatusView, error) {
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {

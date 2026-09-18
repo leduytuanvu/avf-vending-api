@@ -136,7 +136,22 @@ type CashAcceptanceEvent struct {
 	CreditSource      string
 	Currency          string
 	AcceptedAt        time.Time
+	BootID            pgtype.Text
+	OccurredAtDevice  pgtype.Timestamptz
 	RawMetadata       []byte
+	CreatedAt         time.Time
+}
+
+type CashAdjustment struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	AmountMinor       int64
+	Bucket            string
+	Reason            string
+	OperatorAccountID pgtype.UUID
+	IdempotencyKey    string
+	Currency          string
+	Metadata          []byte
 	CreatedAt         time.Time
 }
 
@@ -153,6 +168,20 @@ type CashAllocation struct {
 	Currency               string
 	IdempotencyKey         pgtype.Text
 	CreatedAt              time.Time
+}
+
+type CashBillLifecycleEvent struct {
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	OrderID           pgtype.UUID
+	DeviceEventID     string
+	LifecycleType     string
+	DenominationMinor int64
+	RawRecordHex      string
+	Currency          string
+	OccurredAtDevice  time.Time
+	CreatedAt         time.Time
+	RawMetadata       []byte
 }
 
 type CashChangeEvent struct {
@@ -210,6 +239,39 @@ type CashEvent struct {
 	CorrelationID           pgtype.UUID
 	Metadata                []byte
 	ReconciliationSessionID pgtype.UUID
+}
+
+type CashHardwareObservation struct {
+	ID                        uuid.UUID
+	MachineID                 uuid.UUID
+	DeviceEventID             string
+	ObservedAtDevice          time.Time
+	CreatedAt                 time.Time
+	RecyclerDenominationMinor int64
+	RecyclerCount             int32
+	CashboxCount              pgtype.Int4
+	Source                    string
+	Currency                  string
+	RawMetadata               []byte
+}
+
+type CashPayoutEvent struct {
+	ID                  uuid.UUID
+	MachineID           uuid.UUID
+	OrderID             pgtype.UUID
+	WithdrawalID        string
+	NoteSequence        int32
+	EventType           string
+	DeviceEventID       string
+	DenominationMinor   int64
+	AmountMinor         int64
+	RecyclerCountBefore pgtype.Int4
+	RecyclerCountAfter  pgtype.Int4
+	OutcomeFinality     string
+	Currency            string
+	OccurredAtDevice    time.Time
+	CreatedAt           time.Time
+	RawMetadata         []byte
 }
 
 type CashReconciliation struct {

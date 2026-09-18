@@ -26,6 +26,7 @@ const (
 	MachineCommerceService_AttachPaymentResult_FullMethodName  = "/avf.machine.v1.MachineCommerceService/AttachPaymentResult"
 	MachineCommerceService_ConfirmCashPayment_FullMethodName   = "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment"
 	MachineCommerceService_CreateCashCheckout_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CreateCashCheckout"
+	MachineCommerceService_ReportCashMovements_FullMethodName  = "/avf.machine.v1.MachineCommerceService/ReportCashMovements"
 	MachineCommerceService_GetOrder_FullMethodName             = "/avf.machine.v1.MachineCommerceService/GetOrder"
 	MachineCommerceService_GetOrderStatus_FullMethodName       = "/avf.machine.v1.MachineCommerceService/GetOrderStatus"
 	MachineCommerceService_GetPaymentStatus_FullMethodName     = "/avf.machine.v1.MachineCommerceService/GetPaymentStatus"
@@ -53,6 +54,8 @@ type MachineCommerceServiceClient interface {
 	ConfirmCashPayment(ctx context.Context, in *ConfirmCashPaymentRequest, opts ...grpc.CallOption) (*ConfirmCashPaymentResponse, error)
 	// CreateCashCheckout is an alias of ConfirmCashPayment (spec-native name for cash tenders).
 	CreateCashCheckout(ctx context.Context, in *ConfirmCashPaymentRequest, opts ...grpc.CallOption) (*ConfirmCashPaymentResponse, error)
+	// ReportCashMovements ingests bill credits, lifecycle evidence, payouts, and recycler observations.
+	ReportCashMovements(ctx context.Context, in *ReportCashMovementsRequest, opts ...grpc.CallOption) (*ReportCashMovementsResponse, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderResponse, error)
 	GetOrderStatus(ctx context.Context, in *GetOrderStatusRequest, opts ...grpc.CallOption) (*GetOrderStatusResponse, error)
 	// Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
@@ -138,6 +141,16 @@ func (c *machineCommerceServiceClient) CreateCashCheckout(ctx context.Context, i
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ConfirmCashPaymentResponse)
 	err := c.cc.Invoke(ctx, MachineCommerceService_CreateCashCheckout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineCommerceServiceClient) ReportCashMovements(ctx context.Context, in *ReportCashMovementsRequest, opts ...grpc.CallOption) (*ReportCashMovementsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReportCashMovementsResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_ReportCashMovements_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -250,6 +263,8 @@ type MachineCommerceServiceServer interface {
 	ConfirmCashPayment(context.Context, *ConfirmCashPaymentRequest) (*ConfirmCashPaymentResponse, error)
 	// CreateCashCheckout is an alias of ConfirmCashPayment (spec-native name for cash tenders).
 	CreateCashCheckout(context.Context, *ConfirmCashPaymentRequest) (*ConfirmCashPaymentResponse, error)
+	// ReportCashMovements ingests bill credits, lifecycle evidence, payouts, and recycler observations.
+	ReportCashMovements(context.Context, *ReportCashMovementsRequest) (*ReportCashMovementsResponse, error)
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderResponse, error)
 	GetOrderStatus(context.Context, *GetOrderStatusRequest) (*GetOrderStatusResponse, error)
 	// Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
@@ -291,6 +306,9 @@ func (UnimplementedMachineCommerceServiceServer) ConfirmCashPayment(context.Cont
 }
 func (UnimplementedMachineCommerceServiceServer) CreateCashCheckout(context.Context, *ConfirmCashPaymentRequest) (*ConfirmCashPaymentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateCashCheckout not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) ReportCashMovements(context.Context, *ReportCashMovementsRequest) (*ReportCashMovementsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReportCashMovements not implemented")
 }
 func (UnimplementedMachineCommerceServiceServer) GetOrder(context.Context, *GetOrderRequest) (*GetOrderResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetOrder not implemented")
@@ -463,6 +481,24 @@ func _MachineCommerceService_CreateCashCheckout_Handler(srv interface{}, ctx con
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MachineCommerceServiceServer).CreateCashCheckout(ctx, req.(*ConfirmCashPaymentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineCommerceService_ReportCashMovements_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReportCashMovementsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).ReportCashMovements(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_ReportCashMovements_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).ReportCashMovements(ctx, req.(*ReportCashMovementsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -663,6 +699,10 @@ var MachineCommerceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CreateCashCheckout",
 			Handler:    _MachineCommerceService_CreateCashCheckout_Handler,
+		},
+		{
+			MethodName: "ReportCashMovements",
+			Handler:    _MachineCommerceService_ReportCashMovements_Handler,
 		},
 		{
 			MethodName: "GetOrder",

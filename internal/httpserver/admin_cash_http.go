@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/api"
 	appinventoryadmin "github.com/avf/avf-vending-api/internal/app/inventoryadmin"
 	cashdomain "github.com/avf/avf-vending-api/internal/domain/cash"
+	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
@@ -32,6 +33,7 @@ func mountAdminCashSettlementRoutes(r chi.Router, app *api.HTTPApplication, writ
 		r.Get("/machines/{machineId}/cashbox", getAdminMachineCashbox(app))
 		r.Get("/machines/{machineId}/cash-collections", listAdminMachineCashCollections(app))
 		r.Get("/machines/{machineId}/cash-collections/{collectionId}", getAdminMachineCashCollection(app))
+		mountAdminCashLedgerRoutes(r, app, writeRL)
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCashWrite))
@@ -83,6 +85,10 @@ func getAdminMachineCashbox(app *api.HTTPApplication) http.HandlerFunc {
 			last = &s
 		}
 		denoms := make([]V1CashDenominationExpectation, 0)
+		var physical appcommerce.MachinePhysicalCashPosition
+		if app.Commerce != nil {
+			physical, _ = app.Commerce.GetMachinePhysicalCashPosition(r.Context(), machineID, cur, nil)
+		}
 		writeJSON(w, http.StatusOK, V1AdminMachineCashboxResponse{
 			MachineID:                    machineID.String(),
 			Currency:                     summary.Currency,
@@ -94,6 +100,14 @@ func getAdminMachineCashbox(app *api.HTTPApplication) http.HandlerFunc {
 			OpenCollectionID:             openID,
 			VarianceReviewThresholdMinor: summary.VarianceReviewThresholdMinor,
 			Disclosure:                   "Accounting-only: cloud ledger expectation only; does not sense or command physical cash hardware.",
+			PhysicalExpectedCashboxMinor: physical.PhysicalExpectedCashboxMinor,
+			PhysicalExpectedRecyclerMinor: physical.PhysicalExpectedRecyclerMinor,
+			PhysicalExpectedMachineMinor: physical.PhysicalExpectedMachineMinor,
+			SalesNetExpectedMinor:        physical.SalesNetExpectedMinor,
+			ObservedRecyclerMinor:        physical.ObservedRecyclerMinor,
+			ObservedRecyclerCount:        physical.ObservedRecyclerCount,
+			ObservedRecyclerDenomMinor:   physical.ObservedRecyclerDenomMinor,
+			EvidenceStatus:               physical.EvidenceStatus,
 		})
 	}
 }

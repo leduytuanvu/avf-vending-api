@@ -38,6 +38,7 @@ type Service struct {
 	webhookAppliedHook          func(context.Context, PaymentWebhookAppliedEvent)
 	paymentSessionReg           PaymentSessionRegistry
 	financial                   FinancialCorrectnessStore
+	forensic                    CashForensicStore
 	winnerArbitrationEnabled    bool
 	layoutMirror                LocalLayoutMirrorReader
 	paymentQueryThrottle        sync.Map // paymentID string -> time.Time
@@ -67,6 +68,7 @@ func NewService(d Deps) *Service {
 		webhookAppliedHook:          d.WebhookAppliedHook,
 		paymentSessionReg:           d.PaymentSessionRegistry,
 		financial:                   d.FinancialCorrectness,
+		forensic:                    d.CashForensic,
 		winnerArbitrationEnabled:    d.WinnerArbitrationEnabled,
 		layoutMirror:                d.LocalLayoutMirror,
 	}

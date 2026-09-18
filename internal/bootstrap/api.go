@@ -162,6 +162,7 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		EnterpriseAudit:             auditSvc,
 		PaymentSessionRegistry:      rt.Deps.PaymentProviders,
 		FinancialCorrectness:        store,
+		CashForensic:                store,
 		WinnerArbitrationEnabled:    cfg.Commerce.WinnerArbitrationEnabled,
 		LocalLayoutMirror:           store,
 	})

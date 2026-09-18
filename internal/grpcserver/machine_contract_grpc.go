@@ -515,6 +515,8 @@ func mapOfflineEventAlias(eventType string) string {
 		return "commerce.create_order"
 	case "cash_accepted":
 		return "commerce.confirm_cash_payment"
+	case "cash_movement", "cash_movements":
+		return "commerce.report_cash_movements"
 	case "vend_success":
 		return "commerce.confirm_vend_success"
 	case "vend_failure":
@@ -557,6 +559,13 @@ func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eve
 			return status.Error(codes.InvalidArgument, "invalid cash payment payload")
 		}
 		_, err := (&machineCommerceServer{deps: s.deps}).ConfirmCashPayment(ctx, &req)
+		return err
+	case "commerce.report_cash_movements":
+		var req machinev1.ReportCashMovementsRequest
+		if err := protojson.Unmarshal(payload, &req); err != nil {
+			return status.Error(codes.InvalidArgument, "invalid cash movements payload")
+		}
+		_, err := (&machineCommerceServer{deps: s.deps}).ReportCashMovements(ctx, &req)
 		return err
 	case "commerce.start_vend", "sale.start_vend":
 		var req machinev1.StartVendRequest

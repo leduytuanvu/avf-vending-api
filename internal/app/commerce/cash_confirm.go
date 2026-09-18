@@ -102,6 +102,15 @@ func (s *Service) ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentI
 			}); err != nil {
 				return ConfirmCashPaymentResult{}, err
 			}
+			deviceIDs := make([]string, 0, len(in.AcceptanceEvents))
+			for _, ev := range in.AcceptanceEvents {
+				if id := strings.TrimSpace(ev.DeviceEventID); id != "" {
+					deviceIDs = append(deviceIDs, id)
+				}
+			}
+			if s.forensic != nil && len(deviceIDs) > 0 {
+				_ = s.forensic.BindAcceptanceEventsToOrder(ctx, in.MachineID, in.OrderID, deviceIDs)
+			}
 		}
 		alloc, err = s.financial.RecordCashAllocation(ctx, RecordCashAllocationInput{
 			OrderID:                in.OrderID,
@@ -119,7 +128,7 @@ func (s *Service) ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentI
 			return ConfirmCashPaymentResult{}, err
 		}
 		changeOutcome := normalizeChangeOutcome(in.ChangeOutcome)
-		if in.ChangeDueMinor > 0 || in.ChangeDispensedMinor > 0 || changeOutcome != "none" {
+		if in.ChangeDueMinor > 0 || changeOutcome != "none" {
 			liability := int64(0)
 			if changeOutcome == "not_delivered" || changeOutcome == "ambiguous" {
 				liability = in.ChangeDueMinor - in.ChangeDispensedMinor

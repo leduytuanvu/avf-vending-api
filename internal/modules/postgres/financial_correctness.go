@@ -102,6 +102,8 @@ func (s *Store) RecordCashAcceptanceEvents(ctx context.Context, in appcommerce.R
 			CreditSource:      ev.CreditSource,
 			Currency:          in.Currency,
 			AcceptedAt:        ev.AcceptedAt.UTC(),
+			BootID:            optionalStringToPgText(ev.BootID),
+			OccurredAtDevice:  optionalTimeToPgTimestamptz(&ev.AcceptedAt),
 			RawMetadata:       pgjson.TextJSON(ev.RawMetadata),
 		})
 		if err != nil {

@@ -19,6 +19,8 @@ service MachineCommerceService {
   rpc ConfirmCashPayment(ConfirmCashPaymentRequest) returns (ConfirmCashPaymentResponse);
   // CreateCashCheckout is an alias of ConfirmCashPayment (spec-native name for cash tenders).
   rpc CreateCashCheckout(ConfirmCashPaymentRequest) returns (ConfirmCashPaymentResponse);
+  // ReportCashMovements ingests bill credits, lifecycle evidence, payouts, and recycler observations.
+  rpc ReportCashMovements(ReportCashMovementsRequest) returns (ReportCashMovementsResponse);
   rpc GetOrder(GetOrderRequest) returns (GetOrderResponse);
   rpc GetOrderStatus(GetOrderStatusRequest) returns (GetOrderStatusResponse);
   // Per-payment attempt status for multi-QR observation (poll Z1 independently from M1/V1).
@@ -278,6 +280,42 @@ message ConfirmCashPaymentResponse {
   string payment_id = 2;
   string order_status = 3;
   string payment_state = 4;
+}
+
+// CashMovementEvent is one immutable cash evidence row from the machine runtime.
+message CashMovementEvent {
+  // bill_credit | bill_lifecycle | payout | recycler_observation
+  string kind = 1;
+  string device_event_id = 2;
+  google.protobuf.Timestamp occurred_at = 3;
+  int64 denomination_minor = 4;
+  int64 amount_minor = 5;
+  string credit_source = 6;
+  string lifecycle_type = 7;
+  string withdrawal_id = 8;
+  int32 note_sequence = 9;
+  string event_type = 10;
+  optional int32 recycler_count_before = 11;
+  optional int32 recycler_count_after = 12;
+  string outcome_finality = 13;
+  string raw_record_hex = 14;
+  string boot_id = 15;
+  optional string order_id = 16;
+  string currency = 17;
+  optional int32 cashbox_count = 18;
+  string observation_source = 19;
+  int64 recycler_denomination_minor = 20;
+}
+
+message ReportCashMovementsRequest {
+  IdempotencyContext context = 1;
+  repeated CashMovementEvent events = 2;
+}
+
+message ReportCashMovementsResponse {
+  bool replay = 1;
+  int32 accepted_count = 2;
+  int32 duplicate_count = 3;
 }
 
 message GetOrderRequest {

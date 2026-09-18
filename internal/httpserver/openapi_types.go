@@ -1844,6 +1844,78 @@ type V1AdminMachineCashboxResponse struct {
 	OpenCollectionID             *string                         `json:"openCollectionId,omitempty"`
 	VarianceReviewThresholdMinor int64                           `json:"varianceReviewThresholdMinor"`
 	Disclosure                   string                          `json:"disclosure"`
+	PhysicalExpectedCashboxMinor int64                           `json:"physicalExpectedCashboxMinor"`
+	PhysicalExpectedRecyclerMinor int64                          `json:"physicalExpectedRecyclerMinor"`
+	PhysicalExpectedMachineMinor int64                           `json:"physicalExpectedMachineMinor"`
+	SalesNetExpectedMinor        int64                           `json:"salesNetExpectedMinor"`
+	ObservedRecyclerMinor        int64                           `json:"observedRecyclerMinor"`
+	ObservedRecyclerCount        int32                           `json:"observedRecyclerCount"`
+	ObservedRecyclerDenomMinor   int64                           `json:"observedRecyclerDenomMinor"`
+	EvidenceStatus               string                          `json:"evidenceStatus"`
+}
+
+type V1CashLedgerItem struct {
+	EventID           string  `json:"eventId"`
+	MachineID         string  `json:"machineId"`
+	OrderID           *string `json:"orderId,omitempty"`
+	MovementClass     string  `json:"movementClass"`
+	EventType         string  `json:"eventType"`
+	Destination       string  `json:"destination"`
+	DenominationMinor int64   `json:"denominationMinor"`
+	AmountMinor       int64   `json:"amountMinor"`
+	Currency          string  `json:"currency"`
+	OccurredAt        string  `json:"occurredAt"`
+	RecordedAt        string  `json:"recordedAt"`
+	EvidenceStatus    string  `json:"evidenceStatus"`
+	DeviceEventID     string  `json:"deviceEventId"`
+}
+
+type V1CashLedgerListResponse struct {
+	Items      []V1CashLedgerItem   `json:"items"`
+	NextCursor *string              `json:"nextCursor,omitempty"`
+	Meta       V1CollectionListMeta `json:"meta"`
+}
+
+type V1CashLedgerEventDetailResponse struct {
+	Event V1CashLedgerItem       `json:"event"`
+	Extra map[string]any         `json:"extra,omitempty"`
+}
+
+type V1AdminMachineCashPositionResponse struct {
+	MachineID                     string `json:"machineId"`
+	Currency                      string `json:"currency"`
+	AsOf                          string `json:"asOf"`
+	PhysicalExpectedCashboxMinor  int64  `json:"physicalExpectedCashboxMinor"`
+	PhysicalExpectedRecyclerMinor int64  `json:"physicalExpectedRecyclerMinor"`
+	PhysicalExpectedMachineMinor  int64  `json:"physicalExpectedMachineMinor"`
+	SalesNetExpectedMinor         int64  `json:"salesNetExpectedMinor"`
+	ObservedRecyclerMinor         int64  `json:"observedRecyclerMinor"`
+	ObservedRecyclerCount         int32  `json:"observedRecyclerCount"`
+	ObservedRecyclerDenomMinor    int64  `json:"observedRecyclerDenomMinor"`
+	UnresolvedLiabilityMinor      int64  `json:"unresolvedLiabilityMinor"`
+	AmbiguousEventCount           int64  `json:"ambiguousEventCount"`
+	EvidenceStatus                string `json:"evidenceStatus"`
+	Disclosure                    string `json:"disclosure"`
+}
+
+type V1OrderCashForensicsResponse struct {
+	OrderID                   string                      `json:"orderId"`
+	WinningPaymentID          *string                     `json:"winningPaymentId,omitempty"`
+	OutstandingLiabilityMinor int64                       `json:"outstandingLiabilityMinor"`
+	RemainderMinor            int64                       `json:"remainderMinor"`
+	CashAllocation            *V1OrderMoneyCashAllocation `json:"cashAllocation,omitempty"`
+	CashChange                *V1OrderMoneyCashChange     `json:"cashChange,omitempty"`
+	AcceptanceEvents          []V1OrderMoneyAcceptanceEvent `json:"acceptanceEvents"`
+}
+
+type V1CashAdjustmentResponse struct {
+	ID          string `json:"id"`
+	MachineID   string `json:"machineId"`
+	AmountMinor int64  `json:"amountMinor"`
+	Bucket      string `json:"bucket"`
+	Reason      string `json:"reason"`
+	Currency    string `json:"currency"`
+	CreatedAt   string `json:"createdAt"`
 }
 
 // V1AdminCashCollection is one cash collection session row (open or closed).

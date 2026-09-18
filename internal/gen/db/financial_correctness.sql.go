@@ -249,6 +249,8 @@ INSERT INTO cash_acceptance_events (
     credit_source,
     currency,
     accepted_at,
+    boot_id,
+    occurred_at_device,
     raw_metadata
 ) VALUES (
     $1,
@@ -258,11 +260,13 @@ INSERT INTO cash_acceptance_events (
     $4,
     $5,
     $6,
-    COALESCE(NULLIF($8::text, '')::jsonb, '{}'::jsonb)
+    $8::text,
+    COALESCE($9::timestamptz, $6),
+    COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb)
 )
 ON CONFLICT (machine_id, device_event_id) DO UPDATE
 SET device_event_id = EXCLUDED.device_event_id
-RETURNING id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, raw_metadata, created_at
+RETURNING id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, boot_id, occurred_at_device, raw_metadata, created_at
 `
 
 type InsertCashAcceptanceEventParams struct {
@@ -273,6 +277,8 @@ type InsertCashAcceptanceEventParams struct {
 	Currency          string
 	AcceptedAt        time.Time
 	OrderID           pgtype.UUID
+	BootID            pgtype.Text
+	OccurredAtDevice  pgtype.Timestamptz
 	RawMetadata       pgtype.Text
 }
 
@@ -285,6 +291,8 @@ func (q *Queries) InsertCashAcceptanceEvent(ctx context.Context, arg InsertCashA
 		arg.Currency,
 		arg.AcceptedAt,
 		arg.OrderID,
+		arg.BootID,
+		arg.OccurredAtDevice,
 		arg.RawMetadata,
 	)
 	var i CashAcceptanceEvent
@@ -297,6 +305,8 @@ func (q *Queries) InsertCashAcceptanceEvent(ctx context.Context, arg InsertCashA
 		&i.CreditSource,
 		&i.Currency,
 		&i.AcceptedAt,
+		&i.BootID,
+		&i.OccurredAtDevice,
 		&i.RawMetadata,
 		&i.CreatedAt,
 	)
@@ -505,7 +515,7 @@ func (q *Queries) ListCapturedPaymentsWithoutWinner(ctx context.Context, arg Lis
 }
 
 const ListCashAcceptanceEventsForOrder = `-- name: ListCashAcceptanceEventsForOrder :many
-SELECT id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, raw_metadata, created_at
+SELECT id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, boot_id, occurred_at_device, raw_metadata, created_at
 FROM cash_acceptance_events
 WHERE order_id = $1
 ORDER BY accepted_at ASC
@@ -529,6 +539,8 @@ func (q *Queries) ListCashAcceptanceEventsForOrder(ctx context.Context, orderID 
 			&i.CreditSource,
 			&i.Currency,
 			&i.AcceptedAt,
+			&i.BootID,
+			&i.OccurredAtDevice,
 			&i.RawMetadata,
 			&i.CreatedAt,
 		); err != nil {

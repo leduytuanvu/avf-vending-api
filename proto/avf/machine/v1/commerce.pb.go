@@ -2086,6 +2086,316 @@ func (x *ConfirmCashPaymentResponse) GetPaymentState() string {
 	return ""
 }
 
+// CashMovementEvent is one immutable cash evidence row from the machine runtime.
+type CashMovementEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// bill_credit | bill_lifecycle | payout | recycler_observation
+	Kind                      string                 `protobuf:"bytes,1,opt,name=kind,proto3" json:"kind,omitempty"`
+	DeviceEventId             string                 `protobuf:"bytes,2,opt,name=device_event_id,json=deviceEventId,proto3" json:"device_event_id,omitempty"`
+	OccurredAt                *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	DenominationMinor         int64                  `protobuf:"varint,4,opt,name=denomination_minor,json=denominationMinor,proto3" json:"denomination_minor,omitempty"`
+	AmountMinor               int64                  `protobuf:"varint,5,opt,name=amount_minor,json=amountMinor,proto3" json:"amount_minor,omitempty"`
+	CreditSource              string                 `protobuf:"bytes,6,opt,name=credit_source,json=creditSource,proto3" json:"credit_source,omitempty"`
+	LifecycleType             string                 `protobuf:"bytes,7,opt,name=lifecycle_type,json=lifecycleType,proto3" json:"lifecycle_type,omitempty"`
+	WithdrawalId              string                 `protobuf:"bytes,8,opt,name=withdrawal_id,json=withdrawalId,proto3" json:"withdrawal_id,omitempty"`
+	NoteSequence              int32                  `protobuf:"varint,9,opt,name=note_sequence,json=noteSequence,proto3" json:"note_sequence,omitempty"`
+	EventType                 string                 `protobuf:"bytes,10,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	RecyclerCountBefore       *int32                 `protobuf:"varint,11,opt,name=recycler_count_before,json=recyclerCountBefore,proto3,oneof" json:"recycler_count_before,omitempty"`
+	RecyclerCountAfter        *int32                 `protobuf:"varint,12,opt,name=recycler_count_after,json=recyclerCountAfter,proto3,oneof" json:"recycler_count_after,omitempty"`
+	OutcomeFinality           string                 `protobuf:"bytes,13,opt,name=outcome_finality,json=outcomeFinality,proto3" json:"outcome_finality,omitempty"`
+	RawRecordHex              string                 `protobuf:"bytes,14,opt,name=raw_record_hex,json=rawRecordHex,proto3" json:"raw_record_hex,omitempty"`
+	BootId                    string                 `protobuf:"bytes,15,opt,name=boot_id,json=bootId,proto3" json:"boot_id,omitempty"`
+	OrderId                   *string                `protobuf:"bytes,16,opt,name=order_id,json=orderId,proto3,oneof" json:"order_id,omitempty"`
+	Currency                  string                 `protobuf:"bytes,17,opt,name=currency,proto3" json:"currency,omitempty"`
+	CashboxCount              *int32                 `protobuf:"varint,18,opt,name=cashbox_count,json=cashboxCount,proto3,oneof" json:"cashbox_count,omitempty"`
+	ObservationSource         string                 `protobuf:"bytes,19,opt,name=observation_source,json=observationSource,proto3" json:"observation_source,omitempty"`
+	RecyclerDenominationMinor int64                  `protobuf:"varint,20,opt,name=recycler_denomination_minor,json=recyclerDenominationMinor,proto3" json:"recycler_denomination_minor,omitempty"`
+	unknownFields             protoimpl.UnknownFields
+	sizeCache                 protoimpl.SizeCache
+}
+
+func (x *CashMovementEvent) Reset() {
+	*x = CashMovementEvent{}
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CashMovementEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CashMovementEvent) ProtoMessage() {}
+
+func (x *CashMovementEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CashMovementEvent.ProtoReflect.Descriptor instead.
+func (*CashMovementEvent) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *CashMovementEvent) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetDeviceEventId() string {
+	if x != nil {
+		return x.DeviceEventId
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetOccurredAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OccurredAt
+	}
+	return nil
+}
+
+func (x *CashMovementEvent) GetDenominationMinor() int64 {
+	if x != nil {
+		return x.DenominationMinor
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetAmountMinor() int64 {
+	if x != nil {
+		return x.AmountMinor
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetCreditSource() string {
+	if x != nil {
+		return x.CreditSource
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetLifecycleType() string {
+	if x != nil {
+		return x.LifecycleType
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetWithdrawalId() string {
+	if x != nil {
+		return x.WithdrawalId
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetNoteSequence() int32 {
+	if x != nil {
+		return x.NoteSequence
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetRecyclerCountBefore() int32 {
+	if x != nil && x.RecyclerCountBefore != nil {
+		return *x.RecyclerCountBefore
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetRecyclerCountAfter() int32 {
+	if x != nil && x.RecyclerCountAfter != nil {
+		return *x.RecyclerCountAfter
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetOutcomeFinality() string {
+	if x != nil {
+		return x.OutcomeFinality
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetRawRecordHex() string {
+	if x != nil {
+		return x.RawRecordHex
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetBootId() string {
+	if x != nil {
+		return x.BootId
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetOrderId() string {
+	if x != nil && x.OrderId != nil {
+		return *x.OrderId
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetCashboxCount() int32 {
+	if x != nil && x.CashboxCount != nil {
+		return *x.CashboxCount
+	}
+	return 0
+}
+
+func (x *CashMovementEvent) GetObservationSource() string {
+	if x != nil {
+		return x.ObservationSource
+	}
+	return ""
+}
+
+func (x *CashMovementEvent) GetRecyclerDenominationMinor() int64 {
+	if x != nil {
+		return x.RecyclerDenominationMinor
+	}
+	return 0
+}
+
+type ReportCashMovementsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Context       *IdempotencyContext    `protobuf:"bytes,1,opt,name=context,proto3" json:"context,omitempty"`
+	Events        []*CashMovementEvent   `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReportCashMovementsRequest) Reset() {
+	*x = ReportCashMovementsRequest{}
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportCashMovementsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportCashMovementsRequest) ProtoMessage() {}
+
+func (x *ReportCashMovementsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportCashMovementsRequest.ProtoReflect.Descriptor instead.
+func (*ReportCashMovementsRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ReportCashMovementsRequest) GetContext() *IdempotencyContext {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *ReportCashMovementsRequest) GetEvents() []*CashMovementEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+type ReportCashMovementsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Replay         bool                   `protobuf:"varint,1,opt,name=replay,proto3" json:"replay,omitempty"`
+	AcceptedCount  int32                  `protobuf:"varint,2,opt,name=accepted_count,json=acceptedCount,proto3" json:"accepted_count,omitempty"`
+	DuplicateCount int32                  `protobuf:"varint,3,opt,name=duplicate_count,json=duplicateCount,proto3" json:"duplicate_count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ReportCashMovementsResponse) Reset() {
+	*x = ReportCashMovementsResponse{}
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReportCashMovementsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReportCashMovementsResponse) ProtoMessage() {}
+
+func (x *ReportCashMovementsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReportCashMovementsResponse.ProtoReflect.Descriptor instead.
+func (*ReportCashMovementsResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ReportCashMovementsResponse) GetReplay() bool {
+	if x != nil {
+		return x.Replay
+	}
+	return false
+}
+
+func (x *ReportCashMovementsResponse) GetAcceptedCount() int32 {
+	if x != nil {
+		return x.AcceptedCount
+	}
+	return 0
+}
+
+func (x *ReportCashMovementsResponse) GetDuplicateCount() int32 {
+	if x != nil {
+		return x.DuplicateCount
+	}
+	return 0
+}
+
 type GetOrderRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	OrderId       string                 `protobuf:"bytes,1,opt,name=order_id,json=orderId,proto3" json:"order_id,omitempty"`
@@ -2096,7 +2406,7 @@ type GetOrderRequest struct {
 
 func (x *GetOrderRequest) Reset() {
 	*x = GetOrderRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[24]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2108,7 +2418,7 @@ func (x *GetOrderRequest) String() string {
 func (*GetOrderRequest) ProtoMessage() {}
 
 func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[24]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2121,7 +2431,7 @@ func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{24}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetOrderRequest) GetOrderId() string {
@@ -2162,7 +2472,7 @@ type GetOrderResponse struct {
 
 func (x *GetOrderResponse) Reset() {
 	*x = GetOrderResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[25]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2174,7 +2484,7 @@ func (x *GetOrderResponse) String() string {
 func (*GetOrderResponse) ProtoMessage() {}
 
 func (x *GetOrderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[25]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2187,7 +2497,7 @@ func (x *GetOrderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderResponse.ProtoReflect.Descriptor instead.
 func (*GetOrderResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{25}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *GetOrderResponse) GetOrderId() string {
@@ -2305,7 +2615,7 @@ type GetOrderStatusRequest struct {
 
 func (x *GetOrderStatusRequest) Reset() {
 	*x = GetOrderStatusRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[26]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2317,7 +2627,7 @@ func (x *GetOrderStatusRequest) String() string {
 func (*GetOrderStatusRequest) ProtoMessage() {}
 
 func (x *GetOrderStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[26]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2330,7 +2640,7 @@ func (x *GetOrderStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderStatusRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{26}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *GetOrderStatusRequest) GetOrderId() string {
@@ -2364,7 +2674,7 @@ type GetOrderStatusResponse struct {
 
 func (x *GetOrderStatusResponse) Reset() {
 	*x = GetOrderStatusResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[27]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2376,7 +2686,7 @@ func (x *GetOrderStatusResponse) String() string {
 func (*GetOrderStatusResponse) ProtoMessage() {}
 
 func (x *GetOrderStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[27]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2389,7 +2699,7 @@ func (x *GetOrderStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetOrderStatusResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{27}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetOrderStatusResponse) GetOrderId() string {
@@ -2451,7 +2761,7 @@ type GetPaymentStatusRequest struct {
 
 func (x *GetPaymentStatusRequest) Reset() {
 	*x = GetPaymentStatusRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[28]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2463,7 +2773,7 @@ func (x *GetPaymentStatusRequest) String() string {
 func (*GetPaymentStatusRequest) ProtoMessage() {}
 
 func (x *GetPaymentStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[28]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2476,7 +2786,7 @@ func (x *GetPaymentStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetPaymentStatusRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{28}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *GetPaymentStatusRequest) GetOrderId() string {
@@ -2509,7 +2819,7 @@ type GetPaymentStatusResponse struct {
 
 func (x *GetPaymentStatusResponse) Reset() {
 	*x = GetPaymentStatusResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[29]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2521,7 +2831,7 @@ func (x *GetPaymentStatusResponse) String() string {
 func (*GetPaymentStatusResponse) ProtoMessage() {}
 
 func (x *GetPaymentStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[29]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2534,7 +2844,7 @@ func (x *GetPaymentStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPaymentStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetPaymentStatusResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{29}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *GetPaymentStatusResponse) GetOrderId() string {
@@ -2600,7 +2910,7 @@ type HardwareCommandRef struct {
 
 func (x *HardwareCommandRef) Reset() {
 	*x = HardwareCommandRef{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[30]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2612,7 +2922,7 @@ func (x *HardwareCommandRef) String() string {
 func (*HardwareCommandRef) ProtoMessage() {}
 
 func (x *HardwareCommandRef) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[30]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2625,7 +2935,7 @@ func (x *HardwareCommandRef) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HardwareCommandRef.ProtoReflect.Descriptor instead.
 func (*HardwareCommandRef) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{30}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *HardwareCommandRef) GetCommandId() string {
@@ -2662,7 +2972,7 @@ type BillFinalRecord struct {
 
 func (x *BillFinalRecord) Reset() {
 	*x = BillFinalRecord{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[31]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2674,7 +2984,7 @@ func (x *BillFinalRecord) String() string {
 func (*BillFinalRecord) ProtoMessage() {}
 
 func (x *BillFinalRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[31]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2687,7 +2997,7 @@ func (x *BillFinalRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BillFinalRecord.ProtoReflect.Descriptor instead.
 func (*BillFinalRecord) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{31}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *BillFinalRecord) GetEventId() string {
@@ -2732,7 +3042,7 @@ type TcnDispenseRecord struct {
 
 func (x *TcnDispenseRecord) Reset() {
 	*x = TcnDispenseRecord{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[32]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2744,7 +3054,7 @@ func (x *TcnDispenseRecord) String() string {
 func (*TcnDispenseRecord) ProtoMessage() {}
 
 func (x *TcnDispenseRecord) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[32]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2757,7 +3067,7 @@ func (x *TcnDispenseRecord) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TcnDispenseRecord.ProtoReflect.Descriptor instead.
 func (*TcnDispenseRecord) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{32}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *TcnDispenseRecord) GetSlot() string {
@@ -2809,7 +3119,7 @@ type VendHardwareEvidence struct {
 
 func (x *VendHardwareEvidence) Reset() {
 	*x = VendHardwareEvidence{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[33]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2821,7 +3131,7 @@ func (x *VendHardwareEvidence) String() string {
 func (*VendHardwareEvidence) ProtoMessage() {}
 
 func (x *VendHardwareEvidence) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[33]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2834,7 +3144,7 @@ func (x *VendHardwareEvidence) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use VendHardwareEvidence.ProtoReflect.Descriptor instead.
 func (*VendHardwareEvidence) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{33}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *VendHardwareEvidence) GetVendAttemptId() string {
@@ -2885,7 +3195,7 @@ type StartVendRequest struct {
 
 func (x *StartVendRequest) Reset() {
 	*x = StartVendRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[34]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2897,7 +3207,7 @@ func (x *StartVendRequest) String() string {
 func (*StartVendRequest) ProtoMessage() {}
 
 func (x *StartVendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[34]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2910,7 +3220,7 @@ func (x *StartVendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartVendRequest.ProtoReflect.Descriptor instead.
 func (*StartVendRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{34}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *StartVendRequest) GetContext() *IdempotencyContext {
@@ -2952,7 +3262,7 @@ type StartVendResponse struct {
 
 func (x *StartVendResponse) Reset() {
 	*x = StartVendResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[35]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2964,7 +3274,7 @@ func (x *StartVendResponse) String() string {
 func (*StartVendResponse) ProtoMessage() {}
 
 func (x *StartVendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[35]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2977,7 +3287,7 @@ func (x *StartVendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartVendResponse.ProtoReflect.Descriptor instead.
 func (*StartVendResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{35}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *StartVendResponse) GetReplay() bool {
@@ -3014,7 +3324,7 @@ type ConfirmVendSuccessRequest struct {
 
 func (x *ConfirmVendSuccessRequest) Reset() {
 	*x = ConfirmVendSuccessRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[36]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3026,7 +3336,7 @@ func (x *ConfirmVendSuccessRequest) String() string {
 func (*ConfirmVendSuccessRequest) ProtoMessage() {}
 
 func (x *ConfirmVendSuccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[36]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3039,7 +3349,7 @@ func (x *ConfirmVendSuccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmVendSuccessRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmVendSuccessRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{36}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ConfirmVendSuccessRequest) GetContext() *IdempotencyContext {
@@ -3090,7 +3400,7 @@ type ConfirmVendSuccessResponse struct {
 
 func (x *ConfirmVendSuccessResponse) Reset() {
 	*x = ConfirmVendSuccessResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[37]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3102,7 +3412,7 @@ func (x *ConfirmVendSuccessResponse) String() string {
 func (*ConfirmVendSuccessResponse) ProtoMessage() {}
 
 func (x *ConfirmVendSuccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[37]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3115,7 +3425,7 @@ func (x *ConfirmVendSuccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmVendSuccessResponse.ProtoReflect.Descriptor instead.
 func (*ConfirmVendSuccessResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{37}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ConfirmVendSuccessResponse) GetReplay() bool {
@@ -3166,7 +3476,7 @@ type ReportVendSuccessRequest struct {
 
 func (x *ReportVendSuccessRequest) Reset() {
 	*x = ReportVendSuccessRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[38]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3178,7 +3488,7 @@ func (x *ReportVendSuccessRequest) String() string {
 func (*ReportVendSuccessRequest) ProtoMessage() {}
 
 func (x *ReportVendSuccessRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[38]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3191,7 +3501,7 @@ func (x *ReportVendSuccessRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportVendSuccessRequest.ProtoReflect.Descriptor instead.
 func (*ReportVendSuccessRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{38}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *ReportVendSuccessRequest) GetContext() *IdempotencyContext {
@@ -3242,7 +3552,7 @@ type ReportVendSuccessResponse struct {
 
 func (x *ReportVendSuccessResponse) Reset() {
 	*x = ReportVendSuccessResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[39]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3254,7 +3564,7 @@ func (x *ReportVendSuccessResponse) String() string {
 func (*ReportVendSuccessResponse) ProtoMessage() {}
 
 func (x *ReportVendSuccessResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[39]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3267,7 +3577,7 @@ func (x *ReportVendSuccessResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportVendSuccessResponse.ProtoReflect.Descriptor instead.
 func (*ReportVendSuccessResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{39}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ReportVendSuccessResponse) GetReplay() bool {
@@ -3321,7 +3631,7 @@ type ReportVendFailureRequest struct {
 
 func (x *ReportVendFailureRequest) Reset() {
 	*x = ReportVendFailureRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[40]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3333,7 +3643,7 @@ func (x *ReportVendFailureRequest) String() string {
 func (*ReportVendFailureRequest) ProtoMessage() {}
 
 func (x *ReportVendFailureRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[40]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3346,7 +3656,7 @@ func (x *ReportVendFailureRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportVendFailureRequest.ProtoReflect.Descriptor instead.
 func (*ReportVendFailureRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{40}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *ReportVendFailureRequest) GetContext() *IdempotencyContext {
@@ -3412,7 +3722,7 @@ type ReportVendFailureResponse struct {
 
 func (x *ReportVendFailureResponse) Reset() {
 	*x = ReportVendFailureResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[41]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3424,7 +3734,7 @@ func (x *ReportVendFailureResponse) String() string {
 func (*ReportVendFailureResponse) ProtoMessage() {}
 
 func (x *ReportVendFailureResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[41]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3437,7 +3747,7 @@ func (x *ReportVendFailureResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportVendFailureResponse.ProtoReflect.Descriptor instead.
 func (*ReportVendFailureResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{41}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *ReportVendFailureResponse) GetReplay() bool {
@@ -3493,7 +3803,7 @@ type CancelOrderRequest struct {
 
 func (x *CancelOrderRequest) Reset() {
 	*x = CancelOrderRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[42]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3505,7 +3815,7 @@ func (x *CancelOrderRequest) String() string {
 func (*CancelOrderRequest) ProtoMessage() {}
 
 func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[42]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3518,7 +3828,7 @@ func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelOrderRequest.ProtoReflect.Descriptor instead.
 func (*CancelOrderRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{42}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *CancelOrderRequest) GetContext() *IdempotencyContext {
@@ -3553,7 +3863,7 @@ type CancelOrderResponse struct {
 
 func (x *CancelOrderResponse) Reset() {
 	*x = CancelOrderResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[43]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3565,7 +3875,7 @@ func (x *CancelOrderResponse) String() string {
 func (*CancelOrderResponse) ProtoMessage() {}
 
 func (x *CancelOrderResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[43]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3578,7 +3888,7 @@ func (x *CancelOrderResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelOrderResponse.ProtoReflect.Descriptor instead.
 func (*CancelOrderResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{43}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *CancelOrderResponse) GetReplay() bool {
@@ -3615,7 +3925,7 @@ type CancelPaymentSessionRequest struct {
 
 func (x *CancelPaymentSessionRequest) Reset() {
 	*x = CancelPaymentSessionRequest{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[44]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3627,7 +3937,7 @@ func (x *CancelPaymentSessionRequest) String() string {
 func (*CancelPaymentSessionRequest) ProtoMessage() {}
 
 func (x *CancelPaymentSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[44]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3640,7 +3950,7 @@ func (x *CancelPaymentSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPaymentSessionRequest.ProtoReflect.Descriptor instead.
 func (*CancelPaymentSessionRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{44}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *CancelPaymentSessionRequest) GetContext() *IdempotencyContext {
@@ -3684,7 +3994,7 @@ type CancelPaymentSessionResponse struct {
 
 func (x *CancelPaymentSessionResponse) Reset() {
 	*x = CancelPaymentSessionResponse{}
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[45]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3696,7 +4006,7 @@ func (x *CancelPaymentSessionResponse) String() string {
 func (*CancelPaymentSessionResponse) ProtoMessage() {}
 
 func (x *CancelPaymentSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_commerce_proto_msgTypes[45]
+	mi := &file_avf_machine_v1_commerce_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3709,7 +4019,7 @@ func (x *CancelPaymentSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelPaymentSessionResponse.ProtoReflect.Descriptor instead.
 func (*CancelPaymentSessionResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{45}
+	return file_avf_machine_v1_commerce_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *CancelPaymentSessionResponse) GetReplay() bool {
@@ -3977,7 +4287,42 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\n" +
 	"payment_id\x18\x02 \x01(\tR\tpaymentId\x12!\n" +
 	"\forder_status\x18\x03 \x01(\tR\vorderStatus\x12#\n" +
-	"\rpayment_state\x18\x04 \x01(\tR\fpaymentState\"K\n" +
+	"\rpayment_state\x18\x04 \x01(\tR\fpaymentState\"\x94\a\n" +
+	"\x11CashMovementEvent\x12\x12\n" +
+	"\x04kind\x18\x01 \x01(\tR\x04kind\x12&\n" +
+	"\x0fdevice_event_id\x18\x02 \x01(\tR\rdeviceEventId\x12;\n" +
+	"\voccurred_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"occurredAt\x12-\n" +
+	"\x12denomination_minor\x18\x04 \x01(\x03R\x11denominationMinor\x12!\n" +
+	"\famount_minor\x18\x05 \x01(\x03R\vamountMinor\x12#\n" +
+	"\rcredit_source\x18\x06 \x01(\tR\fcreditSource\x12%\n" +
+	"\x0elifecycle_type\x18\a \x01(\tR\rlifecycleType\x12#\n" +
+	"\rwithdrawal_id\x18\b \x01(\tR\fwithdrawalId\x12#\n" +
+	"\rnote_sequence\x18\t \x01(\x05R\fnoteSequence\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\n" +
+	" \x01(\tR\teventType\x127\n" +
+	"\x15recycler_count_before\x18\v \x01(\x05H\x00R\x13recyclerCountBefore\x88\x01\x01\x125\n" +
+	"\x14recycler_count_after\x18\f \x01(\x05H\x01R\x12recyclerCountAfter\x88\x01\x01\x12)\n" +
+	"\x10outcome_finality\x18\r \x01(\tR\x0foutcomeFinality\x12$\n" +
+	"\x0eraw_record_hex\x18\x0e \x01(\tR\frawRecordHex\x12\x17\n" +
+	"\aboot_id\x18\x0f \x01(\tR\x06bootId\x12\x1e\n" +
+	"\border_id\x18\x10 \x01(\tH\x02R\aorderId\x88\x01\x01\x12\x1a\n" +
+	"\bcurrency\x18\x11 \x01(\tR\bcurrency\x12(\n" +
+	"\rcashbox_count\x18\x12 \x01(\x05H\x03R\fcashboxCount\x88\x01\x01\x12-\n" +
+	"\x12observation_source\x18\x13 \x01(\tR\x11observationSource\x12>\n" +
+	"\x1brecycler_denomination_minor\x18\x14 \x01(\x03R\x19recyclerDenominationMinorB\x18\n" +
+	"\x16_recycler_count_beforeB\x17\n" +
+	"\x15_recycler_count_afterB\v\n" +
+	"\t_order_idB\x10\n" +
+	"\x0e_cashbox_count\"\x95\x01\n" +
+	"\x1aReportCashMovementsRequest\x12<\n" +
+	"\acontext\x18\x01 \x01(\v2\".avf.machine.v1.IdempotencyContextR\acontext\x129\n" +
+	"\x06events\x18\x02 \x03(\v2!.avf.machine.v1.CashMovementEventR\x06events\"\x85\x01\n" +
+	"\x1bReportCashMovementsResponse\x12\x16\n" +
+	"\x06replay\x18\x01 \x01(\bR\x06replay\x12%\n" +
+	"\x0eaccepted_count\x18\x02 \x01(\x05R\racceptedCount\x12'\n" +
+	"\x0fduplicate_count\x18\x03 \x01(\x05R\x0eduplicateCount\"K\n" +
 	"\x0fGetOrderRequest\x12\x19\n" +
 	"\border_id\x18\x01 \x01(\tR\aorderId\x12\x1d\n" +
 	"\n" +
@@ -4141,7 +4486,7 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\forder_status\x18\x03 \x01(\tR\vorderStatus\x12\x1d\n" +
 	"\n" +
 	"payment_id\x18\x04 \x01(\tR\tpaymentId\x12#\n" +
-	"\rpayment_state\x18\x05 \x01(\tR\fpaymentState2\xef\f\n" +
+	"\rpayment_state\x18\x05 \x01(\tR\fpaymentState2\xdf\r\n" +
 	"\x16MachineCommerceService\x12V\n" +
 	"\vCreateOrder\x12\".avf.machine.v1.CreateOrderRequest\x1a#.avf.machine.v1.CreateOrderResponse\x12V\n" +
 	"\vCreateQuote\x12\".avf.machine.v1.CreateQuoteRequest\x1a#.avf.machine.v1.CreateQuoteResponse\x12q\n" +
@@ -4149,7 +4494,8 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x14CreatePaymentSession\x12+.avf.machine.v1.CreatePaymentSessionRequest\x1a,.avf.machine.v1.CreatePaymentSessionResponse\x12p\n" +
 	"\x13AttachPaymentResult\x12+.avf.machine.v1.CreatePaymentSessionRequest\x1a,.avf.machine.v1.CreatePaymentSessionResponse\x12k\n" +
 	"\x12ConfirmCashPayment\x12).avf.machine.v1.ConfirmCashPaymentRequest\x1a*.avf.machine.v1.ConfirmCashPaymentResponse\x12k\n" +
-	"\x12CreateCashCheckout\x12).avf.machine.v1.ConfirmCashPaymentRequest\x1a*.avf.machine.v1.ConfirmCashPaymentResponse\x12M\n" +
+	"\x12CreateCashCheckout\x12).avf.machine.v1.ConfirmCashPaymentRequest\x1a*.avf.machine.v1.ConfirmCashPaymentResponse\x12n\n" +
+	"\x13ReportCashMovements\x12*.avf.machine.v1.ReportCashMovementsRequest\x1a+.avf.machine.v1.ReportCashMovementsResponse\x12M\n" +
 	"\bGetOrder\x12\x1f.avf.machine.v1.GetOrderRequest\x1a .avf.machine.v1.GetOrderResponse\x12_\n" +
 	"\x0eGetOrderStatus\x12%.avf.machine.v1.GetOrderStatusRequest\x1a&.avf.machine.v1.GetOrderStatusResponse\x12e\n" +
 	"\x10GetPaymentStatus\x12'.avf.machine.v1.GetPaymentStatusRequest\x1a(.avf.machine.v1.GetPaymentStatusResponse\x12P\n" +
@@ -4182,7 +4528,7 @@ func file_avf_machine_v1_commerce_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_commerce_proto_rawDescData
 }
 
-var file_avf_machine_v1_commerce_proto_msgTypes = make([]protoimpl.MessageInfo, 46)
+var file_avf_machine_v1_commerce_proto_msgTypes = make([]protoimpl.MessageInfo, 49)
 var file_avf_machine_v1_commerce_proto_goTypes = []any{
 	(*CreateSaleRequest)(nil),            // 0: avf.machine.v1.CreateSaleRequest
 	(*CreateSaleResponse)(nil),           // 1: avf.machine.v1.CreateSaleResponse
@@ -4208,32 +4554,35 @@ var file_avf_machine_v1_commerce_proto_goTypes = []any{
 	(*CashAcceptanceEvent)(nil),          // 21: avf.machine.v1.CashAcceptanceEvent
 	(*ConfirmCashPaymentRequest)(nil),    // 22: avf.machine.v1.ConfirmCashPaymentRequest
 	(*ConfirmCashPaymentResponse)(nil),   // 23: avf.machine.v1.ConfirmCashPaymentResponse
-	(*GetOrderRequest)(nil),              // 24: avf.machine.v1.GetOrderRequest
-	(*GetOrderResponse)(nil),             // 25: avf.machine.v1.GetOrderResponse
-	(*GetOrderStatusRequest)(nil),        // 26: avf.machine.v1.GetOrderStatusRequest
-	(*GetOrderStatusResponse)(nil),       // 27: avf.machine.v1.GetOrderStatusResponse
-	(*GetPaymentStatusRequest)(nil),      // 28: avf.machine.v1.GetPaymentStatusRequest
-	(*GetPaymentStatusResponse)(nil),     // 29: avf.machine.v1.GetPaymentStatusResponse
-	(*HardwareCommandRef)(nil),           // 30: avf.machine.v1.HardwareCommandRef
-	(*BillFinalRecord)(nil),              // 31: avf.machine.v1.BillFinalRecord
-	(*TcnDispenseRecord)(nil),            // 32: avf.machine.v1.TcnDispenseRecord
-	(*VendHardwareEvidence)(nil),         // 33: avf.machine.v1.VendHardwareEvidence
-	(*StartVendRequest)(nil),             // 34: avf.machine.v1.StartVendRequest
-	(*StartVendResponse)(nil),            // 35: avf.machine.v1.StartVendResponse
-	(*ConfirmVendSuccessRequest)(nil),    // 36: avf.machine.v1.ConfirmVendSuccessRequest
-	(*ConfirmVendSuccessResponse)(nil),   // 37: avf.machine.v1.ConfirmVendSuccessResponse
-	(*ReportVendSuccessRequest)(nil),     // 38: avf.machine.v1.ReportVendSuccessRequest
-	(*ReportVendSuccessResponse)(nil),    // 39: avf.machine.v1.ReportVendSuccessResponse
-	(*ReportVendFailureRequest)(nil),     // 40: avf.machine.v1.ReportVendFailureRequest
-	(*ReportVendFailureResponse)(nil),    // 41: avf.machine.v1.ReportVendFailureResponse
-	(*CancelOrderRequest)(nil),           // 42: avf.machine.v1.CancelOrderRequest
-	(*CancelOrderResponse)(nil),          // 43: avf.machine.v1.CancelOrderResponse
-	(*CancelPaymentSessionRequest)(nil),  // 44: avf.machine.v1.CancelPaymentSessionRequest
-	(*CancelPaymentSessionResponse)(nil), // 45: avf.machine.v1.CancelPaymentSessionResponse
-	(*timestamppb.Timestamp)(nil),        // 46: google.protobuf.Timestamp
-	(*IdempotencyContext)(nil),           // 47: avf.machine.v1.IdempotencyContext
-	(*MachineRequestMeta)(nil),           // 48: avf.machine.v1.MachineRequestMeta
-	(*MachineResponseMeta)(nil),          // 49: avf.machine.v1.MachineResponseMeta
+	(*CashMovementEvent)(nil),            // 24: avf.machine.v1.CashMovementEvent
+	(*ReportCashMovementsRequest)(nil),   // 25: avf.machine.v1.ReportCashMovementsRequest
+	(*ReportCashMovementsResponse)(nil),  // 26: avf.machine.v1.ReportCashMovementsResponse
+	(*GetOrderRequest)(nil),              // 27: avf.machine.v1.GetOrderRequest
+	(*GetOrderResponse)(nil),             // 28: avf.machine.v1.GetOrderResponse
+	(*GetOrderStatusRequest)(nil),        // 29: avf.machine.v1.GetOrderStatusRequest
+	(*GetOrderStatusResponse)(nil),       // 30: avf.machine.v1.GetOrderStatusResponse
+	(*GetPaymentStatusRequest)(nil),      // 31: avf.machine.v1.GetPaymentStatusRequest
+	(*GetPaymentStatusResponse)(nil),     // 32: avf.machine.v1.GetPaymentStatusResponse
+	(*HardwareCommandRef)(nil),           // 33: avf.machine.v1.HardwareCommandRef
+	(*BillFinalRecord)(nil),              // 34: avf.machine.v1.BillFinalRecord
+	(*TcnDispenseRecord)(nil),            // 35: avf.machine.v1.TcnDispenseRecord
+	(*VendHardwareEvidence)(nil),         // 36: avf.machine.v1.VendHardwareEvidence
+	(*StartVendRequest)(nil),             // 37: avf.machine.v1.StartVendRequest
+	(*StartVendResponse)(nil),            // 38: avf.machine.v1.StartVendResponse
+	(*ConfirmVendSuccessRequest)(nil),    // 39: avf.machine.v1.ConfirmVendSuccessRequest
+	(*ConfirmVendSuccessResponse)(nil),   // 40: avf.machine.v1.ConfirmVendSuccessResponse
+	(*ReportVendSuccessRequest)(nil),     // 41: avf.machine.v1.ReportVendSuccessRequest
+	(*ReportVendSuccessResponse)(nil),    // 42: avf.machine.v1.ReportVendSuccessResponse
+	(*ReportVendFailureRequest)(nil),     // 43: avf.machine.v1.ReportVendFailureRequest
+	(*ReportVendFailureResponse)(nil),    // 44: avf.machine.v1.ReportVendFailureResponse
+	(*CancelOrderRequest)(nil),           // 45: avf.machine.v1.CancelOrderRequest
+	(*CancelOrderResponse)(nil),          // 46: avf.machine.v1.CancelOrderResponse
+	(*CancelPaymentSessionRequest)(nil),  // 47: avf.machine.v1.CancelPaymentSessionRequest
+	(*CancelPaymentSessionResponse)(nil), // 48: avf.machine.v1.CancelPaymentSessionResponse
+	(*timestamppb.Timestamp)(nil),        // 49: google.protobuf.Timestamp
+	(*IdempotencyContext)(nil),           // 50: avf.machine.v1.IdempotencyContext
+	(*MachineRequestMeta)(nil),           // 51: avf.machine.v1.MachineRequestMeta
+	(*MachineResponseMeta)(nil),          // 52: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_commerce_proto_depIdxs = []int32{
 	10, // 0: avf.machine.v1.CreateSaleRequest.order:type_name -> avf.machine.v1.CreateOrderRequest
@@ -4243,99 +4592,104 @@ var file_avf_machine_v1_commerce_proto_depIdxs = []int32{
 	22, // 4: avf.machine.v1.ConfirmCashReceivedRequest.payment:type_name -> avf.machine.v1.ConfirmCashPaymentRequest
 	23, // 5: avf.machine.v1.ConfirmCashReceivedResponse.payment:type_name -> avf.machine.v1.ConfirmCashPaymentResponse
 	6,  // 6: avf.machine.v1.MachinePricingSnapshotLine.slot:type_name -> avf.machine.v1.SlotSelection
-	46, // 7: avf.machine.v1.MachinePricingSnapshot.captured_at:type_name -> google.protobuf.Timestamp
+	49, // 7: avf.machine.v1.MachinePricingSnapshot.captured_at:type_name -> google.protobuf.Timestamp
 	8,  // 8: avf.machine.v1.MachinePricingSnapshot.lines:type_name -> avf.machine.v1.MachinePricingSnapshotLine
-	47, // 9: avf.machine.v1.CreateOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	50, // 9: avf.machine.v1.CreateOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
 	6,  // 10: avf.machine.v1.CreateOrderRequest.slot:type_name -> avf.machine.v1.SlotSelection
-	48, // 11: avf.machine.v1.CreateOrderRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	51, // 11: avf.machine.v1.CreateOrderRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	7,  // 12: avf.machine.v1.CreateOrderRequest.simulation:type_name -> avf.machine.v1.SimulationContext
 	9,  // 13: avf.machine.v1.CreateOrderRequest.pricing_snapshot:type_name -> avf.machine.v1.MachinePricingSnapshot
-	49, // 14: avf.machine.v1.CreateOrderResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	52, // 14: avf.machine.v1.CreateOrderResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	6,  // 15: avf.machine.v1.QuoteLineInput.slot:type_name -> avf.machine.v1.SlotSelection
-	47, // 16: avf.machine.v1.CreateQuoteRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	50, // 16: avf.machine.v1.CreateQuoteRequest.context:type_name -> avf.machine.v1.IdempotencyContext
 	12, // 17: avf.machine.v1.CreateQuoteRequest.lines:type_name -> avf.machine.v1.QuoteLineInput
-	48, // 18: avf.machine.v1.CreateQuoteRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	51, // 18: avf.machine.v1.CreateQuoteRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	9,  // 19: avf.machine.v1.CreateQuoteRequest.pricing_snapshot:type_name -> avf.machine.v1.MachinePricingSnapshot
-	46, // 20: avf.machine.v1.CreateQuoteResponse.expires_at:type_name -> google.protobuf.Timestamp
+	49, // 20: avf.machine.v1.CreateQuoteResponse.expires_at:type_name -> google.protobuf.Timestamp
 	14, // 21: avf.machine.v1.CreateQuoteResponse.lines:type_name -> avf.machine.v1.QuoteLineResponse
-	49, // 22: avf.machine.v1.CreateQuoteResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	47, // 23: avf.machine.v1.CreateOrderFromQuoteRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	48, // 24: avf.machine.v1.CreateOrderFromQuoteRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	52, // 22: avf.machine.v1.CreateQuoteResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	50, // 23: avf.machine.v1.CreateOrderFromQuoteRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	51, // 24: avf.machine.v1.CreateOrderFromQuoteRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	7,  // 25: avf.machine.v1.CreateOrderFromQuoteRequest.simulation:type_name -> avf.machine.v1.SimulationContext
 	9,  // 26: avf.machine.v1.CreateOrderFromQuoteRequest.pricing_snapshot:type_name -> avf.machine.v1.MachinePricingSnapshot
 	17, // 27: avf.machine.v1.CreateOrderFromQuoteResponse.lines:type_name -> avf.machine.v1.OrderVendLineResponse
-	49, // 28: avf.machine.v1.CreateOrderFromQuoteResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	47, // 29: avf.machine.v1.CreatePaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	52, // 28: avf.machine.v1.CreateOrderFromQuoteResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	50, // 29: avf.machine.v1.CreatePaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
 	7,  // 30: avf.machine.v1.CreatePaymentSessionRequest.simulation:type_name -> avf.machine.v1.SimulationContext
-	46, // 31: avf.machine.v1.CashAcceptanceEvent.accepted_at:type_name -> google.protobuf.Timestamp
-	47, // 32: avf.machine.v1.ConfirmCashPaymentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	49, // 31: avf.machine.v1.CashAcceptanceEvent.accepted_at:type_name -> google.protobuf.Timestamp
+	50, // 32: avf.machine.v1.ConfirmCashPaymentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
 	7,  // 33: avf.machine.v1.ConfirmCashPaymentRequest.simulation:type_name -> avf.machine.v1.SimulationContext
-	46, // 34: avf.machine.v1.ConfirmCashPaymentRequest.consented_at:type_name -> google.protobuf.Timestamp
+	49, // 34: avf.machine.v1.ConfirmCashPaymentRequest.consented_at:type_name -> google.protobuf.Timestamp
 	21, // 35: avf.machine.v1.ConfirmCashPaymentRequest.cash_acceptance_events:type_name -> avf.machine.v1.CashAcceptanceEvent
-	46, // 36: avf.machine.v1.GetOrderResponse.order_created_at:type_name -> google.protobuf.Timestamp
-	30, // 37: avf.machine.v1.VendHardwareEvidence.command:type_name -> avf.machine.v1.HardwareCommandRef
-	31, // 38: avf.machine.v1.VendHardwareEvidence.bill_final:type_name -> avf.machine.v1.BillFinalRecord
-	32, // 39: avf.machine.v1.VendHardwareEvidence.tcn_dispense:type_name -> avf.machine.v1.TcnDispenseRecord
-	47, // 40: avf.machine.v1.StartVendRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	47, // 41: avf.machine.v1.ConfirmVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	33, // 42: avf.machine.v1.ConfirmVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	47, // 43: avf.machine.v1.ReportVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	33, // 44: avf.machine.v1.ReportVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	47, // 45: avf.machine.v1.ReportVendFailureRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	33, // 46: avf.machine.v1.ReportVendFailureRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	47, // 47: avf.machine.v1.CancelOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	47, // 48: avf.machine.v1.CancelPaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	10, // 49: avf.machine.v1.MachineCommerceService.CreateOrder:input_type -> avf.machine.v1.CreateOrderRequest
-	13, // 50: avf.machine.v1.MachineCommerceService.CreateQuote:input_type -> avf.machine.v1.CreateQuoteRequest
-	16, // 51: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:input_type -> avf.machine.v1.CreateOrderFromQuoteRequest
-	19, // 52: avf.machine.v1.MachineCommerceService.CreatePaymentSession:input_type -> avf.machine.v1.CreatePaymentSessionRequest
-	19, // 53: avf.machine.v1.MachineCommerceService.AttachPaymentResult:input_type -> avf.machine.v1.CreatePaymentSessionRequest
-	22, // 54: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
-	22, // 55: avf.machine.v1.MachineCommerceService.CreateCashCheckout:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
-	24, // 56: avf.machine.v1.MachineCommerceService.GetOrder:input_type -> avf.machine.v1.GetOrderRequest
-	26, // 57: avf.machine.v1.MachineCommerceService.GetOrderStatus:input_type -> avf.machine.v1.GetOrderStatusRequest
-	28, // 58: avf.machine.v1.MachineCommerceService.GetPaymentStatus:input_type -> avf.machine.v1.GetPaymentStatusRequest
-	34, // 59: avf.machine.v1.MachineCommerceService.StartVend:input_type -> avf.machine.v1.StartVendRequest
-	36, // 60: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
-	38, // 61: avf.machine.v1.MachineCommerceService.ReportVendSuccess:input_type -> avf.machine.v1.ReportVendSuccessRequest
-	40, // 62: avf.machine.v1.MachineCommerceService.ReportVendFailure:input_type -> avf.machine.v1.ReportVendFailureRequest
-	42, // 63: avf.machine.v1.MachineCommerceService.CancelOrder:input_type -> avf.machine.v1.CancelOrderRequest
-	44, // 64: avf.machine.v1.MachineCommerceService.CancelPaymentSession:input_type -> avf.machine.v1.CancelPaymentSessionRequest
-	0,  // 65: avf.machine.v1.MachineSaleService.CreateSale:input_type -> avf.machine.v1.CreateSaleRequest
-	2,  // 66: avf.machine.v1.MachineSaleService.AttachPayment:input_type -> avf.machine.v1.AttachPaymentRequest
-	4,  // 67: avf.machine.v1.MachineSaleService.ConfirmCashReceived:input_type -> avf.machine.v1.ConfirmCashReceivedRequest
-	34, // 68: avf.machine.v1.MachineSaleService.StartVend:input_type -> avf.machine.v1.StartVendRequest
-	36, // 69: avf.machine.v1.MachineSaleService.CompleteVend:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
-	40, // 70: avf.machine.v1.MachineSaleService.FailVend:input_type -> avf.machine.v1.ReportVendFailureRequest
-	42, // 71: avf.machine.v1.MachineSaleService.CancelSale:input_type -> avf.machine.v1.CancelOrderRequest
-	11, // 72: avf.machine.v1.MachineCommerceService.CreateOrder:output_type -> avf.machine.v1.CreateOrderResponse
-	15, // 73: avf.machine.v1.MachineCommerceService.CreateQuote:output_type -> avf.machine.v1.CreateQuoteResponse
-	18, // 74: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:output_type -> avf.machine.v1.CreateOrderFromQuoteResponse
-	20, // 75: avf.machine.v1.MachineCommerceService.CreatePaymentSession:output_type -> avf.machine.v1.CreatePaymentSessionResponse
-	20, // 76: avf.machine.v1.MachineCommerceService.AttachPaymentResult:output_type -> avf.machine.v1.CreatePaymentSessionResponse
-	23, // 77: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
-	23, // 78: avf.machine.v1.MachineCommerceService.CreateCashCheckout:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
-	25, // 79: avf.machine.v1.MachineCommerceService.GetOrder:output_type -> avf.machine.v1.GetOrderResponse
-	27, // 80: avf.machine.v1.MachineCommerceService.GetOrderStatus:output_type -> avf.machine.v1.GetOrderStatusResponse
-	29, // 81: avf.machine.v1.MachineCommerceService.GetPaymentStatus:output_type -> avf.machine.v1.GetPaymentStatusResponse
-	35, // 82: avf.machine.v1.MachineCommerceService.StartVend:output_type -> avf.machine.v1.StartVendResponse
-	37, // 83: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
-	39, // 84: avf.machine.v1.MachineCommerceService.ReportVendSuccess:output_type -> avf.machine.v1.ReportVendSuccessResponse
-	41, // 85: avf.machine.v1.MachineCommerceService.ReportVendFailure:output_type -> avf.machine.v1.ReportVendFailureResponse
-	43, // 86: avf.machine.v1.MachineCommerceService.CancelOrder:output_type -> avf.machine.v1.CancelOrderResponse
-	45, // 87: avf.machine.v1.MachineCommerceService.CancelPaymentSession:output_type -> avf.machine.v1.CancelPaymentSessionResponse
-	1,  // 88: avf.machine.v1.MachineSaleService.CreateSale:output_type -> avf.machine.v1.CreateSaleResponse
-	3,  // 89: avf.machine.v1.MachineSaleService.AttachPayment:output_type -> avf.machine.v1.AttachPaymentResponse
-	5,  // 90: avf.machine.v1.MachineSaleService.ConfirmCashReceived:output_type -> avf.machine.v1.ConfirmCashReceivedResponse
-	35, // 91: avf.machine.v1.MachineSaleService.StartVend:output_type -> avf.machine.v1.StartVendResponse
-	37, // 92: avf.machine.v1.MachineSaleService.CompleteVend:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
-	41, // 93: avf.machine.v1.MachineSaleService.FailVend:output_type -> avf.machine.v1.ReportVendFailureResponse
-	43, // 94: avf.machine.v1.MachineSaleService.CancelSale:output_type -> avf.machine.v1.CancelOrderResponse
-	72, // [72:95] is the sub-list for method output_type
-	49, // [49:72] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	49, // 36: avf.machine.v1.CashMovementEvent.occurred_at:type_name -> google.protobuf.Timestamp
+	50, // 37: avf.machine.v1.ReportCashMovementsRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	24, // 38: avf.machine.v1.ReportCashMovementsRequest.events:type_name -> avf.machine.v1.CashMovementEvent
+	49, // 39: avf.machine.v1.GetOrderResponse.order_created_at:type_name -> google.protobuf.Timestamp
+	33, // 40: avf.machine.v1.VendHardwareEvidence.command:type_name -> avf.machine.v1.HardwareCommandRef
+	34, // 41: avf.machine.v1.VendHardwareEvidence.bill_final:type_name -> avf.machine.v1.BillFinalRecord
+	35, // 42: avf.machine.v1.VendHardwareEvidence.tcn_dispense:type_name -> avf.machine.v1.TcnDispenseRecord
+	50, // 43: avf.machine.v1.StartVendRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	50, // 44: avf.machine.v1.ConfirmVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 45: avf.machine.v1.ConfirmVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	50, // 46: avf.machine.v1.ReportVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 47: avf.machine.v1.ReportVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	50, // 48: avf.machine.v1.ReportVendFailureRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 49: avf.machine.v1.ReportVendFailureRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	50, // 50: avf.machine.v1.CancelOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	50, // 51: avf.machine.v1.CancelPaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	10, // 52: avf.machine.v1.MachineCommerceService.CreateOrder:input_type -> avf.machine.v1.CreateOrderRequest
+	13, // 53: avf.machine.v1.MachineCommerceService.CreateQuote:input_type -> avf.machine.v1.CreateQuoteRequest
+	16, // 54: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:input_type -> avf.machine.v1.CreateOrderFromQuoteRequest
+	19, // 55: avf.machine.v1.MachineCommerceService.CreatePaymentSession:input_type -> avf.machine.v1.CreatePaymentSessionRequest
+	19, // 56: avf.machine.v1.MachineCommerceService.AttachPaymentResult:input_type -> avf.machine.v1.CreatePaymentSessionRequest
+	22, // 57: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
+	22, // 58: avf.machine.v1.MachineCommerceService.CreateCashCheckout:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
+	25, // 59: avf.machine.v1.MachineCommerceService.ReportCashMovements:input_type -> avf.machine.v1.ReportCashMovementsRequest
+	27, // 60: avf.machine.v1.MachineCommerceService.GetOrder:input_type -> avf.machine.v1.GetOrderRequest
+	29, // 61: avf.machine.v1.MachineCommerceService.GetOrderStatus:input_type -> avf.machine.v1.GetOrderStatusRequest
+	31, // 62: avf.machine.v1.MachineCommerceService.GetPaymentStatus:input_type -> avf.machine.v1.GetPaymentStatusRequest
+	37, // 63: avf.machine.v1.MachineCommerceService.StartVend:input_type -> avf.machine.v1.StartVendRequest
+	39, // 64: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
+	41, // 65: avf.machine.v1.MachineCommerceService.ReportVendSuccess:input_type -> avf.machine.v1.ReportVendSuccessRequest
+	43, // 66: avf.machine.v1.MachineCommerceService.ReportVendFailure:input_type -> avf.machine.v1.ReportVendFailureRequest
+	45, // 67: avf.machine.v1.MachineCommerceService.CancelOrder:input_type -> avf.machine.v1.CancelOrderRequest
+	47, // 68: avf.machine.v1.MachineCommerceService.CancelPaymentSession:input_type -> avf.machine.v1.CancelPaymentSessionRequest
+	0,  // 69: avf.machine.v1.MachineSaleService.CreateSale:input_type -> avf.machine.v1.CreateSaleRequest
+	2,  // 70: avf.machine.v1.MachineSaleService.AttachPayment:input_type -> avf.machine.v1.AttachPaymentRequest
+	4,  // 71: avf.machine.v1.MachineSaleService.ConfirmCashReceived:input_type -> avf.machine.v1.ConfirmCashReceivedRequest
+	37, // 72: avf.machine.v1.MachineSaleService.StartVend:input_type -> avf.machine.v1.StartVendRequest
+	39, // 73: avf.machine.v1.MachineSaleService.CompleteVend:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
+	43, // 74: avf.machine.v1.MachineSaleService.FailVend:input_type -> avf.machine.v1.ReportVendFailureRequest
+	45, // 75: avf.machine.v1.MachineSaleService.CancelSale:input_type -> avf.machine.v1.CancelOrderRequest
+	11, // 76: avf.machine.v1.MachineCommerceService.CreateOrder:output_type -> avf.machine.v1.CreateOrderResponse
+	15, // 77: avf.machine.v1.MachineCommerceService.CreateQuote:output_type -> avf.machine.v1.CreateQuoteResponse
+	18, // 78: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:output_type -> avf.machine.v1.CreateOrderFromQuoteResponse
+	20, // 79: avf.machine.v1.MachineCommerceService.CreatePaymentSession:output_type -> avf.machine.v1.CreatePaymentSessionResponse
+	20, // 80: avf.machine.v1.MachineCommerceService.AttachPaymentResult:output_type -> avf.machine.v1.CreatePaymentSessionResponse
+	23, // 81: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
+	23, // 82: avf.machine.v1.MachineCommerceService.CreateCashCheckout:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
+	26, // 83: avf.machine.v1.MachineCommerceService.ReportCashMovements:output_type -> avf.machine.v1.ReportCashMovementsResponse
+	28, // 84: avf.machine.v1.MachineCommerceService.GetOrder:output_type -> avf.machine.v1.GetOrderResponse
+	30, // 85: avf.machine.v1.MachineCommerceService.GetOrderStatus:output_type -> avf.machine.v1.GetOrderStatusResponse
+	32, // 86: avf.machine.v1.MachineCommerceService.GetPaymentStatus:output_type -> avf.machine.v1.GetPaymentStatusResponse
+	38, // 87: avf.machine.v1.MachineCommerceService.StartVend:output_type -> avf.machine.v1.StartVendResponse
+	40, // 88: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
+	42, // 89: avf.machine.v1.MachineCommerceService.ReportVendSuccess:output_type -> avf.machine.v1.ReportVendSuccessResponse
+	44, // 90: avf.machine.v1.MachineCommerceService.ReportVendFailure:output_type -> avf.machine.v1.ReportVendFailureResponse
+	46, // 91: avf.machine.v1.MachineCommerceService.CancelOrder:output_type -> avf.machine.v1.CancelOrderResponse
+	48, // 92: avf.machine.v1.MachineCommerceService.CancelPaymentSession:output_type -> avf.machine.v1.CancelPaymentSessionResponse
+	1,  // 93: avf.machine.v1.MachineSaleService.CreateSale:output_type -> avf.machine.v1.CreateSaleResponse
+	3,  // 94: avf.machine.v1.MachineSaleService.AttachPayment:output_type -> avf.machine.v1.AttachPaymentResponse
+	5,  // 95: avf.machine.v1.MachineSaleService.ConfirmCashReceived:output_type -> avf.machine.v1.ConfirmCashReceivedResponse
+	38, // 96: avf.machine.v1.MachineSaleService.StartVend:output_type -> avf.machine.v1.StartVendResponse
+	40, // 97: avf.machine.v1.MachineSaleService.CompleteVend:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
+	44, // 98: avf.machine.v1.MachineSaleService.FailVend:output_type -> avf.machine.v1.ReportVendFailureResponse
+	46, // 99: avf.machine.v1.MachineSaleService.CancelSale:output_type -> avf.machine.v1.CancelOrderResponse
+	76, // [76:100] is the sub-list for method output_type
+	52, // [52:76] is the sub-list for method input_type
+	52, // [52:52] is the sub-list for extension type_name
+	52, // [52:52] is the sub-list for extension extendee
+	0,  // [0:52] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_commerce_proto_init() }
@@ -4350,18 +4704,19 @@ func file_avf_machine_v1_commerce_proto_init() {
 	file_avf_machine_v1_commerce_proto_msgTypes[16].OneofWrappers = []any{}
 	file_avf_machine_v1_commerce_proto_msgTypes[19].OneofWrappers = []any{}
 	file_avf_machine_v1_commerce_proto_msgTypes[22].OneofWrappers = []any{}
-	file_avf_machine_v1_commerce_proto_msgTypes[31].OneofWrappers = []any{}
-	file_avf_machine_v1_commerce_proto_msgTypes[32].OneofWrappers = []any{}
-	file_avf_machine_v1_commerce_proto_msgTypes[36].OneofWrappers = []any{}
-	file_avf_machine_v1_commerce_proto_msgTypes[38].OneofWrappers = []any{}
-	file_avf_machine_v1_commerce_proto_msgTypes[40].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[24].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[34].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[35].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[39].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[41].OneofWrappers = []any{}
+	file_avf_machine_v1_commerce_proto_msgTypes[43].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_commerce_proto_rawDesc), len(file_avf_machine_v1_commerce_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   46,
+			NumMessages:   49,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
