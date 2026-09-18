@@ -1,0 +1,186 @@
+name: Production Self-Hosted Build Deploy
+
+# Emergency path when GitHub-hosted ubuntu runners are unavailable.
+# Builds digest-pinned images on app-node A, runs migration 00035+, rolls out locally.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deploy:
+        description: "Must be exactly DEPLOY_PRODUCTION"
+        required: true
+        type: string
+      run_migration:
+        description: "Run production database migration before rollout"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-self-hosted-build-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    name: Build images and roll out on app-node A
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      RUN_MIGRATION: ${{ inputs.run_migration && '1' || '0' }}
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm_deploy }}" == "DEPLOY_PRODUCTION" ]] \
+            || { echo "error: confirm_deploy must be DEPLOY_PRODUCTION"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Build and push production images
+        id: build
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+        run: |
+          set -Eeuo pipefail
+          git_sha="$(git rev-parse HEAD)"
+          build_time="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          repo="$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          app_image="ghcr.io/${repo}"
+          goose_image="ghcr.io/${repo}-goose"
+          app_tag="${app_image}:main-${git_sha}"
+          goose_tag="${goose_image}:main-${git_sha}"
+
+          token="${GHCR_PULL_TOKEN:-${{ secrets.GITHUB_TOKEN }}}"
+          user="${GHCR_PULL_USERNAME:-${{ github.repository_owner }}}"
+          echo "${token}" | docker login ghcr.io -u "${user}" --password-stdin
+
+          docker build \
+            -f deployments/prod/Dockerfile \
+            --build-arg "GIT_SHA=${git_sha}" \
+            --build-arg "BUILD_TIME=${build_time}" \
+            -t "${app_tag}" \
+            -t "${app_image}:main" \
+            .
+
+          docker build \
+            -f deployments/prod/Dockerfile.goose \
+            -t "${goose_tag}" \
+            -t "${goose_image}:main" \
+            .
+
+          docker push "${app_tag}"
+          docker push "${app_image}:main"
+          docker push "${goose_tag}"
+          docker push "${goose_image}:main"
+
+          app_ref="${app_tag}@$(docker inspect --format='{{index .RepoDigests 0}}' "${app_tag}" | cut -d@ -f2)"
+          goose_ref="${goose_tag}@$(docker inspect --format='{{index .RepoDigests 0}}' "${goose_tag}" | cut -d@ -f2)"
+          {
+            echo "app_ref=${app_ref}"
+            echo "goose_ref=${goose_ref}"
+            echo "git_sha=${git_sha}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Built ${app_ref}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Built ${goose_ref}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Sync app-node assets locally
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_root="${PRODUCTION_DEPLOY_ROOT}"
+          sync_tar="$(mktemp)"
+          tar -cf "${sync_tar}" deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
+              '${deploy_root}/scripts/deploy/production-migrate.sh' \
+              '${deploy_root}/scripts/verify_database_environment.sh' \
+              '${deploy_root}/scripts/db/verify_database_environment.sh'"
+          rm -f "${sync_tar}"
+
+      - name: Roll out app node A locally
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+          APP_IMAGE_REF: ${{ steps.build.outputs.app_ref }}
+          GOOSE_IMAGE_REF: ${{ steps.build.outputs.goose_ref }}
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='${RUN_MIGRATION}' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+
+      - name: Verify app node A health locally
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+
+      - name: Public smoke check
+        shell: bash
+        env:
+          BASE_URL: ${{ vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${BASE_URL}" ]] || BASE_URL="https://api.ldtv.dev"
+          curl -fsS "${BASE_URL%/}/health/live" >/dev/null
+          curl -fsS "${BASE_URL%/}/health/ready" >/dev/null
