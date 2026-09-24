@@ -14,10 +14,10 @@
 }
 
 (app_https) {
-	# Android 7.x (API 24–25) field boards need TLS 1.2 with ECDHE cipher suites; keep 1.2 enabled.
+	# Android 7.x (API 24–25) field boards need TLS 1.2; keep 1.2 enabled. Cipher list left to
+	# Caddy defaults so legacy ClientHello negotiation is not rejected by an overly narrow set.
 	tls {
 		protocols tls1.2 tls1.3
-		ciphers TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
 	}
 	encode gzip zstd
 	request_body {
