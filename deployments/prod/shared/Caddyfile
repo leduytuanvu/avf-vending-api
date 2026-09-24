@@ -14,6 +14,10 @@
 }
 
 (app_https) {
+	# Android 7.x (API 24–25) field boards need TLS 1.2 with ECDHE cipher suites; keep 1.2 enabled.
+	tls {
+		protocols tls1.2 tls1.3
+	}
 	encode gzip zstd
 	request_body {
 		max_size {$CADDY_MAX_REQUEST_BODY:25MB}
