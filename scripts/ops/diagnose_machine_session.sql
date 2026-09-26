@@ -34,11 +34,11 @@ SELECT
     status,
     expires_at,
     revoked_at,
-    created_at,
-    used_at
+    issued_at,
+    last_used_at
 FROM machine_sessions
 WHERE machine_id = :'resolved_machine_id'::uuid
-ORDER BY created_at DESC
+ORDER BY issued_at DESC
 LIMIT 10;
 
 \echo '=== machine_credentials ==='

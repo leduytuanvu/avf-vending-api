@@ -75,8 +75,10 @@ run_sql() {
 
 note "machine lookup id=${LOOKUP_MACHINE_ID} code=${MACHINE_CODE:-<empty>} serial=${DEVICE_SERIAL}"
 if [[ -f "${DIAG_SQL_FILE}" ]]; then
-  note "running diagnose_machine_session.sql"
-  run_sql "${DIAG_SQL_FILE}"
+  note "running diagnose_machine_session.sql (best-effort)"
+  if ! run_sql "${DIAG_SQL_FILE}"; then
+    note "diagnose failed; continuing with enable script"
+  fi
 fi
 note "running enable_offline_cash_sale_machine.sql"
 run_sql "${SQL_FILE}"
