@@ -3,10 +3,12 @@ package pricingengine
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strings"
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	appfleet "github.com/avf/avf-vending-api/internal/app/fleet"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 )
@@ -71,12 +73,27 @@ func (e *Engine) EvaluateSaleLine(ctx context.Context, in SaleLineSelector, at t
 		return LinePriceResult{}, zeroR, errors.New("pricingengine: nil engine")
 	}
 	q := db.New(e.pool)
-	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{ProductID: in.ProductID,
-
-		ID: in.MachineID,
+	ok, err := q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
+		ProductID: in.ProductID,
+		ID:        in.MachineID,
 	})
 	if err != nil {
 		return LinePriceResult{}, zeroR, err
+	}
+	if !ok {
+		repaired, repairErr := e.repairPublishedAssortmentFromSlotConfigs(ctx, in.MachineID, in.ProductID)
+		if repairErr != nil {
+			return LinePriceResult{}, zeroR, repairErr
+		}
+		if repaired {
+			ok, err = q.CommerceIsProductInMachinePublishedAssortment(ctx, db.CommerceIsProductInMachinePublishedAssortmentParams{
+				ProductID: in.ProductID,
+				ID:        in.MachineID,
+			})
+			if err != nil {
+				return LinePriceResult{}, zeroR, err
+			}
+		}
 	}
 	if !ok {
 		return LinePriceResult{}, zeroR, errors.Join(appcommerce.ErrInvalidArgument, errors.New("product is not in the machine's published assortment"))
@@ -111,6 +128,40 @@ func (e *Engine) EvaluateSaleLine(ctx context.Context, in SaleLineSelector, at t
 		return LinePriceResult{}, zeroR, err
 	}
 	return res, row, nil
+}
+
+func (e *Engine) repairPublishedAssortmentFromSlotConfigs(
+	ctx context.Context,
+	machineID uuid.UUID,
+	productID uuid.UUID,
+) (bool, error) {
+	if e == nil || e.pool == nil || machineID == uuid.Nil || productID == uuid.Nil {
+		return false, nil
+	}
+	q := db.New(e.pool)
+	rows, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)
+	if err != nil {
+		return false, err
+	}
+	assigned := false
+	for _, row := range rows {
+		pid, ok := rowProductUUID(row)
+		if ok && pid == productID {
+			assigned = true
+			break
+		}
+	}
+	if !assigned {
+		return false, nil
+	}
+	if err := appfleet.SyncAssortmentFromCurrentSlotConfigs(ctx, e.pool, machineID); err != nil {
+		return false, err
+	}
+	slog.Info("COMMERCE_ASSORTMENT_REPAIRED_FROM_SLOT_CONFIGS",
+		"machine_id", machineID.String(),
+		"product_id", productID.String(),
+	)
+	return true, nil
 }
 
 // MapToResolvedSaleLine maps engine output to commerce sale line totals.

@@ -403,6 +403,23 @@ func SyncNamedLayoutSlotsToCurrentConfigs(
 	return updated, nil
 }
 
+// SyncAssortmentFromCurrentSlotConfigs ensures the machine primary published assortment
+// includes every product assigned on current slot configs.
+func SyncAssortmentFromCurrentSlotConfigs(ctx context.Context, pool *pgxpool.Pool, machineID uuid.UUID) error {
+	if pool == nil || machineID == uuid.Nil {
+		return fmt.Errorf("invalid pool or machineId")
+	}
+	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if err := syncAssortmentFromCurrentSlotConfigsInTx(ctx, tx, machineID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
 func syncAssortmentFromCurrentSlotConfigsInTx(ctx context.Context, tx pgx.Tx, machineID uuid.UUID) error {
 	q := pgxutil.NewQueries(tx)
 	rows, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)

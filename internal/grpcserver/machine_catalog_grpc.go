@@ -10,6 +10,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
+	"github.com/avf/avf-vending-api/internal/platform/textutil"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
@@ -518,11 +519,11 @@ func snapshotProtoFromSale(s salecatalog.Snapshot) *machinev1.CatalogSnapshot {
 		items = append(items, catalogSlotItemFromSale(it))
 	}
 	return &machinev1.CatalogSnapshot{
-		MachineId:      s.MachineID.String(),
-		SiteId:         s.SiteID.String(),
+		MachineId:      textutil.SanitizeProtoString(s.MachineID.String()),
+		SiteId:         textutil.SanitizeProtoString(s.SiteID.String()),
 		ConfigVersion:  s.ConfigVersion,
-		CatalogVersion: s.CatalogVersion,
-		Currency:       s.Currency,
+		CatalogVersion: textutil.SanitizeProtoString(s.CatalogVersion),
+		Currency:       textutil.SanitizeProtoString(s.Currency),
 		GeneratedAt:    timestamppb.New(s.GeneratedAt),
 		Items:          items,
 	}
@@ -531,17 +532,17 @@ func snapshotProtoFromSale(s salecatalog.Snapshot) *machinev1.CatalogSnapshot {
 func catalogSlotItemFromSale(it salecatalog.Item) *machinev1.CatalogSlotItem {
 	csi := &machinev1.CatalogSlotItem{
 		SlotIndex:         it.SlotIndex,
-		SlotCode:          it.SlotCode,
-		CabinetCode:       it.CabinetCode,
-		ProductId:         it.ProductID.String(),
-		Sku:               it.SKU,
-		Name:              it.Name,
-		ShortName:         it.ShortName,
+		SlotCode:          textutil.SanitizeProtoString(it.SlotCode),
+		CabinetCode:       textutil.SanitizeProtoString(it.CabinetCode),
+		ProductId:         textutil.SanitizeProtoString(it.ProductID.String()),
+		Sku:               textutil.SanitizeProtoString(it.SKU),
+		Name:              textutil.SanitizeProtoString(it.Name),
+		ShortName:         textutil.SanitizeProtoString(it.ShortName),
 		PriceMinor:        it.PriceMinor,
 		AvailableQuantity: it.AvailableQuantity,
 		MaxQuantity:       it.MaxQuantity,
 		IsAvailable:       it.IsAvailable,
-		UnavailableReason: it.UnavailableReason,
+		UnavailableReason: textutil.SanitizeProtoString(it.UnavailableReason),
 		SortOrder:         it.SortOrder,
 	}
 	csi.PrimaryMedia = productMediaRefProto(it.Image)
