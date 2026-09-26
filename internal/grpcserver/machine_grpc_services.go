@@ -217,6 +217,53 @@ func mapActivationError(err error) error {
 	}
 }
 
+func mapRefreshMachineSessionError(ctx context.Context, err error) error {
+	switch {
+	case err == nil:
+		return nil
+	case err == activation.ErrRefreshInvalid:
+		return status.Error(codes.Unauthenticated, "invalid_refresh_token")
+	case err == activation.ErrMachineNotEligible:
+		return status.Error(codes.PermissionDenied, "machine_not_eligible")
+	default:
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr != nil {
+			meta, _ := GRPCRequestMetaFromContext(ctx)
+			slog.Error(
+				"refresh_machine_session_db_error",
+				"request_id", meta.RequestID,
+				"sqlstate", pgErr.Code,
+				"message", pgErr.Message,
+				"detail", pgErr.Detail,
+				"table", pgErr.TableName,
+				"constraint", pgErr.ConstraintName,
+			)
+			switch pgErr.Code {
+			case "40001", "40P01", "55P03", "57014":
+				return status.Error(codes.Unavailable, "refresh_token_retry")
+			case "23505":
+				return status.Error(codes.FailedPrecondition, "refresh_session_conflict")
+			default:
+				return status.Errorf(codes.Internal, "refresh_db_error:%s", pgErr.Code)
+			}
+		}
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			return status.Error(codes.Unavailable, "refresh_token_retry")
+		}
+		meta, _ := GRPCRequestMetaFromContext(ctx)
+		slog.Error(
+			"refresh_machine_session_failed",
+			"request_id", meta.RequestID,
+			"err", err,
+		)
+		msg := strings.TrimSpace(err.Error())
+		if msg == "" {
+			msg = "refresh_failed"
+		}
+		return status.Errorf(codes.Internal, "refresh_failed:%s", msg)
+	}
+}
+
 // Standalone 6-digit tokens matching activation.ActivationCodeLength / ^[0-9]{6}$.
 // Word boundaries avoid redacting SQLSTATE (5 digits), AVF000001, UUIDs, and duration_ms.
 var claimActivationCodePlaintextRE = regexp.MustCompile(`\b[0-9]{6}\b`)
@@ -300,14 +347,7 @@ func (s *machineTokenServer) RefreshMachineToken(ctx context.Context, req *machi
 		RefreshToken: req.GetRefreshToken(),
 	}, s.deps.MQTTBrokerURL, s.deps.MQTTTopicPrefix, resolveMQTTTopicLayout(s.deps))
 	if err != nil {
-		switch err {
-		case activation.ErrRefreshInvalid:
-			return nil, status.Error(codes.Unauthenticated, "invalid_refresh_token")
-		case activation.ErrMachineNotEligible:
-			return nil, status.Error(codes.PermissionDenied, "machine_not_eligible")
-		default:
-			return nil, status.Error(codes.Internal, "internal")
-		}
+		return nil, mapRefreshMachineSessionError(ctx, err)
 	}
 	return &machinev1.RefreshMachineTokenResponse{
 		MachineId:             out.MachineID.String(),

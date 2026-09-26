@@ -1,0 +1,115 @@
+name: Production enable offline cash sale
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      lookup_machine_id:
+        description: "Machine UUID"
+        required: false
+        default: "01a089ec-c7bb-7e0d-83a9-6f599f061f12"
+        type: string
+      device_serial:
+        description: "Device serial fallback lookup"
+        required: false
+        default: "0OVP8AYEFQ"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-enable-offline-cash
+  cancel-in-progress: false
+
+jobs:
+  configure:
+    name: Enable offline cash sale flag on machine
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 10
+    env:
+      LOOKUP_MACHINE_ID: ${{ inputs.lookup_machine_id }}
+      DEVICE_SERIAL: ${{ inputs.device_serial }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Enable offline cash sale flag
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/enable_offline_cash_sale_machine.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/enable_offline_cash_sale_machine.sh"
+          run_enable() {
+            if [[ -f "${deploy_script}" ]]; then
+              bash "${deploy_script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              bash "${checkout_script}"
+            else
+              echo "error: enable_offline_cash_sale_machine.sh not found" >&2
+              exit 1
+            fi
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export LOOKUP_MACHINE_ID='${LOOKUP_MACHINE_ID}' DEVICE_SERIAL='${DEVICE_SERIAL}' && \
+              if [[ -f '${deploy_script}' ]]; then bash '${deploy_script}'; elif [[ -f '${checkout_script}' ]]; then bash '${checkout_script}'; else echo 'error: script not found' >&2; exit 1; fi" \
+              | tee enable-offline-cash.log
+          elif docker info >/dev/null 2>&1; then
+            run_enable | tee enable-offline-cash.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: enable-offline-cash-log
+          path: enable-offline-cash.log
+          retention-days: 14
