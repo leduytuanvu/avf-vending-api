@@ -2465,7 +2465,9 @@ type GetOrderResponse struct {
 	PaymentProvider string                 `protobuf:"bytes,13,opt,name=payment_provider,json=paymentProvider,proto3" json:"payment_provider,omitempty"`
 	PaymentState    string                 `protobuf:"bytes,14,opt,name=payment_state,json=paymentState,proto3" json:"payment_state,omitempty"`
 	// server_priced | machine_local_verified | machine_local_unverified
-	PricingSource string `protobuf:"bytes,15,opt,name=pricing_source,json=pricingSource,proto3" json:"pricing_source,omitempty"`
+	PricingSource   string                   `protobuf:"bytes,15,opt,name=pricing_source,json=pricingSource,proto3" json:"pricing_source,omitempty"`
+	VendLines       []*OrderVendLineResponse `protobuf:"bytes,16,rep,name=vend_lines,json=vendLines,proto3" json:"vend_lines,omitempty"`
+	VendLineCount   int32                    `protobuf:"varint,17,opt,name=vend_line_count,json=vendLineCount,proto3" json:"vend_line_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2603,6 +2605,20 @@ func (x *GetOrderResponse) GetPricingSource() string {
 		return x.PricingSource
 	}
 	return ""
+}
+
+func (x *GetOrderResponse) GetVendLines() []*OrderVendLineResponse {
+	if x != nil {
+		return x.VendLines
+	}
+	return nil
+}
+
+func (x *GetOrderResponse) GetVendLineCount() int32 {
+	if x != nil {
+		return x.VendLineCount
+	}
+	return 0
 }
 
 type GetOrderStatusRequest struct {

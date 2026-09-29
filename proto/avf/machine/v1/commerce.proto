@@ -340,6 +340,8 @@ message GetOrderResponse {
   string payment_state = 14;
   // server_priced | machine_local_verified | machine_local_unverified
   string pricing_source = 15;
+  repeated OrderVendLineResponse vend_lines = 16;
+  int32 vend_line_count = 17;
 }
 
 message GetOrderStatusRequest {

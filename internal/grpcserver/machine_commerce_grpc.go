@@ -869,7 +869,7 @@ func (s *machineCommerceServer) GetOrder(ctx context.Context, req *machinev1.Get
 	if req == nil {
 		return nil, status.Error(codes.InvalidArgument, "empty request")
 	}
-	claims, svc, _, err := s.requireCommerce(ctx)
+	claims, svc, store, err := s.requireCommerce(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -881,10 +881,14 @@ func (s *machineCommerceServer) GetOrder(ctx context.Context, req *machinev1.Get
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	return checkoutViewToGetOrderResponse(st), nil
+	vendLines, err := store.ListOrderVendLineViews(ctx, orderID)
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	return checkoutViewToGetOrderResponse(st, vendLines), nil
 }
 
-func checkoutViewToGetOrderResponse(st appcommerce.CheckoutStatusView) *machinev1.GetOrderResponse {
+func checkoutViewToGetOrderResponse(st appcommerce.CheckoutStatusView, vendLines []appcommerce.OrderVendLineView) *machinev1.GetOrderResponse {
 	out := &machinev1.GetOrderResponse{
 		OrderId:        st.Order.ID.String(),
 		OrderStatus:    st.Order.Status,
@@ -904,6 +908,20 @@ func checkoutViewToGetOrderResponse(st appcommerce.CheckoutStatusView) *machinev
 		out.PaymentProvider = st.Payment.Provider
 		out.PaymentState = st.Payment.State
 	}
+	respLines := make([]*machinev1.OrderVendLineResponse, 0, len(vendLines))
+	for _, line := range vendLines {
+		respLines = append(respLines, &machinev1.OrderVendLineResponse{
+			VendSessionId: line.VendSessionID.String(),
+			LineSequence:  line.LineSequence,
+			SlotIndex:     line.SlotIndex,
+			ProductId:     line.ProductID.String(),
+			CabinetCode:   line.CabinetCode,
+			SlotCode:      line.SlotCode,
+			VendState:     line.VendState,
+		})
+	}
+	out.VendLines = respLines
+	out.VendLineCount = int32(len(respLines))
 	return out
 }
 
