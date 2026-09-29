@@ -73,16 +73,12 @@ func (s *Service) ProcessOfflineSale(
 		return errors.Join(ErrInvalidArgument, errors.New("client_event_id required"))
 	}
 
-	wire, snap, line, err := parseOfflineSalePayload(payload)
+	wire, snap, err := parseOfflineSalePayload(payload)
 	if err != nil {
 		return err
 	}
 	if mid, err := uuid.Parse(strings.TrimSpace(wire.MachineID)); err == nil && mid != uuid.Nil && mid != machineID {
 		return errors.Join(ErrInvalidArgument, errors.New("machine_id mismatch"))
-	}
-	productID, err := uuid.Parse(strings.TrimSpace(line.ProductID))
-	if err != nil || productID == uuid.Nil {
-		return errors.Join(ErrInvalidArgument, errors.New("invalid product_id in pricing_snapshot"))
 	}
 	currency := strings.ToUpper(strings.TrimSpace(wire.Currency))
 	if currency == "" {
@@ -103,35 +99,11 @@ func (s *Service) ProcessOfflineSale(
 		cashReceived = payable
 	}
 
-	pricingSnap := machinePricingSnapshotFromAppCheckout(snap, line, payable)
-	slotCode := strings.TrimSpace(line.SlotCode)
-	identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
-		MachineID: machineID,
-		ProductID: productID,
-		SlotCode:  slotCode,
-	})
+	pricingSnap := machinePricingSnapshotFromAppCheckout(snap, payable)
+	orderID, err := s.createOfflineOrderFromSnapshot(ctx, machineID, snap, pricingSnap, currency, key)
 	if err != nil {
 		return err
 	}
-	slotID := identity.SlotConfigID
-	slotIdx := identity.SlotIndex
-
-	coKey := key + ":offline:create_order"
-	createOut, err := s.CreateOrder(ctx, CreateOrderInput{
-		MachineID:       machineID,
-		ProductID:       productID,
-		SlotID:          &slotID,
-		CabinetCode:     identity.CabinetCode,
-		SlotCode:        identity.SlotCode,
-		SlotIndex:       &slotIdx,
-		Currency:        currency,
-		IdempotencyKey:  coKey,
-		PricingSnapshot: &pricingSnap,
-	})
-	if err != nil {
-		return err
-	}
-	orderID := createOut.Order.ID
 
 	cashKey := key + ":offline:cash"
 	_, err = s.ConfirmCashPayment(ctx, ConfirmCashPaymentInput{
@@ -152,77 +124,190 @@ func (s *Service) ProcessOfflineSale(
 	return nil
 }
 
-func parseOfflineSalePayload(payload []byte) (OfflineSaleWirePayload, appCheckoutPricingSnapshot, appCheckoutLine, error) {
+func (s *Service) createOfflineOrderFromSnapshot(
+	ctx context.Context,
+	machineID uuid.UUID,
+	snap appCheckoutPricingSnapshot,
+	pricingSnap MachinePricingSnapshotInput,
+	currency string,
+	key string,
+) (uuid.UUID, error) {
+	if len(snap.Lines) == 1 {
+		line := snap.Lines[0]
+		productID, err := uuid.Parse(strings.TrimSpace(line.ProductID))
+		if err != nil || productID == uuid.Nil {
+			return uuid.Nil, errors.Join(ErrInvalidArgument, errors.New("invalid product_id in pricing_snapshot"))
+		}
+		slotCode := strings.TrimSpace(line.SlotCode)
+		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+			MachineID: machineID,
+			ProductID: productID,
+			SlotCode:  slotCode,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+		slotID := identity.SlotConfigID
+		slotIdx := identity.SlotIndex
+		coKey := key + ":offline:create_order"
+		createOut, err := s.CreateOrder(ctx, CreateOrderInput{
+			MachineID:       machineID,
+			ProductID:       productID,
+			SlotID:          &slotID,
+			CabinetCode:     identity.CabinetCode,
+			SlotCode:        identity.SlotCode,
+			SlotIndex:       &slotIdx,
+			Currency:        currency,
+			IdempotencyKey:  coKey,
+			PricingSnapshot: &pricingSnap,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+		return createOut.Order.ID, nil
+	}
+
+	quoteLines := make([]QuoteLineInput, 0, len(snap.Lines))
+	for _, line := range snap.Lines {
+		productID, err := uuid.Parse(strings.TrimSpace(line.ProductID))
+		if err != nil || productID == uuid.Nil {
+			return uuid.Nil, errors.Join(ErrInvalidArgument, errors.New("invalid product_id in pricing_snapshot"))
+		}
+		slotCode := strings.TrimSpace(line.SlotCode)
+		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+			MachineID: machineID,
+			ProductID: productID,
+			SlotCode:  slotCode,
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+		slotID := identity.SlotConfigID
+		slotIdx := identity.SlotIndex
+		qty := int32(line.Quantity)
+		if qty <= 0 {
+			qty = 1
+		}
+		quoteLines = append(quoteLines, QuoteLineInput{
+			ProductID:   productID,
+			SlotID:      &slotID,
+			CabinetCode: identity.CabinetCode,
+			SlotCode:    identity.SlotCode,
+			SlotIndex:   &slotIdx,
+			Quantity:    qty,
+		})
+	}
+	quoteKey := key + ":offline:create_quote"
+	quoteOut, err := s.CreateQuote(ctx, CreateQuoteInput{
+		MachineID:       machineID,
+		Currency:        currency,
+		PaymentMethod:   "cash",
+		Lines:           quoteLines,
+		IdempotencyKey:  quoteKey,
+		PricingSnapshot: &pricingSnap,
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	coKey := key + ":offline:create_order"
+	orderOut, err := s.CreateOrderFromQuote(ctx, CreateOrderFromQuoteInput{
+		MachineID:       machineID,
+		QuoteID:         quoteOut.QuoteID,
+		PaymentMethod:   "cash",
+		IdempotencyKey:  coKey,
+		PricingSnapshot: &pricingSnap,
+	})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return orderOut.OrderID, nil
+}
+
+func parseOfflineSalePayload(payload []byte) (OfflineSaleWirePayload, appCheckoutPricingSnapshot, error) {
 	if len(payload) == 0 {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, errors.New("offline_sale payload required"))
+		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, errors.New("offline_sale payload required"))
 	}
 	var wire OfflineSaleWirePayload
 	if err := json.Unmarshal(payload, &wire); err != nil {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, fmt.Errorf("invalid offline_sale payload: %w", err))
+		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, fmt.Errorf("invalid offline_sale payload: %w", err))
 	}
 	rawSnap := wire.PricingSnapshot
 	if len(rawSnap) == 0 {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot required"))
+		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot required"))
 	}
 	if rawSnap[0] == '"' {
 		var inner string
 		if err := json.Unmarshal(rawSnap, &inner); err != nil {
-			return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot string invalid"))
+			return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot string invalid"))
 		}
 		rawSnap = []byte(inner)
 	}
 	var snap appCheckoutPricingSnapshot
 	if err := json.Unmarshal(rawSnap, &snap); err != nil {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, fmt.Errorf("invalid pricing_snapshot: %w", err))
+		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, fmt.Errorf("invalid pricing_snapshot: %w", err))
 	}
 	if len(snap.Lines) == 0 {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot lines required"))
+		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot lines required"))
 	}
-	line := snap.Lines[0]
-	if strings.TrimSpace(line.ProductID) == "" {
-		return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, appCheckoutLine{}, errors.Join(ErrInvalidArgument, errors.New("pricing_snapshot product_id required"))
+	for i, line := range snap.Lines {
+		if strings.TrimSpace(line.ProductID) == "" {
+			return OfflineSaleWirePayload{}, appCheckoutPricingSnapshot{}, errors.Join(
+				ErrInvalidArgument,
+				fmt.Errorf("pricing_snapshot product_id required at line %d", i),
+			)
+		}
 	}
-	return wire, snap, line, nil
+	return wire, snap, nil
 }
 
-func machinePricingSnapshotFromAppCheckout(snap appCheckoutPricingSnapshot, line appCheckoutLine, payable int64) MachinePricingSnapshotInput {
+func machinePricingSnapshotFromAppCheckout(snap appCheckoutPricingSnapshot, payable int64) MachinePricingSnapshotInput {
 	snapshotID := strings.TrimSpace(snap.SnapshotID)
-	if snapshotID == "" {
-		snapshotID = strings.TrimSpace(line.SlotCode)
+	if snapshotID == "" && len(snap.Lines) > 0 {
+		snapshotID = strings.TrimSpace(snap.Lines[0].SlotCode)
 	}
-	unit := line.UnitPriceMinor
-	if unit <= 0 {
-		unit = payable
-	}
-	qty := line.Quantity
-	if qty <= 0 {
-		qty = 1
-	}
-	lineSubtotal := unit * int64(qty)
 	var captured time.Time
 	if snap.CapturedAtEpochMs > 0 {
 		captured = time.UnixMilli(snap.CapturedAtEpochMs).UTC()
 	}
-	productID, _ := uuid.Parse(strings.TrimSpace(line.ProductID))
+	lines := make([]MachinePricingSnapshotLineInput, 0, len(snap.Lines))
+	var unitPrice int64
+	for i, line := range snap.Lines {
+		qty := line.Quantity
+		if qty <= 0 {
+			qty = 1
+		}
+		unit := line.UnitPriceMinor
+		if unit <= 0 && len(snap.Lines) == 1 {
+			unit = payable / int64(qty)
+		}
+		lineSubtotal := unit * int64(qty)
+		if unit <= 0 {
+			lineSubtotal = payable / int64(len(snap.Lines))
+			unit = lineSubtotal / int64(qty)
+		}
+		if i == 0 {
+			unitPrice = unit
+		}
+		productID, _ := uuid.Parse(strings.TrimSpace(line.ProductID))
+		lines = append(lines, MachinePricingSnapshotLineInput{
+			LineSequence:      int32(i + 1),
+			ProductID:         productID,
+			SlotCode:          strings.TrimSpace(line.SlotCode),
+			Quantity:          int32(qty),
+			UnitPriceMinor:    unit,
+			LineSubtotalMinor: lineSubtotal,
+		})
+	}
 	return MachinePricingSnapshotInput{
 		SubtotalMinor:        payable,
 		TaxMinor:             0,
 		TotalMinor:           payable,
-		UnitPriceMinor:       unit,
+		UnitPriceMinor:       unitPrice,
 		LocalPricingRevision: snap.LocalPricingRevision,
 		PricingFingerprint:   snapshotID,
 		CapturedAt:           captured,
 		SnapshotID:           snapshotID,
 		SlotConfigVersion:    int64(snap.SlotConfigVersion),
-		Lines: []MachinePricingSnapshotLineInput{
-			{
-				LineSequence:      1,
-				ProductID:         productID,
-				SlotCode:          strings.TrimSpace(line.SlotCode),
-				Quantity:          int32(qty),
-				UnitPriceMinor:    unit,
-				LineSubtotalMinor: lineSubtotal,
-			},
-		},
+		Lines:                lines,
 	}
 }
