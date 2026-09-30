@@ -75,6 +75,7 @@ type PaymentsService interface {
 // OrdersService is the application port for order operations exposed on the public versioned API.
 type OrdersService interface {
 	ListOrders(ctx context.Context, scope listscope.CompanyCommerce) (*appcommerceadmin.OrdersListResponse, error)
+	GetOrderDetail(ctx context.Context, orderID uuid.UUID) (appcommerceadmin.OrderDetailResponse, error)
 }
 
 type ReconciliationAdminService interface {

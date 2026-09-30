@@ -78,6 +78,7 @@ func mountAdminCommerceRoutes(r chi.Router, app *api.HTTPApplication, writeRL fu
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCommerceRead, auth.PermPaymentRead))
+		r.Get("/orders/{orderId}", getAdminCommerceOrderDetail(app))
 		r.Get("/orders/{orderId}/timeline", listAdminCommerceOrderTimeline(app))
 		r.Get("/orders/{orderId}/money", getAdminCommerceOrderMoney(app))
 		r.Get("/refunds", listAdminCommerceRefundRequests(app))
@@ -173,6 +174,34 @@ func getAdminCommerceReconciliation(app *api.HTTPApplication) http.HandlerFunc {
 		out, err := app.Reconciliation.GetReconciliationCase(r.Context(), caseID)
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "reconciliation case not found")
+			return
+		}
+		if err != nil {
+			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, out)
+	}
+}
+
+func getAdminCommerceOrderDetail(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := adminCommerceRequirePrincipal(r); err != nil {
+			writeV1ListError(w, r.Context(), err)
+			return
+		}
+		if app == nil || app.Orders == nil {
+			writeAPIError(w, r.Context(), http.StatusServiceUnavailable, "not_configured", "orders service not configured")
+			return
+		}
+		orderID, err := uuid.Parse(strings.TrimSpace(chi.URLParam(r, "orderId")))
+		if err != nil || orderID == uuid.Nil {
+			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_order_id", "invalid order id")
+			return
+		}
+		out, err := app.Orders.GetOrderDetail(r.Context(), orderID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeAPIError(w, r.Context(), http.StatusNotFound, "not_found", "order not found")
 			return
 		}
 		if err != nil {

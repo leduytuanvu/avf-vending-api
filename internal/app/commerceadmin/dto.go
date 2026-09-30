@@ -10,9 +10,11 @@ import (
 
 // OrderListItem is a normalized order row for operations dashboards.
 type OrderListItem struct {
-	OrderID        string    `json:"orderId"`
-	MachineID      string    `json:"machineId"`
-	Status         string    `json:"status"`
+	OrderID         string  `json:"orderId"`
+	MachineID       string  `json:"machineId"`
+	MachineCode     string  `json:"machineCode"`
+	PaymentProvider *string `json:"paymentProvider,omitempty"`
+	Status          string  `json:"status"`
 	Currency       string    `json:"currency"`
 	SubtotalMinor  int64     `json:"subtotalMinor"`
 	TaxMinor       int64     `json:"taxMinor"`
@@ -26,6 +28,39 @@ type OrderListItem struct {
 type OrdersListResponse struct {
 	Items []OrderListItem          `json:"items"`
 	Meta  listscope.CollectionMeta `json:"meta"`
+}
+
+// OrderLineItemDetail is one vend line on an order detail read model.
+type OrderLineItemDetail struct {
+	VendSessionID     string  `json:"vendSessionId"`
+	LineSequence      int32   `json:"lineSequence"`
+	ProductID         string  `json:"productId"`
+	ProductName       string  `json:"productName"`
+	SlotCode          string  `json:"slotCode"`
+	CabinetCode       string  `json:"cabinetCode"`
+	SlotIndex         int32   `json:"slotIndex"`
+	Quantity          int32   `json:"quantity"`
+	UnitPriceMinor    int64   `json:"unitPriceMinor"`
+	LineSubtotalMinor int64   `json:"lineSubtotalMinor"`
+	VendState         string  `json:"vendState"`
+	FailureReason     *string `json:"failureReason,omitempty"`
+}
+
+// OrderDetailResponse is returned by GET /v1/admin/orders/{orderId}.
+type OrderDetailResponse struct {
+	OrderID         string                `json:"orderId"`
+	MachineID       string                `json:"machineId"`
+	MachineCode     string                `json:"machineCode"`
+	Status          string                `json:"status"`
+	Currency        string                `json:"currency"`
+	SubtotalMinor   int64                 `json:"subtotalMinor"`
+	TaxMinor        int64                 `json:"taxMinor"`
+	TotalMinor      int64                 `json:"totalMinor"`
+	PaymentProvider *string               `json:"paymentProvider,omitempty"`
+	PaymentState    *string               `json:"paymentState,omitempty"`
+	Items           []OrderLineItemDetail `json:"items"`
+	CreatedAt       time.Time             `json:"createdAt"`
+	UpdatedAt       time.Time             `json:"updatedAt"`
 }
 
 // PaymentListItem is a normalized payment row joined to its parent order context.

@@ -1369,9 +1369,11 @@ type V1CollectionListMeta struct {
 
 // V1OrderListItem is one row in GET /v1/orders.
 type V1OrderListItem struct {
-	OrderID        string  `json:"orderId"`
-	MachineID      string  `json:"machineId"`
-	Status         string  `json:"status"`
+	OrderID         string  `json:"orderId"`
+	MachineID       string  `json:"machineId"`
+	MachineCode     string  `json:"machineCode"`
+	PaymentProvider *string `json:"paymentProvider,omitempty"`
+	Status          string  `json:"status"`
 	Currency       string  `json:"currency"`
 	SubtotalMinor  int64   `json:"subtotalMinor"`
 	TaxMinor       int64   `json:"taxMinor"`
@@ -1386,6 +1388,39 @@ type V1OrderListItem struct {
 type V1OrdersListResponse struct {
 	Items []V1OrderListItem    `json:"items"`
 	Meta  V1CollectionListMeta `json:"meta"`
+}
+
+// V1OrderLineItemDetail is one vend line on GET /v1/admin/orders/{orderId}.
+type V1OrderLineItemDetail struct {
+	VendSessionID     string  `json:"vendSessionId"`
+	LineSequence      int32   `json:"lineSequence"`
+	ProductID         string  `json:"productId"`
+	ProductName       string  `json:"productName"`
+	SlotCode          string  `json:"slotCode"`
+	CabinetCode       string  `json:"cabinetCode"`
+	SlotIndex         int32   `json:"slotIndex"`
+	Quantity          int32   `json:"quantity"`
+	UnitPriceMinor    int64   `json:"unitPriceMinor"`
+	LineSubtotalMinor int64   `json:"lineSubtotalMinor"`
+	VendState         string  `json:"vendState"`
+	FailureReason     *string `json:"failureReason,omitempty"`
+}
+
+// V1OrderDetailResponse is GET /v1/admin/orders/{orderId} success body.
+type V1OrderDetailResponse struct {
+	OrderID         string                  `json:"orderId"`
+	MachineID       string                  `json:"machineId"`
+	MachineCode     string                  `json:"machineCode"`
+	Status          string                  `json:"status"`
+	Currency        string                  `json:"currency"`
+	SubtotalMinor   int64                   `json:"subtotalMinor"`
+	TaxMinor        int64                   `json:"taxMinor"`
+	TotalMinor      int64                   `json:"totalMinor"`
+	PaymentProvider *string                 `json:"paymentProvider,omitempty"`
+	PaymentState    *string                 `json:"paymentState,omitempty"`
+	Items           []V1OrderLineItemDetail `json:"items"`
+	CreatedAt       string                  `json:"createdAt"`
+	UpdatedAt       string                  `json:"updatedAt"`
 }
 
 // V1PaymentListItem is one row in GET /v1/payments.

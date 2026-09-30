@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -83,6 +84,14 @@ func pgTextToStringPtr(t pgtype.Text) *string {
 	return &s
 }
 
+func nonEmptyStringPtr(s string) *string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
 func pgUUIDStringPtr(u pgtype.UUID) *string {
 	if !u.Valid {
 		return nil
@@ -155,16 +164,18 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerc
 	items := make([]OrderListItem, 0, len(rows))
 	for _, o := range rows {
 		items = append(items, OrderListItem{
-			OrderID:        o.ID.String(),
-			MachineID:      o.MachineID.String(),
-			Status:         o.Status,
-			Currency:       o.Currency,
-			SubtotalMinor:  o.SubtotalMinor,
-			TaxMinor:       o.TaxMinor,
-			TotalMinor:     o.TotalMinor,
-			IdempotencyKey: pgTextToStringPtr(o.IdempotencyKey),
-			CreatedAt:      o.CreatedAt.UTC(),
-			UpdatedAt:      o.UpdatedAt.UTC(),
+			OrderID:         o.ID.String(),
+			MachineID:       o.MachineID.String(),
+			MachineCode:     o.MachineCode,
+			PaymentProvider: nonEmptyStringPtr(o.PaymentProvider),
+			Status:          o.Status,
+			Currency:        o.Currency,
+			SubtotalMinor:   o.SubtotalMinor,
+			TaxMinor:        o.TaxMinor,
+			TotalMinor:      o.TotalMinor,
+			IdempotencyKey:  pgTextToStringPtr(o.IdempotencyKey),
+			CreatedAt:       o.CreatedAt.UTC(),
+			UpdatedAt:       o.UpdatedAt.UTC(),
 		})
 	}
 	return &OrdersListResponse{
@@ -175,6 +186,88 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerc
 			Returned: len(items),
 			Total:    total,
 		},
+	}, nil
+}
+
+// GetOrderDetail returns the admin order read model with all vend line items.
+func (s *Service) GetOrderDetail(ctx context.Context, orderID uuid.UUID) (OrderDetailResponse, error) {
+	if s == nil || s.q == nil {
+		return OrderDetailResponse{}, errors.New("commerceadmin: nil service")
+	}
+	if orderID == uuid.Nil {
+		return OrderDetailResponse{}, errors.New("commerceadmin: order id required")
+	}
+	row, err := s.q.CommerceAdminGetOrderDetail(ctx, orderID)
+	if err != nil {
+		return OrderDetailResponse{}, err
+	}
+	lineRows, err := s.q.CommerceAdminListOrderLineItems(ctx, orderID)
+	if err != nil {
+		return OrderDetailResponse{}, err
+	}
+	items := make([]OrderLineItemDetail, 0, len(lineRows))
+	for _, ln := range lineRows {
+		slotCode := strings.TrimSpace(ln.SlotCode)
+		if slotCode == "" {
+			cab := strings.TrimSpace(ln.CabinetCode)
+			if cab != "" {
+				slotCode = cab + fmt.Sprintf("%d", ln.SlotIndex)
+			} else {
+				slotCode = fmt.Sprintf("%d", ln.SlotIndex)
+			}
+		}
+		unitPrice := ln.UnitPriceMinor
+		lineTotal := ln.LineSubtotalMinor
+		if unitPrice <= 0 && lineTotal > 0 && ln.Quantity > 0 {
+			unitPrice = lineTotal / int64(ln.Quantity)
+		}
+		if lineTotal <= 0 && unitPrice > 0 && ln.Quantity > 0 {
+			lineTotal = unitPrice * int64(ln.Quantity)
+		}
+		items = append(items, OrderLineItemDetail{
+			VendSessionID:     ln.VendSessionID.String(),
+			LineSequence:      ln.LineSequence,
+			ProductID:         ln.ProductID.String(),
+			ProductName:       ln.ProductName,
+			SlotCode:          slotCode,
+			CabinetCode:       ln.CabinetCode,
+			SlotIndex:         ln.SlotIndex,
+			Quantity:          ln.Quantity,
+			UnitPriceMinor:    unitPrice,
+			LineSubtotalMinor: lineTotal,
+			VendState:         ln.VendState,
+			FailureReason:     pgTextToStringPtr(ln.FailureReason),
+		})
+	}
+	if len(items) > 0 {
+		missingPricing := 0
+		for _, ln := range items {
+			if ln.UnitPriceMinor <= 0 && ln.LineSubtotalMinor <= 0 {
+				missingPricing++
+			}
+		}
+		if missingPricing == len(items) && row.SubtotalMinor > 0 {
+			perLine := row.SubtotalMinor / int64(len(items))
+			for i := range items {
+				items[i].UnitPriceMinor = perLine
+				items[i].LineSubtotalMinor = perLine * int64(items[i].Quantity)
+			}
+		}
+	}
+	return OrderDetailResponse{
+		OrderID:         row.ID.String(),
+		MachineID:       row.MachineID.String(),
+		MachineCode:     row.MachineCode,
+		Status:          row.Status,
+		Currency:        row.Currency,
+		SubtotalMinor:   row.SubtotalMinor,
+		TaxMinor:        row.TaxMinor,
+		TotalMinor:      row.TotalMinor,
+		PaymentProvider: nonEmptyStringPtr(row.PaymentProvider),
+		PaymentState:    nonEmptyStringPtr(row.PaymentState),
+		Items:           items,
+		CreatedAt:       row.CreatedAt.UTC(),
+		UpdatedAt:       row.UpdatedAt.UTC(),
 	}, nil
 }
 

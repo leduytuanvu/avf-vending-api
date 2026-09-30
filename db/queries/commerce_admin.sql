@@ -2,6 +2,7 @@
 SELECT
     o.id,
     o.machine_id,
+    m.code AS machine_code,
     o.status,
     o.currency,
     o.subtotal_minor,
@@ -9,8 +10,20 @@ SELECT
     o.total_minor,
     o.idempotency_key,
     o.created_at,
-    o.updated_at
+    o.updated_at,
+    COALESCE(
+        wp.provider,
+        (
+            SELECT p.provider
+            FROM payments p
+            WHERE p.order_id = o.id
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        )
+    ) AS payment_provider
 FROM orders o
+INNER JOIN machines m ON m.id = o.machine_id
+LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
     AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
@@ -162,6 +175,70 @@ SELECT
 FROM commerce_reconciliation_cases
 WHERE
     id = $1;
+
+-- name: CommerceAdminGetOrderDetail :one
+SELECT
+    o.id,
+    o.machine_id,
+    m.code AS machine_code,
+    o.status,
+    o.currency,
+    o.subtotal_minor,
+    o.tax_minor,
+    o.total_minor,
+    o.idempotency_key,
+    o.created_at,
+    o.updated_at,
+    COALESCE(
+        wp.provider,
+        (
+            SELECT p.provider
+            FROM payments p
+            WHERE p.order_id = o.id
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        )
+    ) AS payment_provider,
+    COALESCE(
+        wp.state,
+        (
+            SELECT p.state
+            FROM payments p
+            WHERE p.order_id = o.id
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        )
+    ) AS payment_state
+FROM orders o
+INNER JOIN machines m ON m.id = o.machine_id
+LEFT JOIN payments wp ON wp.id = o.winning_payment_id
+WHERE o.id = $1;
+
+-- name: CommerceAdminListOrderLineItems :many
+SELECT
+    vs.id AS vend_session_id,
+    vs.line_sequence,
+    vs.slot_index,
+    vs.product_id,
+    pr.name AS product_name,
+    vs.state AS vend_state,
+    vs.failure_reason,
+    COALESCE(cql.cabinet_code, '') AS cabinet_code,
+    COALESCE(cql.slot_code, '') AS slot_code,
+    COALESCE(cql.quantity, 1) AS quantity,
+    COALESCE(cql.unit_price_minor, 0) AS unit_price_minor,
+    COALESCE(cql.line_subtotal_minor, 0) AS line_subtotal_minor
+FROM vend_sessions vs
+INNER JOIN products pr ON pr.id = vs.product_id
+LEFT JOIN orders o ON o.id = vs.order_id
+LEFT JOIN checkout_quotes cq ON cq.machine_id = o.machine_id
+    AND cq.idempotency_key IS NOT NULL
+    AND o.idempotency_key IS NOT NULL
+    AND cq.idempotency_key = o.idempotency_key
+LEFT JOIN checkout_quote_lines cql ON cql.quote_id = cq.id
+    AND cql.line_sequence = vs.line_sequence
+WHERE vs.order_id = $1
+ORDER BY vs.line_sequence ASC;
 
 -- name: CommerceAdminResolveReconciliationCase :one
 UPDATE commerce_reconciliation_cases
