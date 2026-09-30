@@ -45,14 +45,21 @@ if ! command -v certbot >/dev/null 2>&1; then
 	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot
 fi
 
+free_http_port() {
+	# HTTP-01 needs :80; legacy caddy/nginx on the data node may hold it during renew.
+	fuser -k 80/tcp 2>/dev/null || true
+	sleep 1
+}
+
 note "ensure LE certificate for ${MQTT_DOMAIN}"
 if [[ ! -f "${LE_DIR}/fullchain.pem" ]]; then
-	fuser -k 80/tcp 2>/dev/null || true
+	free_http_port
 	certbot certonly --standalone --non-interactive --agree-tos \
 		--email "${ACME_EMAIL}" -d "${MQTT_DOMAIN}" \
 		--preferred-challenges http --http-01-port 80
 else
-	certbot renew --cert-name "${MQTT_DOMAIN}" --non-interactive || true
+	free_http_port
+	certbot renew --cert-name "${MQTT_DOMAIN}" --non-interactive --standalone --preferred-challenges http --http-01-port 80 || true
 fi
 
 [[ -f "${LE_DIR}/fullchain.pem" && -f "${LE_DIR}/privkey.pem" ]] || fail "missing LE cert under ${LE_DIR}"
@@ -70,6 +77,13 @@ chmod 600 "${CERT_DIR}/server.key" "${CERT_DIR}/key.pem"
 openssl x509 -in "${CERT_DIR}/server.crt" -noout -dates -subject
 
 note "recreate EMQX to load renewed TLS material"
+ENV_FILE="${NODE_ROOT}/.env.data-node"
+COMPOSE_FILE="${NODE_ROOT}/docker-compose.data-node.yml"
+COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+require_file "${ENV_FILE}"
+require_file "${COMPOSE_FILE}"
+"${COMPOSE[@]}" up -d --no-deps --force-recreate emqx
+run_script "${NODE_ROOT}/scripts/bootstrap_emqx_data_node.sh"
 bash "${NODE_ROOT}/scripts/install_emqx_acl.sh"
 
 note "verify public TLS listener presents renewed cert"
