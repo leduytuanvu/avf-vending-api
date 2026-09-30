@@ -56,6 +56,21 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${{ env.WEB_VPS_HOST }}" \
             "chmod +x '${{ env.WEB_DEPLOY_ROOT }}/deploy-web.sh' '${{ env.WEB_DEPLOY_ROOT }}/rollback-web.sh' '${{ env.WEB_DEPLOY_ROOT }}/verify-web.sh'"
 
+      - name: Capture current web container logs
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${{ env.WEB_VPS_HOST }}" bash -s <<'REMOTE'
+          set -euo pipefail
+          if docker ps --format '{{.Names}}' | grep -qx avf-vending-web; then
+            echo "=== web container env (AVF_API_BASE_URL) ==="
+            docker exec avf-vending-web printenv AVF_API_BASE_URL 2>/dev/null || true
+            echo "=== web container logs (orders / ApiError) ==="
+            docker logs --tail=200 avf-vending-web 2>&1 | grep -Ei 'orders|ApiError|AVF API|AVF_API_BASE_URL|digest' || true
+          else
+            echo "web container avf-vending-web is not running"
+          fi
+          REMOTE
+
       - name: Build and deploy web on VPS B
         env:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}

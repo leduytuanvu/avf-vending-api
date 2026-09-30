@@ -62,6 +62,21 @@ jobs:
           }
           export ADMIN_BEARER_TOKEN="${token}"
 
+          orders_body="$(mktemp)"
+          orders_code="$(curl -sS -o "${orders_body}" -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/json" \
+            --connect-timeout 8 --max-time 20 \
+            "${BASE_URL%/}/v1/orders?limit=5")"
+          echo "SMOKE GET /v1/orders http=${orders_code}"
+          if [[ "${orders_code}" != "200" ]]; then
+            head -c 1000 "${orders_body}" || true
+            rm -f "${orders_body}"
+            exit 1
+          fi
+          jq '{item_count:(.items|length), meta:.meta}' "${orders_body}"
+          rm -f "${orders_body}"
+
           args=(--machine-id "${MACHINE_ID}")
           if [[ "${DRY_RUN}" == "true" ]]; then
             args+=(--dry-run)
