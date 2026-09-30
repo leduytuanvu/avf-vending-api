@@ -13,6 +13,9 @@ EMQX_DIR="${PROD_ROOT}/emqx"
 CERT_DIR="${EMQX_DIR}/certs"
 MQTT_DOMAIN="${MQTT_TLS_DOMAIN:-mqtt.ldtv.dev}"
 LE_DIR="/etc/letsencrypt/live/${MQTT_DOMAIN}"
+LEGACY_ENV="${PROD_ROOT}/.env.production"
+LEGACY_COMPOSE="${PROD_ROOT}/docker-compose.prod.yml"
+CADDY_STOPPED=0
 
 read_env_value() {
 	local key="$1"
@@ -25,11 +28,36 @@ resolve_acme_email() {
 	if [[ -z "${email}" && -f "${PROD_ROOT}/app-node/.env.app-node" ]]; then
 		email="$(read_env_value CADDY_ACME_EMAIL "${PROD_ROOT}/app-node/.env.app-node")"
 	fi
-	if [[ -z "${email}" && -f "${PROD_ROOT}/.env.production" ]]; then
-		email="$(read_env_value CADDY_ACME_EMAIL "${PROD_ROOT}/.env.production")"
+	if [[ -z "${email}" && -f "${LEGACY_ENV}" ]]; then
+		email="$(read_env_value CADDY_ACME_EMAIL "${LEGACY_ENV}")"
 	fi
 	printf '%s' "${email}"
 }
+
+free_http_port() {
+	fuser -k 80/tcp 2>/dev/null || true
+	sleep 1
+}
+
+pause_edge_http() {
+	if [[ -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
+		if docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" ps --status running --services 2>/dev/null | grep -qx caddy; then
+			note "stop legacy caddy for ACME HTTP-01"
+			docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" stop caddy
+			CADDY_STOPPED=1
+		fi
+	fi
+	free_http_port
+}
+
+resume_edge_http() {
+	if [[ "${CADDY_STOPPED}" -eq 1 && -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
+		note "start legacy caddy after ACME"
+		docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" start caddy || true
+	fi
+}
+
+trap resume_edge_http EXIT
 
 require_file "${EMQX_DIR}/base.hocon"
 require_dir "${CERT_DIR}"
@@ -45,24 +73,23 @@ if ! command -v certbot >/dev/null 2>&1; then
 	DEBIAN_FRONTEND=noninteractive apt-get install -y -qq certbot
 fi
 
-free_http_port() {
-	# HTTP-01 needs :80; legacy caddy/nginx on the data node may hold it during renew.
-	fuser -k 80/tcp 2>/dev/null || true
-	sleep 1
+issue_or_renew_cert() {
+	certbot certonly --standalone --non-interactive --agree-tos \
+		--email "${ACME_EMAIL}" -d "${MQTT_DOMAIN}" \
+		--preferred-challenges http --http-01-port 80 "$@"
 }
 
 note "ensure LE certificate for ${MQTT_DOMAIN}"
+pause_edge_http
 if [[ ! -f "${LE_DIR}/fullchain.pem" ]]; then
-	free_http_port
-	certbot certonly --standalone --non-interactive --agree-tos \
-		--email "${ACME_EMAIL}" -d "${MQTT_DOMAIN}" \
-		--preferred-challenges http --http-01-port 80
+	issue_or_renew_cert
 else
-	free_http_port
-	certbot renew --cert-name "${MQTT_DOMAIN}" --non-interactive --standalone --preferred-challenges http --http-01-port 80 || true
+	issue_or_renew_cert --force-renewal
 fi
 
 [[ -f "${LE_DIR}/fullchain.pem" && -f "${LE_DIR}/privkey.pem" ]] || fail "missing LE cert under ${LE_DIR}"
+openssl x509 -in "${LE_DIR}/fullchain.pem" -noout -checkend 86400 >/dev/null 2>&1 \
+	|| fail "LE certificate for ${MQTT_DOMAIN} is still expired or expires within 24h"
 
 note "sync LE material into ${CERT_DIR}"
 cp "${LE_DIR}/fullchain.pem" "${CERT_DIR}/server.crt"
