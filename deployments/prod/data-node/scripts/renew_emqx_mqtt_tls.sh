@@ -134,6 +134,15 @@ COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
 require_file "${ENV_FILE}"
 require_file "${COMPOSE_FILE}"
 "${COMPOSE[@]}" up -d --no-deps --force-recreate emqx
+note "wait for EMQX management API before MQTT user bootstrap"
+for i in $(seq 1 60); do
+	if curl -sf "http://127.0.0.1:18083/api/v5/status" | grep -Fq "emqx is running"; then
+		break
+	fi
+	sleep 2
+done
+curl -sf "http://127.0.0.1:18083/api/v5/status" | grep -Fq "emqx is running" \
+	|| fail "EMQX management API not ready after recreate"
 run_script "${NODE_ROOT}/scripts/bootstrap_emqx_data_node.sh"
 bash "${NODE_ROOT}/scripts/install_emqx_acl.sh"
 
