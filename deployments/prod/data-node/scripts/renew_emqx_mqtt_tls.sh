@@ -39,10 +39,21 @@ free_http_port() {
 	sleep 1
 }
 
+stop_caddy_container() {
+	local name="$1"
+	if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
+		note "stop ${name} for ACME HTTP-01"
+		docker stop "${name}"
+		CADDY_STOPPED=1
+	fi
+}
+
 pause_edge_http() {
+	stop_caddy_container "avf-prod-caddy"
+	stop_caddy_container "caddy"
 	if [[ -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
 		if docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" ps --status running --services 2>/dev/null | grep -qx caddy; then
-			note "stop legacy caddy for ACME HTTP-01"
+			note "stop legacy compose caddy for ACME HTTP-01"
 			docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" stop caddy
 			CADDY_STOPPED=1
 		fi
@@ -51,7 +62,13 @@ pause_edge_http() {
 }
 
 resume_edge_http() {
-	if [[ "${CADDY_STOPPED}" -eq 1 && -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
+	if [[ "${CADDY_STOPPED}" -eq 0 ]]; then
+		return 0
+	fi
+	if docker ps -a --format '{{.Names}}' | grep -qx "avf-prod-caddy"; then
+		note "start avf-prod-caddy after ACME"
+		docker start avf-prod-caddy || true
+	elif [[ -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
 		note "start legacy caddy after ACME"
 		docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" start caddy || true
 	fi
@@ -81,6 +98,9 @@ issue_or_renew_cert() {
 
 note "ensure LE certificate for ${MQTT_DOMAIN}"
 pause_edge_http
+if curl -fsSI "http://127.0.0.1/" -H "Host: ${MQTT_DOMAIN}" 2>/dev/null | grep -Eiq '^location: https'; then
+	fail "port 80 still redirects to HTTPS; stop the edge proxy before ACME HTTP-01"
+fi
 if [[ ! -f "${LE_DIR}/fullchain.pem" ]]; then
 	issue_or_renew_cert
 else
