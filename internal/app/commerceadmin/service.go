@@ -216,15 +216,7 @@ func (s *Service) GetOrderDetail(ctx context.Context, orderID uuid.UUID) (OrderD
 				slotCode = fmt.Sprintf("%d", ln.SlotIndex)
 			}
 		}
-		unitPrice := ln.UnitPriceMinor
-		lineTotal := ln.LineSubtotalMinor
-		if unitPrice <= 0 && lineTotal > 0 && ln.Quantity > 0 {
-			unitPrice = lineTotal / int64(ln.Quantity)
-		}
-		if lineTotal <= 0 && unitPrice > 0 && ln.Quantity > 0 {
-			lineTotal = unitPrice * int64(ln.Quantity)
-		}
-		items = append(items, OrderLineItemDetail{
+		item := normalizeOrderLinePricing(OrderLineItemDetail{
 			VendSessionID:     ln.VendSessionID.String(),
 			LineSequence:      ln.LineSequence,
 			ProductID:         ln.ProductID.String(),
@@ -233,27 +225,14 @@ func (s *Service) GetOrderDetail(ctx context.Context, orderID uuid.UUID) (OrderD
 			CabinetCode:       ln.CabinetCode,
 			SlotIndex:         ln.SlotIndex,
 			Quantity:          ln.Quantity,
-			UnitPriceMinor:    unitPrice,
-			LineSubtotalMinor: lineTotal,
+			UnitPriceMinor:    ln.UnitPriceMinor,
+			LineSubtotalMinor: ln.LineSubtotalMinor,
 			VendState:         ln.VendState,
 			FailureReason:     pgTextToStringPtr(ln.FailureReason),
 		})
+		items = append(items, item)
 	}
-	if len(items) > 0 {
-		missingPricing := 0
-		for _, ln := range items {
-			if ln.UnitPriceMinor <= 0 && ln.LineSubtotalMinor <= 0 {
-				missingPricing++
-			}
-		}
-		if missingPricing == len(items) && row.SubtotalMinor > 0 {
-			perLine := row.SubtotalMinor / int64(len(items))
-			for i := range items {
-				items[i].UnitPriceMinor = perLine
-				items[i].LineSubtotalMinor = perLine * int64(items[i].Quantity)
-			}
-		}
-	}
+	applySnapshotPricingToItems(items, row.MachinePricingSnapshot)
 	return OrderDetailResponse{
 		OrderID:         row.ID.String(),
 		MachineID:       row.MachineID.String(),

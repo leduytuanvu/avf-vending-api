@@ -173,7 +173,8 @@ SELECT
             LIMIT 1
         ),
         ''
-    ) AS payment_state
+    ) AS payment_state,
+    o.machine_pricing_snapshot
 FROM orders o
 INNER JOIN machines m ON m.id = o.machine_id
 LEFT JOIN payments wp ON wp.id = o.winning_payment_id
@@ -181,19 +182,20 @@ WHERE o.id = $1
 `
 
 type CommerceAdminGetOrderDetailRow struct {
-	ID              uuid.UUID
-	MachineID       uuid.UUID
-	MachineCode     string
-	Status          string
-	Currency        string
-	SubtotalMinor   int64
-	TaxMinor        int64
-	TotalMinor      int64
-	IdempotencyKey  pgtype.Text
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
-	PaymentProvider string
-	PaymentState    string
+	ID                     uuid.UUID
+	MachineID              uuid.UUID
+	MachineCode            string
+	Status                 string
+	Currency               string
+	SubtotalMinor          int64
+	TaxMinor               int64
+	TotalMinor             int64
+	IdempotencyKey         pgtype.Text
+	CreatedAt              time.Time
+	UpdatedAt              time.Time
+	PaymentProvider        string
+	PaymentState           string
+	MachinePricingSnapshot []byte
 }
 
 func (q *Queries) CommerceAdminGetOrderDetail(ctx context.Context, id uuid.UUID) (CommerceAdminGetOrderDetailRow, error) {
@@ -213,6 +215,7 @@ func (q *Queries) CommerceAdminGetOrderDetail(ctx context.Context, id uuid.UUID)
 		&i.UpdatedAt,
 		&i.PaymentProvider,
 		&i.PaymentState,
+		&i.MachinePricingSnapshot,
 	)
 	return i, err
 }
@@ -279,20 +282,55 @@ SELECT
     pr.name AS product_name,
     vs.state AS vend_state,
     vs.failure_reason,
-    COALESCE(cql.cabinet_code, '') AS cabinet_code,
-    COALESCE(cql.slot_code, '') AS slot_code,
-    COALESCE(cql.quantity, 1) AS quantity,
-    COALESCE(cql.unit_price_minor, 0) AS unit_price_minor,
-    COALESCE(cql.line_subtotal_minor, 0) AS line_subtotal_minor
+    COALESCE(cql_match.cabinet_code, '') AS cabinet_code,
+    COALESCE(cql_match.slot_code, '') AS slot_code,
+    1 AS quantity,
+    COALESCE(cql_match.unit_price_minor, 0) AS unit_price_minor,
+    COALESCE(cql_match.line_subtotal_minor, 0) AS line_subtotal_minor
 FROM vend_sessions vs
 INNER JOIN products pr ON pr.id = vs.product_id
 LEFT JOIN orders o ON o.id = vs.order_id
-LEFT JOIN checkout_quotes cq ON cq.machine_id = o.machine_id
-    AND cq.idempotency_key IS NOT NULL
-    AND o.idempotency_key IS NOT NULL
-    AND cq.idempotency_key = o.idempotency_key
-LEFT JOIN checkout_quote_lines cql ON cql.quote_id = cq.id
-    AND cql.line_sequence = vs.line_sequence
+LEFT JOIN LATERAL (
+    SELECT
+        cql.cabinet_code,
+        cql.slot_code,
+        cql.unit_price_minor,
+        (
+            CASE
+                WHEN cql.quantity > 1 THEN cql.unit_price_minor
+                ELSE cql.line_subtotal_minor
+            END
+        )::bigint AS line_subtotal_minor
+    FROM checkout_quotes cq
+    INNER JOIN checkout_quote_lines cql ON cql.quote_id = cq.id
+    WHERE cq.machine_id = o.machine_id
+      AND (
+          (
+              cq.idempotency_key IS NOT NULL
+              AND o.idempotency_key IS NOT NULL
+              AND cq.idempotency_key = o.idempotency_key
+          )
+          OR (
+              cq.state = 'consumed'
+              AND cq.created_at <= o.created_at + INTERVAL '5 seconds'
+              AND cq.created_at >= o.created_at - INTERVAL '30 minutes'
+          )
+      )
+      AND (
+          (cql.product_id = vs.product_id AND cql.slot_index = vs.slot_index)
+          OR cql.line_sequence = vs.line_sequence
+      )
+    ORDER BY
+        CASE
+            WHEN cq.idempotency_key IS NOT NULL
+                AND o.idempotency_key IS NOT NULL
+                AND cq.idempotency_key = o.idempotency_key
+            THEN 0
+            ELSE 1
+        END,
+        cq.created_at DESC
+    LIMIT 1
+) cql_match ON TRUE
 WHERE vs.order_id = $1
 ORDER BY vs.line_sequence ASC
 `
