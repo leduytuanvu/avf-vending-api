@@ -15,7 +15,6 @@ MQTT_DOMAIN="${MQTT_TLS_DOMAIN:-mqtt.ldtv.dev}"
 LE_DIR="/etc/letsencrypt/live/${MQTT_DOMAIN}"
 LEGACY_ENV="${PROD_ROOT}/.env.production"
 LEGACY_COMPOSE="${PROD_ROOT}/docker-compose.prod.yml"
-CADDY_STOPPED=0
 
 read_env_value() {
 	local key="$1"
@@ -39,39 +38,44 @@ free_http_port() {
 	sleep 1
 }
 
-stop_caddy_container() {
-	local name="$1"
-	if docker ps --format '{{.Names}}' | grep -qx "${name}"; then
-		note "stop ${name} for ACME HTTP-01"
-		docker stop "${name}"
-		CADDY_STOPPED=1
-	fi
+STOPPED_EDGE_CONTAINERS=()
+
+stop_published_port_containers() {
+	local port="$1"
+	local cid name
+	while read -r cid; do
+		[[ -n "${cid}" ]] || continue
+		name="$(docker inspect --format '{{.Name}}' "${cid}" 2>/dev/null | sed 's#^/##')"
+		note "stop ${name:-${cid}} publishing :${port} for ACME HTTP-01"
+		docker stop "${cid}" || true
+		STOPPED_EDGE_CONTAINERS+=("${cid}")
+	done < <(docker ps -q --filter "publish=${port}" 2>/dev/null || true)
 }
 
 pause_edge_http() {
-	stop_caddy_container "avf-prod-caddy"
-	stop_caddy_container "caddy"
+	stop_published_port_containers 80
+	stop_published_port_containers 443
 	if [[ -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
 		if docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" ps --status running --services 2>/dev/null | grep -qx caddy; then
 			note "stop legacy compose caddy for ACME HTTP-01"
 			docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" stop caddy
-			CADDY_STOPPED=1
 		fi
 	fi
 	free_http_port
+	fuser -k 443/tcp 2>/dev/null || true
+	sleep 1
 }
 
 resume_edge_http() {
-	if [[ "${CADDY_STOPPED}" -eq 0 ]]; then
+	local cid
+	if ((${#STOPPED_EDGE_CONTAINERS[@]} == 0)); then
 		return 0
 	fi
-	if docker ps -a --format '{{.Names}}' | grep -qx "avf-prod-caddy"; then
-		note "start avf-prod-caddy after ACME"
-		docker start avf-prod-caddy || true
-	elif [[ -f "${LEGACY_ENV}" && -f "${LEGACY_COMPOSE}" ]]; then
-		note "start legacy caddy after ACME"
-		docker compose --env-file "${LEGACY_ENV}" -f "${LEGACY_COMPOSE}" start caddy || true
-	fi
+	for cid in "${STOPPED_EDGE_CONTAINERS[@]}"; do
+		[[ -n "${cid}" ]] || continue
+		note "start edge container ${cid} after ACME"
+		docker start "${cid}" || true
+	done
 }
 
 trap resume_edge_http EXIT
