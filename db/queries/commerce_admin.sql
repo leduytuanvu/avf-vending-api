@@ -19,7 +19,8 @@ SELECT
             WHERE p.order_id = o.id
             ORDER BY p.created_at DESC
             LIMIT 1
-        )
+        ),
+        ''
     ) AS payment_provider
 FROM orders o
 INNER JOIN machines m ON m.id = o.machine_id
@@ -197,7 +198,8 @@ SELECT
             WHERE p.order_id = o.id
             ORDER BY p.created_at DESC
             LIMIT 1
-        )
+        ),
+        ''
     ) AS payment_provider,
     COALESCE(
         wp.state,
@@ -207,7 +209,8 @@ SELECT
             WHERE p.order_id = o.id
             ORDER BY p.created_at DESC
             LIMIT 1
-        )
+        ),
+        ''
     ) AS payment_state
 FROM orders o
 INNER JOIN machines m ON m.id = o.machine_id
