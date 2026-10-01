@@ -23,7 +23,8 @@ JOIN machines m ON m.id = o.machine_id
 JOIN vend_sessions vs ON vs.order_id = o.id
 WHERE o.id IN (
     '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid,
-    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid
+    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid,
+    '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
 )
 GROUP BY o.id, o.status, o.total_minor, m.code, o.created_at
 ORDER BY o.created_at;
@@ -39,19 +40,26 @@ SELECT vs.order_id,
                 AND vs.line_sequence IN (1, 2) THEN 'success'
            WHEN vs.order_id = '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid
                 AND vs.line_sequence IN (1, 2) THEN 'success'
+           WHEN vs.order_id = '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
+                AND vs.line_sequence IN (1, 2) THEN 'success'
            WHEN vs.order_id = '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid
+                AND vs.line_sequence = 3 THEN 'failed'
+           WHEN vs.order_id = '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
                 AND vs.line_sequence = 3 THEN 'failed'
            ELSE vs.state
        END AS next_state,
        CASE
            WHEN vs.order_id = '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid
                 AND vs.line_sequence = 3 THEN 'LANE_VEND_AMBIGUOUS'
+           WHEN vs.order_id = '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
+                AND vs.line_sequence = 3 THEN 'LANE_VEND_AMBIGUOUS'
            ELSE vs.failure_reason
        END AS next_failure_reason
 FROM vend_sessions vs
 WHERE vs.order_id IN (
     '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid,
-    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid
+    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid,
+    '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
 )
 ORDER BY vs.order_id, vs.line_sequence;
 \else
@@ -83,6 +91,24 @@ SET
     failure_reason = 'LANE_VEND_AMBIGUOUS',
     completed_at = COALESCE(completed_at, now())
 WHERE order_id = '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid
+  AND state = 'in_progress'
+  AND line_sequence = 3;
+
+UPDATE vend_sessions
+SET
+    state = 'success',
+    failure_reason = NULL,
+    completed_at = COALESCE(completed_at, now())
+WHERE order_id = '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
+  AND state = 'in_progress'
+  AND line_sequence IN (1, 2);
+
+UPDATE vend_sessions
+SET
+    state = 'failed',
+    failure_reason = 'LANE_VEND_AMBIGUOUS',
+    completed_at = COALESCE(completed_at, now())
+WHERE order_id = '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
   AND state = 'in_progress'
   AND line_sequence = 3;
 
@@ -135,7 +161,8 @@ JOIN machines m ON m.id = o.machine_id
 JOIN vend_sessions vs ON vs.order_id = o.id
 WHERE o.id IN (
     '01a0f634-9563-7e11-b3a7-a5a3225c017a'::uuid,
-    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid
+    '01a0f5fa-5f54-7d77-8a04-0a0352a51a43'::uuid,
+    '01a0f6c7-6651-7388-a1ed-5562088994cd'::uuid
 )
 GROUP BY o.id, o.status, o.total_minor, m.code
 ORDER BY o.created_at;
