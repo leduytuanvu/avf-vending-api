@@ -120,7 +120,7 @@ func checkMachineOrderCheckoutWindow(o domaincommerce.Order, maxAge time.Duratio
 
 func orderStatusTerminal(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "completed", "failed", "cancelled":
+	case "completed", "partially_completed", "failed", "cancelled":
 		return true
 	default:
 		return false
@@ -1212,7 +1212,7 @@ func (s *machineCommerceServer) ReportVendSuccess(ctx context.Context, req *mach
 		corr = &u
 	}
 
-	return s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr, req.GetEvidence())
+	return s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, 0, corr, req.GetEvidence())
 }
 
 func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *machinev1.ConfirmVendSuccessRequest) (*machinev1.ConfirmVendSuccessResponse, error) {
@@ -1241,7 +1241,7 @@ func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *mac
 		corr = &u
 	}
 
-	out, err := s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, corr, req.GetEvidence())
+	out, err := s.confirmVendSuccess(ctx, claims, svc, store, wctx, orderID, slotIndex, req.GetLineSequence(), corr, req.GetEvidence())
 	if err != nil {
 		return nil, err
 	}
@@ -1254,7 +1254,7 @@ func (s *machineCommerceServer) ConfirmVendSuccess(ctx context.Context, req *mac
 	}, nil
 }
 
-func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, store *postgres.Store, wctx machineMutationContext, orderID uuid.UUID, slotIndex int32, corr *uuid.UUID, protoEvidence *machinev1.VendHardwareEvidence) (*machinev1.ReportVendSuccessResponse, error) {
+func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, store *postgres.Store, wctx machineMutationContext, orderID uuid.UUID, slotIndex int32, lineSequence int32, corr *uuid.UUID, protoEvidence *machinev1.VendHardwareEvidence) (*machinev1.ReportVendSuccessResponse, error) {
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -1273,7 +1273,12 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	if corr != nil {
 		_ = store.TouchVendSessionCorrelation(ctx, orderID, slotIndex, *corr)
 	}
-	st, err := svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	var st appcommerce.CheckoutStatusView
+	if lineSequence > 0 {
+		st, err = svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+	} else {
+		st, err = svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+	}
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
@@ -1305,6 +1310,7 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	fout, err := svc.FinalizeOrderAfterVend(ctx, appcommerce.FinalizeAfterVendInput{
 		OrderID:                   orderID,
 		SlotIndex:                 slotIndex,
+		LineSequence:              lineSequence,
 		TerminalVendState:         "success",
 		FailureReason:             nil,
 		ClientWriteIdempotencyKey: idemKey,

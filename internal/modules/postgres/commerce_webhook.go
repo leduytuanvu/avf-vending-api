@@ -492,7 +492,7 @@ func promoteCapturedOrderIfNeeded(ctx context.Context, q *db.Queries, ord db.Ord
 
 func webhookLateDeliveryAgainstTerminalState(ord db.Order, pay db.Payment) bool {
 	switch strings.TrimSpace(ord.Status) {
-	case "completed", "failed", "cancelled":
+	case "completed", "partially_completed", "failed", "cancelled":
 		return true
 	default:
 	}

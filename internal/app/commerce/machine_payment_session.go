@@ -257,7 +257,7 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 
 func orderStatusTerminal(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "completed", "failed", "cancelled":
+	case "completed", "partially_completed", "failed", "cancelled":
 		return true
 	default:
 		return false

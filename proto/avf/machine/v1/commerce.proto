@@ -432,6 +432,8 @@ message ConfirmVendSuccessRequest {
   int32 slot_index = 3;
   optional string correlation_id = 4;
   optional VendHardwareEvidence evidence = 5;
+  // When set, targets vend session by line_sequence (multi-cart). Falls back to slot_index when zero.
+  int32 line_sequence = 6;
 }
 
 message ConfirmVendSuccessResponse {

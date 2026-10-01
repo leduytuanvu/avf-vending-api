@@ -750,7 +750,7 @@ CREATE INDEX ix_machine_slot_state_planogram_id ON machine_slot_state (planogram
 CREATE TABLE orders (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     machine_id uuid NOT NULL REFERENCES machines (id) ON DELETE RESTRICT,
-    status text NOT NULL CHECK (status IN ('created', 'quoted', 'paid', 'vending', 'completed', 'failed', 'cancelled')),
+    status text NOT NULL CHECK (status IN ('created', 'quoted', 'paid', 'vending', 'completed', 'partially_completed', 'failed', 'cancelled')),
     currency char(3) NOT NULL,
     subtotal_minor bigint NOT NULL DEFAULT 0 CHECK (subtotal_minor >= 0),
     tax_minor bigint NOT NULL DEFAULT 0 CHECK (tax_minor >= 0),

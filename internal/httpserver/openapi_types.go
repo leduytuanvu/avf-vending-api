@@ -89,7 +89,7 @@ type V1CommerceCreateOrderResponse struct {
 	OrderID       string `json:"order_id"`
 	VendSessionID string `json:"vend_session_id"`
 	Replay        bool   `json:"replay"`
-	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,failed,cancelled"`
+	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,partially_completed,failed,cancelled"`
 	VendState     string `json:"vend_state" enums:"pending,in_progress,success,failed"`
 	SlotID        string `json:"slot_id"`
 	CabinetCode   string `json:"cabinet_code"`
@@ -107,7 +107,7 @@ type V1CommerceCashCheckoutResponse struct {
 	OrderID       string `json:"order_id"`
 	VendSessionID string `json:"vend_session_id"`
 	PaymentID     string `json:"payment_id"`
-	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,failed,cancelled"`
+	OrderStatus   string `json:"order_status" enums:"created,quoted,paid,vending,completed,partially_completed,failed,cancelled"`
 	PaymentState  string `json:"payment_state" enums:"created,authorized,captured,failed,refunded"`
 	Replay        bool   `json:"replay"`
 }

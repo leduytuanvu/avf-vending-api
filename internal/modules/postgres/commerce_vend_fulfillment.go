@@ -100,26 +100,42 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		}
 		finalVend = mapVendUpdateRow(nv)
 
-		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "completed",
-
-			ID: in.OrderID,
-		})
+		sessions, err := q.ListVendSessionsByOrder(ctx, in.OrderID)
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
-		finalOrd = or2
-	} else if vStart == "success" && ordRow.Status != "completed" {
+		if !multiLineOrderHasOpenVendLines(sessions) {
+			nextStatus := resolveMultiLineTerminalOrderStatus(sessions)
+			if nextStatus != ordRow.Status {
+				or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: nextStatus,
+					ID: in.OrderID,
+				})
+				if err != nil {
+					return appcommerce.FulfillSuccessfulVendResult{}, err
+				}
+				finalOrd = or2
+			}
+		}
+	} else if vStart == "success" && !isTerminalOrderStatus(ordRow.Status) {
 		if payRow.State != "captured" {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrPaymentNotSettled
 		}
-		or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: "completed",
-
-			ID: in.OrderID,
-		})
+		sessions, err := q.ListVendSessionsByOrder(ctx, in.OrderID)
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
-		finalOrd = or2
+		if !multiLineOrderHasOpenVendLines(sessions) {
+			nextStatus := resolveMultiLineTerminalOrderStatus(sessions)
+			if nextStatus != ordRow.Status {
+				or2, err := q.UpdateOrderStatusByOrg(ctx, db.UpdateOrderStatusByOrgParams{Status: nextStatus,
+					ID: in.OrderID,
+				})
+				if err != nil {
+					return appcommerce.FulfillSuccessfulVendResult{}, err
+				}
+				finalOrd = or2
+			}
+		}
 	}
 
 	invReplay, err := applyCommerceVendSuccessInventoryTx(ctx, q, uuid.Nil, machineID, in.OrderID, in.SlotIndex, prodID, key, in.CorrelationID)
@@ -589,23 +605,32 @@ func multiLineOrderHasOpenVendLines(sessions []db.ListVendSessionsByOrderRow) bo
 
 func resolveMultiLineTerminalOrderStatus(sessions []db.ListVendSessionsByOrderRow) string {
 	anySuccess := false
-	allFailed := true
+	anyFailed := false
 	for _, s := range sessions {
 		switch strings.ToLower(strings.TrimSpace(s.State)) {
 		case "success":
 			anySuccess = true
-			allFailed = false
 		case "failed":
-			// keep allFailed true only if every line failed
-		default:
-			allFailed = false
+			anyFailed = true
 		}
+	}
+	if anySuccess && anyFailed {
+		return "partially_completed"
 	}
 	if anySuccess {
 		return "completed"
 	}
-	if allFailed {
+	if anyFailed {
 		return "failed"
 	}
 	return "vending"
+}
+
+func isTerminalOrderStatus(status string) bool {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "completed", "partially_completed", "failed", "cancelled":
+		return true
+	default:
+		return false
+	}
 }
