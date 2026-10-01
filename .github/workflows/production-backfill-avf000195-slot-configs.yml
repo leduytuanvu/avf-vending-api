@@ -113,7 +113,5 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: backfill-avf000195-slot-configs-log
-          path: |
-            backfill-avf000195.log
-            verify-avf000195.log
+          path: backfill-avf000195.log
           retention-days: 14
