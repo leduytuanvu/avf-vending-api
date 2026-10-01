@@ -511,4 +511,73 @@ func TestP06_MachineGRPC_CreateOrder_MissingIdempotencyKeyRejected(t *testing.T)
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
+// Commerce-only topology: machine_slot_configs without legacy machine_slot_state must still close vend.
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_ProvisionsLegacySlotStateFromConfig(t *testing.T) {
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	_, err := pool.Exec(ctx, `
+DELETE FROM machine_slot_state
+WHERE machine_id = $1 AND slot_index = 0
+`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+
+	var legacyCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+SELECT count(*) FROM machine_slot_state
+WHERE machine_id = $1 AND slot_index = 0
+`, testfixtures.DevMachineID).Scan(&legacyCount))
+	require.Equal(t, 0, legacyCount)
+
+	var configCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+SELECT count(*) FROM machine_slot_configs
+WHERE machine_id = $1 AND is_current = true AND slot_index = 0 AND product_id = $2
+`, testfixtures.DevMachineID, testfixtures.DevProductCola).Scan(&configCount))
+	require.Equal(t, 1, configCount)
+
+	idem := "config-only-legacy-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-co-config-only"),
+		ProductId: testfixtures.DevProductCola.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
+	})
+	require.NoError(t, err)
+
+	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
+		Context: testCommerceIdemCtx(idem+":cash", "evt-cash-config-only"),
+		OrderId: co.GetOrderId(),
+	})
+	require.NoError(t, err)
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:   testCommerceIdemCtx(idem+":vend", "evt-vstart-config-only"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+
+	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-config-only"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+	require.Equal(t, "success", succ.GetVendState())
+
+	var qtyAfter int32
+	require.NoError(t, pool.QueryRow(ctx, `
+SELECT current_quantity FROM machine_slot_state
+WHERE machine_id = $1 AND slot_index = 0
+`, testfixtures.DevMachineID).Scan(&qtyAfter))
+	require.Equal(t, int32(9), qtyAfter, "auto-provisioned from max_quantity=10 then decremented by vend")
+}
+
 func ptrInt32(v int32) *int32 { return &v }

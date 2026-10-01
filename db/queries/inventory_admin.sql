@@ -564,3 +564,16 @@ ORDER BY
     pr.name ASC,
     mss.slot_index ASC
 LIMIT 10000;
+
+-- name: InventoryAdminGetMachineLegacyPlanogramID :one
+SELECT mss.planogram_id
+FROM machine_slot_state mss
+WHERE mss.machine_id = $1
+LIMIT 1;
+
+-- name: InventoryAdminGetPublishedPlanogramID :one
+SELECT pg.id
+FROM planograms pg
+WHERE pg.status = 'published'
+ORDER BY pg.created_at DESC
+LIMIT 1;

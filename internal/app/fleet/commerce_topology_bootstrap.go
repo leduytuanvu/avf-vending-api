@@ -383,7 +383,81 @@ func ApplyOrRelinkCurrentMachineSlotConfig(
 	if err != nil {
 		return false, false, err
 	}
+	if err := ensureLegacySlotStateFromCommerceConfig(ctx, q, machineID, slotIdx, pid, maxQty, priceMinor); err != nil {
+		return false, false, err
+	}
 	return true, false, nil
+}
+
+func ensureLegacySlotStateFromCommerceConfig(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	slotIdx pgtype.Int4,
+	pid pgtype.UUID,
+	maxQty int32,
+	priceMinor int64,
+) error {
+	if !slotIdx.Valid || !pid.Valid {
+		return nil
+	}
+	productID := uuid.UUID(pid.Bytes)
+	if productID == uuid.Nil {
+		return nil
+	}
+	slotIndex := slotIdx.Int32
+	legacySlots, err := q.InventoryAdminListMachineSlots(ctx, machineID)
+	if err != nil {
+		return err
+	}
+	for _, row := range legacySlots {
+		if row.SlotIndex == slotIndex && row.ProductID.Valid && uuid.UUID(row.ProductID.Bytes) == productID {
+			return nil
+		}
+	}
+	planogramID, err := resolveCommerceLegacyPlanogramID(ctx, q, machineID, legacySlots)
+	if err != nil {
+		return err
+	}
+	curQty := maxQty
+	if curQty < 1 {
+		curQty = 1
+	}
+	_, err = q.InventoryAdminUpsertMachineSlotState(ctx, db.InventoryAdminUpsertMachineSlotStateParams{
+		MachineID:                machineID,
+		PlanogramID:              planogramID,
+		SlotIndex:                slotIndex,
+		CurrentQuantity:          curQty,
+		PriceMinor:               priceMinor,
+		PlanogramRevisionApplied: 1,
+	})
+	return err
+}
+
+func resolveCommerceLegacyPlanogramID(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	legacySlots []db.InventoryAdminListMachineSlotsRow,
+) (uuid.UUID, error) {
+	if len(legacySlots) > 0 && legacySlots[0].PlanogramID != uuid.Nil {
+		return legacySlots[0].PlanogramID, nil
+	}
+	pgID, err := q.InventoryAdminGetMachineLegacyPlanogramID(ctx, machineID)
+	if err == nil && pgID != uuid.Nil {
+		return pgID, nil
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, err
+	}
+	pgID, err = q.InventoryAdminGetPublishedPlanogramID(ctx)
+	if err == nil && pgID != uuid.Nil {
+		return pgID, nil
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, err
+	}
+	return uuid.Nil, fmt.Errorf("fleet: no planogram available for legacy slot provision machine=%s", machineID)
 }
 
 func SyncNamedLayoutSlotsToCurrentConfigs(

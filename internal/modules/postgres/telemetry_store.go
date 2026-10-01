@@ -1084,6 +1084,93 @@ func pickSlotSnapshotForVend(slots []db.InventoryAdminListMachineSlotsRow, slotI
 	return nil, fmt.Errorf("postgres: no machine_slot_state for slot_index=%d product=%s", slotIndex, productID)
 }
 
+func pickSlotConfigForVend(cfgs []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, slotIndex int32, productID uuid.UUID) (*db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	for i := range cfgs {
+		c := &cfgs[i]
+		if !c.SlotIndex.Valid || c.SlotIndex.Int32 != slotIndex || !c.ProductID.Valid {
+			continue
+		}
+		if uuid.UUID(c.ProductID.Bytes) == productID {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("postgres: no machine_slot_config for slot_index=%d product=%s", slotIndex, productID)
+}
+
+func resolveVendLegacyPlanogramID(ctx context.Context, q *db.Queries, machineID uuid.UUID, legacySlots []db.InventoryAdminListMachineSlotsRow) (uuid.UUID, error) {
+	if len(legacySlots) > 0 && legacySlots[0].PlanogramID != uuid.Nil {
+		return legacySlots[0].PlanogramID, nil
+	}
+	pgID, err := q.InventoryAdminGetMachineLegacyPlanogramID(ctx, machineID)
+	if err == nil && pgID != uuid.Nil {
+		return pgID, nil
+	}
+	if err != nil && !isNoRows(err) {
+		return uuid.Nil, err
+	}
+	pgID, err = q.InventoryAdminGetPublishedPlanogramID(ctx)
+	if err == nil && pgID != uuid.Nil {
+		return pgID, nil
+	}
+	if err != nil && !isNoRows(err) {
+		return uuid.Nil, err
+	}
+	return uuid.Nil, fmt.Errorf("postgres: no planogram available for vend legacy slot provision machine=%s", machineID)
+}
+
+func resolveVendSlotSnapshot(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	slotIndex int32,
+	productID uuid.UUID,
+) (*db.InventoryAdminListMachineSlotsRow, error) {
+	slots, err := q.InventoryAdminListMachineSlots(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	snap, err := pickSlotSnapshotForVend(slots, slotIndex, productID)
+	if err == nil {
+		return snap, nil
+	}
+	cfgs, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	cfg, err := pickSlotConfigForVend(cfgs, slotIndex, productID)
+	if err != nil {
+		return nil, err
+	}
+	planogramID, err := resolveVendLegacyPlanogramID(ctx, q, machineID, slots)
+	if err != nil {
+		return nil, err
+	}
+	curQty := cfg.MaxQuantity
+	if curQty < 1 {
+		curQty = 1
+	}
+	if _, err := q.InventoryAdminUpsertMachineSlotState(ctx, db.InventoryAdminUpsertMachineSlotStateParams{
+		MachineID:                machineID,
+		PlanogramID:              planogramID,
+		SlotIndex:                slotIndex,
+		CurrentQuantity:          curQty,
+		PriceMinor:               cfg.PriceMinor,
+		PlanogramRevisionApplied: 1,
+	}); err != nil {
+		return nil, err
+	}
+	return &db.InventoryAdminListMachineSlotsRow{
+		MachineID:                machineID,
+		PlanogramID:              planogramID,
+		SlotIndex:                slotIndex,
+		CurrentQuantity:          curQty,
+		MaxQuantity:              cfg.MaxQuantity,
+		PriceMinor:               cfg.PriceMinor,
+		PlanogramRevisionApplied: 1,
+		ProductID:                cfg.ProductID,
+	}, nil
+}
+
 // applyCommerceVendSuccessInventoryTx decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
 // Caller must hold an open transaction; q must be bound to that transaction.
 func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, scopeID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
@@ -1120,11 +1207,7 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, sco
 	if cnt > 0 {
 		return true, nil
 	}
-	slots, err := q.InventoryAdminListMachineSlots(ctx, machineID)
-	if err != nil {
-		return false, err
-	}
-	snap, err := pickSlotSnapshotForVend(slots, slotIndex, productID)
+	snap, err := resolveVendSlotSnapshot(ctx, q, machineID, slotIndex, productID)
 	if err != nil {
 		return false, err
 	}
