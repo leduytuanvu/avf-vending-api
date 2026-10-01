@@ -1,0 +1,50 @@
+name: Production repair abandoned created order
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-abandoned-created-order
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair order 01a0f85d
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Repair abandoned created order
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          script="${GITHUB_WORKSPACE}/scripts/ops/repair_abandoned_created_order_01a0f85d.sh"
+          [[ -f "${script}" ]] || { echo "error: script not found" >&2; exit 1; }
+          DRY_RUN="${DRY_RUN}" bash "${script}" | tee repair-01a0f85d.log
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repair-01a0f85d-log
+          path: repair-01a0f85d.log
+          retention-days: 14
