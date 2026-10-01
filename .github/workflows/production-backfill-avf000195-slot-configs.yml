@@ -77,14 +77,25 @@ jobs:
         run: |
           set -Eeuo pipefail
           verify_sql="${GITHUB_WORKSPACE}/scripts/ops/verify_avf000195_commissioning.sql"
+          psql_database_url() {
+            python3 - "${DATABASE_URL}" <<'PY'
+import sys
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+u = urlparse(sys.argv[1])
+drop = {"default_query_exec_mode", "pgbouncer"}
+q = [(k, v) for k, v in parse_qsl(u.query, keep_blank_values=True) if k not in drop]
+print(urlunparse((u.scheme, u.netloc, u.path, u.params, urlencode(q), u.fragment)))
+PY
+          }
           run_verify() {
             api="$(docker ps --format '{{.Names}}' | grep -E 'api' | head -n1)"
             export DATABASE_URL="$(docker inspect "${api}" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^DATABASE_URL=' | tail -n1 | cut -d= -f2-)"
+            local psql_url
+            psql_url="$(psql_database_url)"
             docker run --rm \
-              -e "DATABASE_URL=${DATABASE_URL}" \
               -v "${GITHUB_WORKSPACE}/scripts/ops:/ops:ro" \
               postgres:17-alpine \
-              psql "${DATABASE_URL}" -f "/ops/verify_avf000195_commissioning.sql"
+              psql "${psql_url}" -f "/ops/verify_avf000195_commissioning.sql"
           }
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
@@ -131,6 +142,7 @@ jobs:
 
       - name: Upload log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: backfill-avf000195-slot-configs-log
