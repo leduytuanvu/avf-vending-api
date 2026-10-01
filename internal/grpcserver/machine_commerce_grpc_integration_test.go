@@ -581,6 +581,61 @@ WHERE machine_id = $1 AND slot_index = 0
 	require.Equal(t, int32(9), qtyAfter, "auto-provisioned from max_quantity=10 then decremented by vend")
 }
 
+// Config may have slot_index + slot_code but product_id NULL (AVF000195 A9/A10 commissioning).
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_AcceptsUnassignedProductConfig(t *testing.T) {
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	_, err := pool.Exec(ctx, `
+DELETE FROM machine_slot_state
+WHERE machine_id = $1 AND slot_index = 0
+`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+UPDATE machine_slot_configs
+SET product_id = NULL
+WHERE machine_id = $1 AND is_current = true AND slot_index = 0 AND slot_code = '0'
+`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+
+	idem := "unassigned-product-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-co-unassigned"),
+		ProductId: testfixtures.DevProductCola.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
+	})
+	require.NoError(t, err)
+
+	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
+		Context: testCommerceIdemCtx(idem+":cash", "evt-cash-unassigned"),
+		OrderId: co.GetOrderId(),
+	})
+	require.NoError(t, err)
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:   testCommerceIdemCtx(idem+":vend", "evt-vstart-unassigned"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+
+	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-unassigned"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+	require.Equal(t, "success", succ.GetVendState())
+}
+
 // Config may have slot_code + product while slot_index is NULL (AVF000195 A9/A10 topology gap).
 func TestMachineGRPC_Commerce_ConfirmVendSuccess_RelinksSlotIndexFromSlotCode(t *testing.T) {
 	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)

@@ -1115,6 +1115,43 @@ func pickSlotConfigBySlotCode(cfgs []db.InventoryAdminListCurrentMachineSlotConf
 	return nil, fmt.Errorf("postgres: no machine_slot_config for slot_code=%s product=%s", slotCode, productID)
 }
 
+func pickSlotConfigForVendUnassignedProduct(cfgs []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, slotIndex int32) (*db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	for i := range cfgs {
+		c := &cfgs[i]
+		if !c.SlotIndex.Valid || c.SlotIndex.Int32 != slotIndex || c.ProductID.Valid {
+			continue
+		}
+		return c, nil
+	}
+	return nil, fmt.Errorf("postgres: no unassigned machine_slot_config for slot_index=%d", slotIndex)
+}
+
+func pickSlotConfigBySlotCodeUnassignedProduct(cfgs []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, slotCode string) (*db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	slotCode = strings.TrimSpace(slotCode)
+	if slotCode == "" {
+		return nil, fmt.Errorf("postgres: no unassigned machine_slot_config for slot_code=%s", slotCode)
+	}
+	for i := range cfgs {
+		c := &cfgs[i]
+		if strings.TrimSpace(c.SlotCode) != slotCode || c.ProductID.Valid {
+			continue
+		}
+		return c, nil
+	}
+	return nil, fmt.Errorf("postgres: no unassigned machine_slot_config for slot_code=%s", slotCode)
+}
+
+func vendSlotConfigWithProduct(cfg *db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, productID uuid.UUID) *db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow {
+	if cfg == nil {
+		return nil
+	}
+	out := *cfg
+	if !out.ProductID.Valid {
+		out.ProductID = pgtype.UUID{Bytes: productID, Valid: true}
+	}
+	return &out
+}
+
 func resolveMachineGridCols(ctx context.Context, q *db.Queries, machineID uuid.UUID) (int32, error) {
 	cols, err := q.InventoryAdminGetMachineActiveLayoutGridCols(ctx, machineID)
 	if err != nil {
@@ -1141,6 +1178,9 @@ func resolveVendSlotConfigWithFallbacks(
 	if err == nil {
 		return cfg, nil
 	}
+	if cfg, err = pickSlotConfigForVendUnassignedProduct(cfgs, slotIndex); err == nil {
+		return vendSlotConfigWithProduct(cfg, productID), nil
+	}
 	gridCols, err := resolveMachineGridCols(ctx, q, machineID)
 	if err != nil {
 		return nil, err
@@ -1156,7 +1196,11 @@ func resolveVendSlotConfigWithFallbacks(
 	for _, slotCode := range slotCodes {
 		cfg, lookupErr := pickSlotConfigBySlotCode(cfgs, slotCode, productID)
 		if lookupErr != nil {
-			continue
+			cfg, lookupErr = pickSlotConfigBySlotCodeUnassignedProduct(cfgs, slotCode)
+			if lookupErr != nil {
+				continue
+			}
+			cfg = vendSlotConfigWithProduct(cfg, productID)
 		}
 		if !cfg.SlotIndex.Valid || cfg.SlotIndex.Int32 != slotIndex {
 			if relinkErr := q.InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex(ctx, db.InventoryAdminRelinkCurrentMachineSlotConfigSlotIndexParams{
@@ -1260,6 +1304,10 @@ func resolveVendSlotSnapshot(
 	}); err != nil {
 		return nil, err
 	}
+	provisionedProductID := cfg.ProductID
+	if !provisionedProductID.Valid {
+		provisionedProductID = pgtype.UUID{Bytes: productID, Valid: true}
+	}
 	return &db.InventoryAdminListMachineSlotsRow{
 		MachineID:                machineID,
 		PlanogramID:              planogramID,
@@ -1268,7 +1316,7 @@ func resolveVendSlotSnapshot(
 		MaxQuantity:              cfg.MaxQuantity,
 		PriceMinor:               cfg.PriceMinor,
 		PlanogramRevisionApplied: 1,
-		ProductID:                cfg.ProductID,
+		ProductID:                provisionedProductID,
 	}, nil
 }
 

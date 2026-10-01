@@ -133,6 +133,29 @@ BEGIN
       AND msc.slot_index IS NULL
       AND msc.slot_code ~ '^[A-Z][0-9]+$';
 
+    -- Fallback: copy product from latest successful vend on this machine when planogram is empty.
+    UPDATE machine_slot_configs msc
+    SET
+        product_id = recent.product_id,
+        updated_at = now()
+    FROM (
+        SELECT DISTINCT ON (vs.slot_index)
+            vs.slot_index,
+            vs.product_id
+        FROM vend_sessions vs
+        JOIN orders o ON o.id = vs.order_id
+        WHERE o.machine_id = v_machine_id
+          AND vs.slot_index IN (9, 10)
+          AND vs.state = 'success'
+          AND vs.product_id IS NOT NULL
+        ORDER BY vs.slot_index, vs.completed_at DESC NULLS LAST, vs.started_at DESC
+    ) recent
+    WHERE msc.machine_id = v_machine_id
+      AND msc.is_current
+      AND msc.slot_code IN ('A9', 'A10')
+      AND msc.slot_index = recent.slot_index
+      AND msc.product_id IS NULL;
+
     -- Sync product/price/qty from published planogram onto existing current configs.
     UPDATE machine_slot_configs msc
     SET
