@@ -1,0 +1,121 @@
+name: Production repair stuck vend orders
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-stuck-vend
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair stuck vend close gap
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
+      E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Repair stuck vend orders
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/repair_stuck_vend_close_gap.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/repair_stuck_vend_close_gap.sh"
+          run_repair() {
+            if [[ -f "${deploy_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${deploy_script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${checkout_script}"
+            else
+              echo "error: repair_stuck_vend_close_gap.sh not found" >&2
+              exit 1
+            fi
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && \
+              if [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' bash '${deploy_script}'; \
+              elif [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' bash '${checkout_script}'; \
+              else echo 'error: script not found' >&2; exit 1; fi" \
+              | tee repair-stuck-vend.log
+          elif docker info >/dev/null 2>&1; then
+            run_repair | tee repair-stuck-vend.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Verify repaired orders via admin API
+        if: inputs.dry_run == false
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash "${GITHUB_WORKSPACE}/scripts/ops/verify_stuck_vend_repair.sh" | tee -a repair-stuck-vend.log
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repair-stuck-vend-log
+          path: repair-stuck-vend.log
+          retention-days: 14
