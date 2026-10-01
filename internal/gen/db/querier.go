@@ -755,6 +755,7 @@ type Querier interface {
 	RuntimeProductPrimaryMediaReady(ctx context.Context, dollar_1 []uuid.UUID) ([]RuntimeProductPrimaryMediaReadyRow, error)
 	SetMachineActiveLayoutPointers(ctx context.Context, arg SetMachineActiveLayoutPointersParams) error
 	SetVendSessionVerificationStatus(ctx context.Context, arg SetVendSessionVerificationStatusParams) (VendSession, error)
+	SetVendSessionVerificationStatusByLineSequence(ctx context.Context, arg SetVendSessionVerificationStatusByLineSequenceParams) (VendSession, error)
 	SettlementReferencedPaymentsTotalForOrg(ctx context.Context, arg SettlementReferencedPaymentsTotalForOrgParams) (SettlementReferencedPaymentsTotalForOrgRow, error)
 	SnapshotUpdateDeviceConfigFieldAck(ctx context.Context, arg SnapshotUpdateDeviceConfigFieldAckParams) error
 	SnapshotUpdateEffectiveDeviceConfig(ctx context.Context, arg SnapshotUpdateEffectiveDeviceConfigParams) error

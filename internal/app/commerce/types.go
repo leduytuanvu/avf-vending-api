@@ -94,6 +94,7 @@ type FinalizeAfterVendInput struct {
 type FulfillSuccessfulVendInput struct {
 	OrderID                 uuid.UUID
 	SlotIndex               int32
+	LineSequence            int32
 	InventoryDedupeKey      string
 	CorrelationID           *uuid.UUID
 	Evidence                *domaincommerce.VendHardwareEvidence

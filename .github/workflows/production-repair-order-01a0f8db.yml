@@ -1,0 +1,58 @@
+name: Production repair order 01a0f8db duplicate slot
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-order-01a0f8db
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair 01a0f8db line states
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Repair order 01a0f8db
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/repair_order_01a0f8db_duplicate_slot.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/repair_order_01a0f8db_duplicate_slot.sh"
+          if [[ -f "${deploy_script}" ]]; then
+            DRY_RUN="${DRY_RUN}" bash "${deploy_script}" | tee repair-01a0f8db.log
+          elif [[ -f "${checkout_script}" ]]; then
+            DRY_RUN="${DRY_RUN}" bash "${checkout_script}" | tee repair-01a0f8db.log
+          else
+            echo "error: repair_order_01a0f8db_duplicate_slot.sh not found" >&2
+            exit 1
+          fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repair-order-01a0f8db-log
+          path: repair-01a0f8db.log
+          retention-days: 14

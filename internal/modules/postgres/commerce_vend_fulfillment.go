@@ -44,24 +44,18 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		return appcommerce.FulfillSuccessfulVendResult{}, err
 	}
 
-	vendRow, err := q.LockVendSessionByOrderAndSlotForUpdate(ctx, db.LockVendSessionByOrderAndSlotForUpdateParams{
-		OrderID:   in.OrderID,
-		SlotIndex: in.SlotIndex,
-	})
+	vendLocked, err := lockSuccessfulVendSessionForUpdate(ctx, q, in)
 	if err != nil {
-		if isNoRows(err) {
-			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrNotFound
-		}
 		return appcommerce.FulfillSuccessfulVendResult{}, err
 	}
-	if vendRow.MachineID != ordRow.MachineID {
+	if vendLocked.machineID != ordRow.MachineID {
 		return appcommerce.FulfillSuccessfulVendResult{}, fmt.Errorf("postgres: vend row machine mismatch order")
 	}
 	if ordRow.Status == "cancelled" {
 		return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrIllegalTransition
 	}
 
-	vStart := vendRow.State
+	vStart := vendLocked.state
 	orderStartStatus := ordRow.Status
 
 	switch vStart {
@@ -81,24 +75,38 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 	}
 
 	finalOrd := ordRow
-	finalVend := mapVendLockRow(vendRow)
+	finalVend := vendLocked.replayVend
 	machineID := ordRow.MachineID
-	prodID := vendRow.ProductID
+	prodID := vendLocked.productID
+	slotIndex := vendLocked.slotIndex
 
 	if vStart == "in_progress" {
 		if payRow.State != "captured" {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrPaymentNotSettled
 		}
-		nv, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "success",
-			FailureReason: pgtype.Text{},
+		if in.LineSequence > 0 {
+			nv, err := q.UpdateVendSessionStateByOrderLineSequence(ctx, db.UpdateVendSessionStateByOrderLineSequenceParams{
+				State:         "success",
+				FailureReason: pgtype.Text{},
+				OrderID:       in.OrderID,
+				LineSequence:  in.LineSequence,
+			})
+			if err != nil {
+				return appcommerce.FulfillSuccessfulVendResult{}, err
+			}
+			finalVend = mapVendLineSequenceUpdateRow(nv)
+		} else {
+			nv, err := q.UpdateVendSessionStateByOrderSlot(ctx, db.UpdateVendSessionStateByOrderSlotParams{State: "success",
+				FailureReason: pgtype.Text{},
 
-			OrderID:   in.OrderID,
-			SlotIndex: in.SlotIndex,
-		})
-		if err != nil {
-			return appcommerce.FulfillSuccessfulVendResult{}, err
+				OrderID:   in.OrderID,
+				SlotIndex: in.SlotIndex,
+			})
+			if err != nil {
+				return appcommerce.FulfillSuccessfulVendResult{}, err
+			}
+			finalVend = mapVendUpdateRow(nv)
 		}
-		finalVend = mapVendUpdateRow(nv)
 
 		sessions, err := q.ListVendSessionsByOrder(ctx, in.OrderID)
 		if err != nil {
@@ -138,7 +146,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		}
 	}
 
-	invReplay, err := applyCommerceVendSuccessInventoryTx(ctx, q, uuid.Nil, machineID, in.OrderID, in.SlotIndex, prodID, key, in.CorrelationID)
+	invReplay, err := applyCommerceVendSuccessInventoryTx(ctx, q, uuid.Nil, machineID, in.OrderID, slotIndex, in.LineSequence, prodID, key, in.CorrelationID)
 	if err != nil {
 		return appcommerce.FulfillSuccessfulVendResult{}, err
 	}
@@ -150,7 +158,15 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		verificationStatus = domaincommerce.VerificationUnverified
 	}
 	if !(orderVendReplay && invReplay) {
-		if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
+		if in.LineSequence > 0 {
+			if _, err := q.SetVendSessionVerificationStatusByLineSequence(ctx, db.SetVendSessionVerificationStatusByLineSequenceParams{
+				VerificationStatus: verificationStatus,
+				OrderID:            in.OrderID,
+				LineSequence:       in.LineSequence,
+			}); err != nil {
+				return appcommerce.FulfillSuccessfulVendResult{}, err
+			}
+		} else if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
 			VerificationStatus: verificationStatus,
 			OrderID:            in.OrderID,
 			SlotIndex:          in.SlotIndex,
@@ -160,9 +176,9 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		evidenceDedupe := key + ":hardware_evidence"
 		if _, err := persistVendHardwareEvidenceTx(ctx, q, persistEvidenceInput{
 			OrderID:       in.OrderID,
-			VendSessionID: vendRow.ID,
+			VendSessionID: vendLocked.id,
 			MachineID:     machineID,
-			SlotIndex:     in.SlotIndex,
+			SlotIndex:     slotIndex,
 			Evidence:      in.Evidence,
 			DedupeKey:     evidenceDedupe,
 		}); err != nil {
@@ -190,7 +206,8 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			"inventory_replay":    invReplay,
 			"order_vend_replay":   orderVendReplay,
 			"machine_id":          machineID.String(),
-			"slot_index":          in.SlotIndex,
+			"slot_index":          slotIndex,
+			"line_sequence":     in.LineSequence,
 			"verification_status": verificationStatus,
 		})
 		if err != nil {
@@ -211,7 +228,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		if outboxIdem == "" {
 			outboxIdem = key + ":vend_outbox"
 		}
-		obPayload, err := vendSuccessOutboxPayload(in.OrderID, in.SlotIndex, machineID, verificationStatus, in.Evidence, key)
+		obPayload, err := vendSuccessOutboxPayload(in.OrderID, slotIndex, machineID, verificationStatus, in.Evidence, key)
 		if err != nil {
 			return appcommerce.FulfillSuccessfulVendResult{}, err
 		}
@@ -235,7 +252,8 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			if reconType != "" {
 				reconPayload, err := json.Marshal(map[string]any{
 					"order_id":            in.OrderID.String(),
-					"slot_index":          in.SlotIndex,
+					"slot_index":          slotIndex,
+					"line_sequence":       in.LineSequence,
 					"verification_status": verificationStatus,
 					"reason":              "hardware_evidence_missing_or_unverified",
 				})
@@ -258,7 +276,8 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			}
 			reconMeta, err := json.Marshal(map[string]any{
 				"verification_status": verificationStatus,
-				"slot_index":          in.SlotIndex,
+				"slot_index":      slotIndex,
+				"line_sequence": in.LineSequence,
 			})
 			if err != nil {
 				return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -269,7 +288,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 				Reason:         "hardware_evidence_missing_or_unverified",
 				Metadata:       pgjson.RequiredString(reconMeta),
 				OrderID:        pgtype.UUID{Bytes: in.OrderID, Valid: true},
-				VendSessionID:  pgtype.UUID{Bytes: vendRow.ID, Valid: true},
+				VendSessionID:  pgtype.UUID{Bytes: vendLocked.id, Valid: true},
 				MachineID:      pgtype.UUID{Bytes: machineID, Valid: true},
 				CorrelationKey: pgtype.Text{String: key + ":reconciliation_case", Valid: true},
 			}); err != nil {
@@ -517,8 +536,54 @@ type lockedVendSession struct {
 	id         uuid.UUID
 	machineID  uuid.UUID
 	slotIndex  int32
+	productID  uuid.UUID
 	state      string
 	replayVend domaincommerce.VendSession
+}
+
+func lockSuccessfulVendSessionForUpdate(
+	ctx context.Context,
+	q *db.Queries,
+	in appcommerce.FulfillSuccessfulVendInput,
+) (lockedVendSession, error) {
+	if in.LineSequence > 0 {
+		row, err := q.LockVendSessionByOrderAndLineSequenceForUpdate(ctx, db.LockVendSessionByOrderAndLineSequenceForUpdateParams{
+			OrderID:      in.OrderID,
+			LineSequence: in.LineSequence,
+		})
+		if err != nil {
+			if isNoRows(err) {
+				return lockedVendSession{}, appcommerce.ErrNotFound
+			}
+			return lockedVendSession{}, err
+		}
+		return lockedVendSession{
+			id:         row.ID,
+			machineID:  row.MachineID,
+			slotIndex:  row.SlotIndex,
+			productID:  row.ProductID,
+			state:      row.State,
+			replayVend: mapVendLineSequenceLockRow(row),
+		}, nil
+	}
+	row, err := q.LockVendSessionByOrderAndSlotForUpdate(ctx, db.LockVendSessionByOrderAndSlotForUpdateParams{
+		OrderID:   in.OrderID,
+		SlotIndex: in.SlotIndex,
+	})
+	if err != nil {
+		if isNoRows(err) {
+			return lockedVendSession{}, appcommerce.ErrNotFound
+		}
+		return lockedVendSession{}, err
+	}
+	return lockedVendSession{
+		id:         row.ID,
+		machineID:  row.MachineID,
+		slotIndex:  row.SlotIndex,
+		productID:  row.ProductID,
+		state:      row.State,
+		replayVend: mapVendLockRow(row),
+	}, nil
 }
 
 func lockFailedVendSessionForUpdate(
@@ -541,6 +606,7 @@ func lockFailedVendSessionForUpdate(
 			id:         row.ID,
 			machineID:  row.MachineID,
 			slotIndex:  row.SlotIndex,
+			productID:  row.ProductID,
 			state:      row.State,
 			replayVend: mapVendLineSequenceLockRow(row),
 		}, nil
@@ -559,6 +625,7 @@ func lockFailedVendSessionForUpdate(
 		id:         row.ID,
 		machineID:  row.MachineID,
 		slotIndex:  row.SlotIndex,
+		productID:  row.ProductID,
 		state:      row.State,
 		replayVend: mapVendLockRow(row),
 	}, nil

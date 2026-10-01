@@ -378,11 +378,15 @@ func (s *Service) FinalizeOrderAfterVend(ctx context.Context, in FinalizeAfterVe
 				dedupe = cw + ":vend_sale_inventory"
 			} else {
 				dedupe = fmt.Sprintf("commerce_vend_sale:%s|%s|%d", uuid.Nil.String(), in.OrderID.String(), in.SlotIndex)
+				if in.LineSequence > 0 {
+					dedupe += fmt.Sprintf("|%d", in.LineSequence)
+				}
 			}
 		}
 		res, err := s.life.FulfillSuccessfulVendAtomically(ctx, FulfillSuccessfulVendInput{
 			OrderID:                 in.OrderID,
 			SlotIndex:               in.SlotIndex,
+			LineSequence:            in.LineSequence,
 			InventoryDedupeKey:      dedupe,
 			CorrelationID:           in.CorrelationID,
 			Evidence:                in.Evidence,

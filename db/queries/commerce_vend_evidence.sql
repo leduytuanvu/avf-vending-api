@@ -38,3 +38,11 @@ WHERE
     order_id = $2
     AND slot_index = $3
 RETURNING *;
+
+-- name: SetVendSessionVerificationStatusByLineSequence :one
+UPDATE vend_sessions
+SET verification_status = $1
+WHERE
+    order_id = $2
+    AND line_sequence = $3
+RETURNING *;

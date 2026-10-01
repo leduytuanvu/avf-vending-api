@@ -1322,7 +1322,7 @@ func resolveVendSlotSnapshot(
 
 // applyCommerceVendSuccessInventoryTx decrements machine_slot_state after a successful vend (idempotent on idempotencyKey).
 // Caller must hold an open transaction; q must be bound to that transaction.
-func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, scopeID, machineID, orderID uuid.UUID, slotIndex int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
+func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, scopeID, machineID, orderID uuid.UUID, slotIndex int32, lineSequence int32, productID uuid.UUID, idempotencyKey string, correlationID *uuid.UUID) (replay bool, err error) {
 	if strings.TrimSpace(idempotencyKey) == "" {
 		return false, errors.New("postgres: idempotency_key is required for vend inventory")
 	}
@@ -1333,12 +1333,30 @@ func applyCommerceVendSuccessInventoryTx(ctx context.Context, q *db.Queries, sco
 	if uuid.Nil != scopeID {
 		return false, ErrMachineScopeMismatch
 	}
-	vend, err := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
-		OrderID:   orderID,
-		SlotIndex: slotIndex,
-	})
-	if err != nil {
-		return false, err
+	var vend db.GetVendSessionByOrderAndSlotRow
+	if lineSequence > 0 {
+		lineRow, err := q.GetVendSessionByOrderAndLineSequence(ctx, db.GetVendSessionByOrderAndLineSequenceParams{
+			OrderID:      orderID,
+			LineSequence: lineSequence,
+		})
+		if err != nil {
+			return false, err
+		}
+		vend = db.GetVendSessionByOrderAndSlotRow{
+			ID:        lineRow.ID,
+			MachineID: lineRow.MachineID,
+			ProductID: lineRow.ProductID,
+			State:     lineRow.State,
+		}
+	} else {
+		slotRow, err := q.GetVendSessionByOrderAndSlot(ctx, db.GetVendSessionByOrderAndSlotParams{
+			OrderID:   orderID,
+			SlotIndex: slotIndex,
+		})
+		if err != nil {
+			return false, err
+		}
+		vend = slotRow
 	}
 	if vend.MachineID != machineID || vend.ProductID != productID {
 		return false, fmt.Errorf("postgres: vend session does not match machine/product")
@@ -1424,7 +1442,7 @@ func (s *Store) ApplyCommerceVendSuccessInventory(ctx context.Context, scopeID, 
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	q := db.New(tx)
-	replay, err = applyCommerceVendSuccessInventoryTx(ctx, q, scopeID, machineID, orderID, slotIndex, productID, idempotencyKey, correlationID)
+	replay, err = applyCommerceVendSuccessInventoryTx(ctx, q, scopeID, machineID, orderID, slotIndex, 0, productID, idempotencyKey, correlationID)
 	if err != nil {
 		return false, err
 	}

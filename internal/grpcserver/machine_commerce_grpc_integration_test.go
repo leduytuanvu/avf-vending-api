@@ -706,4 +706,120 @@ WHERE machine_id = $1 AND is_current = true AND slot_code = '0' AND product_id =
 	require.Equal(t, int32(0), relinkedIndex.Int32)
 }
 
+// Multi-line cart with two lines sharing slot_index=1 (water). Confirming line 2 must not
+// mark line 3 success or close the order before line 3 is terminal.
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_DuplicateSlotPreservesSiblingLines(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "dup-slot-lines-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-co-dup-slot"),
+		ProductId: testfixtures.DevProductCola.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
+	})
+	require.NoError(t, err)
+	orderID := co.GetOrderId()
+
+	_, err = pool.Exec(ctx, `
+INSERT INTO vend_sessions (order_id, machine_id, slot_index, product_id, state, line_sequence)
+VALUES ($1::uuid, $2::uuid, 1, $3::uuid, 'pending', 2),
+       ($1::uuid, $2::uuid, 1, $3::uuid, 'pending', 3)
+`, orderID, testfixtures.DevMachineID, testfixtures.DevProductWater)
+	require.NoError(t, err)
+
+	const totalMinor = int64(150 + 120 + 120)
+	_, err = pool.Exec(ctx, `
+UPDATE orders
+SET subtotal_minor = $2, total_minor = $2
+WHERE id = $1::uuid
+`, orderID, totalMinor)
+	require.NoError(t, err)
+
+	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
+		Context: testCommerceIdemCtx(idem+":cash", "evt-cash-dup-slot"),
+		OrderId: orderID,
+	})
+	require.NoError(t, err)
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:      testCommerceIdemCtx(idem+":vstart1", "evt-vstart1"),
+		OrderId:      orderID,
+		SlotIndex:    0,
+		LineSequence: 1,
+	})
+	require.NoError(t, err)
+
+	succ1, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:      testCommerceIdemCtx(idem+":vsucc1", "evt-vsucc1"),
+		OrderId:      orderID,
+		SlotIndex:    0,
+		LineSequence: 1,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "vending", succ1.GetOrderStatus())
+	require.Equal(t, "success", succ1.GetVendState())
+	requireVendSessionState(t, pool, orderID, 2, "pending")
+	requireVendSessionState(t, pool, orderID, 3, "pending")
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:      testCommerceIdemCtx(idem+":vstart2", "evt-vstart2"),
+		OrderId:      orderID,
+		SlotIndex:    1,
+		LineSequence: 2,
+	})
+	require.NoError(t, err)
+
+	succ2, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:      testCommerceIdemCtx(idem+":vsucc2", "evt-vsucc2"),
+		OrderId:      orderID,
+		SlotIndex:    1,
+		LineSequence: 2,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "vending", succ2.GetOrderStatus())
+	require.Equal(t, "success", succ2.GetVendState())
+	requireVendSessionState(t, pool, orderID, 2, "success")
+	requireVendSessionState(t, pool, orderID, 3, "pending")
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:      testCommerceIdemCtx(idem+":vstart3", "evt-vstart3"),
+		OrderId:      orderID,
+		SlotIndex:    1,
+		LineSequence: 3,
+	})
+	require.NoError(t, err)
+
+	fail3, err := cli.ReportVendFailure(md, &machinev1.ReportVendFailureRequest{
+		Context:       testCommerceIdemCtx(idem+":vfail3", "evt-vfail3"),
+		OrderId:       orderID,
+		SlotIndex:     1,
+		LineSequence:  3,
+		FailureReason: "TCN no-drop",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "partially_completed", fail3.GetOrderStatus())
+	require.Equal(t, "failed", fail3.GetVendState())
+	requireVendSessionState(t, pool, orderID, 1, "success")
+	requireVendSessionState(t, pool, orderID, 2, "success")
+	requireVendSessionState(t, pool, orderID, 3, "failed")
+}
+
+func requireVendSessionState(t *testing.T, pool *pgxpool.Pool, orderID string, lineSequence int32, want string) {
+	t.Helper()
+	ctx := context.Background()
+	var state string
+	err := pool.QueryRow(ctx, `
+SELECT state FROM vend_sessions WHERE order_id = $1::uuid AND line_sequence = $2
+`, orderID, lineSequence).Scan(&state)
+	require.NoError(t, err)
+	require.Equal(t, want, state)
+}
+
 func ptrInt32(v int32) *int32 { return &v }

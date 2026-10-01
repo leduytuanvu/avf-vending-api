@@ -150,3 +150,44 @@ func (q *Queries) SetVendSessionVerificationStatus(ctx context.Context, arg SetV
 	)
 	return i, err
 }
+
+const SetVendSessionVerificationStatusByLineSequence = `-- name: SetVendSessionVerificationStatusByLineSequence :one
+UPDATE vend_sessions
+SET verification_status = $1
+WHERE
+    order_id = $2
+    AND line_sequence = $3
+RETURNING id, order_id, machine_id, slot_index, product_id, state, failure_reason, correlation_id, started_at, completed_at, final_command_attempt_id, verification_status, simulated, simulation_run_id, simulation_scenario, simulation_metadata, line_sequence, created_at
+`
+
+type SetVendSessionVerificationStatusByLineSequenceParams struct {
+	VerificationStatus string
+	OrderID            uuid.UUID
+	LineSequence       int32
+}
+
+func (q *Queries) SetVendSessionVerificationStatusByLineSequence(ctx context.Context, arg SetVendSessionVerificationStatusByLineSequenceParams) (VendSession, error) {
+	row := q.db.QueryRow(ctx, SetVendSessionVerificationStatusByLineSequence, arg.VerificationStatus, arg.OrderID, arg.LineSequence)
+	var i VendSession
+	err := row.Scan(
+		&i.ID,
+		&i.OrderID,
+		&i.MachineID,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.State,
+		&i.FailureReason,
+		&i.CorrelationID,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.FinalCommandAttemptID,
+		&i.VerificationStatus,
+		&i.Simulated,
+		&i.SimulationRunID,
+		&i.SimulationScenario,
+		&i.SimulationMetadata,
+		&i.LineSequence,
+		&i.CreatedAt,
+	)
+	return i, err
+}
