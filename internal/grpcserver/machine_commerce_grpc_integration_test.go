@@ -18,6 +18,7 @@ import (
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -578,6 +579,76 @@ SELECT current_quantity FROM machine_slot_state
 WHERE machine_id = $1 AND slot_index = 0
 `, testfixtures.DevMachineID).Scan(&qtyAfter))
 	require.Equal(t, int32(9), qtyAfter, "auto-provisioned from max_quantity=10 then decremented by vend")
+}
+
+// Config may have slot_code + product while slot_index is NULL (AVF000195 A9/A10 topology gap).
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_RelinksSlotIndexFromSlotCode(t *testing.T) {
+	pool := machineGRPCTestPoolWithDevSeedSessionLock(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	_, err := pool.Exec(ctx, `
+DELETE FROM machine_slot_state
+WHERE machine_id = $1 AND slot_index = 0
+`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+UPDATE machine_slot_configs
+SET slot_index = NULL
+WHERE machine_id = $1 AND is_current = true AND slot_code = '0' AND product_id = $2
+`, testfixtures.DevMachineID, testfixtures.DevProductCola)
+	require.NoError(t, err)
+
+	var nullIndexCount int
+	require.NoError(t, pool.QueryRow(ctx, `
+SELECT count(*) FROM machine_slot_configs
+WHERE machine_id = $1 AND is_current = true AND slot_code = '0' AND product_id = $2 AND slot_index IS NULL
+`, testfixtures.DevMachineID, testfixtures.DevProductCola).Scan(&nullIndexCount))
+	require.Equal(t, 1, nullIndexCount)
+
+	idem := "slot-code-relink-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-co-slot-code"),
+		ProductId: testfixtures.DevProductCola.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
+	})
+	require.NoError(t, err)
+
+	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
+		Context: testCommerceIdemCtx(idem+":cash", "evt-cash-slot-code"),
+		OrderId: co.GetOrderId(),
+	})
+	require.NoError(t, err)
+
+	_, err = cli.StartVend(md, &machinev1.StartVendRequest{
+		Context:   testCommerceIdemCtx(idem+":vend", "evt-vstart-slot-code"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+
+	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-slot-code"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+	require.Equal(t, "success", succ.GetVendState())
+
+	var relinkedIndex pgtype.Int4
+	require.NoError(t, pool.QueryRow(ctx, `
+SELECT slot_index FROM machine_slot_configs
+WHERE machine_id = $1 AND is_current = true AND slot_code = '0' AND product_id = $2
+`, testfixtures.DevMachineID, testfixtures.DevProductCola).Scan(&relinkedIndex))
+	require.True(t, relinkedIndex.Valid)
+	require.Equal(t, int32(0), relinkedIndex.Int32)
 }
 
 func ptrInt32(v int32) *int32 { return &v }

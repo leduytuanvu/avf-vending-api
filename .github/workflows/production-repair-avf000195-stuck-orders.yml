@@ -1,0 +1,115 @@
+name: Production repair AVF000195 stuck orders
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-avf000195-stuck-orders
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair AVF000195 stuck vend orders
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Repair stuck orders 01a0f87c and 01a0f8b7
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_repair_script() {
+            local script_name="$1"
+            local deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/${script_name}"
+            local checkout_script="${GITHUB_WORKSPACE}/scripts/ops/${script_name}"
+            if [[ -f "${deploy_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${deploy_script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${checkout_script}"
+            else
+              echo "error: ${script_name} not found" >&2
+              exit 1
+            fi
+          }
+          run_all() {
+            run_repair_script repair_stuck_vend_close_01a0f87c.sh
+            run_repair_script repair_stuck_vend_close_01a0f8b7.sh
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && \
+              DRY_RUN='${DRY_RUN}' bash scripts/ops/repair_stuck_vend_close_01a0f87c.sh && \
+              DRY_RUN='${DRY_RUN}' bash scripts/ops/repair_stuck_vend_close_01a0f8b7.sh" \
+              | tee repair-avf000195-orders.log
+          elif docker info >/dev/null 2>&1; then
+            run_all | tee repair-avf000195-orders.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repair-avf000195-stuck-orders-log
+          path: repair-avf000195-orders.log
+          retention-days: 14

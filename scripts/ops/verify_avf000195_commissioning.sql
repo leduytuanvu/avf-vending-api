@@ -18,10 +18,69 @@ ORDER BY mc.sort_order, mc.cabinet_code;
 \echo '=== Planogram / slot config summary ==='
 SELECT count(*) AS current_slot_configs,
        count(*) FILTER (WHERE msc.product_id IS NOT NULL) AS with_product,
-       count(*) FILTER (WHERE msc.product_id IS NULL) AS without_product
+       count(*) FILTER (WHERE msc.product_id IS NULL) AS without_product,
+       count(*) FILTER (WHERE msc.product_id IS NOT NULL AND msc.slot_index IS NULL) AS with_product_missing_slot_index
 FROM machine_slot_configs msc
 JOIN machines m ON m.id = msc.machine_id
 WHERE m.code = 'AVF000195' AND msc.is_current;
+
+\echo '=== A9/A10 slot configs (ConfirmVendSuccess topology) ==='
+SELECT msc.slot_code,
+       msc.slot_index,
+       msc.product_id,
+       pr.name AS product_name,
+       msc.max_quantity,
+       msc.price_minor,
+       msc.is_current
+FROM machine_slot_configs msc
+JOIN machines m ON m.id = msc.machine_id
+LEFT JOIN products pr ON pr.id = msc.product_id
+WHERE m.code = 'AVF000195'
+  AND msc.is_current
+  AND msc.slot_code IN ('A9', 'A10')
+ORDER BY msc.slot_code;
+
+\echo '=== A9/A10 legacy slot state ==='
+SELECT mss.slot_index,
+       mss.current_quantity,
+       mss.price_minor,
+       mss.planogram_id,
+       s.product_id,
+       pr.name AS product_name
+FROM machine_slot_state mss
+JOIN machines m ON m.id = mss.machine_id
+LEFT JOIN slots s ON s.planogram_id = mss.planogram_id AND s.slot_index = mss.slot_index
+LEFT JOIN products pr ON pr.id = s.product_id
+WHERE m.code = 'AVF000195'
+  AND mss.slot_index IN (9, 10)
+ORDER BY mss.slot_index;
+
+\echo '=== Published planogram slots A9/A10 ==='
+SELECT mps.slot_code,
+       mps.legacy_slot_index,
+       mps.product_id,
+       pr.name AS product_name,
+       mps.max_quantity,
+       mps.price_minor
+FROM machines m
+JOIN machine_planogram_slots mps ON mps.version_id = m.published_planogram_version_id
+LEFT JOIN products pr ON pr.id = mps.product_id
+WHERE m.code = 'AVF000195'
+  AND mps.slot_code IN ('A9', 'A10')
+ORDER BY mps.slot_code;
+
+\echo '=== Topology invariant: product configs must have slot_index ==='
+SELECT msc.slot_code,
+       msc.slot_index,
+       pr.name AS product_name
+FROM machine_slot_configs msc
+JOIN machines m ON m.id = msc.machine_id
+LEFT JOIN products pr ON pr.id = msc.product_id
+WHERE m.code = 'AVF000195'
+  AND msc.is_current
+  AND msc.product_id IS NOT NULL
+  AND msc.slot_index IS NULL
+ORDER BY msc.slot_code;
 
 SELECT count(*) AS legacy_slot_state_rows
 FROM machine_slot_state mss

@@ -458,11 +458,14 @@ type Querier interface {
 	InsertVendSessionWithLineSequence(ctx context.Context, arg InsertVendSessionWithLineSequenceParams) (InsertVendSessionWithLineSequenceRow, error)
 	InventoryAdminAggregateMachineInventory(ctx context.Context, machineID uuid.UUID) ([]InventoryAdminAggregateMachineInventoryRow, error)
 	InventoryAdminCountInventoryEventsByIdempotencyKey(ctx context.Context, arg InventoryAdminCountInventoryEventsByIdempotencyKeyParams) (int64, error)
+	InventoryAdminGetCurrentMachineSlotConfigBySlotCode(ctx context.Context, arg InventoryAdminGetCurrentMachineSlotConfigBySlotCodeParams) (InventoryAdminGetCurrentMachineSlotConfigBySlotCodeRow, error)
 	InventoryAdminGetInventoryIdempotencyPayloadHash(ctx context.Context, arg InventoryAdminGetInventoryIdempotencyPayloadHashParams) (string, error)
+	InventoryAdminGetMachineActiveLayoutGridCols(ctx context.Context, id uuid.UUID) (int32, error)
 	InventoryAdminGetMachineLegacyPlanogramID(ctx context.Context, machineID uuid.UUID) (uuid.UUID, error)
 	InventoryAdminGetMachineOrg(ctx context.Context, id uuid.UUID) (InventoryAdminGetMachineOrgRow, error)
 	InventoryAdminGetOrgDefaultCurrency(ctx context.Context) (string, error)
 	InventoryAdminGetPublishedPlanogramID(ctx context.Context) (uuid.UUID, error)
+	InventoryAdminGetPublishedPlanogramSlotForMachine(ctx context.Context, arg InventoryAdminGetPublishedPlanogramSlotForMachineParams) (InventoryAdminGetPublishedPlanogramSlotForMachineRow, error)
 	InventoryAdminInsertInventoryEventsBatch(ctx context.Context, eventsJson string) ([]int64, error)
 	InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx context.Context, machineID uuid.UUID) ([]InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error)
 	InventoryAdminListInventoryEventsByMachine(ctx context.Context, arg InventoryAdminListInventoryEventsByMachineParams) ([]InventoryAdminListInventoryEventsByMachineRow, error)
@@ -470,6 +473,7 @@ type Querier interface {
 	// Refill forecasting: slot inventory joined to vend velocity (successful dispenses) in a lookback window.
 	// Optional filters use uuid nil sentinel '00000000-0000-0000-0000-000000000000'. low_stock_only restricts to empty or <15% fill.
 	InventoryAdminRefillForecastSlots(ctx context.Context, arg InventoryAdminRefillForecastSlotsParams) ([]InventoryAdminRefillForecastSlotsRow, error)
+	InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex(ctx context.Context, arg InventoryAdminRelinkCurrentMachineSlotConfigSlotIndexParams) error
 	// Slot aggregates aligned with InventoryAdminListMachineSlots (machine_slot_state + slots).
 	InventoryAdminSummarizeSlotsForMachine(ctx context.Context, machineID uuid.UUID) (InventoryAdminSummarizeSlotsForMachineRow, error)
 	InventoryAdminSummarizeSlotsForMachines(ctx context.Context, dollar_1 []uuid.UUID) ([]InventoryAdminSummarizeSlotsForMachinesRow, error)

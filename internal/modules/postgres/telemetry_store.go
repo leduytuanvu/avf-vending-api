@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
+	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/id"
 	"github.com/avf/avf-vending-api/internal/platform/pgjson"
@@ -1097,6 +1098,106 @@ func pickSlotConfigForVend(cfgs []db.InventoryAdminListCurrentMachineSlotConfigs
 	return nil, fmt.Errorf("postgres: no machine_slot_config for slot_index=%d product=%s", slotIndex, productID)
 }
 
+func pickSlotConfigBySlotCode(cfgs []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, slotCode string, productID uuid.UUID) (*db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	slotCode = strings.TrimSpace(slotCode)
+	if slotCode == "" {
+		return nil, fmt.Errorf("postgres: no machine_slot_config for slot_code=%s product=%s", slotCode, productID)
+	}
+	for i := range cfgs {
+		c := &cfgs[i]
+		if strings.TrimSpace(c.SlotCode) != slotCode || !c.ProductID.Valid {
+			continue
+		}
+		if uuid.UUID(c.ProductID.Bytes) == productID {
+			return c, nil
+		}
+	}
+	return nil, fmt.Errorf("postgres: no machine_slot_config for slot_code=%s product=%s", slotCode, productID)
+}
+
+func resolveMachineGridCols(ctx context.Context, q *db.Queries, machineID uuid.UUID) (int32, error) {
+	cols, err := q.InventoryAdminGetMachineActiveLayoutGridCols(ctx, machineID)
+	if err != nil {
+		if isNoRows(err) {
+			return 10, nil
+		}
+		return 0, err
+	}
+	if cols < 1 {
+		return 10, nil
+	}
+	return cols, nil
+}
+
+func resolveVendSlotConfigWithFallbacks(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	slotIndex int32,
+	productID uuid.UUID,
+	cfgs []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow,
+) (*db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	cfg, err := pickSlotConfigForVend(cfgs, slotIndex, productID)
+	if err == nil {
+		return cfg, nil
+	}
+	gridCols, err := resolveMachineGridCols(ctx, q, machineID)
+	if err != nil {
+		return nil, err
+	}
+	slotCodes := make([]string, 0, 2)
+	if code := physicaltopology.SlotCodeFromIndex(slotIndex, int(gridCols)); code != "" {
+		slotCodes = append(slotCodes, code)
+	}
+	legacyCode := fmt.Sprintf("%d", slotIndex)
+	if legacyCode != "" && (len(slotCodes) == 0 || slotCodes[0] != legacyCode) {
+		slotCodes = append(slotCodes, legacyCode)
+	}
+	for _, slotCode := range slotCodes {
+		cfg, lookupErr := pickSlotConfigBySlotCode(cfgs, slotCode, productID)
+		if lookupErr != nil {
+			continue
+		}
+		if !cfg.SlotIndex.Valid || cfg.SlotIndex.Int32 != slotIndex {
+			if relinkErr := q.InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex(ctx, db.InventoryAdminRelinkCurrentMachineSlotConfigSlotIndexParams{
+				ID:        cfg.ID,
+				SlotIndex: pgtype.Int4{Int32: slotIndex, Valid: true},
+			}); relinkErr != nil {
+				return nil, relinkErr
+			}
+			cfg.SlotIndex = pgtype.Int4{Int32: slotIndex, Valid: true}
+		}
+		return cfg, nil
+	}
+	for _, slotCode := range slotCodes {
+		row, planErr := q.InventoryAdminGetPublishedPlanogramSlotForMachine(ctx, db.InventoryAdminGetPublishedPlanogramSlotForMachineParams{
+			ID:       machineID,
+			SlotCode: slotCode,
+		})
+		if planErr != nil {
+			if isNoRows(planErr) {
+				continue
+			}
+			return nil, planErr
+		}
+		if !row.ProductID.Valid || uuid.UUID(row.ProductID.Bytes) != productID {
+			continue
+		}
+		maxQty := row.MaxQuantity
+		if maxQty < 1 {
+			maxQty = 1
+		}
+		return &db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow{
+			SlotCode:    slotCode,
+			SlotIndex:   pgtype.Int4{Int32: slotIndex, Valid: true},
+			ProductID:   row.ProductID,
+			MaxQuantity: maxQty,
+			PriceMinor:  row.PriceMinor,
+		}, nil
+	}
+	return nil, fmt.Errorf("postgres: no machine_slot_config for slot_index=%d product=%s", slotIndex, productID)
+}
+
 func resolveVendLegacyPlanogramID(ctx context.Context, q *db.Queries, machineID uuid.UUID, legacySlots []db.InventoryAdminListMachineSlotsRow) (uuid.UUID, error) {
 	if len(legacySlots) > 0 && legacySlots[0].PlanogramID != uuid.Nil {
 		return legacySlots[0].PlanogramID, nil
@@ -1137,7 +1238,7 @@ func resolveVendSlotSnapshot(
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := pickSlotConfigForVend(cfgs, slotIndex, productID)
+	cfg, err := resolveVendSlotConfigWithFallbacks(ctx, q, machineID, slotIndex, productID, cfgs)
 	if err != nil {
 		return nil, err
 	}

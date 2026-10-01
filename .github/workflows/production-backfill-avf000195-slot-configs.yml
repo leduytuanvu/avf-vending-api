@@ -1,0 +1,140 @@
+name: Production backfill AVF000195 slot configs
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backfill-avf000195-slot-configs
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    name: Backfill AVF000195 slot configs
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Verify AVF000195 topology (read-only)
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          verify_sql="${GITHUB_WORKSPACE}/scripts/ops/verify_avf000195_commissioning.sql"
+          run_verify() {
+            api="$(docker ps --format '{{.Names}}' | grep -E 'api' | head -n1)"
+            export DATABASE_URL="$(docker inspect "${api}" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^DATABASE_URL=' | tail -n1 | cut -d= -f2-)"
+            docker run --rm \
+              -e "DATABASE_URL=${DATABASE_URL}" \
+              -v "${GITHUB_WORKSPACE}/scripts/ops:/ops:ro" \
+              postgres:17-alpine \
+              psql "${DATABASE_URL}" -f "/ops/verify_avf000195_commissioning.sql"
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && $(declare -f run_verify); run_verify" \
+              | tee verify-avf000195.log
+          elif docker info >/dev/null 2>&1; then
+            run_verify | tee verify-avf000195.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Backfill slot configs
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/backfill_avf000195_slot_configs.sh"
+          checkout_script="${GITHUB_WORKSPACE}/scripts/ops/backfill_avf000195_slot_configs.sh"
+          run_backfill() {
+            if [[ -f "${deploy_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${deploy_script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${checkout_script}"
+            else
+              echo "error: backfill_avf000195_slot_configs.sh not found" >&2
+              exit 1
+            fi
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && \
+              if [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' bash '${deploy_script}'; \
+              elif [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' bash '${checkout_script}'; \
+              else echo 'error: script not found' >&2; exit 1; fi" \
+              | tee backfill-avf000195.log
+          elif docker info >/dev/null 2>&1; then
+            run_backfill | tee backfill-avf000195.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backfill-avf000195-slot-configs-log
+          path: |
+            backfill-avf000195.log
+            verify-avf000195.log
+          retention-days: 14

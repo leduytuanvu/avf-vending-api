@@ -565,6 +565,65 @@ ORDER BY
     mss.slot_index ASC
 LIMIT 10000;
 
+-- name: InventoryAdminGetCurrentMachineSlotConfigBySlotCode :one
+SELECT
+    msc.id,
+    msc.machine_id,
+    msc.machine_cabinet_id,
+    mc.cabinet_code,
+    mc.cabinet_index,
+    msc.machine_slot_layout_id,
+    msc.slot_code,
+    msc.slot_index,
+    msc.product_id,
+    pr.sku AS product_sku,
+    pr.name AS product_name,
+    msc.max_quantity,
+    msc.price_minor,
+    msc.effective_from,
+    msc.effective_to,
+    msc.is_current,
+    msc.metadata,
+    msc.created_at,
+    msc.updated_at
+FROM
+    machine_slot_configs msc
+    INNER JOIN machine_cabinets mc ON mc.id = msc.machine_cabinet_id
+    LEFT JOIN products pr ON pr.id = msc.product_id
+WHERE
+    msc.machine_id = $1
+    AND msc.is_current
+    AND msc.slot_code = $2;
+
+-- name: InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex :exec
+UPDATE machine_slot_configs
+SET
+    slot_index = $2,
+    updated_at = now()
+WHERE
+    id = $1
+    AND is_current;
+
+-- name: InventoryAdminGetMachineActiveLayoutGridCols :one
+SELECT ml.grid_cols
+FROM machines m
+INNER JOIN machine_layouts ml ON ml.id = m.active_layout_id
+    AND ml.machine_id = m.id
+    AND NOT ml.is_archived
+WHERE m.id = $1;
+
+-- name: InventoryAdminGetPublishedPlanogramSlotForMachine :one
+SELECT
+    mps.slot_code,
+    mps.legacy_slot_index,
+    mps.product_id,
+    mps.max_quantity,
+    mps.price_minor
+FROM machines m
+INNER JOIN machine_planogram_slots mps ON mps.version_id = m.published_planogram_version_id
+WHERE m.id = $1
+    AND mps.slot_code = $2;
+
 -- name: InventoryAdminGetMachineLegacyPlanogramID :one
 SELECT mss.planogram_id
 FROM machine_slot_state mss

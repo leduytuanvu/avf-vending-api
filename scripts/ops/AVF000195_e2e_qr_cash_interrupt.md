@@ -6,7 +6,14 @@ Verify fix for abandoned server order shell when MoMo QR is open and wallet cash
 
 - Install latest `assembleTcnProductionRelease` APK on AVF000195.
 - Machine online (`api.ldtv.dev` reachable).
-- Deploy backend with `ConfirmVendSuccess` legacy-slot fallback (auto-provision from `machine_slot_configs`).
+- Deploy backend with `ConfirmVendSuccess` legacy-slot fallback (auto-provision from `machine_slot_configs` + slot_code relink).
+- **Preflight topology** (required before E2E — prevents `GRPC_CONFIRM_VEND_ERROR ... no machine_slot_config`):
+  ```bash
+  psql "$DATABASE_URL" -f scripts/ops/verify_avf000195_commissioning.sql
+  psql "$DATABASE_URL" -v dry_run=1 -f scripts/ops/backfill_avf000195_slot_configs.sql
+  psql "$DATABASE_URL" -v dry_run=0 -f scripts/ops/backfill_avf000195_slot_configs.sql
+  ```
+  Verify A9/A10 rows have `product_id` and `slot_index` 9/10 in `machine_slot_configs` and matching `machine_slot_state`.
 - Bootstrap legacy inventory for AVF000195 if `machine_slot_state` is empty:
   ```bash
   psql "$DATABASE_URL" -v dry_run=1 -f scripts/ops/bootstrap_avf000195_legacy_slot_state.sql

@@ -21,6 +21,21 @@ func TestSlotIndexFromCode(t *testing.T) {
 	}
 }
 
+func TestSlotCodeFromIndex(t *testing.T) {
+	if got := SlotCodeFromIndex(9, 10); got != "A9" {
+		t.Fatalf("index 9: got %q want A9", got)
+	}
+	if got := SlotCodeFromIndex(10, 10); got != "A10" {
+		t.Fatalf("index 10: got %q want A10", got)
+	}
+	if got := SlotCodeFromIndex(1, 10); got != "A1" {
+		t.Fatalf("index 1: got %q want A1", got)
+	}
+	if got := SlotCodeFromIndex(0, 10); got != "" {
+		t.Fatalf("index 0: got %q want empty", got)
+	}
+}
+
 func TestPickTemplateRow(t *testing.T) {
 	_, ok := PickTemplateRow(nil)
 	if ok {

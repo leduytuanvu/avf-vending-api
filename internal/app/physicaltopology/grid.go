@@ -42,3 +42,17 @@ func SlotIndexFromCode(slotCode string, cols int) int32 {
 	}
 	return int32(row*cols + col)
 }
+
+// SlotCodeFromIndex returns the canonical slot code for a 1-based row-major grid index (inverse of SlotIndexFromCode).
+func SlotCodeFromIndex(slotIndex int32, cols int) string {
+	if cols < 1 || slotIndex < 1 {
+		return ""
+	}
+	zeroBased := int(slotIndex) - 1
+	row := zeroBased / cols
+	col := zeroBased%cols + 1
+	if row < 0 || row > 25 {
+		return ""
+	}
+	return fmt.Sprintf("%c%d", rune('A'+row), col)
+}

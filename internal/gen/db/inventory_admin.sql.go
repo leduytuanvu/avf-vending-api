@@ -201,6 +201,91 @@ func (q *Queries) InventoryAdminCountInventoryEventsByIdempotencyKey(ctx context
 	return column_1, err
 }
 
+const InventoryAdminGetCurrentMachineSlotConfigBySlotCode = `-- name: InventoryAdminGetCurrentMachineSlotConfigBySlotCode :one
+SELECT
+    msc.id,
+    msc.machine_id,
+    msc.machine_cabinet_id,
+    mc.cabinet_code,
+    mc.cabinet_index,
+    msc.machine_slot_layout_id,
+    msc.slot_code,
+    msc.slot_index,
+    msc.product_id,
+    pr.sku AS product_sku,
+    pr.name AS product_name,
+    msc.max_quantity,
+    msc.price_minor,
+    msc.effective_from,
+    msc.effective_to,
+    msc.is_current,
+    msc.metadata,
+    msc.created_at,
+    msc.updated_at
+FROM
+    machine_slot_configs msc
+    INNER JOIN machine_cabinets mc ON mc.id = msc.machine_cabinet_id
+    LEFT JOIN products pr ON pr.id = msc.product_id
+WHERE
+    msc.machine_id = $1
+    AND msc.is_current
+    AND msc.slot_code = $2
+`
+
+type InventoryAdminGetCurrentMachineSlotConfigBySlotCodeParams struct {
+	MachineID uuid.UUID
+	SlotCode  string
+}
+
+type InventoryAdminGetCurrentMachineSlotConfigBySlotCodeRow struct {
+	ID                  uuid.UUID
+	MachineID           uuid.UUID
+	MachineCabinetID    uuid.UUID
+	CabinetCode         string
+	CabinetIndex        int32
+	MachineSlotLayoutID uuid.UUID
+	SlotCode            string
+	SlotIndex           pgtype.Int4
+	ProductID           pgtype.UUID
+	ProductSku          pgtype.Text
+	ProductName         pgtype.Text
+	MaxQuantity         int32
+	PriceMinor          int64
+	EffectiveFrom       time.Time
+	EffectiveTo         pgtype.Timestamptz
+	IsCurrent           bool
+	Metadata            []byte
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+func (q *Queries) InventoryAdminGetCurrentMachineSlotConfigBySlotCode(ctx context.Context, arg InventoryAdminGetCurrentMachineSlotConfigBySlotCodeParams) (InventoryAdminGetCurrentMachineSlotConfigBySlotCodeRow, error) {
+	row := q.db.QueryRow(ctx, InventoryAdminGetCurrentMachineSlotConfigBySlotCode, arg.MachineID, arg.SlotCode)
+	var i InventoryAdminGetCurrentMachineSlotConfigBySlotCodeRow
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.MachineCabinetID,
+		&i.CabinetCode,
+		&i.CabinetIndex,
+		&i.MachineSlotLayoutID,
+		&i.SlotCode,
+		&i.SlotIndex,
+		&i.ProductID,
+		&i.ProductSku,
+		&i.ProductName,
+		&i.MaxQuantity,
+		&i.PriceMinor,
+		&i.EffectiveFrom,
+		&i.EffectiveTo,
+		&i.IsCurrent,
+		&i.Metadata,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const InventoryAdminGetInventoryIdempotencyPayloadHash = `-- name: InventoryAdminGetInventoryIdempotencyPayloadHash :one
 SELECT
     coalesce(metadata ->> 'idempotency_payload_sha256', '')::text AS payload_hash
@@ -224,6 +309,22 @@ func (q *Queries) InventoryAdminGetInventoryIdempotencyPayloadHash(ctx context.C
 	var payload_hash string
 	err := row.Scan(&payload_hash)
 	return payload_hash, err
+}
+
+const InventoryAdminGetMachineActiveLayoutGridCols = `-- name: InventoryAdminGetMachineActiveLayoutGridCols :one
+SELECT ml.grid_cols
+FROM machines m
+INNER JOIN machine_layouts ml ON ml.id = m.active_layout_id
+    AND ml.machine_id = m.id
+    AND NOT ml.is_archived
+WHERE m.id = $1
+`
+
+func (q *Queries) InventoryAdminGetMachineActiveLayoutGridCols(ctx context.Context, id uuid.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, InventoryAdminGetMachineActiveLayoutGridCols, id)
+	var grid_cols int32
+	err := row.Scan(&grid_cols)
+	return grid_cols, err
 }
 
 const InventoryAdminGetMachineLegacyPlanogramID = `-- name: InventoryAdminGetMachineLegacyPlanogramID :one
@@ -297,6 +398,45 @@ func (q *Queries) InventoryAdminGetPublishedPlanogramID(ctx context.Context) (uu
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const InventoryAdminGetPublishedPlanogramSlotForMachine = `-- name: InventoryAdminGetPublishedPlanogramSlotForMachine :one
+SELECT
+    mps.slot_code,
+    mps.legacy_slot_index,
+    mps.product_id,
+    mps.max_quantity,
+    mps.price_minor
+FROM machines m
+INNER JOIN machine_planogram_slots mps ON mps.version_id = m.published_planogram_version_id
+WHERE m.id = $1
+    AND mps.slot_code = $2
+`
+
+type InventoryAdminGetPublishedPlanogramSlotForMachineParams struct {
+	ID       uuid.UUID
+	SlotCode string
+}
+
+type InventoryAdminGetPublishedPlanogramSlotForMachineRow struct {
+	SlotCode        string
+	LegacySlotIndex pgtype.Int4
+	ProductID       pgtype.UUID
+	MaxQuantity     int32
+	PriceMinor      int64
+}
+
+func (q *Queries) InventoryAdminGetPublishedPlanogramSlotForMachine(ctx context.Context, arg InventoryAdminGetPublishedPlanogramSlotForMachineParams) (InventoryAdminGetPublishedPlanogramSlotForMachineRow, error) {
+	row := q.db.QueryRow(ctx, InventoryAdminGetPublishedPlanogramSlotForMachine, arg.ID, arg.SlotCode)
+	var i InventoryAdminGetPublishedPlanogramSlotForMachineRow
+	err := row.Scan(
+		&i.SlotCode,
+		&i.LegacySlotIndex,
+		&i.ProductID,
+		&i.MaxQuantity,
+		&i.PriceMinor,
+	)
+	return i, err
 }
 
 const InventoryAdminInsertInventoryEventsBatch = `-- name: InventoryAdminInsertInventoryEventsBatch :many
@@ -925,6 +1065,26 @@ func (q *Queries) InventoryAdminRefillForecastSlots(ctx context.Context, arg Inv
 		return nil, err
 	}
 	return items, nil
+}
+
+const InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex = `-- name: InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex :exec
+UPDATE machine_slot_configs
+SET
+    slot_index = $2,
+    updated_at = now()
+WHERE
+    id = $1
+    AND is_current
+`
+
+type InventoryAdminRelinkCurrentMachineSlotConfigSlotIndexParams struct {
+	ID        uuid.UUID
+	SlotIndex pgtype.Int4
+}
+
+func (q *Queries) InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex(ctx context.Context, arg InventoryAdminRelinkCurrentMachineSlotConfigSlotIndexParams) error {
+	_, err := q.db.Exec(ctx, InventoryAdminRelinkCurrentMachineSlotConfigSlotIndex, arg.ID, arg.SlotIndex)
+	return err
 }
 
 const InventoryAdminSummarizeSlotsForMachine = `-- name: InventoryAdminSummarizeSlotsForMachine :one
