@@ -24,7 +24,77 @@ const (
 	defaultCommerceCabinetCode    = "CAB-A"
 	defaultCommerceLayoutKey      = "default"
 	defaultCommerceLayoutRevision = int32(1)
+	defaultBoardProtocol          = "tcn"
+	defaultBillProtocol           = "ict_bc_v1"
+	defaultCashTopology           = "direct_bill"
 )
+
+// commerceCabinetProtocolDefaults maps machine_type to bootstrap cabinet metadata hints
+// consumed by the Android commissioning bootstrap mapper.
+func commerceCabinetProtocolDefaults(machineType string) (boardProtocol, billProtocol, cashTopology string) {
+	switch strings.ToLower(strings.TrimSpace(machineType)) {
+	case "tcn", "":
+		return defaultBoardProtocol, defaultBillProtocol, defaultCashTopology
+	default:
+		return defaultBoardProtocol, defaultBillProtocol, defaultCashTopology
+	}
+}
+
+func commerceCabinetMetadataJSON(materializedBy, machineType string) []byte {
+	board, bill, cash := commerceCabinetProtocolDefaults(machineType)
+	meta, _ := json.Marshal(map[string]any{
+		"materializedBy": materializedBy,
+		"board_protocol": board,
+		"bill_protocol":  bill,
+		"cash_topology":  cash,
+	})
+	return meta
+}
+
+func mergeCommerceCabinetMetadata(existing []byte, materializedBy, machineType string) []byte {
+	merged := map[string]any{}
+	if len(existing) > 0 {
+		_ = json.Unmarshal(existing, &merged)
+	}
+	board, bill, cash := commerceCabinetProtocolDefaults(machineType)
+	if strings.TrimSpace(materializedBy) != "" {
+		merged["materializedBy"] = materializedBy
+	}
+	if _, ok := merged["board_protocol"]; !ok {
+		merged["board_protocol"] = board
+	}
+	if _, ok := merged["bill_protocol"]; !ok {
+		merged["bill_protocol"] = bill
+	}
+	if _, ok := merged["cash_topology"]; !ok {
+		merged["cash_topology"] = cash
+	}
+	out, err := json.Marshal(merged)
+	if err != nil {
+		return commerceCabinetMetadataJSON(materializedBy, machineType)
+	}
+	return out
+}
+
+func commerceCabinetMetadataComplete(metadata []byte) bool {
+	if len(metadata) == 0 {
+		return false
+	}
+	var m map[string]any
+	if err := json.Unmarshal(metadata, &m); err != nil {
+		return false
+	}
+	for _, key := range []string{"board_protocol", "bill_protocol", "cash_topology"} {
+		v, ok := m[key]
+		if !ok {
+			return false
+		}
+		if s, ok := v.(string); !ok || strings.TrimSpace(s) == "" {
+			return false
+		}
+	}
+	return true
+}
 
 // CommerceTopologyMaterializeResult counts rows created during idempotent materialization.
 type CommerceTopologyMaterializeResult struct {
@@ -50,6 +120,14 @@ func MaterializeCommerceTopologyInTx(
 		gridRows, gridCols = defaultBootstrapGridRows, defaultBootstrapGridCols
 	}
 	q := pgxutil.NewQueries(tx)
+	machine, err := q.GetMachineByID(ctx, machineID)
+	if err != nil {
+		return out, err
+	}
+	machineType := ""
+	if machine.MachineType.Valid {
+		machineType = strings.TrimSpace(machine.MachineType.String)
+	}
 
 	cabs, err := q.FleetAdminListMachineCabinets(ctx, machineID)
 	if err != nil {
@@ -70,13 +148,28 @@ func MaterializeCommerceTopologyInTx(
 			SortOrder:    0,
 			CabinetIndex: 0,
 			Status:       "active",
-			Metadata:     pgjson.RequiredString([]byte(`{"materializedBy":"` + materializedBy + `"}`)),
+			Metadata:     pgjson.RequiredString(commerceCabinetMetadataJSON(materializedBy, machineType)),
 		})
 		if upsertErr != nil {
 			return out, upsertErr
 		}
 		cabRow = row
 		out.CabinetsCreated = 1
+	} else if !commerceCabinetMetadataComplete(cabRow.Metadata) {
+		patchedMeta := mergeCommerceCabinetMetadata(cabRow.Metadata, materializedBy, machineType)
+		row, upsertErr := q.FleetAdminUpsertMachineCabinet(ctx, db.FleetAdminUpsertMachineCabinetParams{
+			MachineID:    machineID,
+			CabinetCode:  defaultCommerceCabinetCode,
+			Title:        cabRow.Title,
+			SortOrder:    cabRow.SortOrder,
+			CabinetIndex: cabRow.CabinetIndex,
+			Status:       cabRow.Status,
+			Metadata:     pgjson.RequiredString(patchedMeta),
+		})
+		if upsertErr != nil {
+			return out, upsertErr
+		}
+		cabRow = row
 	}
 
 	layoutSpec, _ := json.Marshal(map[string]any{

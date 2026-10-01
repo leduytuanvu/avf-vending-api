@@ -1,6 +1,7 @@
 package fleet
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -52,4 +53,31 @@ func TestPgUUIDEqual(t *testing.T) {
 	a := pgtype.UUID{Bytes: uuid.New(), Valid: true}
 	require.True(t, pgUUIDEqual(a, a))
 	require.False(t, pgUUIDEqual(a, pgtype.UUID{Valid: false}))
+}
+
+func TestCommerceCabinetMetadataJSON(t *testing.T) {
+	raw := commerceCabinetMetadataJSON("bootstrap", "tcn")
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(raw, &m))
+	require.Equal(t, "bootstrap", m["materializedBy"])
+	require.Equal(t, defaultBoardProtocol, m["board_protocol"])
+	require.Equal(t, defaultBillProtocol, m["bill_protocol"])
+	require.Equal(t, defaultCashTopology, m["cash_topology"])
+}
+
+func TestMergeCommerceCabinetMetadata_preservesExistingKeys(t *testing.T) {
+	existing := []byte(`{"materializedBy":"legacy","payment_authority":"local"}`)
+	merged := mergeCommerceCabinetMetadata(existing, "reconcile", "tcn")
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(merged, &m))
+	require.Equal(t, "reconcile", m["materializedBy"])
+	require.Equal(t, "local", m["payment_authority"])
+	require.Equal(t, defaultBoardProtocol, m["board_protocol"])
+	require.Equal(t, defaultBillProtocol, m["bill_protocol"])
+	require.Equal(t, defaultCashTopology, m["cash_topology"])
+}
+
+func TestCommerceCabinetMetadataComplete(t *testing.T) {
+	require.False(t, commerceCabinetMetadataComplete([]byte(`{"materializedBy":"bootstrap"}`)))
+	require.True(t, commerceCabinetMetadataComplete(commerceCabinetMetadataJSON("bootstrap", "tcn")))
 }
