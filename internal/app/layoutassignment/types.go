@@ -96,6 +96,10 @@ type LocalMirrorSlotView struct {
 	SlotCode         string  `json:"slotCode"`
 	SlotOrdinal      int32   `json:"slotOrdinal,omitempty"`
 	ProductID        string  `json:"productId,omitempty"`
+	ProductName      string  `json:"productName,omitempty"`
+	ProductSku       string  `json:"productSku,omitempty"`
+	ImageURL         string  `json:"imageUrl,omitempty"`
+	Currency         string  `json:"currency,omitempty"`
 	CurrentInventory *int32  `json:"currentInventory,omitempty"`
 	MaxQuantity      int32   `json:"maxQuantity,omitempty"`
 	Enabled          *bool   `json:"enabled,omitempty"`

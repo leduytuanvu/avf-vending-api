@@ -75,6 +75,10 @@ type SnapshotSlotInput struct {
 	CurrentInventory     int32
 	Enabled              bool
 	OperationalState     string
+	ProductName          string
+	ProductSku           string
+	ImageURL             string
+	Currency             string
 }
 
 // ReportLayoutSnapshotResult is returned after ingest.
@@ -366,6 +370,10 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 			CurrentInventory:     sl.CurrentInventory,
 			Enabled:              &enabled,
 			OperationalState:     strings.TrimSpace(sl.OperationalState),
+			ProductName:          strings.TrimSpace(sl.ProductName),
+			ProductSku:           strings.TrimSpace(sl.ProductSku),
+			ImageURL:             strings.TrimSpace(sl.ImageURL),
+			Currency:             strings.TrimSpace(sl.Currency),
 		})
 	}
 	return json.Marshal(out)

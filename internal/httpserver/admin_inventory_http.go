@@ -27,6 +27,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/clockskew"
+	"github.com/avf/avf-vending-api/internal/platform/runtimeenv"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -39,6 +40,16 @@ const (
 	adminMachinePlanogramPublishCommandType = "machine_planogram_publish"
 	adminMachineSetupSyncCommandType        = "machine_setup_sync"
 )
+
+func writeInventoryAuthoritativeDisabled(w http.ResponseWriter, ctx context.Context) {
+	writeAPIError(
+		w,
+		ctx,
+		http.StatusGone,
+		"inventory_authoritative_disabled",
+		"Server-side planogram and inventory writes are disabled; device layout snapshots are authoritative.",
+	)
+}
 
 func mountAdminInventoryRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
 	if app == nil || app.InventoryAdmin == nil {
@@ -287,7 +298,15 @@ func listAdminMachineSlots(svc *appinventoryadmin.Service) http.HandlerFunc {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
-		rows, err := svc.ListSlotInventoryView(r.Context(), mid)
+		var rows []appinventoryadmin.SlotInventoryViewItem
+		if runtimeenv.InventoryAuthoritativeServer() {
+			rows, err = svc.ListSlotInventoryView(r.Context(), mid)
+		} else {
+			rows, err = svc.ListSlotInventoryViewFromMirror(r.Context(), mid)
+			if errors.Is(err, appinventoryadmin.ErrNoDeviceLayoutMirror) {
+				rows, err = svc.ListSlotInventoryView(r.Context(), mid)
+			}
+		}
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusInternalServerError, "internal", err.Error())
 			return
@@ -374,6 +393,10 @@ func postAdminMachineStockAdjustments(app *api.HTTPApplication) http.HandlerFunc
 		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		if !runtimeenv.InventoryAuthoritativeServer() {
+			writeInventoryAuthoritativeDisabled(w, r.Context())
 			return
 		}
 		idem, err := requireWriteIdempotencyKey(r)
@@ -960,6 +983,10 @@ func putAdminMachinePlanogramDraft(app *api.HTTPApplication) http.HandlerFunc {
 			writeInventoryAccessOrResolveError(w, r, err)
 			return
 		}
+		if !runtimeenv.InventoryAuthoritativeServer() {
+			writeInventoryAuthoritativeDisabled(w, r.Context())
+			return
+		}
 		in, ok := decodePlanogramSlotBody(w, r)
 		if !ok {
 			return
@@ -1048,6 +1075,10 @@ func postAdminMachinePlanogramPublish(app *api.HTTPApplication) http.HandlerFunc
 		_, err = resolveInventoryMachine(r, app.InventoryAdmin, machineID)
 		if err != nil {
 			writeInventoryAccessOrResolveError(w, r, err)
+			return
+		}
+		if !runtimeenv.InventoryAuthoritativeServer() {
+			writeInventoryAuthoritativeDisabled(w, r.Context())
 			return
 		}
 		if app.TelemetryStore == nil || app.TelemetryStore.Pool() == nil {
