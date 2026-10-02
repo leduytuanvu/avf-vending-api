@@ -1282,6 +1282,23 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
+	if st.Vend.State == "pending" && (st.Order.Status == "paid" || st.Order.Status == "vending") {
+		ensureSlot := st.Vend.SlotIndex
+		if ensureSlot <= 0 {
+			ensureSlot = slotIndex
+		}
+		if err := svc.EnsureVendInProgressForPaidOrder(ctx, uuid.Nil, orderID, ensureSlot); err != nil {
+			return nil, mapCommerceGRPCErr(err)
+		}
+		if lineSequence > 0 {
+			st, err = svc.GetCheckoutStatusByLineSequence(ctx, uuid.Nil, orderID, lineSequence)
+		} else {
+			st, err = svc.GetCheckoutStatus(ctx, uuid.Nil, orderID, slotIndex)
+		}
+		if err != nil {
+			return nil, mapCommerceGRPCErr(err)
+		}
+	}
 	if st.Vend.State != "in_progress" {
 		return nil, status.Error(codes.FailedPrecondition, "vend not in progress")
 	}

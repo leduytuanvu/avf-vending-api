@@ -184,6 +184,39 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 	require.Equal(t, qtyAfter, qtyAfter2, "replay must not decrement again")
 }
 
+func TestMachineGRPC_Commerce_ConfirmVendSuccess_AutoStartsFromPending(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineCommerceTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "cash-skip-start-" + uuid.NewString()
+	co, err := cli.CreateOrder(md, &machinev1.CreateOrderRequest{
+		Context:   testCommerceIdemCtx(idem, "evt-co-skip"),
+		ProductId: testfixtures.DevProductCola.String(),
+		Currency:  "USD",
+		Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(0)},
+	})
+	require.NoError(t, err)
+
+	_, err = cli.ConfirmCashPayment(md, &machinev1.ConfirmCashPaymentRequest{
+		Context: testCommerceIdemCtx(idem+":cash", "evt-cash-skip"),
+		OrderId: co.GetOrderId(),
+	})
+	require.NoError(t, err)
+
+	succ, err := cli.ConfirmVendSuccess(md, &machinev1.ConfirmVendSuccessRequest{
+		Context:   testCommerceIdemCtx(idem+":vsucc", "evt-vsucc-skip"),
+		OrderId:   co.GetOrderId(),
+		SlotIndex: 0,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "completed", succ.GetOrderStatus())
+	require.Equal(t, "success", succ.GetVendState())
+}
+
 func TestMachineGRPC_Commerce_QRFlow_WebhookThenVend(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()
