@@ -130,28 +130,34 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerc
 	}
 	search := strings.TrimSpace(scope.Search)
 	filterSearch := search != ""
+	paymentMethod := strings.TrimSpace(scope.PaymentMethod)
+	filterPayment := paymentMethod != ""
 
 	listArg := db.CommerceAdminListOrdersParams{
-		Column1: filterStatus,
-		Column2: strings.TrimSpace(scope.Status),
-		Column3: filterMachine,
-		Column4: mid,
-		Column5: st,
-		Column6: en,
-		Column7: filterSearch,
-		Column8: search,
-		Limit:   scope.Limit,
-		Offset:  scope.Offset,
+		Column1:  filterStatus,
+		Column2:  strings.TrimSpace(scope.Status),
+		Column3:  filterMachine,
+		Column4:  mid,
+		Column5:  st,
+		Column6:  en,
+		Column7:  filterSearch,
+		Column8:  search,
+		Column9:  filterPayment,
+		Column10: paymentMethod,
+		Limit:    scope.Limit,
+		Offset:   scope.Offset,
 	}
 	countArg := db.CommerceAdminCountOrdersParams{
-		Column1: filterStatus,
-		Column2: strings.TrimSpace(scope.Status),
-		Column3: filterMachine,
-		Column4: mid,
-		Column5: st,
-		Column6: en,
-		Column7: filterSearch,
-		Column8: search,
+		Column1:  filterStatus,
+		Column2:  strings.TrimSpace(scope.Status),
+		Column3:  filterMachine,
+		Column4:  mid,
+		Column5:  st,
+		Column6:  en,
+		Column7:  filterSearch,
+		Column8:  search,
+		Column9:  filterPayment,
+		Column10: paymentMethod,
 	}
 	rows, err := s.q.CommerceAdminListOrders(ctx, listArg)
 	if err != nil {

@@ -37,15 +37,32 @@ WHERE
             o.idempotency_key IS NOT NULL
             AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
         )
+        OR m.code ILIKE ('%' || $8::text || '%')
+    )
+    AND (
+        $9::boolean IS FALSE
+        OR COALESCE(
+            wp.provider,
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            ''
+        ) = $10::text
     )
 ORDER BY
     o.created_at DESC
-LIMIT $9 OFFSET $10;
+LIMIT $11 OFFSET $12;
 
 -- name: CommerceAdminCountOrders :one
 SELECT
     count(*)::bigint AS cnt
 FROM orders o
+INNER JOIN machines m ON m.id = o.machine_id
+LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
     AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
@@ -58,6 +75,21 @@ WHERE
             o.idempotency_key IS NOT NULL
             AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
         )
+        OR m.code ILIKE ('%' || $8::text || '%')
+    )
+    AND (
+        $9::boolean IS FALSE
+        OR COALESCE(
+            wp.provider,
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            ''
+        ) = $10::text
     );
 
 -- name: CommerceAdminListPayments :many

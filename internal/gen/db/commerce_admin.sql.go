@@ -17,6 +17,8 @@ const CommerceAdminCountOrders = `-- name: CommerceAdminCountOrders :one
 SELECT
     count(*)::bigint AS cnt
 FROM orders o
+INNER JOIN machines m ON m.id = o.machine_id
+LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
     AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
@@ -29,18 +31,35 @@ WHERE
             o.idempotency_key IS NOT NULL
             AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
         )
+        OR m.code ILIKE ('%' || $8::text || '%')
+    )
+    AND (
+        $9::boolean IS FALSE
+        OR COALESCE(
+            wp.provider,
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            ''
+        ) = $10::text
     )
 `
 
 type CommerceAdminCountOrdersParams struct {
-	Column1 bool
-	Column2 string
-	Column3 bool
-	Column4 uuid.UUID
-	Column5 time.Time
-	Column6 time.Time
-	Column7 bool
-	Column8 string
+	Column1  bool
+	Column2  string
+	Column3  bool
+	Column4  uuid.UUID
+	Column5  time.Time
+	Column6  time.Time
+	Column7  bool
+	Column8  string
+	Column9  bool
+	Column10 string
 }
 
 func (q *Queries) CommerceAdminCountOrders(ctx context.Context, arg CommerceAdminCountOrdersParams) (int64, error) {
@@ -53,6 +72,8 @@ func (q *Queries) CommerceAdminCountOrders(ctx context.Context, arg CommerceAdmi
 		arg.Column6,
 		arg.Column7,
 		arg.Column8,
+		arg.Column9,
+		arg.Column10,
 	)
 	var cnt int64
 	err := row.Scan(&cnt)
@@ -422,23 +443,40 @@ WHERE
             o.idempotency_key IS NOT NULL
             AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
         )
+        OR m.code ILIKE ('%' || $8::text || '%')
+    )
+    AND (
+        $9::boolean IS FALSE
+        OR COALESCE(
+            wp.provider,
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            ''
+        ) = $10::text
     )
 ORDER BY
     o.created_at DESC
-LIMIT $9 OFFSET $10
+LIMIT $11 OFFSET $12
 `
 
 type CommerceAdminListOrdersParams struct {
-	Column1 bool
-	Column2 string
-	Column3 bool
-	Column4 uuid.UUID
-	Column5 time.Time
-	Column6 time.Time
-	Column7 bool
-	Column8 string
-	Limit   int32
-	Offset  int32
+	Column1  bool
+	Column2  string
+	Column3  bool
+	Column4  uuid.UUID
+	Column5  time.Time
+	Column6  time.Time
+	Column7  bool
+	Column8  string
+	Column9  bool
+	Column10 string
+	Limit    int32
+	Offset   int32
 }
 
 type CommerceAdminListOrdersRow struct {
@@ -466,6 +504,8 @@ func (q *Queries) CommerceAdminListOrders(ctx context.Context, arg CommerceAdmin
 		arg.Column6,
 		arg.Column7,
 		arg.Column8,
+		arg.Column9,
+		arg.Column10,
 		arg.Limit,
 		arg.Offset,
 	)
