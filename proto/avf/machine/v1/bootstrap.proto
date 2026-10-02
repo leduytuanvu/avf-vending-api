@@ -282,6 +282,7 @@ enum LayoutSnapshotReason {
   LAYOUT_SNAPSHOT_REASON_ACTIVATION = 4;
   LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT = 5;
   LAYOUT_SNAPSHOT_REASON_PERIODIC_5M = 6;
+  LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT = 7;
 }
 
 message LayoutSnapshotMergePair {
@@ -301,6 +302,10 @@ message LayoutSnapshotSlot {
   int32 current_inventory = 9;
   bool enabled = 10;
   string operational_state = 11;
+  string product_name = 12;
+  string product_sku = 13;
+  string image_url = 14;
+  string currency = 15;
 }
 
 message MachineLayoutSummary {

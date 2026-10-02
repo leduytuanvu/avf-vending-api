@@ -22,9 +22,11 @@ const (
 	SnapshotReasonManualSync   = "MANUAL_SYNC"
 	SnapshotReasonReconnect    = "RECONNECT"
 	SnapshotReasonActivation   = "ACTIVATION"
-	SnapshotReasonLegacyReport = "LEGACY_REPORT"
+	SnapshotReasonLegacyReport     = "LEGACY_REPORT"
+	SnapshotReasonTechnicianCommit = "TECHNICIAN_COMMIT"
 
 	DefaultSnapshotPayloadVersion = 1
+	SnapshotPayloadVersionV2      = 2
 )
 
 var (
@@ -290,7 +292,7 @@ func validateReportLayoutSnapshotInput(auth MachineAuthContext, in ReportLayoutS
 func normalizeSnapshotReason(reason string) string {
 	r := strings.TrimSpace(strings.ToUpper(reason))
 	switch r {
-	case SnapshotReasonPeriodic30M, SnapshotReasonPeriodic5M, SnapshotReasonManualSync, SnapshotReasonReconnect, SnapshotReasonActivation, SnapshotReasonLegacyReport:
+	case SnapshotReasonPeriodic30M, SnapshotReasonPeriodic5M, SnapshotReasonManualSync, SnapshotReasonReconnect, SnapshotReasonActivation, SnapshotReasonLegacyReport, SnapshotReasonTechnicianCommit:
 		return r
 	default:
 		return SnapshotReasonLegacyReport
@@ -340,6 +342,10 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 		CurrentInventory     int32  `json:"currentInventory,omitempty"`
 		Enabled              *bool  `json:"enabled,omitempty"`
 		OperationalState     string `json:"operationalState,omitempty"`
+		ProductName          string `json:"productName,omitempty"`
+		ProductSku           string `json:"productSku,omitempty"`
+		ImageURL             string `json:"imageUrl,omitempty"`
+		Currency             string `json:"currency,omitempty"`
 	}
 	out := make([]slotJSON, 0, len(slots))
 	for _, sl := range slots {

@@ -51,6 +51,7 @@ func TestNormalizeSnapshotReason_defaultsLegacy(t *testing.T) {
 	require.Equal(t, SnapshotReasonLegacyReport, normalizeSnapshotReason(""))
 	require.Equal(t, SnapshotReasonPeriodic30M, normalizeSnapshotReason("PERIODIC_30M"))
 	require.Equal(t, SnapshotReasonPeriodic5M, normalizeSnapshotReason("PERIODIC_5M"))
+	require.Equal(t, SnapshotReasonTechnicianCommit, normalizeSnapshotReason("TECHNICIAN_COMMIT"))
 }
 
 func TestSnapshotHistoryPage_JSONTags(t *testing.T) {

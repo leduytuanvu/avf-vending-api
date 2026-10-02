@@ -768,6 +768,8 @@ func mapSnapshotReasonProto(reason machinev1.LayoutSnapshotReason) string {
 		return layoutassignment.SnapshotReasonReconnect
 	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_ACTIVATION:
 		return layoutassignment.SnapshotReasonActivation
+	case machinev1.LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT:
+		return layoutassignment.SnapshotReasonTechnicianCommit
 	default:
 		return layoutassignment.SnapshotReasonLegacyReport
 	}
@@ -789,6 +791,10 @@ func marshalLayoutSnapshotSlots(slots []*machinev1.LayoutSnapshotSlot) ([]byte, 
 		CurrentInventory     int32  `json:"currentInventory,omitempty"`
 		Enabled              bool   `json:"enabled,omitempty"`
 		OperationalState     string `json:"operationalState,omitempty"`
+		ProductName          string `json:"productName,omitempty"`
+		ProductSku           string `json:"productSku,omitempty"`
+		ImageURL             string `json:"imageUrl,omitempty"`
+		Currency             string `json:"currency,omitempty"`
 	}
 	out := make([]slotJSON, 0, len(slots))
 	for _, sl := range slots {
@@ -807,6 +813,10 @@ func marshalLayoutSnapshotSlots(slots []*machinev1.LayoutSnapshotSlot) ([]byte, 
 			CurrentInventory:     sl.GetCurrentInventory(),
 			Enabled:              sl.GetEnabled(),
 			OperationalState:     strings.TrimSpace(sl.GetOperationalState()),
+			ProductName:          strings.TrimSpace(sl.GetProductName()),
+			ProductSku:           strings.TrimSpace(sl.GetProductSku()),
+			ImageURL:             strings.TrimSpace(sl.GetImageUrl()),
+			Currency:             strings.TrimSpace(sl.GetCurrency()),
 		})
 	}
 	return json.Marshal(out)

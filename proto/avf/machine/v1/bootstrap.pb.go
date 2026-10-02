@@ -75,13 +75,14 @@ func (LayoutSource) EnumDescriptor() ([]byte, []int) {
 type LayoutSnapshotReason int32
 
 const (
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_UNSPECIFIED   LayoutSnapshotReason = 0
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_30M  LayoutSnapshotReason = 1
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC   LayoutSnapshotReason = 2
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_RECONNECT     LayoutSnapshotReason = 3
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_ACTIVATION    LayoutSnapshotReason = 4
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT LayoutSnapshotReason = 5
-	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_5M   LayoutSnapshotReason = 6
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_UNSPECIFIED       LayoutSnapshotReason = 0
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_30M      LayoutSnapshotReason = 1
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC       LayoutSnapshotReason = 2
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_RECONNECT         LayoutSnapshotReason = 3
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_ACTIVATION        LayoutSnapshotReason = 4
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT     LayoutSnapshotReason = 5
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_PERIODIC_5M       LayoutSnapshotReason = 6
+	LayoutSnapshotReason_LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT LayoutSnapshotReason = 7
 )
 
 // Enum value maps for LayoutSnapshotReason.
@@ -94,15 +95,17 @@ var (
 		4: "LAYOUT_SNAPSHOT_REASON_ACTIVATION",
 		5: "LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT",
 		6: "LAYOUT_SNAPSHOT_REASON_PERIODIC_5M",
+		7: "LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT",
 	}
 	LayoutSnapshotReason_value = map[string]int32{
-		"LAYOUT_SNAPSHOT_REASON_UNSPECIFIED":   0,
-		"LAYOUT_SNAPSHOT_REASON_PERIODIC_30M":  1,
-		"LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC":   2,
-		"LAYOUT_SNAPSHOT_REASON_RECONNECT":     3,
-		"LAYOUT_SNAPSHOT_REASON_ACTIVATION":    4,
-		"LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT": 5,
-		"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M":   6,
+		"LAYOUT_SNAPSHOT_REASON_UNSPECIFIED":       0,
+		"LAYOUT_SNAPSHOT_REASON_PERIODIC_30M":      1,
+		"LAYOUT_SNAPSHOT_REASON_MANUAL_SYNC":       2,
+		"LAYOUT_SNAPSHOT_REASON_RECONNECT":         3,
+		"LAYOUT_SNAPSHOT_REASON_ACTIVATION":        4,
+		"LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT":     5,
+		"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M":       6,
+		"LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT": 7,
 	}
 )
 
@@ -2357,6 +2360,10 @@ type LayoutSnapshotSlot struct {
 	CurrentInventory     int32                  `protobuf:"varint,9,opt,name=current_inventory,json=currentInventory,proto3" json:"current_inventory,omitempty"`
 	Enabled              bool                   `protobuf:"varint,10,opt,name=enabled,proto3" json:"enabled,omitempty"`
 	OperationalState     string                 `protobuf:"bytes,11,opt,name=operational_state,json=operationalState,proto3" json:"operational_state,omitempty"`
+	ProductName          string                 `protobuf:"bytes,12,opt,name=product_name,json=productName,proto3" json:"product_name,omitempty"`
+	ProductSku           string                 `protobuf:"bytes,13,opt,name=product_sku,json=productSku,proto3" json:"product_sku,omitempty"`
+	ImageUrl             string                 `protobuf:"bytes,14,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
+	Currency             string                 `protobuf:"bytes,15,opt,name=currency,proto3" json:"currency,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -2464,6 +2471,34 @@ func (x *LayoutSnapshotSlot) GetEnabled() bool {
 func (x *LayoutSnapshotSlot) GetOperationalState() string {
 	if x != nil {
 		return x.OperationalState
+	}
+	return ""
+}
+
+func (x *LayoutSnapshotSlot) GetProductName() string {
+	if x != nil {
+		return x.ProductName
+	}
+	return ""
+}
+
+func (x *LayoutSnapshotSlot) GetProductSku() string {
+	if x != nil {
+		return x.ProductSku
+	}
+	return ""
+}
+
+func (x *LayoutSnapshotSlot) GetImageUrl() string {
+	if x != nil {
+		return x.ImageUrl
+	}
+	return ""
+}
+
+func (x *LayoutSnapshotSlot) GetCurrency() string {
+	if x != nil {
+		return x.Currency
 	}
 	return ""
 }
@@ -3410,7 +3445,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x12stored_fingerprint\x18\x05 \x01(\tR\x11storedFingerprint\"g\n" +
 	"\x17LayoutSnapshotMergePair\x12$\n" +
 	"\x0eleft_slot_code\x18\x01 \x01(\tR\fleftSlotCode\x12&\n" +
-	"\x0fright_slot_code\x18\x02 \x01(\tR\rrightSlotCode\"\xb5\x03\n" +
+	"\x0fright_slot_code\x18\x02 \x01(\tR\rrightSlotCode\"\xb2\x04\n" +
 	"\x12LayoutSnapshotSlot\x12\x1b\n" +
 	"\tslot_code\x18\x01 \x01(\tR\bslotCode\x12!\n" +
 	"\fslot_ordinal\x18\x02 \x01(\x05R\vslotOrdinal\x12-\n" +
@@ -3425,7 +3460,12 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x11current_inventory\x18\t \x01(\x05R\x10currentInventory\x12\x18\n" +
 	"\aenabled\x18\n" +
 	" \x01(\bR\aenabled\x12+\n" +
-	"\x11operational_state\x18\v \x01(\tR\x10operationalState\"\xe4\x01\n" +
+	"\x11operational_state\x18\v \x01(\tR\x10operationalState\x12!\n" +
+	"\fproduct_name\x18\f \x01(\tR\vproductName\x12\x1f\n" +
+	"\vproduct_sku\x18\r \x01(\tR\n" +
+	"productSku\x12\x1b\n" +
+	"\timage_url\x18\x0e \x01(\tR\bimageUrl\x12\x1a\n" +
+	"\bcurrency\x18\x0f \x01(\tR\bcurrency\"\xe4\x01\n" +
 	"\x14MachineLayoutSummary\x12\x1b\n" +
 	"\tlayout_id\x18\x01 \x01(\tR\blayoutId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
@@ -3492,7 +3532,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\fLayoutSource\x12\x1d\n" +
 	"\x19LAYOUT_SOURCE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14LAYOUT_SOURCE_SERVER\x10\x01\x12\x17\n" +
-	"\x13LAYOUT_SOURCE_LOCAL\x10\x02*\xae\x02\n" +
+	"\x13LAYOUT_SOURCE_LOCAL\x10\x02*\xdc\x02\n" +
 	"\x14LayoutSnapshotReason\x12&\n" +
 	"\"LAYOUT_SNAPSHOT_REASON_UNSPECIFIED\x10\x00\x12'\n" +
 	"#LAYOUT_SNAPSHOT_REASON_PERIODIC_30M\x10\x01\x12&\n" +
@@ -3500,7 +3540,8 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	" LAYOUT_SNAPSHOT_REASON_RECONNECT\x10\x03\x12%\n" +
 	"!LAYOUT_SNAPSHOT_REASON_ACTIVATION\x10\x04\x12(\n" +
 	"$LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT\x10\x05\x12&\n" +
-	"\"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M\x10\x062\x85\b\n" +
+	"\"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M\x10\x06\x12,\n" +
+	"(LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT\x10\a2\x85\b\n" +
 	"\x17MachineBootstrapService\x12Y\n" +
 	"\fGetBootstrap\x12#.avf.machine.v1.GetBootstrapRequest\x1a$.avf.machine.v1.GetBootstrapResponse\x12x\n" +
 	"\aCheckIn\x125.avf.machine.v1.MachineBootstrapServiceCheckInRequest\x1a6.avf.machine.v1.MachineBootstrapServiceCheckInResponse\x12e\n" +
