@@ -196,6 +196,11 @@ for key in "${SHARED_SYNC_KEYS[@]}"; do
 done
 append_primary_api_redis_env
 
+if [[ -n "${SYNC_REDIS_URL:-}" ]] && ! is_placeholder_value "${SYNC_REDIS_URL}"; then
+	append_line_to_updates REDIS_URL "${SYNC_REDIS_URL}"
+	note "redis sync: applied SYNC_REDIS_URL from workflow"
+fi
+
 if [[ ! -s "${updates_file}" ]]; then
 	fail "no env keys collected from app-node A"
 fi

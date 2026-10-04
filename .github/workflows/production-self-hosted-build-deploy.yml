@@ -378,6 +378,7 @@ jobs:
         shell: bash
         env:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+          SYNC_REDIS_URL: ${{ secrets.PRODUCTION_REDIS_URL }}
         run: |
           set -Eeuo pipefail
           run_root() {
@@ -387,7 +388,7 @@ jobs:
               bash -lc "$*"
             fi
           }
-          run_root "cd '${GITHUB_WORKSPACE}' && PRODUCTION_DEPLOY_ROOT='${PRODUCTION_DEPLOY_ROOT}' APP_NODE_B_HOST='${APP_NODE_B_HOST}' SSH_USER='${SSH_USER}' SSH_OPTS='${SSH_OPTS}' SSH_PORT='${SSH_PORT}' bash scripts/ops/sync_app_node_b_database_env_from_a.sh"
+          run_root "cd '${GITHUB_WORKSPACE}' && PRODUCTION_DEPLOY_ROOT='${PRODUCTION_DEPLOY_ROOT}' APP_NODE_B_HOST='${APP_NODE_B_HOST}' SSH_USER='${SSH_USER}' SSH_OPTS='${SSH_OPTS}' SSH_PORT='${SSH_PORT}' SYNC_REDIS_URL='${SYNC_REDIS_URL}' bash scripts/ops/sync_app_node_b_database_env_from_a.sh"
 
       - name: Roll out app node B
         id: deploy_app_node_b
