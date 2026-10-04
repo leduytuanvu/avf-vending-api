@@ -108,6 +108,10 @@ Sau deploy API (`MACHINE_OFFLINE_INSERT_ERROR` + migration `00038`): grep prod l
 
 `OUTBOX_SEQUENCE_GAP_WAIT expected=37 gotHead=3..22` — stale queue local (không phải hole). Verify: `OFFLINE_SALE_REPLAY_ACCEPTED` sau APK có stale reconcile; unblock tạm: xóa pending `sequence_no <= 36` + `outbox_stream_state.nextSequence >= 37`.
 
+### Sự cố ~20:01 (đơn `5e06a32b-…`)
+
+`OUTBOX_SEQUENCE_HOLE serverLast=36 minPending=38 expectedNext=37` — phantom gap (seq 37 không còn row local). Ops: `target_last_sequence=37`. APK: `OUTBOX_SEQUENCE_PHANTOM_GAP_CLOSED floor=37` khi gap range trống.
+
 ## 6. Forensics seq thiếu (1–3 và 4–36)
 
 Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:
@@ -125,6 +129,7 @@ adb shell "run-as com.avf.vending.tcn sqlite3 databases/avf_vending.db \
 | Row seq thấp `DELIVERED` nhưng đã xóa khỏi pending | Seq đã push hoặc reconcile xóa; cursor server lùi sau align ops |
 | `OUTBOX_SEQUENCE_GAP_WAIT expected=4 gotHead=37` (15:46) | Thiếu seq 4–36 local; align `target=36` |
 | `expected=37 gotHead=3..22` (19:39) | Stale lag — cursor 36 OK; dọn local / APK realign |
+| `OUTBOX_SEQUENCE_HOLE … minPending=38 expectedNext=37` (20:01) | Phantom gap — align `37` hoặc APK `OUTBOX_SEQUENCE_PHANTOM_GAP_CLOSED` |
 
 **15:45 forensics (log):** `serverLast=3`, `minPending=37` ⇒ không còn pending 4–36; grep `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`, `OUTBOX_SEQUENCE_REWIND_DELIVERED`.
 
