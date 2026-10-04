@@ -227,7 +227,7 @@ text = path.read_text(encoding="utf-8", errors="replace").splitlines()
 filtered: list[str] = []
 for line in text:
     if line.startswith("REDIS_ADDR="):
-        _, addr = line.split("=", 1)[1]
+        _, addr = line.split("=", 1)
         if re.fullmatch(r"redis:\d+", addr):
             continue
     filtered.append(line)
