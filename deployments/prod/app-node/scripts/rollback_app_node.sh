@@ -61,6 +61,8 @@ note "restart rollback app workloads"
 "${COMPOSE[@]}" up -d --remove-orphans --force-recreate "${SERVICES[@]}"
 
 PHASE="resume"
+note "ensure host ports 80/443 are free for caddy (release stale edge listeners)"
+ensure_edge_ports_free_for_caddy
 note "resume app-node traffic by starting caddy (before verify so a failed smoke gate does not leave edge traffic drained)"
 "${COMPOSE[@]}" up -d --no-deps --remove-orphans caddy
 

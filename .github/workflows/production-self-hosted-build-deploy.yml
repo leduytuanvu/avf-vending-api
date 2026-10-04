@@ -304,12 +304,17 @@ jobs:
           sync_tar="$(mktemp)"
           tar -cf "${sync_tar}" -C "${GITHUB_WORKSPACE}" \
             deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
-            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
+            scripts/ops/verify-production-auth-schema.sh scripts/ops/sync_app_node_b_database_env_from_a.sh \
+            scripts/ops/inspect_prod_app_node_api_git_sha.sh
           chmod a+r "${sync_tar}"
           run_root "mkdir -p '${deploy_root}' && tar -xf '${sync_tar}' -C '${deploy_root}' --overwrite && chmod +x \
             '${deploy_root}/scripts/deploy/production-migrate.sh' \
             '${deploy_root}/scripts/verify_database_environment.sh' \
-            '${deploy_root}/scripts/db/verify_database_environment.sh'"
+            '${deploy_root}/scripts/db/verify_database_environment.sh' \
+            '${deploy_root}/scripts/ops/verify-production-auth-schema.sh' \
+            '${deploy_root}/scripts/ops/sync_app_node_b_database_env_from_a.sh' \
+            '${deploy_root}/scripts/ops/inspect_prod_app_node_api_git_sha.sh'"
           rm -f "${sync_tar}"
 
       - name: Roll out app node A locally
@@ -358,12 +363,22 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
           tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
             scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
+            scripts/ops/verify-production-auth-schema.sh scripts/ops/sync_app_node_b_database_env_from_a.sh \
             scripts/ops/inspect_prod_app_node_api_git_sha.sh | \
             ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' --overwrite && chmod +x \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/deploy/production-migrate.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/verify-production-auth-schema.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/sync_app_node_b_database_env_from_a.sh' \
               '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/inspect_prod_app_node_api_git_sha.sh'"
+
+      - name: Align app node B DATABASE_URL with A
+        if: env.APP_NODE_B_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/ops/sync_app_node_b_database_env_from_a.sh
 
       - name: Roll out app node B
         id: deploy_app_node_b
@@ -375,23 +390,27 @@ jobs:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
           APP_IMAGE_REF: ${{ steps.build.outputs.app_ref }}
           GOOSE_IMAGE_REF: ${{ steps.build.outputs.goose_ref }}
+          APP_NODE_HEALTH_WAIT_SECS: "300"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS:-300}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
 
       - name: Verify app node B health
         if: always() && env.APP_NODE_B_HOST != ''
         shell: bash
+        env:
+          APP_NODE_HEALTH_WAIT_SECS: "300"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' bash scripts/healthcheck_app_node.sh"
 
       - name: Inspect API git SHA after rollout
         if: always()

@@ -1,0 +1,140 @@
+name: Production repair app node B
+
+# Align B Postgres pool env with A, sync deploy assets, and re-run release_app_node.sh (no migrate, no image build).
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_repair:
+        description: "Must be exactly REPAIR_APP_NODE_B"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-app-node-b
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair and roll out app node B
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || '' }}
+      GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm_repair }}" == "REPAIR_APP_NODE_B" ]] \
+            || { echo "error: confirm_repair must be REPAIR_APP_NODE_B"; exit 1; }
+          [[ -n "${APP_NODE_B_HOST}" ]] || { echo "error: APP_NODE_B_HOST not configured"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install SSH credentials
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.SSH_KEY || secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -Eeuo pipefail
+          [[ -n "${SSH_PRIVATE_KEY}" ]] || { echo "error: production SSH private key secret is required"; exit 1; }
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          identity_file="${HOME}/.ssh/production_deploy_key"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > "${identity_file}"
+          chmod 600 "${identity_file}"
+          if [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]]; then
+            printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          else
+            touch ~/.ssh/known_hosts
+          fi
+          if ! ssh-keygen -F "${APP_NODE_B_HOST}" -f ~/.ssh/known_hosts >/dev/null \
+            && ! ssh-keygen -F "[${APP_NODE_B_HOST}]:${SSH_PORT}" -f ~/.ssh/known_hosts >/dev/null; then
+            ssh-keyscan -H -p "${SSH_PORT}" -t ed25519,ecdsa,rsa "${APP_NODE_B_HOST}" >> ~/.ssh/known_hosts
+          fi
+          chmod 600 ~/.ssh/known_hosts
+          echo "SSH_IDENTITY_FILE=${identity_file}" >> "$GITHUB_ENV"
+          echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+          echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts" >> "$GITHUB_ENV"
+
+      - name: Sync app-node assets to node B
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
+            scripts/ops/verify-production-auth-schema.sh scripts/ops/sync_app_node_b_database_env_from_a.sh \
+            scripts/ops/inspect_prod_app_node_api_git_sha.sh | \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' --overwrite && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/verify-production-auth-schema.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/sync_app_node_b_database_env_from_a.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/inspect_prod_app_node_api_git_sha.sh'"
+
+      - name: Align app node B DATABASE_URL with A
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/ops/sync_app_node_b_database_env_from_a.sh
+
+      - name: Resolve image refs from app node A
+        id: refs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          env_file="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+          app_ref="$(grep -E '^APP_IMAGE_REF=' "${env_file}" | tail -n1 | cut -d= -f2-)"
+          goose_ref="$(grep -E '^GOOSE_IMAGE_REF=' "${env_file}" | tail -n1 | cut -d= -f2-)"
+          [[ -n "${app_ref}" && -n "${goose_ref}" ]] || { echo "error: APP_IMAGE_REF/GOOSE_IMAGE_REF missing on A"; exit 1; }
+          echo "app_ref=${app_ref}" >> "$GITHUB_OUTPUT"
+          echo "goose_ref=${goose_ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Roll out app node B
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ steps.refs.outputs.app_ref }}
+          GOOSE_IMAGE_REF: ${{ steps.refs.outputs.goose_ref }}
+          APP_NODE_HEALTH_WAIT_SECS: "300"
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+
+      - name: Verify app node B health
+        shell: bash
+        env:
+          APP_NODE_HEALTH_WAIT_SECS: "300"
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' bash scripts/healthcheck_app_node.sh"
+
+      - name: Inspect API git SHA on B
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          export PRODUCTION_DEPLOY_ROOT SSH_OPTS SSH_PORT
+          bash scripts/ops/inspect_prod_app_node_api_git_sha.sh app-node-b-post "${SSH_USER}@${APP_NODE_B_HOST}"

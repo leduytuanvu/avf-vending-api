@@ -329,3 +329,23 @@ ssh_target() {
 		printf '%s' "${host}"
 	fi
 }
+
+# Stop containers still publishing host ports (legacy single-host caddy, etc.) before compose starts caddy.
+stop_containers_publishing_port() {
+	local port="$1"
+	local cid name
+	while read -r cid; do
+		[[ -n "${cid}" ]] || continue
+		name="$(docker inspect --format '{{.Name}}' "${cid}" 2>/dev/null | sed 's#^/##')"
+		note "stop container publishing :${port}: ${name:-${cid}}"
+		docker stop "${cid}" >/dev/null 2>&1 || true
+	done < <(docker ps -q --filter "publish=${port}" 2>/dev/null || true)
+}
+
+ensure_edge_ports_free_for_caddy() {
+	local port
+	for port in 80 443; do
+		stop_containers_publishing_port "${port}"
+	done
+	sleep 1
+}

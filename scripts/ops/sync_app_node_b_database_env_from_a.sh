@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# Copy shared Postgres pool settings from app-node A .env.app-node to app-node B.
+# Fixes B stuck on Supabase session pooler (:5432, pool_size=15) while A uses :6543.
+set -Eeuo pipefail
+
+fail() { echo "sync_app_node_b_database_env: error: $*" >&2; exit 1; }
+note() { echo "sync_app_node_b_database_env: $*"; }
+
+PRODUCTION_DEPLOY_ROOT="${PRODUCTION_DEPLOY_ROOT:-/opt/avf-vending-api}"
+SSH_USER="${SSH_USER:-root}"
+APP_NODE_B_HOST="${APP_NODE_B_HOST:-}"
+SSH_PORT="${SSH_PORT:-22}"
+
+[[ -n "${APP_NODE_B_HOST}" ]] || fail "APP_NODE_B_HOST is not set"
+
+PRIMARY_ENV="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+REMOTE_ENV="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+target="${SSH_USER}@${APP_NODE_B_HOST}"
+read -r -a ssh_opts <<< "${SSH_OPTS:--o BatchMode=yes}"
+
+[[ -f "${PRIMARY_ENV}" ]] || fail "missing primary env file ${PRIMARY_ENV}"
+
+read_env_value() {
+	local key="$1" file="$2"
+	grep -E "^${key}=" "${file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true
+}
+
+url_port() {
+	python3 - "$1" <<'PY'
+import sys
+from urllib.parse import urlparse
+
+u = urlparse(sys.argv[1])
+print(u.port or 0)
+PY
+}
+
+KEYS=(
+	DATABASE_URL
+	BACKUP_DATABASE_URL
+	API_DATABASE_MAX_CONNS
+	WORKER_DATABASE_MAX_CONNS
+	MQTT_INGEST_DATABASE_MAX_CONNS
+	RECONCILER_DATABASE_MAX_CONNS
+)
+
+primary_url="$(read_env_value DATABASE_URL "${PRIMARY_ENV}")"
+[[ -n "${primary_url}" ]] || fail "DATABASE_URL missing on app-node A"
+
+remote_url="$(
+	ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+		"grep -E '^DATABASE_URL=' '${REMOTE_ENV}' 2>/dev/null | tail -n1 | cut -d= -f2-" || true
+)"
+[[ -n "${remote_url}" ]] || fail "DATABASE_URL missing on app-node B (${REMOTE_ENV})"
+
+if [[ "${primary_url}" == "${remote_url}" ]]; then
+	note "DATABASE_URL already matches A; skipping"
+	exit 0
+fi
+
+primary_port="$(url_port "${primary_url}")"
+remote_port="$(url_port "${remote_url}")"
+note "align B DATABASE_URL (remote port ${remote_port}) to A (port ${primary_port})"
+
+updates_file="$(mktemp)"
+trap 'rm -f "${updates_file}"' EXIT
+for key in "${KEYS[@]}"; do
+	val="$(read_env_value "${key}" "${PRIMARY_ENV}")"
+	[[ -n "${val}" ]] || continue
+	printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
+done
+
+remote_patch="$(mktemp)"
+trap 'rm -f "${updates_file}" "${remote_patch}"' EXIT
+scp "${ssh_opts[@]}" -P "${SSH_PORT}" "${updates_file}" "${target}:${remote_patch}" >/dev/null
+
+ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- "${REMOTE_ENV}" "${remote_patch}" <<'REMOTE'
+set -Eeuo pipefail
+env_path="$1"
+patch_path="$2"
+backup="${env_path}.bak.sync-db-$(date -u +%Y%m%dT%H%M%SZ)"
+cp "${env_path}" "${backup}"
+python3 - "${env_path}" "${patch_path}" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+patch_path = pathlib.Path(sys.argv[2])
+updates: dict[str, str] = {}
+for raw in patch_path.read_text(encoding="utf-8", errors="replace").splitlines():
+    raw = raw.rstrip("\n")
+    if not raw or "=" not in raw:
+        continue
+    key, value = raw.split("=", 1)
+    updates[key] = value
+
+lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+seen = set()
+out: list[str] = []
+for line in lines:
+    if not line or line.lstrip().startswith("#") or "=" not in line:
+        out.append(line)
+        continue
+    key = line.split("=", 1)[0]
+    if key in updates:
+        out.append(f"{key}={updates[key]}")
+        seen.add(key)
+    else:
+        out.append(line)
+for key, value in updates.items():
+    if key not in seen:
+        out.append(f"{key}={value}")
+path.write_text("\n".join(out) + "\n", encoding="utf-8")
+PY
+rm -f "${patch_path}"
+REMOTE
+
+note "aligned Postgres pool env on B with A (remote .env.app-node.bak.sync-db-* next to env file)"
