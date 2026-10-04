@@ -100,6 +100,8 @@ Mất mạng ~15:45:40 (`UnknownHostException: api.ldtv.dev`). Đơn đã enqueu
 
 Sau deploy API (`MACHINE_OFFLINE_INSERT_ERROR` + migration `00038`): grep prod logs ~16:15:56 +07; reconnect; `OFFLINE_SALE_REPLAY_ACCEPTED` + admin order `54a327c2-…`.
 
+**Prod check 2026-10-04 ~16:43 +07:** cursor **36**, không row seq **37**, chưa có order `54a327c2` — **Case A** (chờ máy retry; không bump cursor). `bash scripts/ops/grep_avf000195_offline_api_logs.sh` trên app-node hoặc bước grep trong workflow verify.
+
 ## 6. Forensics seq thiếu (1–3 và 4–36)
 
 Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:
@@ -128,4 +130,4 @@ adb shell "run-as com.avf.vending.tcn sqlite3 databases/avf_vending.db \
 | `OUTBOX_DRAIN_DEFERRED reason=sequence_hole` | Ưu tiên align cursor theo `OUTBOX_SEQUENCE_HOLE` |
 
 Recovery PROCESSING: runbook riêng (release claim / reconcile); không reset `sequence_no` allocator; không auto-skip seq thiếu trên client.
-
+

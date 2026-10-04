@@ -12,10 +12,15 @@ on:
         default: "36"
         type: string
       require_orders:
-        description: "Fail job if both test order IDs are not in orders table"
+        description: "Fail job if primary order is not in orders table"
         required: false
         default: true
         type: boolean
+      primary_order:
+        description: "Order UUID to assert in orders table when require_orders=true"
+        required: false
+        default: "54a327c2-3ecd-4014-b90c-121fed479cd6"
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +38,7 @@ jobs:
     env:
       MIN_CURSOR: ${{ inputs.min_cursor }}
       REQUIRE_ORDERS: ${{ inputs.require_orders && '1' || '0' }}
+      PRIMARY_ORDER: ${{ inputs.primary_order }}
       API_BASE: https://api.ldtv.dev
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
@@ -91,12 +97,30 @@ jobs:
           set -Eeuo pipefail
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export MIN_CURSOR='${MIN_CURSOR}' REQUIRE_ORDERS='${REQUIRE_ORDERS}' && \
+              "cd '${GITHUB_WORKSPACE}' && export MIN_CURSOR='${MIN_CURSOR}' REQUIRE_ORDERS='${REQUIRE_ORDERS}' PRIMARY_ORDER='${PRIMARY_ORDER}' && \
               bash scripts/ops/verify_avf000195_offline_replay.sh" \
               | tee verify-replay.log
           else
-            MIN_CURSOR="${MIN_CURSOR}" REQUIRE_ORDERS="${REQUIRE_ORDERS}" \
+            MIN_CURSOR="${MIN_CURSOR}" REQUIRE_ORDERS="${REQUIRE_ORDERS}" PRIMARY_ORDER="${PRIMARY_ORDER}" \
               bash scripts/ops/verify_avf000195_offline_replay.sh | tee verify-replay.log
+          fi
+
+      - name: Grep API logs (offline push / insert)
+        continue-on-error: true
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_grep() {
+            bash scripts/ops/grep_avf000195_offline_api_logs.sh
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && bash scripts/ops/grep_avf000195_offline_api_logs.sh" \
+              | tee -a verify-replay.log
+          else
+            run_grep | tee -a verify-replay.log
           fi
 
       - name: Admin API spot-check orders
@@ -113,7 +137,7 @@ jobs:
             echo "warn: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})"
             exit 0
           }
-          for oid in ffc489f5-0bcd-45f3-971a-ce709f7c2056 0a6984ee-7139-4d18-b943-9a843da0e6d3; do
+          for oid in "${PRIMARY_ORDER}" ffc489f5-0bcd-45f3-971a-ce709f7c2056 0a6984ee-7139-4d18-b943-9a843da0e6d3 caea5197-7295-47f6-b9d8-7d1af2fc1207; do
             body="$(mktemp)"
             code="$(curl -sS -o "${body}" -w '%{http_code}' \
               -H "Authorization: Bearer ${token}" \

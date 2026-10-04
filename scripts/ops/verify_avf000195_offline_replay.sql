@@ -51,4 +51,16 @@ WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
   )
 ORDER BY offline_sequence;
 
-\echo '=== API log hint (not SQL): grep prod logs 2026-10-04 16:15:56–16:16:15 +07 for PushOfflineEvents / InsertMachineOfflineEvent / COMMERCE_PERSISTENCE_ERROR / machine_offline insert; look for pg Code, ConstraintName ==='
+\echo '=== AVF000195 machine row (connectivity hint) ==='
+SELECT id, code, status, last_seen_at, updated_at
+FROM machines
+WHERE id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid;
+
+\echo '=== recent orders for AVF000195 (last 10) ==='
+SELECT id, status, total_minor, created_at
+FROM orders
+WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
+ORDER BY created_at DESC
+LIMIT 10;
+
+\echo '=== API log hint: scripts/ops/grep_avf000195_offline_api_logs.sh on app-node ==='
