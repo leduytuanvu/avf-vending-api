@@ -165,13 +165,14 @@ jobs:
           APP_IMAGE_REF: ${{ steps.refs.outputs.app_ref }}
           GOOSE_IMAGE_REF: ${{ steps.refs.outputs.goose_ref }}
           APP_NODE_HEALTH_WAIT_SECS: "300"
+          APP_NODE_API_READY_WAIT_SECS: "360"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' APP_NODE_API_READY_WAIT_SECS='${APP_NODE_API_READY_WAIT_SECS}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
 
       - name: Verify app node B health
         shell: bash

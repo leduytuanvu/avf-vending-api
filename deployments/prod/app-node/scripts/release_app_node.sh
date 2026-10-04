@@ -77,6 +77,20 @@ PHASE="restart"
 note "restart app workloads with new image"
 "${COMPOSE[@]}" up -d --remove-orphans --force-recreate "${SERVICES[@]}"
 
+PHASE="wait-api"
+api_ready_wait="${APP_NODE_API_READY_WAIT_SECS:-240}"
+api_ready_poll="${APP_NODE_API_READY_POLL_SECS:-5}"
+note "poll api /health/ready (up to ${api_ready_wait}s) before verify"
+api_ready_deadline=$(( $(date +%s) + api_ready_wait ))
+until "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/ready | grep -qx ok' >/dev/null 2>&1; do
+	if [[ "$(date +%s)" -ge "${api_ready_deadline}" ]]; then
+		echo "error: api /health/ready did not succeed within ${api_ready_wait}s" >&2
+		exit 42
+	fi
+	sleep "${api_ready_poll}"
+done
+note "api /health/ready OK"
+
 PHASE="resume"
 note "ensure host ports 80/443 are free for caddy (release stale edge listeners)"
 ensure_edge_ports_free_for_caddy
