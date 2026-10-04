@@ -3,8 +3,8 @@
 set -Eeuo pipefail
 
 MACHINE_ID="${MACHINE_ID:-01a0a7e5-3c68-7895-b526-bcb6504bccfb}"
-ORDER_ID="${ORDER_ID:-54a327c2-3ecd-4014-b90c-121fed479cd6}"
-SINCE="${SINCE:-6h}"
+ORDER_ID="${ORDER_ID:-54a327c2-3ecd-4014-b90c-121fed479cd6|86c726f8-7313-46eb-8e90-d7244b52b605|42f63de0-2bc1-46c5-8797-a00111f5538b}"
+SINCE="${SINCE:-12h}"
 TAIL_LINES="${TAIL_LINES:-200}"
 
 find_api_container() {

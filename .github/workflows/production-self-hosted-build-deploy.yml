@@ -1,7 +1,7 @@
 name: Production Self-Hosted Build Deploy
 
 # Emergency path when GitHub-hosted ubuntu runners are unavailable.
-# Builds digest-pinned images on app-node A, runs migration 00035+, rolls out locally.
+# Builds digest-pinned images on app-node A, runs migration 00035+, rolls out app-node A then B (when configured).
 
 on:
   workflow_dispatch:
@@ -29,12 +29,13 @@ concurrency:
 
 jobs:
   build-deploy:
-    name: Build images and roll out on app-node A
+    name: Build images and roll out app nodes
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
     environment: production
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || '' }}
       RUN_MIGRATION: ${{ inputs.run_migration && '1' || '0' }}
     steps:
       - name: Validate confirmation
@@ -115,6 +116,41 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
           echo "SSH_IDENTITY_FILE=${identity_file}" >> "$GITHUB_ENV"
           echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+          echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${identity_file} -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts" >> "$GITHUB_ENV"
+
+      - name: Pin SSH host key for app node B
+        if: env.APP_NODE_B_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          if ! ssh-keygen -F "${APP_NODE_B_HOST}" -f "${HOME}/.ssh/known_hosts" >/dev/null \
+            && ! ssh-keygen -F "[${APP_NODE_B_HOST}]:${SSH_PORT}" -f "${HOME}/.ssh/known_hosts" >/dev/null; then
+            ssh-keyscan -H -p "${SSH_PORT}" -t ed25519,ecdsa,rsa "${APP_NODE_B_HOST}" >> ~/.ssh/known_hosts
+          fi
+
+      - name: Inspect API git SHA before rollout
+        continue-on-error: true
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
+          inspect="${GITHUB_WORKSPACE}/scripts/ops/inspect_prod_app_node_api_git_sha.sh"
+          chmod +x "${inspect}"
+          run_root "PRODUCTION_DEPLOY_ROOT='${PRODUCTION_DEPLOY_ROOT}' bash -s app-node-a-local" < "${inspect}" || true
+          if [[ -n "${APP_NODE_B_HOST}" ]]; then
+            export SSH_OPTS="${SSH_OPTS}"
+            export SSH_PORT="${SSH_PORT}"
+            export PRODUCTION_DEPLOY_ROOT="${PRODUCTION_DEPLOY_ROOT}"
+            bash "${inspect}" app-node-b-remote "${SSH_USER}@${APP_NODE_B_HOST}" || true
+          fi
 
       - name: Ensure loopback SSH access
         shell: bash
@@ -311,6 +347,74 @@ jobs:
           }
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
           run_root "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+
+      - name: Sync app-node assets to node B
+        if: env.APP_NODE_B_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "mkdir -p '${PRODUCTION_DEPLOY_ROOT}'"
+          tar -cf - deployments/prod/app-node deployments/prod/shared deployments/prod/README.md migrations \
+            scripts/deploy/production-migrate.sh scripts/verify_database_environment.sh scripts/db/verify_database_environment.sh \
+            scripts/ops/inspect_prod_app_node_api_git_sha.sh | \
+            ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' --overwrite && chmod +x \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/deploy/production-migrate.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/verify_database_environment.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/db/verify_database_environment.sh' \
+              '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/inspect_prod_app_node_api_git_sha.sh'"
+
+      - name: Roll out app node B
+        if: env.APP_NODE_B_HOST != ''
+        shell: bash
+        env:
+          GHCR_PULL_USERNAME: ${{ secrets.GHCR_PULL_USERNAME }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          APP_IMAGE_REF: ${{ steps.build.outputs.app_ref }}
+          GOOSE_IMAGE_REF: ${{ steps.build.outputs.goose_ref }}
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+
+      - name: Verify app node B health
+        if: env.APP_NODE_B_HOST != ''
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
+
+      - name: Inspect API git SHA after rollout
+        continue-on-error: true
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_root() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              ssh -o BatchMode=yes -i "${SSH_IDENTITY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@127.0.0.1" "$@"
+            fi
+          }
+          inspect="${GITHUB_WORKSPACE}/scripts/ops/inspect_prod_app_node_api_git_sha.sh"
+          expected="${{ steps.build.outputs.git_sha }}"
+          run_root "PRODUCTION_DEPLOY_ROOT='${PRODUCTION_DEPLOY_ROOT}' bash -s app-node-a-post" < "${inspect}" || true
+          if [[ -n "${APP_NODE_B_HOST}" ]]; then
+            export SSH_OPTS="${SSH_OPTS}"
+            export SSH_PORT="${SSH_PORT}"
+            export PRODUCTION_DEPLOY_ROOT="${PRODUCTION_DEPLOY_ROOT}"
+            bash "${inspect}" app-node-b-post "${SSH_USER}@${APP_NODE_B_HOST}" || true
+          fi
+          echo "expected_git_sha=${expected}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Public smoke check
         shell: bash

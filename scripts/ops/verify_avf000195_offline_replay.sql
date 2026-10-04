@@ -7,16 +7,35 @@ FROM machine_sync_cursors
 WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
   AND stream_name = 'offline';
 
-\echo '=== orders (test offline cash 2026-10-04 ~15:05 and ~15:45 and ~16:14) ==='
+\echo '=== orders (test offline cash 2026-10-04 ~15:05 and ~15:45 and ~16:14; 2026-10-05 seq 38 incident) ==='
 SELECT id, machine_id, status, total_minor, created_at
 FROM orders
 WHERE id IN (
     'ffc489f5-0bcd-45f3-971a-ce709f7c2056'::uuid,
     '0a6984ee-7139-4d18-b943-9a843da0e6d3'::uuid,
     'caea5197-7295-47f6-b9d8-7d1af2fc1207'::uuid,
-    '54a327c2-3ecd-4014-b90c-121fed479cd6'::uuid
+    '54a327c2-3ecd-4014-b90c-121fed479cd6'::uuid,
+    '86c726f8-7313-46eb-8e90-d7244b52b605'::uuid,
+    '42f63de0-2bc1-46c5-8797-a00111f5538b'::uuid
 )
 ORDER BY created_at;
+
+\echo '=== machine_offline_events seq 38 + orders 86c726f8 / 42f63de0 (2026-10-05 ~00:46 incident) ==='
+SELECT offline_sequence, event_type, client_event_id, idempotency_key,
+       processing_status, left(processing_error, 200) AS processing_error,
+       received_at, payload->>'order_id' AS order_id_payload
+FROM machine_offline_events
+WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
+  AND (
+    offline_sequence = 38
+    OR idempotency_key IN (
+      'offline-sale:86c726f8-7313-46eb-8e90-d7244b52b605',
+      'offline-sale:42f63de0-2bc1-46c5-8797-a00111f5538b'
+    )
+    OR payload::text LIKE '%86c726f8-7313-46eb-8e90-d7244b52b605%'
+    OR payload::text LIKE '%42f63de0-2bc1-46c5-8797-a00111f5538b%'
+  )
+ORDER BY offline_sequence;
 
 \echo '=== machine_offline_events seq 37 + order 54a327c2 (2026-10-04 ~16:14 incident) ==='
 SELECT offline_sequence, event_type, client_event_id, idempotency_key,
