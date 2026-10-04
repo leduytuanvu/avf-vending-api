@@ -366,6 +366,8 @@ jobs:
               '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/inspect_prod_app_node_api_git_sha.sh'"
 
       - name: Roll out app node B
+        id: deploy_app_node_b
+        continue-on-error: true
         if: env.APP_NODE_B_HOST != ''
         shell: bash
         env:
@@ -382,7 +384,7 @@ jobs:
             "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
 
       - name: Verify app node B health
-        if: env.APP_NODE_B_HOST != ''
+        if: always() && env.APP_NODE_B_HOST != ''
         shell: bash
         run: |
           set -Eeuo pipefail
@@ -392,6 +394,7 @@ jobs:
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" "cd '${remote_dir}' && bash scripts/healthcheck_app_node.sh"
 
       - name: Inspect API git SHA after rollout
+        if: always()
         continue-on-error: true
         shell: bash
         env:
@@ -417,6 +420,7 @@ jobs:
           echo "expected_git_sha=${expected}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Public smoke check
+        if: always()
         shell: bash
         env:
           BASE_URL: ${{ vars.PRODUCTION_PUBLIC_BASE_URL || secrets.PRODUCTION_PUBLIC_BASE_URL }}
