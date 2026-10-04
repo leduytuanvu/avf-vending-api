@@ -25,6 +25,24 @@ read_env_value() {
 	grep -E "^${key}=" "${file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true
 }
 
+read_env_from_api_container() {
+	local key="$1"
+	local node_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+	local compose=(docker compose --env-file "${node_dir}/.env.app-node" -f "${node_dir}/docker-compose.app-node.yml")
+	"${compose[@]}" exec -T api sh -c "printenv ${key}" 2>/dev/null | tr -d '\r' | tail -n1 || true
+}
+
+read_primary_env_value() {
+	local key="$1"
+	local val
+	val="$(read_env_value "${key}" "${PRIMARY_ENV}")"
+	if [[ -n "${val}" ]]; then
+		printf '%s' "${val}"
+		return 0
+	fi
+	read_env_from_api_container "${key}"
+}
+
 url_port() {
 	python3 - "$1" <<'PY'
 import sys
@@ -44,8 +62,8 @@ KEYS=(
 	RECONCILER_DATABASE_MAX_CONNS
 )
 
-primary_url="$(read_env_value DATABASE_URL "${PRIMARY_ENV}")"
-[[ -n "${primary_url}" ]] || fail "DATABASE_URL missing on app-node A"
+primary_url="$(read_primary_env_value DATABASE_URL)"
+[[ -n "${primary_url}" ]] || fail "DATABASE_URL missing on app-node A (.env and running api container)"
 
 remote_url="$(
 	ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
@@ -65,7 +83,7 @@ note "align B DATABASE_URL (remote port ${remote_port}) to A (port ${primary_por
 updates_file="$(mktemp)"
 trap 'rm -f "${updates_file}"' EXIT
 for key in "${KEYS[@]}"; do
-	val="$(read_env_value "${key}" "${PRIMARY_ENV}")"
+	val="$(read_primary_env_value "${key}")"
 	[[ -n "${val}" ]] || continue
 	printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
 done
