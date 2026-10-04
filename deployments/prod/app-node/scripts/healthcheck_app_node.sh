@@ -20,6 +20,7 @@ POLL_SECS="${APP_NODE_HEALTH_POLL_SECS:-5}"
 TEMPORAL_ENABLED="${APP_NODE_ENABLE_TEMPORAL_PROFILE:-0}"
 CHECK_CADDY="${APP_NODE_CHECK_CADDY:-1}"
 SKIP_API_CONTAINER_WAIT="${APP_NODE_SKIP_API_CONTAINER_WAIT:-0}"
+SKIP_WORKER_CONTAINER_WAIT="${APP_NODE_SKIP_WORKER_CONTAINER_WAIT:-0}"
 failures=0
 
 pass() {
@@ -58,7 +59,11 @@ if [[ "${SKIP_API_CONTAINER_WAIT}" == "1" ]]; then
 else
 	wait_for_service "$("${COMPOSE[@]}" ps -q api)"
 fi
-wait_for_service "$("${COMPOSE[@]}" ps -q worker)"
+if [[ "${SKIP_WORKER_CONTAINER_WAIT}" == "1" ]]; then
+	note "skip worker docker health wait (release already polled /health/ready)"
+else
+	wait_for_service "$("${COMPOSE[@]}" ps -q worker)"
+fi
 wait_for_service "$("${COMPOSE[@]}" ps -q reconciler)"
 wait_for_service "$("${COMPOSE[@]}" ps -q mqtt-ingest)"
 if [[ "${CHECK_CADDY}" == "1" ]]; then

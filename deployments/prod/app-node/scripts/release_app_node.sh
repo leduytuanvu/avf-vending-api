@@ -91,6 +91,20 @@ until "${COMPOSE[@]}" exec -T api sh -c 'curl -fsS http://127.0.0.1:8080/health/
 done
 note "api /health/ready OK"
 
+PHASE="wait-worker"
+worker_ready_wait="${APP_NODE_WORKER_READY_WAIT_SECS:-180}"
+worker_ready_poll="${APP_NODE_WORKER_READY_POLL_SECS:-5}"
+note "poll worker /health/ready (up to ${worker_ready_wait}s) before verify"
+worker_ready_deadline=$(( $(date +%s) + worker_ready_wait ))
+until "${COMPOSE[@]}" exec -T worker sh -c 'addr="${WORKER_METRICS_LISTEN:-127.0.0.1:9091}"; case "$addr" in :*) addr="127.0.0.1${addr}";; esac; curl -fsS "http://${addr}/health/ready" | grep -qx ok' >/dev/null 2>&1; do
+	if [[ "$(date +%s)" -ge "${worker_ready_deadline}" ]]; then
+		echo "error: worker /health/ready did not succeed within ${worker_ready_wait}s" >&2
+		exit 43
+	fi
+	sleep "${worker_ready_poll}"
+done
+note "worker /health/ready OK"
+
 PHASE="resume"
 note "ensure host ports 80/443 are free for caddy (release stale edge listeners)"
 ensure_edge_ports_free_for_caddy
@@ -104,7 +118,7 @@ if [[ "${sleep_secs}" =~ ^[0-9]+$ ]] && [[ "${sleep_secs}" -gt 0 ]]; then
 fi
 
 PHASE="verify-app"
-APP_NODE_CHECK_CADDY="0" APP_NODE_SKIP_API_CONTAINER_WAIT="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="0" APP_NODE_SKIP_API_CONTAINER_WAIT="1" APP_NODE_SKIP_WORKER_CONTAINER_WAIT="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="verify-caddy"
 APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
