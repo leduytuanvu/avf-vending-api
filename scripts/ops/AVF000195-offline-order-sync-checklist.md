@@ -75,20 +75,44 @@ Verify sau align: workflow **Production verify AVF000195 offline replay** hoặc
 
 Logcat sau reconnect: không còn hole `serverLast=2` / `minPending=4`; tìm `OFFLINE_SALE_REPLAY_ACCEPTED` cho hai `orderId` trên.
 
-## 6. Forensics seq 1–3 mất
+### Sự cố 2026-10-04 (log ~15:45–15:46)
+
+| Mục | Giá trị |
+|-----|---------|
+| `machineId` | `01a0a7e5-3c68-7895-b526-bcb6504bccfb` (AVF000195) |
+| Đơn offline | `caea5197-7295-47f6-b9d8-7d1af2fc1207` (vend OK A3, 15k cash) |
+| Log | `OUTBOX_SEQUENCE_HOLE serverLast=3 minPending=37 expectedNext=4`, `OUTBOX_SEQUENCE_GAP_WAIT expected=4 gotHead=37`, `OUTBOX_DRAIN_DEFERRED reason=sequence_hole` |
+| Align | `target_last_sequence = 36` (= minPending − 1); GH Actions apply run verified `offline.last_sequence=36` |
+| Verify | `verify_avf000195_offline_replay.sh` — `PRIMARY_ORDER=caea5197-…`, `MIN_CURSOR=36` (order row chờ kiosk drain sau align) |
+
+Mất mạng ~15:45:40 (`UnknownHostException: api.ldtv.dev`). Đơn đã enqueue local; sau `ONLINE_HEALTHY` sync chạy nhưng hole chặn push tới khi align 36.
+
+## 6. Forensics seq thiếu (1–3 và 4–36)
 
 Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:
 
 ```bash
 adb shell "run-as com.avf.vending.tcn sqlite3 databases/avf_vending.db \
-  \"SELECT sequence_no, status, entity_type, entity_id FROM sync_queue WHERE sequence_no BETWEEN 1 AND 6 ORDER BY sequence_no;\""
+  \"SELECT sequence_no, status, entity_type, entity_id FROM sync_queue WHERE sequence_no BETWEEN 1 AND 40 ORDER BY sequence_no;\""
 ```
+
+(Release `com.avf.vending.tcn` thường `Package is not debuggable` — dùng log `OUTBOX_SEQUENCE_HOLE` / technician dump.)
 
 | Kết quả thường gặp | Ý nghĩa |
 |--------------------|---------|
-| Không có row `sequence_no=3` trong PENDING | Hole hợp lệ — align `last_sequence = minPending - 1` |
-| Row seq 3 `DELIVERED` nhưng đã xóa khỏi pending | Seq đã push trước đó hoặc reconcile xóa; cursor server lùi sau align ops |
-| `OUTBOX_SEQUENCE_GAP_WAIT expected=3` trước khi test | Gap tồn tại **trước** session 15:05 — không phải do hai đơn test |
+| Không có row PENDING trong `expectedNext .. minPending-1` | Hole hợp lệ — align `last_sequence = minPending - 1` |
+| Row seq thấp `DELIVERED` nhưng đã xóa khỏi pending | Seq đã push hoặc reconcile xóa; cursor server lùi sau align ops |
+| `OUTBOX_SEQUENCE_GAP_WAIT expected=4 gotHead=37` (15:46) | Thiếu seq 4–36 local; align `target=36` |
 
-Grep log: `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`, `OUTBOX_SEQUENCE_REWIND_DELIVERED`.
+**15:45 forensics (log):** `serverLast=3`, `minPending=37` ⇒ không còn pending 4–36; grep `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`, `OUTBOX_SEQUENCE_REWIND_DELIVERED`.
+
+## 7. Stuck `PROCESSING` (tách khỏi sequence hole)
+
+| Dấu hiệu | Ý nghĩa |
+|----------|---------|
+| `OUTBOX_READY_DECISION ready=false`, `stuckCritical=16+` | Outbox kẹt `PROCESSING` / `semantic_evidence:PROCESSING` |
+| `BILL_VEND_RESTORE_DEFERRED reason=readiness_gate` | Bill restore chờ readiness — không thay hole |
+| `OUTBOX_DRAIN_DEFERRED reason=sequence_hole` | Ưu tiên align cursor theo `OUTBOX_SEQUENCE_HOLE` |
+
+Recovery PROCESSING: runbook riêng (release claim / reconcile); không reset `sequence_no` allocator; không auto-skip seq thiếu trên client.
 
