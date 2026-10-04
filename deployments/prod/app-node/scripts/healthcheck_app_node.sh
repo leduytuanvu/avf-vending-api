@@ -19,6 +19,7 @@ WAIT_SECS="${APP_NODE_HEALTH_WAIT_SECS:-180}"
 POLL_SECS="${APP_NODE_HEALTH_POLL_SECS:-5}"
 TEMPORAL_ENABLED="${APP_NODE_ENABLE_TEMPORAL_PROFILE:-0}"
 CHECK_CADDY="${APP_NODE_CHECK_CADDY:-1}"
+SKIP_API_CONTAINER_WAIT="${APP_NODE_SKIP_API_CONTAINER_WAIT:-0}"
 failures=0
 
 pass() {
@@ -52,7 +53,11 @@ wait_for_service() {
 }
 
 note "app-node container readiness"
-wait_for_service "$("${COMPOSE[@]}" ps -q api)"
+if [[ "${SKIP_API_CONTAINER_WAIT}" == "1" ]]; then
+	note "skip api docker health wait (release already polled /health/ready)"
+else
+	wait_for_service "$("${COMPOSE[@]}" ps -q api)"
+fi
 wait_for_service "$("${COMPOSE[@]}" ps -q worker)"
 wait_for_service "$("${COMPOSE[@]}" ps -q reconciler)"
 wait_for_service "$("${COMPOSE[@]}" ps -q mqtt-ingest)"

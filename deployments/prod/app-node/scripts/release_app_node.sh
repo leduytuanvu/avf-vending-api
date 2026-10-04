@@ -97,8 +97,14 @@ ensure_edge_ports_free_for_caddy
 note "resume app-node traffic by starting caddy (before verify so a failed smoke gate does not leave edge traffic drained)"
 "${COMPOSE[@]}" up -d --no-deps --remove-orphans caddy
 
+sleep_secs="${APP_NODE_POST_CADDY_SETTLE_SECS:-15}"
+if [[ "${sleep_secs}" =~ ^[0-9]+$ ]] && [[ "${sleep_secs}" -gt 0 ]]; then
+	note "post-caddy settle wait (${sleep_secs}s) before verify"
+	sleep "${sleep_secs}"
+fi
+
 PHASE="verify-app"
-APP_NODE_CHECK_CADDY="0" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+APP_NODE_CHECK_CADDY="0" APP_NODE_SKIP_API_CONTAINER_WAIT="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="verify-caddy"
 APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
