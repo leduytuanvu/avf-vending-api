@@ -1,0 +1,55 @@
+# AVF000195 — Kiểm tra đơn offline không lên web
+
+Phiên log mẫu: 2026-10-02 23:40–23:44 (`machineId=01a0a7e5-3c68-7895-b526-bcb6504bccfb`).
+
+## 1. DNS / API trên máy (ADB shell)
+
+```bash
+adb shell ping -c 1 machine-api.ldtv.dev
+adb shell ping -c 1 mqtt.ldtv.dev
+```
+
+Nếu ping fail nhưng WiFi “có mạng”: sửa DNS/router hoặc captive portal trước khi kỳ vọng sync.
+
+## 2. Logcat sau khi online ≥ 2 phút
+
+Tìm (theo thứ tự):
+
+| Tag / chuỗi | Ý nghĩa |
+|-------------|---------|
+| `COMMERCE_CONNECTIVITY_MODE_CHANGED ... ONLINE_HEALTHY` | App coi commerce online |
+| `GRPC_BOOTSTRAP_RES ... OK` | Bootstrap API OK |
+| `SYNC_RUN_STARTED businessOutboxPending=` | SyncEngine chạy, có hàng outbox |
+| `SYNC_ANTI_HERD_BYPASS pendingBusinessOutbox=` | Bỏ trì anti-herd khi có đơn offline chờ sync |
+| `OUTBOX_COMMERCE_PUSH_DEFERRED reason=commerce_grpc_unhealthy` | DNS/API chưa OK — outbox giữ local, không spam circuit breaker |
+| `OUTBOX_SEQUENCE_REWIND_DELIVERED` | Rewind hàng DELIVERED local khi server cursor lùi — refill seq 1…N |
+| `OUTBOX_SEQUENCE_GAP_WAIT` | Replay/drain dừng đúng head-of-line (chờ seq thấp hơn), không spam `expected 1 got 68` |
+| `OUTBOX_SEQUENCE_HOLE` | Server cursor + min pending lệch >1 (seq 1..N đã mất local) — cần ops align cursor (mục 5) |
+| `OUTBOX_RECONCILE_SKIP_CURSOR_LAG` | Reconcile PROCESSED nhưng chưa xóa row vì `seq > serverLast` — chờ push tăng cursor |
+| `OUTBOX_SEQUENCE_MISMATCH` | Server báo lệch seq — client rewind + refresh cursor |
+| `OFFLINE_SALE_REPLAY_ACCEPTED` | Server đã nhận đơn offline |
+| `outbox_push_accepted` | Push outbox thành công |
+| `OUTBOX_DRAIN_DEFERRED reason=sequence_hole` | APK mới: legacy drain bỏ qua khi hole (một dòng/sync run) |
+
+**Cảnh báo:** `OFFLINE_SALE_OUTBOX_ENQUEUED` chỉ là **ghi local**, chưa lên server.
+
+## 5. Sequence hole + cursor align
+
+Workflow: **Production align AVF000195 offline sync cursor** (`production-align-avf000195-offline-sync-cursor.yml`)  
+hoặc script: `scripts/ops/align_avf000195_offline_sync_cursor.sh` (xem `align_avf000195_offline_sync_cursor.sql`).
+
+### Sự cố 2026-10-04
+
+| Mục | Giá trị |
+|-----|---------|
+| `machineId` | `01a0a7e5-3c68-7895-b526-bcb6504bccfb` |
+| Đơn offline | `932704f6-cb43-461d-aef5-62d6cb74aaad` |
+| Log | `OUTBOX_SEQUENCE_HOLE serverLast=0 minPending=4 expectedNext=1` |
+| Align | `last_sequence = 3` (stream `offline`) |
+
+**Không** reset counter allocator local trên máy.
+
+## 6. Forensics seq 1–3 mất
+
+Dump `business_outbox` / `sync_queue` theo `sequence_no`; grep log `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`.
+

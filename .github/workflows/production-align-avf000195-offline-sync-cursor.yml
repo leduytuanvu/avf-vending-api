@@ -1,0 +1,110 @@
+name: Production align AVF000195 offline sync cursor
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (no DB writes)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-align-avf000195-offline-sync-cursor
+  cancel-in-progress: false
+
+jobs:
+  align:
+    name: Align AVF000195 machine_sync_cursors
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Align offline sync cursor
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_align() {
+            local deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/align_avf000195_offline_sync_cursor.sh"
+            local checkout_script="${GITHUB_WORKSPACE}/scripts/ops/align_avf000195_offline_sync_cursor.sh"
+            if [[ -f "${deploy_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${deploy_script}"
+            elif [[ -f "${checkout_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" bash "${checkout_script}"
+            else
+              echo "error: align script not found" >&2
+              exit 1
+            fi
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && \
+              DRY_RUN='${DRY_RUN}' bash scripts/ops/align_avf000195_offline_sync_cursor.sh" \
+              | tee align-avf000195-cursor.log
+          elif docker info >/dev/null 2>&1; then
+            run_align | tee align-avf000195-cursor.log
+          else
+            echo "error: docker unavailable and no root credentials" >&2
+            exit 1
+          fi
+
+      - name: Upload log
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: align-avf000195-offline-sync-cursor-log
+          path: align-avf000195-cursor.log
+          retention-days: 14
