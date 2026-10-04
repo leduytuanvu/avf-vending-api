@@ -372,7 +372,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 			"",
 		),
 		Results:        results,
-		NextSyncCursor: strings.TrimPrefix(strings.TrimSpace(time.Now().UTC().Format(time.RFC3339Nano)), ""),
+		NextSyncCursor: strconv.FormatInt(cursor.LastSequence, 10),
 	}, nil
 }
 

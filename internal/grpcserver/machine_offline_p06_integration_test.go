@@ -149,6 +149,7 @@ func TestP06_OfflineSync_sortedDescendingMetaStillProcessesAscendingSequences(t 
 	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, out.GetResults()[0].GetStatus())
 	require.Equal(t, int64(2), out.GetResults()[1].GetOfflineSequence())
 	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, out.GetResults()[1].GetStatus())
+	require.Equal(t, "2", out.GetNextSyncCursor())
 }
 
 func TestP06_OfflineSync_duplicateOfflineSequenceReplayed(t *testing.T) {
