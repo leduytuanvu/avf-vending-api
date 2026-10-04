@@ -163,6 +163,18 @@ Trên kiosk: WiFi OK → logcat `SYNC_RUN_STARTED` / `OFFLINE_SALE_REPLAY_ACCEPT
 | Ops unblock (forensics) | Dump `sync_queue` seq 38–57; nếu server đã PROCESSED hết → mark processed local. **Chỉ** `UPDATE machine_sync_cursors SET last_sequence=57` khi xác nhận server không thiếu commerce 38–57 |
 | Verify | `PRIMARY_ORDER=a1d6c15d-…`, `MIN_CURSOR=37` — `OFFLINE_SALE_REPLAY_ACCEPTED` / `outbox_push_accepted` sau reconnect |
 
+### Sự cố 2026-10-05 (log ~00:45–00:46, AVF000195)
+
+| Mục | Giá trị |
+|-----|---------|
+| Đơn offline (cash 10k, B4+B6, vend OK local) | `42f63de0-2bc1-46c5-8797-a00111f5538b` |
+| Head outbox kẹt (đơn cũ) | `86c726f8-7313-46eb-8e90-d7244b52b605` @ **seq 38** |
+| Log | `OUTBOX_COMMERCE_PUSH_FAILED` `22P02: invalid input syntax for type json`, `OUTBOX_REPLAY_STALLED_AT_HEAD seq=38`, `OUTBOX_SEQUENCE_GAP_WAIT expected=38 gotHead=39..48` |
+| API fix | `2d20ca0a` jsonb bind + self-hosted deploy **app-node A + B** (`2e0cf901` workflow) |
+| Prod forensics (sau deploy) | `offline.last_sequence=37`; chưa có row seq 38 / orders — **chờ kiosk retry** |
+| Verify | Workflow **Production verify AVF000195 offline replay** — `MIN_CURSOR=37`, `PRIMARY_ORDER=42f63de0-…`, `require_orders=true` sau reconnect |
+| Logcat máy | `OFFLINE_SALE_REPLAY_ACCEPTED` / `outbox_push_accepted` cho `86c726f8` rồi `42f63de0` |
+
 ### Sự cố 2026-10-04 (log ~21:16–21:17, AVF000195)
 
 | Mục | Giá trị |
