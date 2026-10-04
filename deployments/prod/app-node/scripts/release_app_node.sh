@@ -121,7 +121,11 @@ PHASE="verify-app"
 APP_NODE_CHECK_CADDY="0" APP_NODE_SKIP_API_CONTAINER_WAIT="1" APP_NODE_SKIP_WORKER_CONTAINER_WAIT="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
 
 PHASE="verify-caddy"
-APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+if [[ "${APP_NODE_CHECK_CADDY:-1}" == "1" ]]; then
+	APP_NODE_CHECK_CADDY="1" APP_NODE_ENABLE_TEMPORAL_PROFILE="${TEMPORAL_ENABLED}" run_script "${NODE_ROOT}/scripts/healthcheck_app_node.sh"
+else
+	note "skip caddy health gate (APP_NODE_CHECK_CADDY=${APP_NODE_CHECK_CADDY})"
+fi
 
 PHASE="persist"
 snapshot_revision current
