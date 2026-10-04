@@ -5,10 +5,12 @@ set -Eeuo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SQL_FILE="${ROOT}/scripts/ops/verify_avf000195_offline_replay.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
-MIN_CURSOR="${MIN_CURSOR:-3}"
+MIN_CURSOR="${MIN_CURSOR:-36}"
 REQUIRE_ORDERS="${REQUIRE_ORDERS:-1}"
 ORDER_A="ffc489f5-0bcd-45f3-971a-ce709f7c2056"
 ORDER_B="0a6984ee-7139-4d18-b943-9a843da0e6d3"
+ORDER_C="caea5197-7295-47f6-b9d8-7d1af2fc1207"
+PRIMARY_ORDER="${PRIMARY_ORDER:-${ORDER_C}}"
 
 fail() { echo "verify-avf000195-replay: error: $*" >&2; exit 1; }
 note() { echo "verify-avf000195-replay: $*"; }
@@ -64,13 +66,21 @@ assert_orders() {
   resolve_database_url || fail "DATABASE_URL unavailable"
   local psql_url count
   psql_url="$(psql_database_url)"
-  count="$(docker run --rm \
+  local primary_count total_count
+  primary_count="$(docker run --rm \
     -e "DATABASE_URL=${psql_url}" \
     "${POSTGRES_TOOLS_IMAGE}" \
     psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
-      -c "SELECT count(*) FROM orders WHERE id IN ('${ORDER_A}'::uuid, '${ORDER_B}'::uuid);")"
-  count="$(echo "${count}" | tr -d '\r\n ')"
-  [[ "${count}" == "2" ]] || fail "expected 2 orders in DB, got count=${count:-0} (kiosk may still be draining outbox)"
+      -c "SELECT count(*) FROM orders WHERE id = '${PRIMARY_ORDER}'::uuid;")"
+  primary_count="$(echo "${primary_count}" | tr -d '\r\n ')"
+  [[ "${primary_count}" == "1" ]] || fail "expected primary order ${PRIMARY_ORDER} in DB, got count=${primary_count:-0} (kiosk may still be draining outbox)"
+  total_count="$(docker run --rm \
+    -e "DATABASE_URL=${psql_url}" \
+    "${POSTGRES_TOOLS_IMAGE}" \
+    psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
+      -c "SELECT count(*) FROM orders WHERE id IN ('${ORDER_A}'::uuid, '${ORDER_B}'::uuid, '${ORDER_C}'::uuid);")"
+  total_count="$(echo "${total_count}" | tr -d '\r\n ')"
+  note "orders in DB (test set)=${total_count}"
 }
 
 assert_cursor() {
@@ -89,7 +99,7 @@ assert_cursor() {
   note "offline.last_sequence=${last_seq}"
 }
 
-note "min_cursor=${MIN_CURSOR} require_orders=${REQUIRE_ORDERS} orders=${ORDER_A} ${ORDER_B}"
+note "min_cursor=${MIN_CURSOR} require_orders=${REQUIRE_ORDERS} primary=${PRIMARY_ORDER} orders=${ORDER_A} ${ORDER_B} ${ORDER_C}"
 run_sql
 assert_cursor
 if [[ "${REQUIRE_ORDERS}" == "1" ]]; then

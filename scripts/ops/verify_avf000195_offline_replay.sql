@@ -7,12 +7,13 @@ FROM machine_sync_cursors
 WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
   AND stream_name = 'offline';
 
-\echo '=== orders (test offline cash 2026-10-04 ~15:05) ==='
+\echo '=== orders (test offline cash 2026-10-04 ~15:05 and ~15:45) ==='
 SELECT id, machine_id, status, total_minor, created_at
 FROM orders
 WHERE id IN (
     'ffc489f5-0bcd-45f3-971a-ce709f7c2056'::uuid,
-    '0a6984ee-7139-4d18-b943-9a843da0e6d3'::uuid
+    '0a6984ee-7139-4d18-b943-9a843da0e6d3'::uuid,
+    'caea5197-7295-47f6-b9d8-7d1af2fc1207'::uuid
 )
 ORDER BY created_at;
 
@@ -25,5 +26,6 @@ WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid
   AND (
     payload::text LIKE '%ffc489f5-0bcd-45f3-971a-ce709f7c2056%'
     OR payload::text LIKE '%0a6984ee-7139-4d18-b943-9a843da0e6d3%'
+    OR payload::text LIKE '%caea5197-7295-47f6-b9d8-7d1af2fc1207%'
   )
 ORDER BY offline_sequence;

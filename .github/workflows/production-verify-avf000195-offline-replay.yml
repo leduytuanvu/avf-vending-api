@@ -9,7 +9,7 @@ on:
       min_cursor:
         description: "Expect offline last_sequence >= this (after align, usually minPending-1)"
         required: true
-        default: "3"
+        default: "36"
         type: string
       require_orders:
         description: "Fail job if both test order IDs are not in orders table"
