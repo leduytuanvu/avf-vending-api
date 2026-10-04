@@ -168,6 +168,7 @@ services:
       - caddy_config:/config
     networks:
       - edge
+      - internal
     depends_on:
       api:
         condition: service_started

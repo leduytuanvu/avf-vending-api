@@ -8,6 +8,11 @@ on:
         description: "Must be exactly REPAIR_APP_NODE_B"
         required: true
         type: string
+      reset_app_node_b_caddy_tls:
+        description: "Remove Caddy TLS volumes on B (use after broken ACME / DNS recovery)"
+        required: false
+        default: false
+        type: boolean
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -171,6 +176,25 @@ jobs:
             "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml stop caddy api worker reconciler mqtt-ingest 2>/dev/null || true"
           sleep 15
 
+      - name: Reset app node B Caddy TLS volumes
+        if: inputs.reset_app_node_b_caddy_tls
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- "${remote_dir}" <<'REMOTE'
+          set -Eeuo pipefail
+          remote_dir="$1"
+          cd "${remote_dir}"
+          project="$(grep -E '^COMPOSE_PROJECT_NAME=' .env.app-node 2>/dev/null | tail -n1 | cut -d= -f2-)"
+          project="${project:-avf-vending-prod-app-b}"
+          docker compose --env-file .env.app-node -f docker-compose.app-node.yml stop caddy 2>/dev/null || true
+          docker volume rm "${project}_caddy_data" "${project}_caddy_config" 2>/dev/null || true
+          echo "reset Caddy TLS volumes for project ${project} (if they existed)"
+          REMOTE
+
       - name: Roll out app node B
         id: rollout_b
         shell: bash
@@ -180,8 +204,7 @@ jobs:
           APP_NODE_HEALTH_WAIT_SECS: "300"
           APP_NODE_API_READY_WAIT_SECS: "480"
           APP_NODE_WORKER_READY_WAIT_SECS: "300"
-          # B may lack outbound DNS while API/worker are healthy; verify Caddy after VPS networking is fixed.
-          APP_NODE_CHECK_CADDY: "0"
+          APP_NODE_CHECK_CADDY: "1"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
@@ -203,7 +226,7 @@ jobs:
         shell: bash
         env:
           APP_NODE_HEALTH_WAIT_SECS: "300"
-          APP_NODE_CHECK_CADDY: "0"
+          APP_NODE_CHECK_CADDY: "1"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"

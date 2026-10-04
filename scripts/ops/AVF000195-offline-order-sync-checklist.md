@@ -234,3 +234,10 @@ Logcat lịch sử (grep): `OUTBOX_RECONCILE`, `markProcessed`, `OUTBOX_SEQUENCE
 ## 7. Stuck `PROCESSING` (tách khỏi sequence hole)
 
 `OUTBOX_READY_DECISION ready=false` + `stuckCritical` và `BILL_VEND_RESTORE_DEFERRED reason=readiness_gate` **không** thay `OUTBOX_DRAIN_DEFERRED reason=sequence_hole`. Ưu tiên align cursor; recovery PROCESSING là runbook riêng, không auto-skip seq.
+
+## 8. Prod app-node B + verify GitHub Actions
+
+1. **Redis trên B:** chạy workflow `Production bootstrap REDIS_URL secret from app node A` (`confirm=BOOTSTRAP_PRODUCTION_REDIS_URL`), rồi `Production repair app node B` — B nhận `REDIS_URL` qua `SYNC_REDIS_URL`.
+2. **Repair B:** `confirm_repair=REPAIR_APP_NODE_B`; bật `reset_app_node_b_caddy_tls` nếu Caddy ACME/DNS hỏng.
+3. **Verify DB (không cần đơn trên web):** `Production verify AVF000195 offline replay` — `min_cursor=37`, `require_orders=false`.
+4. **Sau kiosk replay:** cùng workflow với `require_orders=true`, `primary_order=42f63de0-2bc1-46c5-8797-a00111f5538b` (hoặc `86c726f8-…`).

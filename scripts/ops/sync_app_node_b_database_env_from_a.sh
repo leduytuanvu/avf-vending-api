@@ -27,12 +27,17 @@ read_env_value() {
 
 read_env_from_running_container() {
 	local key="$1"
-	local container name
+	local container name val
 	while read -r name; do
 		[[ -n "${name}" ]] || continue
 		case "${name}" in
 		*api* | *worker* | *reconciler* | *mqtt-ingest*)
 			container="${name}"
+			val="$(docker exec "${container}" printenv "${key}" 2>/dev/null | tr -d '\r' || true)"
+			if [[ -n "${val}" ]]; then
+				printf '%s' "${val}"
+				return 0
+			fi
 			val="$(docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
 				| grep -E "^${key}=" | tail -n1 | cut -d= -f2- | tr -d '\r' || true)"
 			if [[ -n "${val}" ]]; then
@@ -43,6 +48,37 @@ read_env_from_running_container() {
 		esac
 	done < <(docker ps --format '{{.Names}}' 2>/dev/null || true)
 	return 0
+}
+
+strip_env_quotes() {
+	local v="$1"
+	v="${v%\"}"
+	v="${v#\"}"
+	v="${v%\'}"
+	v="${v#\'}"
+	printf '%s' "${v}"
+}
+
+primary_env_candidate_files() {
+	printf '%s\n' "${PRIMARY_ENV}"
+	local f
+	for f in "${PRIMARY_ENV}".bak* "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/.env.production" \
+		"${PRODUCTION_DEPLOY_ROOT}/.env.production"; do
+		[[ -f "${f}" ]] && printf '%s\n' "${f}"
+	done
+}
+
+append_redis_from_primary_env_files() {
+	local f line key val
+	while IFS= read -r f; do
+		[[ -f "${f}" ]] || continue
+		while IFS= read -r line; do
+			[[ "${line}" =~ ^REDIS_[A-Za-z0-9_]+= ]] || continue
+			key="${line%%=*}"
+			val="$(strip_env_quotes "${line#*=}")"
+			append_line_to_updates "${key}" "${val}"
+		done < <(grep -E '^REDIS_[A-Za-z0-9_]+=' "${f}" 2>/dev/null || true)
+	done < <(primary_env_candidate_files)
 }
 
 read_primary_env_value() {
@@ -197,12 +233,7 @@ for key in "${SHARED_SYNC_KEYS[@]}"; do
 	append_line_to_updates "${key}" "${val}"
 done
 append_primary_api_redis_env
-while IFS= read -r line; do
-	[[ "${line}" =~ ^REDIS_[A-Za-z0-9_]+= ]] || continue
-	key="${line%%=*}"
-	val="${line#*=}"
-	append_line_to_updates "${key}" "${val}"
-done < <(grep -E '^REDIS_[A-Za-z0-9_]+=' "${PRIMARY_ENV}" 2>/dev/null || true)
+append_redis_from_primary_env_files
 
 if [[ -n "${SYNC_REDIS_URL:-}" ]] && ! is_placeholder_value "${SYNC_REDIS_URL}"; then
 	append_line_to_updates REDIS_URL "${SYNC_REDIS_URL}"
@@ -219,6 +250,8 @@ note "redis sync: REDIS_URL=$([[ -n "${redis_url}" ]] && echo set || echo missin
 if [[ -z "${redis_url}" && -z "${redis_addr}" ]]; then
 	note "warning: no managed Redis endpoint collected for B; rollout will disable REDIS_* feature flags on B"
 	echo "DISABLE_REDIS_FEATURES_ON_B=1" >>"${updates_file}"
+else
+	printf 'PRODUCTION_ALLOW_MISSING_REDIS=false\n' >>"${updates_file}"
 fi
 
 remote_patch="$(mktemp)"
