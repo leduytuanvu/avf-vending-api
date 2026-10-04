@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Copy shared Postgres pool settings from app-node A .env.app-node to app-node B.
-# Fixes B stuck on Supabase session pooler (:5432, pool_size=15) while A uses :6543.
+# Copy shared runtime env from app-node A .env.app-node to app-node B (keeps B-local MQTT client ids).
+# Primary fix: B on Supabase session pooler (:5432) while A uses transaction pooler (:6543).
 set -Eeuo pipefail
 
 fail() { echo "sync_app_node_b_database_env: error: $*" >&2; exit 1; }
@@ -60,13 +60,11 @@ print(u.port or 0)
 PY
 }
 
-KEYS=(
-	DATABASE_URL
-	BACKUP_DATABASE_URL
-	API_DATABASE_MAX_CONNS
-	WORKER_DATABASE_MAX_CONNS
-	MQTT_INGEST_DATABASE_MAX_CONNS
-	RECONCILER_DATABASE_MAX_CONNS
+NODE_LOCAL_KEYS=(
+	COMPOSE_PROJECT_NAME
+	APP_NODE_NAME
+	MQTT_CLIENT_ID_API
+	MQTT_CLIENT_ID_INGEST
 )
 
 primary_url="$(read_primary_env_value DATABASE_URL)"
@@ -78,22 +76,47 @@ remote_url="$(
 )"
 [[ -n "${remote_url}" ]] || fail "DATABASE_URL missing on app-node B (${REMOTE_ENV})"
 
-if [[ "${primary_url}" == "${remote_url}" ]]; then
-	note "DATABASE_URL already matches A; skipping"
-	exit 0
-fi
-
 primary_port="$(url_port "${primary_url}")"
 remote_port="$(url_port "${remote_url}")"
-note "align B DATABASE_URL (remote port ${remote_port}) to A (port ${primary_port})"
+if [[ "${primary_url}" == "${remote_url}" ]]; then
+	note "DATABASE_URL already matches A (port ${primary_port})"
+else
+	note "align B DATABASE_URL (remote port ${remote_port}) to A (port ${primary_port})"
+fi
+
+is_node_local_key() {
+	local key="$1"
+	local k
+	for k in "${NODE_LOCAL_KEYS[@]}"; do
+		[[ "${key}" == "${k}" ]] && return 0
+	done
+	return 1
+}
 
 updates_file="$(mktemp)"
 trap 'rm -f "${updates_file}"' EXIT
-for key in "${KEYS[@]}"; do
+while IFS= read -r line; do
+	[[ -n "${line}" ]] || continue
+	[[ "${line}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+	key="${line%%=*}"
+	is_node_local_key "${key}" && continue
 	val="$(read_primary_env_value "${key}")"
 	[[ -n "${val}" ]] || continue
 	printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
-done
+done <"${PRIMARY_ENV}"
+
+if [[ ! -s "${updates_file}" ]]; then
+	# Sealed .env on disk: at minimum sync database + pool caps from the running api container.
+	for key in DATABASE_URL BACKUP_DATABASE_URL API_DATABASE_MAX_CONNS WORKER_DATABASE_MAX_CONNS MQTT_INGEST_DATABASE_MAX_CONNS RECONCILER_DATABASE_MAX_CONNS NATS_URL REDIS_URL MQTT_BROKER_URL; do
+		val="$(read_primary_env_value "${key}")"
+		[[ -n "${val}" ]] || continue
+		printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
+	done
+fi
+
+if [[ ! -s "${updates_file}" ]]; then
+	fail "no env keys collected from app-node A"
+fi
 
 remote_patch="$(mktemp)"
 trap 'rm -f "${updates_file}" "${remote_patch}"' EXIT
