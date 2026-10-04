@@ -30,7 +30,7 @@ jobs:
     env:
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
-      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || env.WEB_VPS_HOST }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || '187.127.99.153' }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
 
     steps:
