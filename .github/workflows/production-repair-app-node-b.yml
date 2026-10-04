@@ -43,6 +43,42 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
       - name: Install SSH credentials
         shell: bash
         env:
@@ -89,18 +125,36 @@ jobs:
 
       - name: Align app node B DATABASE_URL with A
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          bash scripts/ops/sync_app_node_b_database_env_from_a.sh
+          run_priv() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              bash -lc "$*"
+            fi
+          }
+          run_priv "cd '${GITHUB_WORKSPACE}' && PRODUCTION_DEPLOY_ROOT='${PRODUCTION_DEPLOY_ROOT}' APP_NODE_B_HOST='${APP_NODE_B_HOST}' SSH_USER='${SSH_USER}' SSH_OPTS='${SSH_OPTS}' SSH_PORT='${SSH_PORT}' bash scripts/ops/sync_app_node_b_database_env_from_a.sh"
 
       - name: Resolve image refs from app node A
         id: refs
         shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          env_file="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
-          app_ref="$(grep -E '^APP_IMAGE_REF=' "${env_file}" | tail -n1 | cut -d= -f2-)"
-          goose_ref="$(grep -E '^GOOSE_IMAGE_REF=' "${env_file}" | tail -n1 | cut -d= -f2-)"
+          run_priv() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              bash -lc "$*"
+            fi
+          }
+          refs="$(run_priv "env_file='${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node'; app=\$(grep -E '^APP_IMAGE_REF=' \"\${env_file}\" | tail -n1 | cut -d= -f2-); goose=\$(grep -E '^GOOSE_IMAGE_REF=' \"\${env_file}\" | tail -n1 | cut -d= -f2-); printf '%s\n%s' \"\${app}\" \"\${goose}\"")"
+          app_ref="$(printf '%s' "${refs}" | sed -n '1p')"
+          goose_ref="$(printf '%s' "${refs}" | sed -n '2p')"
           [[ -n "${app_ref}" && -n "${goose_ref}" ]] || { echo "error: APP_IMAGE_REF/GOOSE_IMAGE_REF missing on A"; exit 1; }
           echo "app_ref=${app_ref}" >> "$GITHUB_OUTPUT"
           echo "goose_ref=${goose_ref}" >> "$GITHUB_OUTPUT"

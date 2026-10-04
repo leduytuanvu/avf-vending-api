@@ -27,9 +27,16 @@ read_env_value() {
 
 read_env_from_api_container() {
 	local key="$1"
-	local node_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
-	local compose=(docker compose --env-file "${node_dir}/.env.app-node" -f "${node_dir}/docker-compose.app-node.yml")
-	"${compose[@]}" exec -T api sh -c "printenv ${key}" 2>/dev/null | tr -d '\r' | tail -n1 || true
+	local container name
+	while read -r name; do
+		[[ -n "${name}" ]] || continue
+		case "${name}" in
+		*api*) container="${name}"; break ;;
+		esac
+	done < <(docker ps --format '{{.Names}}' 2>/dev/null || true)
+	[[ -n "${container}" ]] || return 0
+	docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+		| grep -E "^${key}=" | tail -n1 | cut -d= -f2- | tr -d '\r' || true
 }
 
 read_primary_env_value() {
