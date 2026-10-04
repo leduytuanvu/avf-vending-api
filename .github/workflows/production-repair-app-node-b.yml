@@ -159,20 +159,42 @@ jobs:
           echo "app_ref=${app_ref}" >> "$GITHUB_OUTPUT"
           echo "goose_ref=${goose_ref}" >> "$GITHUB_OUTPUT"
 
-      - name: Roll out app node B
+      - name: Quiesce app node B workloads before rollout
         shell: bash
-        env:
-          APP_IMAGE_REF: ${{ steps.refs.outputs.app_ref }}
-          GOOSE_IMAGE_REF: ${{ steps.refs.outputs.goose_ref }}
-          APP_NODE_HEALTH_WAIT_SECS: "300"
-          APP_NODE_API_READY_WAIT_SECS: "360"
         run: |
           set -Eeuo pipefail
           target="${SSH_USER}@${APP_NODE_B_HOST}"
           read -r -a ssh_opts <<< "${SSH_OPTS}"
           remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
           ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
-            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' APP_NODE_API_READY_WAIT_SECS='${APP_NODE_API_READY_WAIT_SECS}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+            "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml stop caddy api worker reconciler mqtt-ingest 2>/dev/null || true"
+          sleep 15
+
+      - name: Roll out app node B
+        id: rollout_b
+        shell: bash
+        env:
+          APP_IMAGE_REF: ${{ steps.refs.outputs.app_ref }}
+          GOOSE_IMAGE_REF: ${{ steps.refs.outputs.goose_ref }}
+          APP_NODE_HEALTH_WAIT_SECS: "300"
+          APP_NODE_API_READY_WAIT_SECS: "480"
+          APP_NODE_WORKER_READY_WAIT_SECS: "300"
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && GHCR_PULL_USERNAME='${GHCR_PULL_USERNAME}' GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}' RUN_MIGRATION='0' APP_NODE_ENABLE_TEMPORAL_PROFILE='0' APP_NODE_HEALTH_WAIT_SECS='${APP_NODE_HEALTH_WAIT_SECS}' APP_NODE_API_READY_WAIT_SECS='${APP_NODE_API_READY_WAIT_SECS}' APP_NODE_WORKER_READY_WAIT_SECS='${APP_NODE_WORKER_READY_WAIT_SECS:-300}' bash scripts/release_app_node.sh '${APP_IMAGE_REF}' '${GOOSE_IMAGE_REF}'"
+
+      - name: Collect app node B logs on rollout failure
+        if: failure() && steps.rollout_b.outcome == 'failure'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/ops/collect_app_node_remote_logs.sh "${SSH_USER}@${APP_NODE_B_HOST}" | tee app-node-b-rollout-failure.log
+          echo "## App node B rollout failure (log tail)" >> "$GITHUB_STEP_SUMMARY"
+          tail -n 80 app-node-b-rollout-failure.log >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Verify app node B health
         shell: bash

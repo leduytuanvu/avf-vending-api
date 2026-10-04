@@ -63,6 +63,7 @@ PY
 NODE_LOCAL_KEYS=(
 	COMPOSE_PROJECT_NAME
 	APP_NODE_NAME
+	APP_INSTANCE_ID
 	MQTT_CLIENT_ID_API
 	MQTT_CLIENT_ID_INGEST
 )
@@ -163,4 +164,21 @@ PY
 rm -f "${patch_path}"
 REMOTE
 
-note "aligned Postgres pool env on B with A (remote .env.app-node.bak.sync-db-* next to env file)"
+node_name="$(ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+	"grep -E '^APP_NODE_NAME=' '${REMOTE_ENV}' 2>/dev/null | tail -n1 | cut -d= -f2-" || true)"
+if [[ -n "${node_name}" ]]; then
+	ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" bash -s -- "${REMOTE_ENV}" "${node_name}" <<'FIX'
+set -Eeuo pipefail
+env_path="$1"
+node_name="$2"
+instance_id="${node_name}-api"
+if grep -q '^APP_INSTANCE_ID=' "${env_path}"; then
+	sed -i "s/^APP_INSTANCE_ID=.*/APP_INSTANCE_ID=${instance_id}/" "${env_path}"
+else
+	printf 'APP_INSTANCE_ID=%s\n' "${instance_id}" >>"${env_path}"
+fi
+FIX
+	note "set APP_INSTANCE_ID=${node_name}-api on B"
+fi
+
+note "aligned shared env on B with A (remote .env.app-node.bak.sync-db-* next to env file)"
