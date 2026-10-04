@@ -444,6 +444,13 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		IdempotencyKey:   idem,
 	})
 	if err != nil {
+		logMachineOfflineInsertError(offlineEventPersistenceContext{
+			MachineID:       claims.MachineID,
+			OfflineSequence: seq,
+			ClientEventID:   clientEventID,
+			IdempotencyKey:  idem,
+			EventType:       eventType,
+		}, err)
 		var pe *pgconn.PgError
 		if errors.As(err, &pe) && pe.Code == "23505" && clientEventID != "" {
 			prior, qerr := q.GetMachineOfflineEventByClientEventID(ctx, db.GetMachineOfflineEventByClientEventIDParams{
@@ -467,13 +474,20 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 						Reason:          "offline event replayed",
 					}, false
 				}
+			} else if !errors.Is(qerr, pgx.ErrNoRows) {
+				return &machinev1.OfflineEventResult{
+					OfflineSequence: seq,
+					IdempotencyKey:  idem,
+					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+					Reason:          "offline duplicate lookup failed after conflict",
+				}, false
 			}
 		}
 		return &machinev1.OfflineEventResult{
 			OfflineSequence: seq,
 			IdempotencyKey:  idem,
 			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
-			Reason:          "offline event insert failed",
+			Reason:          offlineEventInsertFailedReason(err),
 		}, false
 	}
 	if !row.Inserted && offlineLedgerTerminalStatus(row.ProcessingStatus) {

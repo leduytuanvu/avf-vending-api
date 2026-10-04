@@ -87,6 +87,19 @@ Logcat sau reconnect: không còn hole `serverLast=2` / `minPending=4`; tìm `OF
 
 Mất mạng ~15:45:40 (`UnknownHostException: api.ldtv.dev`). Đơn đã enqueue local; sau `ONLINE_HEALTHY` sync chạy nhưng hole chặn push tới khi align 36.
 
+### Sự cố 2026-10-04 (log ~16:14–16:16)
+
+| Mục | Giá trị |
+|-----|---------|
+| `machineId` | `01a0a7e5-3c68-7895-b526-bcb6504bccfb` (AVF000195) |
+| Đơn offline | `54a327c2-3ecd-4014-b90c-121fed479cd6` (cash 10k, A1+A2, vend OK local) |
+| Log | `OUTBOX_SEQUENCE_GAP_WAIT expected=37` (align 36 OK — **không** hole 3→37) |
+| Blocker | `OUTBOX_COMMERCE_PUSH_FAILED` `offline event insert failed` @ seq **37** |
+| Forensics | `verify_avf000195_offline_replay.sql` / `.sh` |
+| Repair | `repair_avf000195_seq37_incident.sql` (sau SQL; không bump cursor nếu insert vẫn fail) |
+
+Sau deploy API (`MACHINE_OFFLINE_INSERT_ERROR` + migration `00038`): grep prod logs ~16:15:56 +07; reconnect; `OFFLINE_SALE_REPLAY_ACCEPTED` + admin order `54a327c2-…`.
+
 ## 6. Forensics seq thiếu (1–3 và 4–36)
 
 Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:

@@ -2090,6 +2090,8 @@ CREATE TABLE machine_offline_events (
             'processed',
             'succeeded',
             'failed',
+            'failed_retryable',
+            'failed_terminal',
             'duplicate',
             'replayed',
             'rejected'
@@ -2117,6 +2119,8 @@ WHERE
         'processed',
         'succeeded',
         'failed',
+        'failed_retryable',
+        'failed_terminal',
         'duplicate',
         'replayed',
         'rejected'

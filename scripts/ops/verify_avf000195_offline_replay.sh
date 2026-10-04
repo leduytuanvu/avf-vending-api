@@ -10,6 +10,7 @@ REQUIRE_ORDERS="${REQUIRE_ORDERS:-1}"
 ORDER_A="ffc489f5-0bcd-45f3-971a-ce709f7c2056"
 ORDER_B="0a6984ee-7139-4d18-b943-9a843da0e6d3"
 ORDER_C="caea5197-7295-47f6-b9d8-7d1af2fc1207"
+ORDER_D="54a327c2-3ecd-4014-b90c-121fed479cd6"
 PRIMARY_ORDER="${PRIMARY_ORDER:-${ORDER_C}}"
 
 fail() { echo "verify-avf000195-replay: error: $*" >&2; exit 1; }
@@ -78,7 +79,7 @@ assert_orders() {
     -e "DATABASE_URL=${psql_url}" \
     "${POSTGRES_TOOLS_IMAGE}" \
     psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
-      -c "SELECT count(*) FROM orders WHERE id IN ('${ORDER_A}'::uuid, '${ORDER_B}'::uuid, '${ORDER_C}'::uuid);")"
+      -c "SELECT count(*) FROM orders WHERE id IN ('${ORDER_A}'::uuid, '${ORDER_B}'::uuid, '${ORDER_C}'::uuid, '${ORDER_D}'::uuid);")"
   total_count="$(echo "${total_count}" | tr -d '\r\n ')"
   note "orders in DB (test set)=${total_count}"
 }
@@ -99,7 +100,7 @@ assert_cursor() {
   note "offline.last_sequence=${last_seq}"
 }
 
-note "min_cursor=${MIN_CURSOR} require_orders=${REQUIRE_ORDERS} primary=${PRIMARY_ORDER} orders=${ORDER_A} ${ORDER_B} ${ORDER_C}"
+note "min_cursor=${MIN_CURSOR} require_orders=${REQUIRE_ORDERS} primary=${PRIMARY_ORDER} orders=${ORDER_A} ${ORDER_B} ${ORDER_C} ${ORDER_D}"
 run_sql
 assert_cursor
 if [[ "${REQUIRE_ORDERS}" == "1" ]]; then
