@@ -1,0 +1,108 @@
+name: Production repair admin web (colocated on app node B)
+
+# admin.ldtv.dev shares VPS B (187.127.99.153) with app-node Caddy — restore integrated vhost + web container.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_repair:
+        description: "Must be exactly REPAIR_ADMIN_WEB"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  WEB_VPS_HOST: 187.127.99.153
+  WEB_DEPLOY_ROOT: /opt/avf-vending-web
+  WEB_REPO: leduytuanvu/avf-vending-web
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-repair-admin-web-colocated
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair admin.ldtv.dev on VPS B
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || env.WEB_VPS_HOST }}
+      GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Validate confirmation
+        run: |
+          set -euo pipefail
+          [[ "${{ github.event.inputs.confirm_repair }}" == "REPAIR_ADMIN_WEB" ]] \
+            || { echo "error: confirm_repair must be REPAIR_ADMIN_WEB"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install SSH credentials
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]]; then
+            printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          else
+            touch ~/.ssh/known_hosts
+          fi
+          ssh-keyscan -H -p "${SSH_PORT}" "${APP_NODE_B_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts
+          echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+
+      - name: Sync Caddy + repair script to VPS B
+        run: |
+          set -euo pipefail
+          tar -cf - \
+            deployments/prod/shared/Caddyfile.with-admin \
+            scripts/ops/repair_colocated_admin_web_on_app_node_b.sh \
+            | ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${APP_NODE_B_HOST}" \
+              "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' --overwrite && chmod +x '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/repair_colocated_admin_web_on_app_node_b.sh'"
+
+      - name: Sync web deployment bundle
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/avf-vending-web-src
+          git clone --depth 1 "https://x-access-token:${GHCR_PULL_TOKEN}@github.com/${WEB_REPO}.git" /tmp/avf-vending-web-src
+          tar -C /tmp/avf-vending-web-src/deployments/production -cf - . | \
+            ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${APP_NODE_B_HOST}" \
+              "mkdir -p '${WEB_DEPLOY_ROOT}' && tar -xf - -C '${WEB_DEPLOY_ROOT}'"
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${APP_NODE_B_HOST}" \
+            "chmod +x '${WEB_DEPLOY_ROOT}/deploy-web.sh' '${WEB_DEPLOY_ROOT}/verify-web.sh'"
+
+      - name: Run colocated admin web repair
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${APP_NODE_B_HOST}" bash -s <<REMOTE
+          set -euo pipefail
+          export WEB_DEPLOY_ROOT='${WEB_DEPLOY_ROOT}'
+          export APP_NODE_DIR='${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node'
+          export GHCR_PULL_TOKEN='${GHCR_PULL_TOKEN}'
+          export WEB_REPO='${WEB_REPO}'
+          bash '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/repair_colocated_admin_web_on_app_node_b.sh'
+          REMOTE
+
+      - name: External smoke check
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 12); do
+            if curl -fsS "https://admin.ldtv.dev/api/health" | grep -q '"status":"ok"'; then
+              echo "PASS: https://admin.ldtv.dev/api/health"
+              exit 0
+            fi
+            sleep 5
+          done
+          curl -v "https://admin.ldtv.dev/api/health" || true
+          exit 1

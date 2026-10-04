@@ -163,7 +163,7 @@ services:
       UPSTREAM_API: ${UPSTREAM_API:-api:8080}
       UPSTREAM_GRPC: ${UPSTREAM_GRPC:-h2c://api:9090}
     volumes:
-      - ../shared/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDYFILE_REL_PATH:-../shared/Caddyfile}:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

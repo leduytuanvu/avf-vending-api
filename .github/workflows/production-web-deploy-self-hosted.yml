@@ -74,6 +74,7 @@ jobs:
       - name: Build and deploy web on VPS B
         env:
           GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN || secrets.GITHUB_TOKEN }}
+          PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${{ env.WEB_VPS_HOST }}" bash -s <<REMOTE
@@ -81,6 +82,23 @@ jobs:
           cd /opt/avf-vending-web
           if [[ ! -f .env.production ]]; then
             cp .env.production.example .env.production
+          fi
+          app_env="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/.env.app-node"
+          compose_file="docker-compose.web-standalone-caddy.yml"
+          if [[ -f "\${app_env}" ]] && docker compose --env-file "\${app_env}" -f "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node/docker-compose.app-node.yml" ps -q caddy 2>/dev/null | grep -q .; then
+            project="\$(grep -E '^COMPOSE_PROJECT_NAME=' "\${app_env}" | tail -n1 | cut -d= -f2-)"
+            project="\${project:-avf-vending-prod-app-b}"
+            compose_file="docker-compose.web.yml"
+            sed -i "s|^WEB_EDGE_NETWORK=.*|WEB_EDGE_NETWORK=\${project}_edge|" .env.production
+            sed -i "s|^COMPOSE_FILE=.*|COMPOSE_FILE=\${compose_file}|" .env.production || echo "COMPOSE_FILE=\${compose_file}" >> .env.production
+            if [[ -f "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/Caddyfile.with-admin" ]]; then
+              grep -q '^ENABLE_ADMIN_VHOST=' "\${app_env}" && sed -i 's|^ENABLE_ADMIN_VHOST=.*|ENABLE_ADMIN_VHOST=1|' "\${app_env}" || echo 'ENABLE_ADMIN_VHOST=1' >> "\${app_env}"
+              grep -q '^CADDYFILE_REL_PATH=' "\${app_env}" && sed -i 's|^CADDYFILE_REL_PATH=.*|CADDYFILE_REL_PATH=../shared/Caddyfile.with-admin|' "\${app_env}" || echo 'CADDYFILE_REL_PATH=../shared/Caddyfile.with-admin' >> "\${app_env}"
+              grep -q '^ADMIN_DOMAIN=' "\${app_env}" || echo 'ADMIN_DOMAIN=admin.ldtv.dev' >> "\${app_env}"
+              docker stop avf-vending-web-caddy 2>/dev/null || true
+              docker rm avf-vending-web-caddy 2>/dev/null || true
+            fi
+            echo "integrated web mode (app-node Caddy owns 80/443, edge=\${project}_edge)"
           fi
           rm -rf /tmp/avf-vending-web-build
           git clone --depth 1 https://x-access-token:${GHCR_PULL_TOKEN}@github.com/${{ env.WEB_REPO }}.git /tmp/avf-vending-web-build
@@ -95,7 +113,11 @@ jobs:
             --build-arg SESSION_COOKIE_SECURE=true \
             -t avf-vending-web:deploy .
           sed -i "s|^WEB_IMAGE_REF=.*|WEB_IMAGE_REF=avf-vending-web:deploy|" /opt/avf-vending-web/.env.production
-          cd /opt/avf-vending-web && ./deploy-web.sh
+          cd /opt/avf-vending-web && COMPOSE_FILE="\${compose_file}" ./deploy-web.sh
+          if [[ "\${compose_file}" == "docker-compose.web.yml" && -f "\${app_env}" ]]; then
+            cd "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+            docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --no-deps --force-recreate caddy
+          fi
           REMOTE
 
       - name: Smoke check web health
