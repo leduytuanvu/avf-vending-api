@@ -50,6 +50,76 @@ read_primary_env_value() {
 	read_env_from_api_container "${key}"
 }
 
+# Running api on A reflects real managed-service URLs; .env on disk may still list compose placeholders.
+read_primary_runtime_value() {
+	local key="$1"
+	local val
+	val="$(read_env_from_api_container "${key}")"
+	if [[ -n "${val}" ]]; then
+		printf '%s' "${val}"
+		return 0
+	fi
+	read_env_value "${key}" "${PRIMARY_ENV}"
+}
+
+is_placeholder_value() {
+	local value="${1-}"
+	[[ -z "${value}" ]] && return 0
+	case "${value}" in
+	*"CHANGE_ME"* | *"REPLACE_ME"* | *"example.com"* | *"example.invalid"* | *"placeholder"*)
+		return 0
+		;;
+	esac
+	return 1
+}
+
+# Values that belong to docker-compose on a data node, not app-node B production.
+is_compose_local_service_ref() {
+	local key="$1" value="$2"
+	case "${value}" in
+	redis:* | redis:6379) return 0 ;;
+	nats://nats* | nats://nats:*) return 0 ;;
+	mqtt://mosquitto* | mqtt://mosquitto:*) return 0 ;;
+	postgres://postgres* | postgres://postgres:*) return 0 ;;
+	esac
+	case "${key}" in
+	REDIS_ADDR)
+		[[ "${value}" =~ ^redis:[0-9]+$ ]] && return 0
+		;;
+	esac
+	return 1
+}
+
+should_sync_key_value() {
+	local key="$1" value="$2"
+	is_placeholder_value "${value}" && return 1
+	is_compose_local_service_ref "${key}" "${value}" && return 1
+	return 0
+}
+
+SHARED_SYNC_KEYS=(
+	DATABASE_URL
+	BACKUP_DATABASE_URL
+	API_DATABASE_MAX_CONNS
+	WORKER_DATABASE_MAX_CONNS
+	MQTT_INGEST_DATABASE_MAX_CONNS
+	RECONCILER_DATABASE_MAX_CONNS
+	NATS_URL
+	NATS_JETSTREAM_URL
+	REDIS_URL
+	REDIS_USERNAME
+	REDIS_PASSWORD
+	REDIS_TLS_ENABLED
+	REDIS_TLS_INSECURE_SKIP_VERIFY
+	REDIS_CACHE_ENABLED
+	REDIS_RATE_LIMIT_ENABLED
+	REDIS_SESSION_CACHE_ENABLED
+	MQTT_BROKER_URL
+	MQTT_USERNAME
+	MQTT_PASSWORD
+	APP_ENV
+)
+
 url_port() {
 	python3 - "$1" <<'PY'
 import sys
@@ -68,7 +138,7 @@ NODE_LOCAL_KEYS=(
 	MQTT_CLIENT_ID_INGEST
 )
 
-primary_url="$(read_primary_env_value DATABASE_URL)"
+primary_url="$(read_primary_runtime_value DATABASE_URL)"
 [[ -n "${primary_url}" ]] || fail "DATABASE_URL missing on app-node A (.env and running api container)"
 
 remote_url="$(
@@ -85,34 +155,18 @@ else
 	note "align B DATABASE_URL (remote port ${remote_port}) to A (port ${primary_port})"
 fi
 
-is_node_local_key() {
-	local key="$1"
-	local k
-	for k in "${NODE_LOCAL_KEYS[@]}"; do
-		[[ "${key}" == "${k}" ]] && return 0
-	done
-	return 1
-}
-
 updates_file="$(mktemp)"
 trap 'rm -f "${updates_file}"' EXIT
-while IFS= read -r line; do
-	[[ -n "${line}" ]] || continue
-	[[ "${line}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
-	key="${line%%=*}"
-	is_node_local_key "${key}" && continue
-	val="$(read_primary_env_value "${key}")"
+for key in "${SHARED_SYNC_KEYS[@]}"; do
+	val="$(read_primary_runtime_value "${key}")"
 	[[ -n "${val}" ]] || continue
+	should_sync_key_value "${key}" "${val}" || continue
 	printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
-done <"${PRIMARY_ENV}"
-
-if [[ ! -s "${updates_file}" ]]; then
-	# Sealed .env on disk: at minimum sync database + pool caps from the running api container.
-	for key in DATABASE_URL BACKUP_DATABASE_URL API_DATABASE_MAX_CONNS WORKER_DATABASE_MAX_CONNS MQTT_INGEST_DATABASE_MAX_CONNS RECONCILER_DATABASE_MAX_CONNS NATS_URL REDIS_URL MQTT_BROKER_URL; do
-		val="$(read_primary_env_value "${key}")"
-		[[ -n "${val}" ]] || continue
-		printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
-	done
+done
+# REDIS_ADDR only when A actually uses host:port managed Redis (not compose service name).
+redis_addr="$(read_primary_runtime_value REDIS_ADDR)"
+if [[ -n "${redis_addr}" ]] && should_sync_key_value REDIS_ADDR "${redis_addr}"; then
+	printf 'REDIS_ADDR=%s\n' "${redis_addr}" >>"${updates_file}"
 fi
 
 if [[ ! -s "${updates_file}" ]]; then
@@ -131,6 +185,7 @@ backup="${env_path}.bak.sync-db-$(date -u +%Y%m%dT%H%M%SZ)"
 cp "${env_path}" "${backup}"
 python3 - "${env_path}" "${patch_path}" <<'PY'
 import pathlib
+import re
 import sys
 
 path = pathlib.Path(sys.argv[1])
@@ -160,6 +215,23 @@ for key, value in updates.items():
     if key not in seen:
         out.append(f"{key}={value}")
 path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+# Drop compose-local REDIS_ADDR when managed REDIS_URL is present (prevents api panic on B).
+text = path.read_text(encoding="utf-8", errors="replace").splitlines()
+redis_url = ""
+for line in text:
+    if line.startswith("REDIS_URL="):
+        redis_url = line.split("=", 1)[1]
+        break
+if redis_url and redis_url.startswith(("redis://", "rediss://")):
+    filtered: list[str] = []
+    for line in text:
+        if line.startswith("REDIS_ADDR="):
+            _, addr = line.split("=", 1)[1]
+            if re.fullmatch(r"redis:\d+", addr):
+                continue
+        filtered.append(line)
+    path.write_text("\n".join(filtered) + "\n", encoding="utf-8")
 PY
 rm -f "${patch_path}"
 REMOTE
