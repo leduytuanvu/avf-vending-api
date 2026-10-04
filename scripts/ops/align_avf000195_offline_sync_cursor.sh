@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Align offline sync cursor for AVF000195 (sequence hole minPending=4, serverLast=0).
+# Align offline sync cursor for AVF000195 (sequence hole: target = minPending - 1 from log).
 #
 # Usage:
-#   bash scripts/ops/align_avf000195_offline_sync_cursor.sh
-#   DRY_RUN=1 bash scripts/ops/align_avf000195_offline_sync_cursor.sh
+#   TARGET_LAST_SEQUENCE=2 bash scripts/ops/align_avf000195_offline_sync_cursor.sh
+#   DRY_RUN=1 TARGET_LAST_SEQUENCE=2 bash scripts/ops/align_avf000195_offline_sync_cursor.sh
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SQL_FILE="${ROOT}/scripts/ops/align_avf000195_offline_sync_cursor.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
 DRY_RUN="${DRY_RUN:-0}"
+TARGET_LAST_SEQUENCE="${TARGET_LAST_SEQUENCE:-2}"
 
 fail() { echo "align-avf000195-cursor: error: $*" >&2; exit 1; }
 note() { echo "align-avf000195-cursor: $*"; }
@@ -64,9 +65,28 @@ run_sql() {
     psql "${psql_url}" \
       -v ON_ERROR_STOP=1 \
       -v "dry_run=${dry_run_flag}" \
+      -v "target_last_sequence=${TARGET_LAST_SEQUENCE}" \
       -f "/ops/$(basename "${SQL_FILE}")"
 }
 
-note "dry_run=${DRY_RUN}"
+verify_cursor() {
+  [[ "${DRY_RUN}" == "1" ]] && return 0
+  resolve_database_url || fail "DATABASE_URL unavailable for verify"
+  local psql_url last_seq
+  psql_url="$(psql_database_url)"
+  last_seq="$(docker run --rm \
+    -e "DATABASE_URL=${psql_url}" \
+    "${POSTGRES_TOOLS_IMAGE}" \
+    psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
+      -c "SELECT COALESCE((SELECT last_sequence FROM machine_sync_cursors WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid AND stream_name = 'offline'), 0);")"
+  last_seq="$(echo "${last_seq}" | tr -d '\r\n ')"
+  if [[ -z "${last_seq}" ]] || [[ "${last_seq}" -lt "${TARGET_LAST_SEQUENCE}" ]]; then
+    fail "cursor verify failed: offline.last_sequence=${last_seq:-missing} expected>=${TARGET_LAST_SEQUENCE}"
+  fi
+  note "verified offline.last_sequence=${last_seq}"
+}
+
+note "dry_run=${DRY_RUN} target_last_sequence=${TARGET_LAST_SEQUENCE}"
 run_sql
+verify_cursor
 note "done"

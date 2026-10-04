@@ -11,6 +11,11 @@ on:
         required: false
         default: true
         type: boolean
+      target_last_sequence:
+        description: "Set offline last_sequence to this value (use MIN(pending seq) - 1 from OUTBOX_SEQUENCE_HOLE log)"
+        required: false
+        default: "2"
+        type: string
 
 permissions:
   contents: read
@@ -27,6 +32,7 @@ jobs:
     timeout-minutes: 15
     env:
       DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      TARGET_LAST_SEQUENCE: ${{ inputs.target_last_sequence }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
 
@@ -90,8 +96,8 @@ jobs:
           }
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && \
-              DRY_RUN='${DRY_RUN}' bash scripts/ops/align_avf000195_offline_sync_cursor.sh" \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' TARGET_LAST_SEQUENCE='${TARGET_LAST_SEQUENCE}' && \
+              DRY_RUN='${DRY_RUN}' TARGET_LAST_SEQUENCE='${TARGET_LAST_SEQUENCE}' bash scripts/ops/align_avf000195_offline_sync_cursor.sh" \
               | tee align-avf000195-cursor.log
           elif docker info >/dev/null 2>&1; then
             run_align | tee align-avf000195-cursor.log
