@@ -24,7 +24,9 @@ Tìm (theo thứ tự):
 | `OUTBOX_COMMERCE_PUSH_DEFERRED reason=commerce_grpc_unhealthy` | DNS/API chưa OK — outbox giữ local, không spam circuit breaker |
 | `OUTBOX_SEQUENCE_REWIND_DELIVERED` | Rewind hàng DELIVERED local khi server cursor lùi — refill seq 1…N |
 | `OUTBOX_SEQUENCE_GAP_WAIT` | Replay/drain dừng đúng head-of-line (chờ seq thấp hơn), không spam `expected 1 got 68` |
+| `GAP_WAIT expected=N gotHead=M` (**M &lt; N**) | Stale local lag — APK: `OUTBOX_SEQUENCE_STALE_PRUNED` / `OUTBOX_SEQUENCE_REALIGNED` |
 | `OUTBOX_SEQUENCE_HOLE` | Server cursor + min pending lệch >1 (seq 1..N đã mất local) — cần ops align cursor (mục 5) |
+| `OUTBOX_SEQUENCE_STALE_PRUNED` / `OUTBOX_SEQUENCE_REALIGNED` | App dọn/realign seq theo cursor server |
 | `OUTBOX_RECONCILE_SKIP_CURSOR_LAG` | Reconcile PROCESSED nhưng chưa xóa row vì `seq > serverLast` — chờ push tăng cursor |
 | `OUTBOX_SEQUENCE_MISMATCH` | Server báo lệch seq — client rewind + refresh cursor |
 | `OFFLINE_SALE_REPLAY_ACCEPTED` | Server đã nhận đơn offline |
@@ -102,6 +104,10 @@ Sau deploy API (`MACHINE_OFFLINE_INSERT_ERROR` + migration `00038`): grep prod l
 
 **Prod check 2026-10-04 ~16:43 +07:** cursor **36**, không row seq **37**, chưa có order `54a327c2` — **Case A** (chờ máy retry; không bump cursor). `bash scripts/ops/grep_avf000195_offline_api_logs.sh` trên app-node hoặc bước grep trong workflow verify.
 
+### Sự cố ~19:39 (đơn `55a21114-…`)
+
+`OUTBOX_SEQUENCE_GAP_WAIT expected=37 gotHead=3..22` — stale queue local (không phải hole). Verify: `OFFLINE_SALE_REPLAY_ACCEPTED` sau APK có stale reconcile; unblock tạm: xóa pending `sequence_no <= 36` + `outbox_stream_state.nextSequence >= 37`.
+
 ## 6. Forensics seq thiếu (1–3 và 4–36)
 
 Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:
@@ -118,6 +124,7 @@ adb shell "run-as com.avf.vending.tcn sqlite3 databases/avf_vending.db \
 | Không có row PENDING trong `expectedNext .. minPending-1` | Hole hợp lệ — align `last_sequence = minPending - 1` |
 | Row seq thấp `DELIVERED` nhưng đã xóa khỏi pending | Seq đã push hoặc reconcile xóa; cursor server lùi sau align ops |
 | `OUTBOX_SEQUENCE_GAP_WAIT expected=4 gotHead=37` (15:46) | Thiếu seq 4–36 local; align `target=36` |
+| `expected=37 gotHead=3..22` (19:39) | Stale lag — cursor 36 OK; dọn local / APK realign |
 
 **15:45 forensics (log):** `serverLast=3`, `minPending=37` ⇒ không còn pending 4–36; grep `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`, `OUTBOX_SEQUENCE_REWIND_DELIVERED`.
 
