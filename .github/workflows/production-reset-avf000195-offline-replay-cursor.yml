@@ -1,0 +1,64 @@
+name: Production reset AVF000195 offline replay cursor
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Must be exactly AVF000195_RESET_OFFLINE_CURSOR"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  reset:
+    name: Reset offline cursor for AVF000195
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm }}" == "AVF000195_RESET_OFFLINE_CURSOR" ]] \
+            || { echo "error: invalid confirm"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+          SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then echo "PRIV_MODE=direct"; elif sudo -n true 2>/dev/null; then echo "PRIV_MODE=sudo-nopass"; elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then echo "PRIV_MODE=su-root"; else echo "PRIV_MODE=none"; fi; exit 0; fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then bash -lc "${cmd}"; elif sudo -n true 2>/dev/null; then sudo bash -lc "${cmd}"; elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"; else echo "error: no root" >&2; exit 1; fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Apply offline cursor reset SQL
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+          SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+        run: |
+          set -Eeuo pipefail
+          run_priv() {
+            if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+              PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+            else
+              bash -lc "$*"
+            fi
+          }
+          run_priv "cd '${GITHUB_WORKSPACE}' && bash scripts/ops/reset_avf000195_offline_replay_cursor_for_redispatch.sh"
