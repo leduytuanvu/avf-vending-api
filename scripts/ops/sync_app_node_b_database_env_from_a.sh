@@ -103,6 +103,32 @@ should_sync_key_value() {
 	return 0
 }
 
+append_line_to_updates() {
+	local key="$1" value="$2"
+	should_sync_key_value "${key}" "${value}" || return 0
+	printf '%s=%s\n' "${key}" "${value}" >>"${updates_file}"
+}
+
+# Redis is required in production; copy every REDIS_* var from the healthy api container on A.
+append_primary_api_redis_env() {
+	local name line key val
+	while read -r name; do
+		[[ -n "${name}" ]] || continue
+		[[ "${name}" == *api* ]] || continue
+		while IFS= read -r line; do
+			[[ "${line}" =~ ^REDIS_[A-Za-z0-9_]+= ]] || continue
+			key="${line%%=*}"
+			val="${line#*=}"
+			append_line_to_updates "${key}" "${val}"
+		done < <(
+			docker inspect "${name}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+				| grep -E '^REDIS_' || true
+		)
+		return 0
+	done < <(docker ps --format '{{.Names}}' 2>/dev/null || true)
+	return 0
+}
+
 SHARED_SYNC_KEYS=(
 	DATABASE_URL
 	BACKUP_DATABASE_URL
@@ -166,18 +192,20 @@ trap 'rm -f "${updates_file}"' EXIT
 for key in "${SHARED_SYNC_KEYS[@]}"; do
 	val="$(read_primary_runtime_value "${key}")"
 	[[ -n "${val}" ]] || continue
-	should_sync_key_value "${key}" "${val}" || continue
-	printf '%s=%s\n' "${key}" "${val}" >>"${updates_file}"
+	append_line_to_updates "${key}" "${val}"
 done
-# REDIS_ADDR only when A actually uses host:port managed Redis (not compose service name).
-redis_addr="$(read_primary_runtime_value REDIS_ADDR)"
-if [[ -n "${redis_addr}" ]] && should_sync_key_value REDIS_ADDR "${redis_addr}"; then
-	printf 'REDIS_ADDR=%s\n' "${redis_addr}" >>"${updates_file}"
-fi
+append_primary_api_redis_env
 
 if [[ ! -s "${updates_file}" ]]; then
 	fail "no env keys collected from app-node A"
 fi
+
+redis_url="$(grep -E '^REDIS_URL=' "${updates_file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+redis_addr="$(grep -E '^REDIS_ADDR=' "${updates_file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+if [[ -z "${redis_url}" && -z "${redis_addr}" ]]; then
+	fail "REDIS_URL/REDIS_ADDR missing on app-node A — cannot configure app-node B"
+fi
+note "redis sync: REDIS_URL=$([[ -n "${redis_url}" ]] && echo set || echo missing) REDIS_ADDR=$([[ -n "${redis_addr}" ]] && echo set || echo missing)"
 
 remote_patch="$(mktemp)"
 trap 'rm -f "${updates_file}" "${remote_patch}"' EXIT
