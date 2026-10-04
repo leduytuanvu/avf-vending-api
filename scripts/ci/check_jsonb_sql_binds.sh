@@ -10,6 +10,7 @@ FILES=(
   "${ROOT}/db/queries/financial_correctness.sql"
   "${ROOT}/db/queries/financial_ledger.sql"
   "${ROOT}/db/queries/payment_reconciliation.sql"
+  "${ROOT}/db/queries/machine_offline.sql"
 )
 
 hits=""

@@ -98,7 +98,7 @@ VALUES
     $4,
     $5,
     $6,
-    $7,
+    COALESCE(NULLIF($7::text, '')::jsonb, '{}'::jsonb),
     $8,
     $9,
     $10
@@ -129,7 +129,7 @@ type InsertMachineOfflineEventParams struct {
 	EventID          string
 	ClientEventID    string
 	OccurredAt       time.Time
-	Payload          []byte
+	Payload          string
 	ProcessingStatus string
 	ProcessingError  string
 	IdempotencyKey   string

@@ -16,6 +16,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/clockskew"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
@@ -438,7 +439,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		EventID:          eventRequestID,
 		ClientEventID:    clientEventID,
 		OccurredAt:       occurredAt,
-		Payload:          payload,
+		Payload:          pgjson.RequiredString(payload),
 		ProcessingStatus: "processing",
 		ProcessingError:  "",
 		IdempotencyKey:   idem,

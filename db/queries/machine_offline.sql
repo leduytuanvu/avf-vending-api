@@ -56,16 +56,16 @@ INSERT INTO
 )
 VALUES
     (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9,
-    $10
+    sqlc.arg('machine_id'),
+    sqlc.arg('offline_sequence'),
+    sqlc.arg('event_type'),
+    sqlc.arg('event_id'),
+    sqlc.arg('client_event_id'),
+    sqlc.arg('occurred_at'),
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb),
+    sqlc.arg('processing_status'),
+    sqlc.arg('processing_error'),
+    sqlc.arg('idempotency_key')
 )
 ON CONFLICT (machine_id, offline_sequence)
 DO UPDATE SET
