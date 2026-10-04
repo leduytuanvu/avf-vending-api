@@ -288,6 +288,16 @@ if disable_redis:
         "REDIS_SESSION_CACHE_ENABLED": "false",
         "REDIS_LOCKS_ENABLED": "false",
         "CACHE_ENABLED": "false",
+        "PRODUCTION_ALLOW_MISSING_REDIS": "true",
+    }
+    drop_keys = {
+        "REDIS_URL",
+        "REDIS_ADDR",
+        "REDIS_USERNAME",
+        "REDIS_PASSWORD",
+        "REDIS_DB",
+        "REDIS_TLS_ENABLED",
+        "REDIS_TLS_INSECURE_SKIP_VERIFY",
     }
     seen = set()
     out2: list[str] = []
@@ -296,6 +306,8 @@ if disable_redis:
             out2.append(line)
             continue
         key = line.split("=", 1)[0]
+        if key in drop_keys:
+            continue
         if key in off:
             out2.append(f"{key}={off[key]}")
             seen.add(key)
