@@ -25,18 +25,24 @@ read_env_value() {
 	grep -E "^${key}=" "${file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true
 }
 
-read_env_from_api_container() {
+read_env_from_running_container() {
 	local key="$1"
 	local container name
 	while read -r name; do
 		[[ -n "${name}" ]] || continue
 		case "${name}" in
-		*api*) container="${name}"; break ;;
+		*api* | *worker* | *reconciler* | *mqtt-ingest*)
+			container="${name}"
+			val="$(docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
+				| grep -E "^${key}=" | tail -n1 | cut -d= -f2- | tr -d '\r' || true)"
+			if [[ -n "${val}" ]]; then
+				printf '%s' "${val}"
+				return 0
+			fi
+			;;
 		esac
 	done < <(docker ps --format '{{.Names}}' 2>/dev/null || true)
-	[[ -n "${container}" ]] || return 0
-	docker inspect "${container}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-		| grep -E "^${key}=" | tail -n1 | cut -d= -f2- | tr -d '\r' || true
+	return 0
 }
 
 read_primary_env_value() {
@@ -47,14 +53,14 @@ read_primary_env_value() {
 		printf '%s' "${val}"
 		return 0
 	fi
-	read_env_from_api_container "${key}"
+	read_env_from_running_container "${key}"
 }
 
 # Running api on A reflects real managed-service URLs; .env on disk may still list compose placeholders.
 read_primary_runtime_value() {
 	local key="$1"
 	local val
-	val="$(read_env_from_api_container "${key}")"
+	val="$(read_env_from_running_container "${key}")"
 	if [[ -n "${val}" ]]; then
 		printf '%s' "${val}"
 		return 0
@@ -216,22 +222,16 @@ for key, value in updates.items():
         out.append(f"{key}={value}")
 path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
-# Drop compose-local REDIS_ADDR when managed REDIS_URL is present (prevents api panic on B).
+# REDIS_ADDR wins over REDIS_URL in app config; drop compose service names (api panic on B).
 text = path.read_text(encoding="utf-8", errors="replace").splitlines()
-redis_url = ""
+filtered: list[str] = []
 for line in text:
-    if line.startswith("REDIS_URL="):
-        redis_url = line.split("=", 1)[1]
-        break
-if redis_url and redis_url.startswith(("redis://", "rediss://")):
-    filtered: list[str] = []
-    for line in text:
-        if line.startswith("REDIS_ADDR="):
-            _, addr = line.split("=", 1)[1]
-            if re.fullmatch(r"redis:\d+", addr):
-                continue
-        filtered.append(line)
-    path.write_text("\n".join(filtered) + "\n", encoding="utf-8")
+    if line.startswith("REDIS_ADDR="):
+        _, addr = line.split("=", 1)[1]
+        if re.fullmatch(r"redis:\d+", addr):
+            continue
+    filtered.append(line)
+path.write_text("\n".join(filtered) + "\n", encoding="utf-8")
 PY
 rm -f "${patch_path}"
 REMOTE
