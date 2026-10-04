@@ -121,8 +121,10 @@ append_primary_api_redis_env() {
 			val="${line#*=}"
 			append_line_to_updates "${key}" "${val}"
 		done < <(
-			docker inspect "${name}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null \
-				| grep -E '^REDIS_' || true
+			{
+				docker exec "${name}" env 2>/dev/null || true
+				docker inspect "${name}" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null || true
+			} | grep -E '^REDIS_' | sort -u || true
 		)
 		return 0
 	done < <(docker ps --format '{{.Names}}' 2>/dev/null || true)
@@ -195,6 +197,12 @@ for key in "${SHARED_SYNC_KEYS[@]}"; do
 	append_line_to_updates "${key}" "${val}"
 done
 append_primary_api_redis_env
+while IFS= read -r line; do
+	[[ "${line}" =~ ^REDIS_[A-Za-z0-9_]+= ]] || continue
+	key="${line%%=*}"
+	val="${line#*=}"
+	append_line_to_updates "${key}" "${val}"
+done < <(grep -E '^REDIS_[A-Za-z0-9_]+=' "${PRIMARY_ENV}" 2>/dev/null || true)
 
 if [[ -n "${SYNC_REDIS_URL:-}" ]] && ! is_placeholder_value "${SYNC_REDIS_URL}"; then
 	append_line_to_updates REDIS_URL "${SYNC_REDIS_URL}"
@@ -207,10 +215,11 @@ fi
 
 redis_url="$(grep -E '^REDIS_URL=' "${updates_file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
 redis_addr="$(grep -E '^REDIS_ADDR=' "${updates_file}" 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
-if [[ -z "${redis_url}" && -z "${redis_addr}" ]]; then
-	fail "REDIS_URL/REDIS_ADDR missing on app-node A — cannot configure app-node B"
-fi
 note "redis sync: REDIS_URL=$([[ -n "${redis_url}" ]] && echo set || echo missing) REDIS_ADDR=$([[ -n "${redis_addr}" ]] && echo set || echo missing)"
+if [[ -z "${redis_url}" && -z "${redis_addr}" ]]; then
+	note "warning: no managed Redis endpoint collected for B; rollout will disable REDIS_* feature flags on B"
+	echo "DISABLE_REDIS_FEATURES_ON_B=1" >>"${updates_file}"
+fi
 
 remote_patch="$(mktemp)"
 trap 'rm -f "${updates_file}" "${remote_patch}"' EXIT
@@ -230,11 +239,15 @@ import sys
 path = pathlib.Path(sys.argv[1])
 patch_path = pathlib.Path(sys.argv[2])
 updates: dict[str, str] = {}
+disable_redis = False
 for raw in patch_path.read_text(encoding="utf-8", errors="replace").splitlines():
     raw = raw.rstrip("\n")
     if not raw or "=" not in raw:
         continue
     key, value = raw.split("=", 1)
+    if key == "DISABLE_REDIS_FEATURES_ON_B":
+        disable_redis = value == "1"
+        continue
     updates[key] = value
 
 lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
@@ -265,6 +278,33 @@ for line in text:
             continue
     filtered.append(line)
 path.write_text("\n".join(filtered) + "\n", encoding="utf-8")
+
+if disable_redis:
+    text = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    off = {
+        "REDIS_ENABLED": "false",
+        "REDIS_CACHE_ENABLED": "false",
+        "REDIS_RATE_LIMIT_ENABLED": "false",
+        "REDIS_SESSION_CACHE_ENABLED": "false",
+        "REDIS_LOCKS_ENABLED": "false",
+        "CACHE_ENABLED": "false",
+    }
+    seen = set()
+    out2: list[str] = []
+    for line in text:
+        if not line or line.lstrip().startswith("#") or "=" not in line:
+            out2.append(line)
+            continue
+        key = line.split("=", 1)[0]
+        if key in off:
+            out2.append(f"{key}={off[key]}")
+            seen.add(key)
+        else:
+            out2.append(line)
+    for key, value in off.items():
+        if key not in seen:
+            out2.append(f"{key}={value}")
+    path.write_text("\n".join(out2) + "\n", encoding="utf-8")
 PY
 rm -f "${patch_path}"
 REMOTE
