@@ -1,4 +1,4 @@
-name: Production align AVF000195 offline sync cursor
+name: Production verify AVF000195 offline replay
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -6,34 +6,42 @@ env:
 on:
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Preview only (no DB writes)"
+      min_cursor:
+        description: "Expect offline last_sequence >= this (after align, usually minPending-1)"
+        required: true
+        default: "3"
+        type: string
+      require_orders:
+        description: "Fail job if both test order IDs are not in orders table"
         required: false
         default: true
         type: boolean
-      target_last_sequence:
-        description: "REQUIRED: minPending - 1 from latest OUTBOX_SEQUENCE_HOLE log (never reuse an old incident value)"
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: production-align-avf000195-offline-sync-cursor
+  group: production-verify-avf000195-offline-replay
   cancel-in-progress: false
 
 jobs:
-  align:
-    name: Align AVF000195 machine_sync_cursors
+  verify:
+    name: Verify AVF000195 offline replay
     runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
     environment: production
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
-      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-      TARGET_LAST_SEQUENCE: ${{ inputs.target_last_sequence }}
+      MIN_CURSOR: ${{ inputs.min_cursor }}
+      REQUIRE_ORDERS: ${{ inputs.require_orders && '1' || '0' }}
+      API_BASE: https://api.ldtv.dev
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
+      ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
+      E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
 
     steps:
       - name: Configure privileged command helper
@@ -75,41 +83,52 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - name: Align offline sync cursor
+      - name: DB verify (read-only)
         shell: bash
         env:
           PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          run_align() {
-            local deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/align_avf000195_offline_sync_cursor.sh"
-            local checkout_script="${GITHUB_WORKSPACE}/scripts/ops/align_avf000195_offline_sync_cursor.sh"
-            if [[ -f "${deploy_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" bash "${deploy_script}"
-            elif [[ -f "${checkout_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" bash "${checkout_script}"
-            else
-              echo "error: align script not found" >&2
-              exit 1
-            fi
-          }
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' TARGET_LAST_SEQUENCE='${TARGET_LAST_SEQUENCE}' && \
-              DRY_RUN='${DRY_RUN}' TARGET_LAST_SEQUENCE='${TARGET_LAST_SEQUENCE}' bash scripts/ops/align_avf000195_offline_sync_cursor.sh" \
-              | tee align-avf000195-cursor.log
-          elif docker info >/dev/null 2>&1; then
-            run_align | tee align-avf000195-cursor.log
+              "cd '${GITHUB_WORKSPACE}' && export MIN_CURSOR='${MIN_CURSOR}' REQUIRE_ORDERS='${REQUIRE_ORDERS}' && \
+              bash scripts/ops/verify_avf000195_offline_replay.sh" \
+              | tee verify-replay.log
           else
-            echo "error: docker unavailable and no root credentials" >&2
-            exit 1
+            MIN_CURSOR="${MIN_CURSOR}" REQUIRE_ORDERS="${REQUIRE_ORDERS}" \
+              bash scripts/ops/verify_avf000195_offline_replay.sh | tee verify-replay.log
           fi
+
+      - name: Admin API spot-check orders
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="${GITHUB_WORKSPACE}"
+          # shellcheck source=scripts/e2e/lib/common.sh
+          source "${ROOT}/scripts/e2e/lib/common.sh"
+          export BASE_URL="${API_BASE}"
+          token="$(e2e_admin_token)" || exit 1
+          for oid in ffc489f5-0bcd-45f3-971a-ce709f7c2056 0a6984ee-7139-4d18-b943-9a843da0e6d3; do
+            body="$(mktemp)"
+            code="$(curl -sS -o "${body}" -w '%{http_code}' \
+              -H "Authorization: Bearer ${token}" \
+              -H "Accept: application/json" \
+              --connect-timeout 8 --max-time 20 \
+              "${BASE_URL%/}/v1/orders/${oid}")"
+            echo "GET /v1/orders/${oid} http=${code}"
+            if [[ "${code}" == "200" ]]; then
+              jq '{id,status,machine_id,total_minor,created_at}' "${body}"
+            else
+              head -c 500 "${body}" || true
+            fi
+            rm -f "${body}"
+          done
 
       - name: Upload log
         if: always()
         continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: align-avf000195-offline-sync-cursor-log
-          path: align-avf000195-cursor.log
+          name: verify-avf000195-offline-replay-log
+          path: verify-replay.log
           retention-days: 14

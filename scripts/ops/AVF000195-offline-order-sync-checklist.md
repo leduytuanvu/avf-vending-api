@@ -58,11 +58,37 @@ hoặc script: `scripts/ops/align_avf000195_offline_sync_cursor.sh` (xem `align_
 
 **GetSyncCursor trả `0` khi không có row** `machine_sync_cursors` — script cũ chỉ `UPDATE` sẽ **0 row** nếu chưa có cursor; dùng **UPSERT** trong `align_avf000195_offline_sync_cursor.sql` hoặc workflow với input `target_last_sequence`.
 
-Workflow: `target_last_sequence=2`, `dry_run=false` cho hole hiện tại.
+Workflow: **luôn** nhập `target_last_sequence = minPending − 1` từ dòng `OUTBOX_SEQUENCE_HOLE` mới nhất (input bắt buộc, không dùng default cũ).
+
+Verify sau align: workflow **Production verify AVF000195 offline replay** hoặc `bash scripts/ops/verify_avf000195_offline_replay.sh` (read-only).
 
 **Không** reset counter allocator local trên máy.
 
+### Sự cố 2026-10-04 (log ~15:04–15:06)
+
+| Mục | Giá trị |
+|-----|---------|
+| `machineId` | `01a0a7e5-3c68-7895-b526-bcb6504bccfb` (AVF000195) |
+| Đơn offline | `ffc489f5-0bcd-45f3-971a-ce709f7c2056` (vend fail A1), `0a6984ee-7139-4d18-b943-9a843da0e6d3` (vend OK A2) |
+| Log | `OUTBOX_SEQUENCE_HOLE serverLast=2 minPending=4 expectedNext=3`, `OUTBOX_DRAIN_DEFERRED reason=sequence_hole` |
+| Align | `target_last_sequence = 3` (= minPending − 1) |
+
+Logcat sau reconnect: không còn hole `serverLast=2` / `minPending=4`; tìm `OFFLINE_SALE_REPLAY_ACCEPTED` cho hai `orderId` trên.
+
 ## 6. Forensics seq 1–3 mất
 
-Dump `business_outbox` / `sync_queue` theo `sequence_no`; grep log `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`.
+Dump `sync_queue` (business outbox) theo `sequence_no`, `status`, `entity_type`:
+
+```bash
+adb shell "run-as com.avf.vending.tcn sqlite3 databases/avf_vending.db \
+  \"SELECT sequence_no, status, entity_type, entity_id FROM sync_queue WHERE sequence_no BETWEEN 1 AND 6 ORDER BY sequence_no;\""
+```
+
+| Kết quả thường gặp | Ý nghĩa |
+|--------------------|---------|
+| Không có row `sequence_no=3` trong PENDING | Hole hợp lệ — align `last_sequence = minPending - 1` |
+| Row seq 3 `DELIVERED` nhưng đã xóa khỏi pending | Seq đã push trước đó hoặc reconcile xóa; cursor server lùi sau align ops |
+| `OUTBOX_SEQUENCE_GAP_WAIT expected=3` trước khi test | Gap tồn tại **trước** session 15:05 — không phải do hai đơn test |
+
+Grep log: `OUTBOX_RECONCILE`, `OUTBOX_RECONCILE_SKIP_CURSOR_LAG`, `OUTBOX_SEQUENCE_REWIND_DELIVERED`.
 

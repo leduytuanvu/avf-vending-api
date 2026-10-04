@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
-# Align offline sync cursor for AVF000195 (sequence hole: target = minPending - 1 from log).
-#
-# Usage:
-#   TARGET_LAST_SEQUENCE=2 bash scripts/ops/align_avf000195_offline_sync_cursor.sh
-#   DRY_RUN=1 TARGET_LAST_SEQUENCE=2 bash scripts/ops/align_avf000195_offline_sync_cursor.sh
+# Read-only prod verify: AVF000195 offline test orders + offline cursor.
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SQL_FILE="${ROOT}/scripts/ops/align_avf000195_offline_sync_cursor.sql"
+SQL_FILE="${ROOT}/scripts/ops/verify_avf000195_offline_replay.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
-DRY_RUN="${DRY_RUN:-0}"
-TARGET_LAST_SEQUENCE="${TARGET_LAST_SEQUENCE:-}"
+MIN_CURSOR="${MIN_CURSOR:-3}"
+REQUIRE_ORDERS="${REQUIRE_ORDERS:-1}"
+ORDER_A="ffc489f5-0bcd-45f3-971a-ce709f7c2056"
+ORDER_B="0a6984ee-7139-4d18-b943-9a843da0e6d3"
 
-fail() { echo "align-avf000195-cursor: error: $*" >&2; exit 1; }
-note() { echo "align-avf000195-cursor: $*"; }
+fail() { echo "verify-avf000195-replay: error: $*" >&2; exit 1; }
+note() { echo "verify-avf000195-replay: $*"; }
 
 find_api_container() {
   docker ps --format '{{.Names}}' | grep -E 'api' | head -n1
@@ -28,7 +26,6 @@ container_env() {
 
 resolve_database_url() {
   if [[ -n "${DATABASE_URL:-}" ]]; then
-    note "using DATABASE_URL from environment"
     return 0
   fi
   local api_container
@@ -52,26 +49,32 @@ PY
 
 run_sql() {
   [[ -f "${SQL_FILE}" ]] || fail "missing ${SQL_FILE}"
-  command -v docker >/dev/null 2>&1 || fail "docker required for DB apply"
+  command -v docker >/dev/null 2>&1 || fail "docker required"
   resolve_database_url || fail "DATABASE_URL unavailable"
-
-  local psql_url dry_run_flag
+  local psql_url
   psql_url="$(psql_database_url)"
-  dry_run_flag="${DRY_RUN}"
   docker run --rm \
     -e "DATABASE_URL=${psql_url}" \
     -v "${ROOT}/scripts/ops:/ops:ro" \
     "${POSTGRES_TOOLS_IMAGE}" \
-    psql "${psql_url}" \
-      -v ON_ERROR_STOP=1 \
-      -v "dry_run=${dry_run_flag}" \
-      -v "target_last_sequence=${TARGET_LAST_SEQUENCE}" \
-      -f "/ops/$(basename "${SQL_FILE}")"
+    psql "${psql_url}" -v ON_ERROR_STOP=1 -f "/ops/$(basename "${SQL_FILE}")"
 }
 
-verify_cursor() {
-  [[ "${DRY_RUN}" == "1" ]] && return 0
-  resolve_database_url || fail "DATABASE_URL unavailable for verify"
+assert_orders() {
+  resolve_database_url || fail "DATABASE_URL unavailable"
+  local psql_url count
+  psql_url="$(psql_database_url)"
+  count="$(docker run --rm \
+    -e "DATABASE_URL=${psql_url}" \
+    "${POSTGRES_TOOLS_IMAGE}" \
+    psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
+      -c "SELECT count(*) FROM orders WHERE id IN ('${ORDER_A}'::uuid, '${ORDER_B}'::uuid);")"
+  count="$(echo "${count}" | tr -d '\r\n ')"
+  [[ "${count}" == "2" ]] || fail "expected 2 orders in DB, got count=${count:-0} (kiosk may still be draining outbox)"
+}
+
+assert_cursor() {
+  resolve_database_url || fail "DATABASE_URL unavailable"
   local psql_url last_seq
   psql_url="$(psql_database_url)"
   last_seq="$(docker run --rm \
@@ -80,15 +83,18 @@ verify_cursor() {
     psql "${psql_url}" -t -A -v ON_ERROR_STOP=1 \
       -c "SELECT COALESCE((SELECT last_sequence FROM machine_sync_cursors WHERE machine_id = '01a0a7e5-3c68-7895-b526-bcb6504bccfb'::uuid AND stream_name = 'offline'), 0);")"
   last_seq="$(echo "${last_seq}" | tr -d '\r\n ')"
-  if [[ -z "${last_seq}" ]] || [[ "${last_seq}" -lt "${TARGET_LAST_SEQUENCE}" ]]; then
-    fail "cursor verify failed: offline.last_sequence=${last_seq:-missing} expected>=${TARGET_LAST_SEQUENCE}"
+  if [[ -z "${last_seq}" ]] || [[ "${last_seq}" -lt "${MIN_CURSOR}" ]]; then
+    fail "offline.last_sequence=${last_seq:-missing} expected>=${MIN_CURSOR}"
   fi
-  note "verified offline.last_sequence=${last_seq}"
+  note "offline.last_sequence=${last_seq}"
 }
 
-[[ -n "${TARGET_LAST_SEQUENCE}" ]] || fail "TARGET_LAST_SEQUENCE required (minPending - 1 from OUTBOX_SEQUENCE_HOLE log)"
-
-note "dry_run=${DRY_RUN} target_last_sequence=${TARGET_LAST_SEQUENCE}"
+note "min_cursor=${MIN_CURSOR} require_orders=${REQUIRE_ORDERS} orders=${ORDER_A} ${ORDER_B}"
 run_sql
-verify_cursor
-note "done"
+assert_cursor
+if [[ "${REQUIRE_ORDERS}" == "1" ]]; then
+  assert_orders
+  note "verified orders + cursor OK"
+else
+  note "cursor OK (order assert skipped)"
+fi

@@ -8,7 +8,8 @@
 
 \if :{?target_last_sequence}
 \else
-\set target_last_sequence 2
+\echo 'error: pass -v target_last_sequence=<minPending-1> from OUTBOX_SEQUENCE_HOLE log'
+\quit 1
 \endif
 
 \echo '=== machine_sync_cursors before (AVF000195) target_last_sequence=':target_last_sequence' ==='
