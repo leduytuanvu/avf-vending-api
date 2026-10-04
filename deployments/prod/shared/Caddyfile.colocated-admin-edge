@@ -1,0 +1,56 @@
+# Public edge on VPS B when app-node shares the host with admin.ldtv.dev.
+# Do not terminate api.ldtv.dev / machine-api.ldtv.dev here — DNS points at app-node A.
+{
+	admin off
+	email {$CADDY_ACME_EMAIL}
+
+	servers {
+		protocols h1 h2 h3
+		timeouts {
+			read_body 15s
+			read_header 10s
+			write 75s
+			idle 120s
+		}
+	}
+}
+
+(admin_web_https) {
+	tls {
+		protocols tls1.2 tls1.3
+	}
+	encode gzip zstd
+	log {
+		output stdout
+		format console
+	}
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Content-Type-Options "nosniff"
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+	}
+	@nextStatic path /_next/static/*
+	header @nextStatic Cache-Control "public, max-age=31536000, immutable"
+	@private path /api/* /login* /dashboard* /machines* /sites* /catalog* /inventory* /planograms* /orders* /payments* /cash* /reports* /telemetry* /commands* /alerts* /audit* /users* /settings*
+	header @private Cache-Control "no-store"
+	reverse_proxy {$UPSTREAM_WEB:avf-vending-web:3000} {
+		flush_interval -1
+		header_up X-Forwarded-For {http.request.remote.host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {http.request.remote.host}
+		transport http {
+			dial_timeout 5s
+			response_header_timeout 30s
+			read_timeout 75s
+			write_timeout 75s
+		}
+	}
+}
+
+{$ADMIN_DOMAIN:admin.ldtv.dev} {
+	import admin_web_https
+}

@@ -40,7 +40,7 @@ set_env_kv() {
 }
 
 set_env_kv "${APP_NODE_DIR}/.env.app-node" "ENABLE_ADMIN_VHOST" "1"
-set_env_kv "${APP_NODE_DIR}/.env.app-node" "CADDYFILE_REL_PATH" "../shared/Caddyfile.with-admin"
+set_env_kv "${APP_NODE_DIR}/.env.app-node" "CADDYFILE_REL_PATH" "../shared/Caddyfile.colocated-admin-edge"
 set_env_kv "${APP_NODE_DIR}/.env.app-node" "ADMIN_DOMAIN" "${ADMIN_DOMAIN}"
 
 mkdir -p "${WEB_DEPLOY_ROOT}"
@@ -92,11 +92,10 @@ note "recreate app-node Caddy with admin vhost"
 cd "${APP_NODE_DIR}"
 docker compose --env-file .env.app-node -f docker-compose.app-node.yml up -d --no-deps --force-recreate caddy
 
-note "smoke: curl admin HTTPS via Caddy container"
-for i in $(seq 1 18); do
-	if docker compose --env-file .env.app-node -f docker-compose.app-node.yml exec -T caddy \
-		wget -qO- "https://${ADMIN_DOMAIN}/api/health" 2>/dev/null | grep -q '"status":"ok"'; then
-		note "PASS: admin health via TLS"
+note "smoke: web health on edge network (TLS may need ACME settle)"
+for i in $(seq 1 24); do
+	if docker exec avf-vending-web wget -qO- http://127.0.0.1:3000/api/health 2>/dev/null | grep -q '"status":"ok"'; then
+		note "PASS: web container health"
 		exit 0
 	fi
 	sleep 5

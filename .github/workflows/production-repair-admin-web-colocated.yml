@@ -66,6 +66,8 @@ jobs:
         run: |
           set -euo pipefail
           tar -cf - \
+            deployments/prod/app-node/docker-compose.app-node.yml \
+            deployments/prod/shared/Caddyfile.colocated-admin-edge \
             deployments/prod/shared/Caddyfile.with-admin \
             scripts/ops/repair_colocated_admin_web_on_app_node_b.sh \
             | ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${APP_NODE_B_HOST}" \

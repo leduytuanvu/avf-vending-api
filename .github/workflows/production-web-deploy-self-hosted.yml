@@ -91,9 +91,9 @@ jobs:
             compose_file="docker-compose.web.yml"
             sed -i "s|^WEB_EDGE_NETWORK=.*|WEB_EDGE_NETWORK=\${project}_edge|" .env.production
             sed -i "s|^COMPOSE_FILE=.*|COMPOSE_FILE=\${compose_file}|" .env.production || echo "COMPOSE_FILE=\${compose_file}" >> .env.production
-            if [[ -f "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/Caddyfile.with-admin" ]]; then
+            if [[ -f "${PRODUCTION_DEPLOY_ROOT}/deployments/prod/shared/Caddyfile.colocated-admin-edge" ]]; then
               grep -q '^ENABLE_ADMIN_VHOST=' "\${app_env}" && sed -i 's|^ENABLE_ADMIN_VHOST=.*|ENABLE_ADMIN_VHOST=1|' "\${app_env}" || echo 'ENABLE_ADMIN_VHOST=1' >> "\${app_env}"
-              grep -q '^CADDYFILE_REL_PATH=' "\${app_env}" && sed -i 's|^CADDYFILE_REL_PATH=.*|CADDYFILE_REL_PATH=../shared/Caddyfile.with-admin|' "\${app_env}" || echo 'CADDYFILE_REL_PATH=../shared/Caddyfile.with-admin' >> "\${app_env}"
+              grep -q '^CADDYFILE_REL_PATH=' "\${app_env}" && sed -i 's|^CADDYFILE_REL_PATH=.*|CADDYFILE_REL_PATH=../shared/Caddyfile.colocated-admin-edge|' "\${app_env}" || echo 'CADDYFILE_REL_PATH=../shared/Caddyfile.colocated-admin-edge' >> "\${app_env}"
               grep -q '^ADMIN_DOMAIN=' "\${app_env}" || echo 'ADMIN_DOMAIN=admin.ldtv.dev' >> "\${app_env}"
               docker stop avf-vending-web-caddy 2>/dev/null || true
               docker rm avf-vending-web-caddy 2>/dev/null || true
