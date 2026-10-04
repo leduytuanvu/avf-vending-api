@@ -40,6 +40,18 @@ func TestParseMachineMutationContext_MetadataBodyIdempotencyMismatch(t *testing.
 	require.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
+func TestParseMachineMutationContext_OfflineReplayOccurredAtFallback(t *testing.T) {
+	t.Parallel()
+	fallback := time.Date(2026, 10, 4, 15, 5, 0, 0, time.UTC)
+	ctx := WithOfflineReplayOccurredAt(context.Background(), fallback)
+	out, err := parseMachineMutationContext(ctx, &machinev1.IdempotencyContext{
+		IdempotencyKey: "k1",
+		ClientEventId:  "e1",
+	})
+	require.NoError(t, err)
+	require.Equal(t, fallback, out.ClientCreatedAt)
+}
+
 func TestParseMachineMutationContext_MetadataSuppliesKey(t *testing.T) {
 	t.Parallel()
 	md := metadata.Pairs("idempotency-key", "k-meta")

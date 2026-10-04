@@ -241,3 +241,5 @@ Logcat lịch sử (grep): `OUTBOX_RECONCILE`, `markProcessed`, `OUTBOX_SEQUENCE
 2. **Repair B:** `confirm_repair=REPAIR_APP_NODE_B`; bật `reset_app_node_b_caddy_tls` nếu Caddy ACME/DNS hỏng.
 3. **Verify DB (không cần đơn trên web):** `Production verify AVF000195 offline replay` — `min_cursor=37`, `require_orders=false`.
 4. **Sau kiosk replay:** cùng workflow với `require_orders=true`, `primary_order=42f63de0-2bc1-46c5-8797-a00111f5538b` (hoặc `86c726f8-…`).
+
+5. **Nếu `machine_offline_events` seq 38–39 `rejected` + `client_created_at required`:** deploy API có offline backfill (`WithOfflineReplayOccurredAt`), chạy `scripts/ops/reset_avf000195_offline_replay_cursor_for_redispatch.sql` (đặt `last_sequence=37`, xóa trạng thái `rejected`), rồi để kiosk sync lại seq 38→.

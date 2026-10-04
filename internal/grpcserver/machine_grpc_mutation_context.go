@@ -16,6 +16,24 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type offlineReplayOccurredAtKey struct{}
+
+// WithOfflineReplayOccurredAt annotates ctx so parseMachineMutationContext can backfill client_created_at during offline replay.
+func WithOfflineReplayOccurredAt(ctx context.Context, occurredAt time.Time) context.Context {
+	if occurredAt.IsZero() {
+		return ctx
+	}
+	return context.WithValue(ctx, offlineReplayOccurredAtKey{}, occurredAt.UTC())
+}
+
+func offlineReplayOccurredAtFrom(ctx context.Context) (time.Time, bool) {
+	v, ok := ctx.Value(offlineReplayOccurredAtKey{}).(time.Time)
+	if !ok || v.IsZero() {
+		return time.Time{}, false
+	}
+	return v.UTC(), true
+}
+
 // machineMutationContext carries validated idempotency and provenance for machine-originated writes.
 type machineMutationContext struct {
 	IdempotencyKey    string
@@ -46,10 +64,14 @@ func parseMachineMutationContext(ctx context.Context, protoCtx *machinev1.Idempo
 		return machineMutationContext{}, status.Error(codes.InvalidArgument, "client_event_id required")
 	}
 	ts := protoCtx.GetClientCreatedAt()
-	if ts == nil || !ts.IsValid() {
+	var t time.Time
+	if ts != nil && ts.IsValid() {
+		t = ts.AsTime().UTC()
+	} else if fallback, ok := offlineReplayOccurredAtFrom(ctx); ok {
+		t = fallback
+	} else {
 		return machineMutationContext{}, status.Error(codes.InvalidArgument, "client_created_at required")
 	}
-	t := ts.AsTime().UTC()
 
 	var opSid *uuid.UUID
 	if v := strings.TrimSpace(protoCtx.GetOperatorSessionId()); v != "" {

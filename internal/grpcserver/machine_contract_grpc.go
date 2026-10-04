@@ -413,7 +413,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 					Reason:          fmt.Sprintf("duplicate client_event_id %q already recorded at offline_sequence %d", clientEventID, prior.OfflineSequence),
 				}, false
 			}
-			if offlineLedgerTerminalStatus(prior.ProcessingStatus) {
+			if offlineLedgerSkipRedispatch(prior.ProcessingStatus) {
 				return &machinev1.OfflineEventResult{
 					OfflineSequence: seq,
 					IdempotencyKey:  idem,
@@ -467,7 +467,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 						Reason:          fmt.Sprintf("duplicate client_event_id %q already recorded at offline_sequence %d", clientEventID, prior.OfflineSequence),
 					}, false
 				}
-				if offlineLedgerTerminalStatus(prior.ProcessingStatus) {
+				if offlineLedgerSkipRedispatch(prior.ProcessingStatus) {
 					return &machinev1.OfflineEventResult{
 						OfflineSequence: seq,
 						IdempotencyKey:  idem,
@@ -491,7 +491,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 			Reason:          offlineEventInsertFailedReason(err),
 		}, false
 	}
-	if !row.Inserted && offlineLedgerTerminalStatus(row.ProcessingStatus) {
+	if !row.Inserted && offlineLedgerSkipRedispatch(row.ProcessingStatus) {
 		return &machinev1.OfflineEventResult{
 			OfflineSequence: seq,
 			IdempotencyKey:  idem,
@@ -499,7 +499,8 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 			Reason:          "offline event replayed",
 		}, false
 	}
-	if err := s.dispatchOfflineEvent(ctx, eventType, payload, meta); err != nil {
+	dispatchCtx := WithOfflineReplayOccurredAt(ctx, occurredAt)
+	if err := s.dispatchOfflineEvent(dispatchCtx, eventType, payload, meta); err != nil {
 		code := status.Code(err)
 		productionmetrics.RecordOfflineReplayFailure(code.String())
 		st, retryable := offlineDispatchFailureProcessingStatus(code)
@@ -546,9 +547,11 @@ func recordOfflineOutcomeMetrics(result *machinev1.OfflineEventResult) {
 	}
 }
 
-func offlineLedgerTerminalStatus(st string) bool {
+// offlineLedgerSkipRedispatch: ledger rows that should short-circuit to REPLAYED without re-running dispatch.
+// Rejected rows are excluded so a fixed API can re-process after kiosk retry (see client_created_at offline backfill).
+func offlineLedgerSkipRedispatch(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "succeeded", "processed", "replayed", "duplicate", "rejected", "failed_terminal":
+	case "succeeded", "processed", "replayed", "duplicate", "failed_terminal":
 		return true
 	default:
 		return false
