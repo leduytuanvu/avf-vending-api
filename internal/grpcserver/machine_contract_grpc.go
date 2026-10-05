@@ -293,7 +293,8 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 	sort.SliceStable(events, func(i, j int) bool {
 		return events[i].GetMeta().GetOfflineSequence() < events[j].GetMeta().GetOfflineSequence()
 	})
-	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline"})
+	streamName := resolveOfflineStreamName(req.GetMeta(), events)
+	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: streamName})
 	if errors.Is(err, pgx.ErrNoRows) {
 		cursor.LastSequence = 0
 	} else if err != nil {
@@ -360,7 +361,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		}
 		cursor.LastSequence = seq
 		expected++
-		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline", LastSequence: seq}); err != nil {
+		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: streamName, LastSequence: seq}); err != nil {
 			return nil, status.Error(codes.Internal, "offline cursor update failed")
 		}
 	}
@@ -406,6 +407,14 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		switch {
 		case err == nil:
 			if prior.OfflineSequence != seq {
+				if strings.TrimSpace(meta.GetStreamId()) != "" {
+					return &machinev1.OfflineEventResult{
+						OfflineSequence: seq,
+						IdempotencyKey:  idem,
+						Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+						Reason:          "offline event replayed on new stream",
+					}, false
+				}
 				return &machinev1.OfflineEventResult{
 					OfflineSequence: seq,
 					IdempotencyKey:  idem,
@@ -706,7 +715,8 @@ func (s *machineOfflineSyncServer) GetSyncCursor(ctx context.Context, req *machi
 		return nil, status.Error(codes.Unavailable, "offline sync ledger not configured")
 	}
 	q := db.New(s.deps.Pool)
-	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: "offline"})
+	streamName := machineruntime.OfflineStreamName(req.GetMeta())
+	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: streamName})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return &machinev1.GetSyncCursorResponse{
 			Meta:       responseMetaCtx(ctx, req.GetMeta().GetRequestId(), machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
@@ -720,6 +730,13 @@ func (s *machineOfflineSyncServer) GetSyncCursor(ctx context.Context, req *machi
 		Meta:       responseMetaCtx(ctx, req.GetMeta().GetRequestId(), machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
 		SyncCursor: strconv.FormatInt(cursor.LastSequence, 10),
 	}, nil
+}
+
+func resolveOfflineStreamName(reqMeta *machinev1.MachineRequestMeta, events []*machinev1.OfflineEvent) string {
+	if len(events) > 0 && events[0].GetMeta() != nil {
+		return machineruntime.OfflineStreamName(events[0].GetMeta())
+	}
+	return machineruntime.OfflineStreamName(reqMeta)
 }
 
 func (s *machineCommandServer) GetPendingCommands(context.Context, *machinev1.GetPendingCommandsRequest) (*machinev1.GetPendingCommandsResponse, error) {
