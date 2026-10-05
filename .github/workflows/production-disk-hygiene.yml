@@ -1,0 +1,138 @@
+name: Production disk hygiene
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Must be exactly DISK_HYGIENE_PRODUCTION"
+        required: true
+        type: string
+      include_app_node_b:
+        description: "Also run Docker/tmp hygiene on app node B via SSH"
+        required: false
+        default: true
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-disk-hygiene
+  cancel-in-progress: false
+
+jobs:
+  hygiene-app-node-a:
+    name: Disk hygiene on app node A (runner host)
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 30
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Validate confirmation
+        run: |
+          set -euo pipefail
+          [[ "${{ github.event.inputs.confirm }}" == "DISK_HYGIENE_PRODUCTION" ]] \
+            || { echo "error: confirm must be DISK_HYGIENE_PRODUCTION"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure privileged command helper
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Run disk hygiene on app node A
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_priv() {
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD:-}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh "$@"
+          }
+          run_priv "bash '${GITHUB_WORKSPACE}/scripts/ops/production_disk_hygiene.sh'" | tee "${RUNNER_TEMP}/disk-hygiene-app-node-a.log"
+          echo "## App node A disk hygiene" >> "$GITHUB_STEP_SUMMARY"
+          tail -n 40 "${RUNNER_TEMP}/disk-hygiene-app-node-a.log" >> "$GITHUB_STEP_SUMMARY" || true
+
+  hygiene-app-node-b:
+    name: Disk hygiene on app node B
+    if: inputs.include_app_node_b
+    needs: hygiene-app-node-a
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 20
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || '187.127.99.153' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install SSH credentials
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          if [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]]; then
+            printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          else
+            touch ~/.ssh/known_hosts
+          fi
+          ssh-keyscan -H -p "${SSH_PORT}" "${APP_NODE_B_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts
+          echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+
+      - name: Sync and run hygiene on B
+        run: |
+          set -euo pipefail
+          tar -cf - scripts/ops/production_disk_hygiene.sh | \
+            ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "${SSH_USER}@${APP_NODE_B_HOST}" \
+              "tar -xf - -C '${PRODUCTION_DEPLOY_ROOT}' --overwrite && chmod +x '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/production_disk_hygiene.sh'"
+          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "${SSH_USER}@${APP_NODE_B_HOST}" \
+            "KEEP_MIGRATION_BACKUPS=3 bash '${PRODUCTION_DEPLOY_ROOT}/scripts/ops/production_disk_hygiene.sh'" \
+            | tee "${RUNNER_TEMP}/disk-hygiene-app-node-b.log"
+          echo "## App node B disk hygiene" >> "$GITHUB_STEP_SUMMARY"
+          tail -n 40 "${RUNNER_TEMP}/disk-hygiene-app-node-b.log" >> "$GITHUB_STEP_SUMMARY" || true
