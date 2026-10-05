@@ -139,11 +139,11 @@ func (s *Service) createOfflineOrderFromSnapshot(
 			return uuid.Nil, errors.Join(ErrInvalidArgument, errors.New("invalid product_id in pricing_snapshot"))
 		}
 		slotCode := strings.TrimSpace(line.SlotCode)
-		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+		identity, err := s.resolveCheckoutSaleLine(ctx, ResolveSaleLineInput{
 			MachineID: machineID,
 			ProductID: productID,
 			SlotCode:  slotCode,
-		})
+		}, &pricingSnap, 1)
 		if err != nil {
 			return uuid.Nil, err
 		}
@@ -174,20 +174,20 @@ func (s *Service) createOfflineOrderFromSnapshot(
 			return uuid.Nil, errors.Join(ErrInvalidArgument, errors.New("invalid product_id in pricing_snapshot"))
 		}
 		slotCode := strings.TrimSpace(line.SlotCode)
-		identity, err := s.saleLines.ResolveSaleLine(ctx, ResolveSaleLineInput{
+		qty := int32(line.Quantity)
+		if qty <= 0 {
+			qty = 1
+		}
+		identity, err := s.resolveCheckoutSaleLine(ctx, ResolveSaleLineInput{
 			MachineID: machineID,
 			ProductID: productID,
 			SlotCode:  slotCode,
-		})
+		}, &pricingSnap, qty)
 		if err != nil {
 			return uuid.Nil, err
 		}
 		slotID := identity.SlotConfigID
 		slotIdx := identity.SlotIndex
-		qty := int32(line.Quantity)
-		if qty <= 0 {
-			qty = 1
-		}
 		quoteLines = append(quoteLines, QuoteLineInput{
 			ProductID:   productID,
 			SlotID:      &slotID,
