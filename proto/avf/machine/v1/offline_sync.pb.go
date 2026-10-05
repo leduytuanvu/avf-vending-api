@@ -83,9 +83,10 @@ func (x *OfflineEvent) GetPayload() *structpb.Struct {
 }
 
 type SyncOfflineEventsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	Events        []*OfflineEvent        `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	Meta          *MachineRequestMeta         `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Events        []*OfflineEvent             `protobuf:"bytes,2,rep,name=events,proto3" json:"events,omitempty"`
+	Abandoned     []*AbandonedOfflineSequence `protobuf:"bytes,3,rep,name=abandoned,proto3" json:"abandoned,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -134,6 +135,73 @@ func (x *SyncOfflineEventsRequest) GetEvents() []*OfflineEvent {
 	return nil
 }
 
+func (x *SyncOfflineEventsRequest) GetAbandoned() []*AbandonedOfflineSequence {
+	if x != nil {
+		return x.Abandoned
+	}
+	return nil
+}
+
+type AbandonedOfflineSequence struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	OfflineSequence int64                  `protobuf:"varint,1,opt,name=offline_sequence,json=offlineSequence,proto3" json:"offline_sequence,omitempty"`
+	ClientEventId   string                 `protobuf:"bytes,2,opt,name=client_event_id,json=clientEventId,proto3" json:"client_event_id,omitempty"`
+	Reason          string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AbandonedOfflineSequence) Reset() {
+	*x = AbandonedOfflineSequence{}
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AbandonedOfflineSequence) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AbandonedOfflineSequence) ProtoMessage() {}
+
+func (x *AbandonedOfflineSequence) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AbandonedOfflineSequence.ProtoReflect.Descriptor instead.
+func (*AbandonedOfflineSequence) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AbandonedOfflineSequence) GetOfflineSequence() int64 {
+	if x != nil {
+		return x.OfflineSequence
+	}
+	return 0
+}
+
+func (x *AbandonedOfflineSequence) GetClientEventId() string {
+	if x != nil {
+		return x.ClientEventId
+	}
+	return ""
+}
+
+func (x *AbandonedOfflineSequence) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
 type SyncOfflineEventsResponse struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Meta           *MachineResponseMeta   `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -145,7 +213,7 @@ type SyncOfflineEventsResponse struct {
 
 func (x *SyncOfflineEventsResponse) Reset() {
 	*x = SyncOfflineEventsResponse{}
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[2]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -157,7 +225,7 @@ func (x *SyncOfflineEventsResponse) String() string {
 func (*SyncOfflineEventsResponse) ProtoMessage() {}
 
 func (x *SyncOfflineEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[2]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -170,7 +238,7 @@ func (x *SyncOfflineEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SyncOfflineEventsResponse.ProtoReflect.Descriptor instead.
 func (*SyncOfflineEventsResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{2}
+	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SyncOfflineEventsResponse) GetMeta() *MachineResponseMeta {
@@ -206,7 +274,7 @@ type OfflineEventResult struct {
 
 func (x *OfflineEventResult) Reset() {
 	*x = OfflineEventResult{}
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[3]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -218,7 +286,7 @@ func (x *OfflineEventResult) String() string {
 func (*OfflineEventResult) ProtoMessage() {}
 
 func (x *OfflineEventResult) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[3]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -231,7 +299,7 @@ func (x *OfflineEventResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OfflineEventResult.ProtoReflect.Descriptor instead.
 func (*OfflineEventResult) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{3}
+	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *OfflineEventResult) GetOfflineSequence() int64 {
@@ -271,7 +339,7 @@ type GetSyncCursorRequest struct {
 
 func (x *GetSyncCursorRequest) Reset() {
 	*x = GetSyncCursorRequest{}
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[4]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -283,7 +351,7 @@ func (x *GetSyncCursorRequest) String() string {
 func (*GetSyncCursorRequest) ProtoMessage() {}
 
 func (x *GetSyncCursorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[4]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -296,7 +364,7 @@ func (x *GetSyncCursorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSyncCursorRequest.ProtoReflect.Descriptor instead.
 func (*GetSyncCursorRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{4}
+	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *GetSyncCursorRequest) GetMeta() *MachineRequestMeta {
@@ -316,7 +384,7 @@ type GetSyncCursorResponse struct {
 
 func (x *GetSyncCursorResponse) Reset() {
 	*x = GetSyncCursorResponse{}
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -328,7 +396,7 @@ func (x *GetSyncCursorResponse) String() string {
 func (*GetSyncCursorResponse) ProtoMessage() {}
 
 func (x *GetSyncCursorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[5]
+	mi := &file_avf_machine_v1_offline_sync_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -341,7 +409,7 @@ func (x *GetSyncCursorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSyncCursorResponse.ProtoReflect.Descriptor instead.
 func (*GetSyncCursorResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{5}
+	return file_avf_machine_v1_offline_sync_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetSyncCursorResponse) GetMeta() *MachineResponseMeta {
@@ -367,10 +435,15 @@ const file_avf_machine_v1_offline_sync_proto_rawDesc = "" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
 	"\n" +
 	"event_type\x18\x02 \x01(\tR\teventType\x121\n" +
-	"\apayload\x18\x03 \x01(\v2\x17.google.protobuf.StructR\apayload\"\x88\x01\n" +
+	"\apayload\x18\x03 \x01(\v2\x17.google.protobuf.StructR\apayload\"\xd0\x01\n" +
 	"\x18SyncOfflineEventsRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x124\n" +
-	"\x06events\x18\x02 \x03(\v2\x1c.avf.machine.v1.OfflineEventR\x06events\"\xbc\x01\n" +
+	"\x06events\x18\x02 \x03(\v2\x1c.avf.machine.v1.OfflineEventR\x06events\x12F\n" +
+	"\tabandoned\x18\x03 \x03(\v2(.avf.machine.v1.AbandonedOfflineSequenceR\tabandoned\"\x85\x01\n" +
+	"\x18AbandonedOfflineSequence\x12)\n" +
+	"\x10offline_sequence\x18\x01 \x01(\x03R\x0fofflineSequence\x12&\n" +
+	"\x0fclient_event_id\x18\x02 \x01(\tR\rclientEventId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xbc\x01\n" +
 	"\x19SyncOfflineEventsResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12<\n" +
 	"\aresults\x18\x02 \x03(\v2\".avf.machine.v1.OfflineEventResultR\aresults\x12(\n" +
@@ -402,38 +475,40 @@ func file_avf_machine_v1_offline_sync_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_offline_sync_proto_rawDescData
 }
 
-var file_avf_machine_v1_offline_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_avf_machine_v1_offline_sync_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_avf_machine_v1_offline_sync_proto_goTypes = []any{
 	(*OfflineEvent)(nil),              // 0: avf.machine.v1.OfflineEvent
 	(*SyncOfflineEventsRequest)(nil),  // 1: avf.machine.v1.SyncOfflineEventsRequest
-	(*SyncOfflineEventsResponse)(nil), // 2: avf.machine.v1.SyncOfflineEventsResponse
-	(*OfflineEventResult)(nil),        // 3: avf.machine.v1.OfflineEventResult
-	(*GetSyncCursorRequest)(nil),      // 4: avf.machine.v1.GetSyncCursorRequest
-	(*GetSyncCursorResponse)(nil),     // 5: avf.machine.v1.GetSyncCursorResponse
-	(*MachineRequestMeta)(nil),        // 6: avf.machine.v1.MachineRequestMeta
-	(*structpb.Struct)(nil),           // 7: google.protobuf.Struct
-	(*MachineResponseMeta)(nil),       // 8: avf.machine.v1.MachineResponseMeta
-	(MachineResponseStatus)(0),        // 9: avf.machine.v1.MachineResponseStatus
+	(*AbandonedOfflineSequence)(nil),  // 2: avf.machine.v1.AbandonedOfflineSequence
+	(*SyncOfflineEventsResponse)(nil), // 3: avf.machine.v1.SyncOfflineEventsResponse
+	(*OfflineEventResult)(nil),        // 4: avf.machine.v1.OfflineEventResult
+	(*GetSyncCursorRequest)(nil),      // 5: avf.machine.v1.GetSyncCursorRequest
+	(*GetSyncCursorResponse)(nil),     // 6: avf.machine.v1.GetSyncCursorResponse
+	(*MachineRequestMeta)(nil),        // 7: avf.machine.v1.MachineRequestMeta
+	(*structpb.Struct)(nil),           // 8: google.protobuf.Struct
+	(*MachineResponseMeta)(nil),       // 9: avf.machine.v1.MachineResponseMeta
+	(MachineResponseStatus)(0),        // 10: avf.machine.v1.MachineResponseStatus
 }
 var file_avf_machine_v1_offline_sync_proto_depIdxs = []int32{
-	6,  // 0: avf.machine.v1.OfflineEvent.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	7,  // 1: avf.machine.v1.OfflineEvent.payload:type_name -> google.protobuf.Struct
-	6,  // 2: avf.machine.v1.SyncOfflineEventsRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	7,  // 0: avf.machine.v1.OfflineEvent.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	8,  // 1: avf.machine.v1.OfflineEvent.payload:type_name -> google.protobuf.Struct
+	7,  // 2: avf.machine.v1.SyncOfflineEventsRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	0,  // 3: avf.machine.v1.SyncOfflineEventsRequest.events:type_name -> avf.machine.v1.OfflineEvent
-	8,  // 4: avf.machine.v1.SyncOfflineEventsResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	3,  // 5: avf.machine.v1.SyncOfflineEventsResponse.results:type_name -> avf.machine.v1.OfflineEventResult
-	9,  // 6: avf.machine.v1.OfflineEventResult.status:type_name -> avf.machine.v1.MachineResponseStatus
-	6,  // 7: avf.machine.v1.GetSyncCursorRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	8,  // 8: avf.machine.v1.GetSyncCursorResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	1,  // 9: avf.machine.v1.MachineOfflineSyncService.PushOfflineEvents:input_type -> avf.machine.v1.SyncOfflineEventsRequest
-	4,  // 10: avf.machine.v1.MachineOfflineSyncService.GetSyncCursor:input_type -> avf.machine.v1.GetSyncCursorRequest
-	2,  // 11: avf.machine.v1.MachineOfflineSyncService.PushOfflineEvents:output_type -> avf.machine.v1.SyncOfflineEventsResponse
-	5,  // 12: avf.machine.v1.MachineOfflineSyncService.GetSyncCursor:output_type -> avf.machine.v1.GetSyncCursorResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	2,  // 4: avf.machine.v1.SyncOfflineEventsRequest.abandoned:type_name -> avf.machine.v1.AbandonedOfflineSequence
+	9,  // 5: avf.machine.v1.SyncOfflineEventsResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	4,  // 6: avf.machine.v1.SyncOfflineEventsResponse.results:type_name -> avf.machine.v1.OfflineEventResult
+	10, // 7: avf.machine.v1.OfflineEventResult.status:type_name -> avf.machine.v1.MachineResponseStatus
+	7,  // 8: avf.machine.v1.GetSyncCursorRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	9,  // 9: avf.machine.v1.GetSyncCursorResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	1,  // 10: avf.machine.v1.MachineOfflineSyncService.PushOfflineEvents:input_type -> avf.machine.v1.SyncOfflineEventsRequest
+	5,  // 11: avf.machine.v1.MachineOfflineSyncService.GetSyncCursor:input_type -> avf.machine.v1.GetSyncCursorRequest
+	3,  // 12: avf.machine.v1.MachineOfflineSyncService.PushOfflineEvents:output_type -> avf.machine.v1.SyncOfflineEventsResponse
+	6,  // 13: avf.machine.v1.MachineOfflineSyncService.GetSyncCursor:output_type -> avf.machine.v1.GetSyncCursorResponse
+	12, // [12:14] is the sub-list for method output_type
+	10, // [10:12] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_offline_sync_proto_init() }
@@ -448,7 +523,7 @@ func file_avf_machine_v1_offline_sync_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_offline_sync_proto_rawDesc), len(file_avf_machine_v1_offline_sync_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

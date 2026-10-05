@@ -396,7 +396,7 @@ func telemetryStatusForKey(ctx context.Context, q *db.Queries, machineID uuid.UU
 		IdempotencyKey: key,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return &machinev1.TelemetryEventStatus{IdempotencyKey: key, Status: "not_found", Retryable: true}, nil
+		return telemetryStatusForKeyOfflineFallback(ctx, q, machineID, key)
 	}
 	if err != nil {
 		return nil, status.Error(codes.Internal, "event status lookup failed")

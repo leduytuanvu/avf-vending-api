@@ -93,3 +93,17 @@ SET
 WHERE
     machine_id = $3
     AND offline_sequence = $4;
+
+-- name: GetMachineOfflineEventByIdempotencyKey :one
+SELECT
+    *
+FROM
+    machine_offline_events
+WHERE
+    machine_id = $1
+    AND idempotency_key = $2
+    AND btrim(idempotency_key) <> ''
+ORDER BY
+    received_at DESC
+LIMIT
+    1;

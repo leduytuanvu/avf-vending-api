@@ -1,11 +1,13 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -58,14 +60,7 @@ func postTelemetryReconcileBatch(app *api.HTTPApplication) http.HandlerFunc {
 			})
 			if qerr != nil {
 				if qerr == pgx.ErrNoRows {
-					items = append(items, map[string]any{
-						"idempotencyKey": key,
-						"status":         "not_found",
-						"eventType":      nil,
-						"acceptedAt":     nil,
-						"processedAt":    nil,
-						"retryable":      true,
-					})
+					items = append(items, mapOfflineReconcileFallbackItem(ctx, q, machineID, key))
 					continue
 				}
 				writeAPIError(w, ctx, http.StatusInternalServerError, "internal", qerr.Error())
@@ -100,21 +95,46 @@ func getTelemetryReconcileStatus(app *api.HTTPApplication) http.HandlerFunc {
 		})
 		if qerr != nil {
 			if qerr == pgx.ErrNoRows {
-				writeJSON(w, http.StatusOK, map[string]any{
-					"machineId":      machineID.String(),
-					"idempotencyKey": key,
-					"status":         "not_found",
-					"eventType":      nil,
-					"acceptedAt":     nil,
-					"processedAt":    nil,
-					"retryable":      true,
-				})
+				item := mapOfflineReconcileFallbackItem(ctx, q, machineID, key)
+				item["machineId"] = machineID.String()
+				writeJSON(w, http.StatusOK, item)
 				return
 			}
 			writeAPIError(w, ctx, http.StatusInternalServerError, "internal", qerr.Error())
 			return
 		}
 		writeJSON(w, http.StatusOK, mapTelemetryStatusItem(key, row))
+	}
+}
+
+func mapOfflineReconcileFallbackItem(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	key string,
+) map[string]any {
+	offline, err := machineruntime.LookupOfflineEventReconcileStatus(ctx, q, machineID, key)
+	if err != nil || !offline.Found {
+		return map[string]any{
+			"idempotencyKey": key,
+			"status":         "not_found",
+			"eventType":      nil,
+			"acceptedAt":     nil,
+			"processedAt":    nil,
+			"retryable":      true,
+		}
+	}
+	var ev any
+	if strings.TrimSpace(offline.EventType) != "" {
+		ev = offline.EventType
+	}
+	return map[string]any{
+		"idempotencyKey": key,
+		"status":         offline.Status,
+		"eventType":      ev,
+		"acceptedAt":     nil,
+		"processedAt":    nil,
+		"retryable":      offline.Retryable,
 	}
 }
 

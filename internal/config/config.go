@@ -299,6 +299,8 @@ type Config struct {
 	AdminAuthSecurity AdminAuthSecurityConfig
 	// DeviceClockSkew bounds acceptance of device-supplied occurred_at timestamps.
 	DeviceClockSkew DeviceClockSkewConfig
+	// OfflineSync configures machine PushOfflineEvents sequence gating.
+	OfflineSync OfflineSyncConfig
 	// MachineJWT selects validation mode for machine-runtime access JWTs. Defaults preserve local HS256 compatibility.
 	MachineJWT MachineJWTConfig
 	// HTTPRateLimit configures optional abuse protection on mutating API routes.
@@ -2073,6 +2075,7 @@ func Load() (*Config, error) {
 		HTTPAuth:                       httpAuth,
 		AdminAuthSecurity:              adminAuthSecurity,
 		DeviceClockSkew:                loadDeviceClockSkewFromEnv(),
+		OfflineSync:                    loadOfflineSyncConfig(),
 		MachineJWT:                     machineJWT,
 		HTTPRateLimit:                  loadHTTPRateLimitConfig(),
 		Capacity:                       loadCapacityLimitsConfig(),

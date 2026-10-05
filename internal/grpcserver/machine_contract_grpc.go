@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"strings"
@@ -301,7 +302,21 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		return nil, status.Error(codes.Internal, "offline cursor lookup failed")
 	}
 	expected := cursor.LastSequence + 1
-	results := make([]*machinev1.OfflineEventResult, 0, len(events))
+	gapTolerant := s.offlineSequenceGapTolerant()
+	results := make([]*machinev1.OfflineEventResult, 0, len(events)+len(req.GetAbandoned()))
+	abandonedResults, err := s.applyAbandonedOfflineSequences(
+		ctx,
+		q,
+		claims.MachineID,
+		streamName,
+		&cursor,
+		req.GetAbandoned(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	results = append(results, abandonedResults...)
+	expected = cursor.LastSequence + 1
 	batchRetryable := false
 	for _, ev := range events {
 		if ev == nil || ev.GetMeta() == nil {
@@ -319,7 +334,19 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 			continue
 		}
 		if seq != expected {
-			return nil, machineruntime.OfflineSequenceOutOfOrder(expected, seq)
+			if !gapTolerant {
+				return nil, machineruntime.OfflineSequenceOutOfOrder(expected, seq)
+			}
+			productionmetrics.RecordOfflineEventResult("accepted_with_gap")
+			slog.InfoContext(
+				ctx,
+				"offline sequence gap accepted",
+				"machine_id", claims.MachineID,
+				"stream", streamName,
+				"expected", expected,
+				"got", seq,
+				"skipped_through", seq-1,
+			)
 		}
 		occAt := time.Now().UTC()
 		if ev.GetMeta().GetOccurredAt() != nil && ev.GetMeta().GetOccurredAt().IsValid() {

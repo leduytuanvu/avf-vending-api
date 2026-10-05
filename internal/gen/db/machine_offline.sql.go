@@ -48,6 +48,46 @@ func (q *Queries) GetMachineOfflineEventByClientEventID(ctx context.Context, arg
 	return i, err
 }
 
+const GetMachineOfflineEventByIdempotencyKey = `-- name: GetMachineOfflineEventByIdempotencyKey :one
+SELECT
+    id, machine_id, offline_sequence, event_type, event_id, client_event_id, occurred_at, received_at, payload, processing_status, processing_error, idempotency_key
+FROM
+    machine_offline_events
+WHERE
+    machine_id = $1
+    AND idempotency_key = $2
+    AND btrim(idempotency_key) <> ''
+ORDER BY
+    received_at DESC
+LIMIT
+    1
+`
+
+type GetMachineOfflineEventByIdempotencyKeyParams struct {
+	MachineID      uuid.UUID
+	IdempotencyKey string
+}
+
+func (q *Queries) GetMachineOfflineEventByIdempotencyKey(ctx context.Context, arg GetMachineOfflineEventByIdempotencyKeyParams) (MachineOfflineEvent, error) {
+	row := q.db.QueryRow(ctx, GetMachineOfflineEventByIdempotencyKey, arg.MachineID, arg.IdempotencyKey)
+	var i MachineOfflineEvent
+	err := row.Scan(
+		&i.ID,
+		&i.MachineID,
+		&i.OfflineSequence,
+		&i.EventType,
+		&i.EventID,
+		&i.ClientEventID,
+		&i.OccurredAt,
+		&i.ReceivedAt,
+		&i.Payload,
+		&i.ProcessingStatus,
+		&i.ProcessingError,
+		&i.IdempotencyKey,
+	)
+	return i, err
+}
+
 const GetMachineSyncCursor = `-- name: GetMachineSyncCursor :one
 SELECT
     machine_id, stream_name, last_sequence, last_synced_at, updated_at

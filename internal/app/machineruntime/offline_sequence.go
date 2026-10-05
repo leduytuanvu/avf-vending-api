@@ -5,12 +5,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// Offline sync uses a contiguous offline_sequence cursor per machine+stream stored in Postgres
+// Offline sync uses a monotonic offline_sequence cursor per machine+stream stored in Postgres
 // (see machine_sync_cursors). Incoming batches sort by sequence; per-event processing updates the cursor only
 // on success.
 //
-// Out-of-order: if offline_sequence ≠ expected(seq = last_sequence+1), the server rejects the entire batch
-// with Aborted OfflineSequenceOutOfOrder so the kiosk can rewind and replay deterministically.
+// When GapTolerant is enabled (default), offline_sequence may skip ahead of last_sequence+1; missing slots
+// are not required to be filled. When disabled, a gap still fails the batch with Aborted OfflineSequenceOutOfOrder.
 //
 // Duplicate or already-synced (seq ≤ last_sequence): replayed idempotently with REPLAYED without re-dispatch.
 

@@ -23,6 +23,13 @@ message OfflineEvent {
 message SyncOfflineEventsRequest {
   MachineRequestMeta meta = 1;
   repeated OfflineEvent events = 2;
+  repeated AbandonedOfflineSequence abandoned = 3;
+}
+
+message AbandonedOfflineSequence {
+  int64 offline_sequence = 1;
+  string client_event_id = 2;
+  string reason = 3;
 }
 
 message SyncOfflineEventsResponse {

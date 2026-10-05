@@ -354,6 +354,7 @@ type Querier interface {
 	GetMachineLocalLayoutMirror(ctx context.Context, machineID uuid.UUID) (MachineLocalLayoutMirror, error)
 	GetMachineMQTTCredentials(ctx context.Context, machineID uuid.UUID) (MachineMqttCredential, error)
 	GetMachineOfflineEventByClientEventID(ctx context.Context, arg GetMachineOfflineEventByClientEventIDParams) (MachineOfflineEvent, error)
+	GetMachineOfflineEventByIdempotencyKey(ctx context.Context, arg GetMachineOfflineEventByIdempotencyKeyParams) (MachineOfflineEvent, error)
 	GetMachinePlanogramVersionByID(ctx context.Context, id uuid.UUID) (MachinePlanogramVersion, error)
 	GetMachineRuntimeAppSessionByBootAndStart(ctx context.Context, arg GetMachineRuntimeAppSessionByBootAndStartParams) (MachineRuntimeAppSession, error)
 	GetMachineRuntimeAppSessionByID(ctx context.Context, id uuid.UUID) (MachineRuntimeAppSession, error)

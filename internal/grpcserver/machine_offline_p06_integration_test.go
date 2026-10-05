@@ -265,7 +265,7 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 	})
 	require.NoError(t, err)
 
-	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+	outGap, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
 		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-gap-b", RequestId: "sync-gap-b"},
 		Events: []*machinev1.OfflineEvent{{
 			Meta: &machinev1.MachineRequestMeta{
@@ -273,6 +273,73 @@ func TestP06_OfflineSync_gapInSequenceRejectedAfterSuccessfulCursorBump(t *testi
 				IdempotencyKey:  "oe-gap-3",
 				RequestId:       "req-gap-3",
 				ClientEventId:   "cli-gap-3",
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "telemetry.batch",
+			Payload:   &payloadStruct,
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "3", outGap.GetNextSyncCursor())
+}
+
+func TestP06_OfflineSync_gapRejectedWhenStrictSequenceMode(t *testing.T) {
+	t.Parallel()
+
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	siteID := id.NewUUIDV7()
+	machineID := id.NewUUIDV7()
+	require.NoError(t, insertMachineReplayLedgerFixture(ctx, pool, siteID, machineID))
+
+	deps := offlineSyncIntegrationDeps(t, pool)
+	cfg := deps.Config
+	cfg.OfflineSync.GapTolerant = false
+	deps.Config = cfg
+	srv := &machineOfflineSyncServer{deps: deps}
+
+	tbReq := &machinev1.SubmitTelemetryBatchRequest{
+		Context: &machinev1.IdempotencyContext{
+			IdempotencyKey:  "offline-gap-strict",
+			ClientEventId:   "client-gap-strict",
+			ClientCreatedAt: timestamppb.Now(),
+		},
+		Events: []*machinev1.TelemetryEvent{
+			{EventType: "heartbeat", OccurredAt: timestamppb.Now(), EventId: "evt-gap-strict"},
+		},
+	}
+	payloadJSON, err := protojson.Marshal(tbReq)
+	require.NoError(t, err)
+	var payloadStruct structpb.Struct
+	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
+
+	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
+	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
+
+	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-gap-strict-a", RequestId: "sync-gap-strict-a"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 1,
+				IdempotencyKey:  "oe-gap-strict-1",
+				RequestId:       "req-gap-strict-1",
+				ClientEventId:   "cli-gap-strict-1",
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "telemetry.batch",
+			Payload:   &payloadStruct,
+		}},
+	})
+	require.NoError(t, err)
+
+	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-gap-strict-b", RequestId: "sync-gap-strict-b"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 3,
+				IdempotencyKey:  "oe-gap-strict-3",
+				RequestId:       "req-gap-strict-3",
+				ClientEventId:   "cli-gap-strict-3",
 				OccurredAt:      timestamppb.Now(),
 			},
 			EventType: "telemetry.batch",
@@ -314,7 +381,7 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 	claims := plauth.MachineAccessClaims{MachineID: machineID, CredentialVersion: 1}
 	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
 
-	_, err = srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+	out, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
 		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: "sync-oo", RequestId: "sync-oo"},
 		Events: []*machinev1.OfflineEvent{{
 			Meta: &machinev1.MachineRequestMeta{
@@ -328,9 +395,8 @@ func TestP06_OfflineSync_outOfOrderErrorIncludesExpectedSequence(t *testing.T) {
 			Payload:   &payloadStruct,
 		}},
 	})
-	require.Error(t, err)
-	require.Equal(t, codes.Aborted, status.Code(err))
-	require.Contains(t, err.Error(), "expected 1 got 5")
+	require.NoError(t, err)
+	require.Equal(t, "5", out.GetNextSyncCursor())
 }
 
 func TestP06_OfflineSync_duplicateClientEventIdAtLaterSequenceRejected(t *testing.T) {
