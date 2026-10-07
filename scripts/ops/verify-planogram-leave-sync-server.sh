@@ -64,6 +64,21 @@ FROM machine_layout_snapshot_history
 WHERE machine_id = '${MACHINE_ID}'
 ORDER BY captured_at DESC
 LIMIT 10;
+
+-- Storefront catalog source (GetCatalogSnapshot / machine_slot_configs)
+SELECT COUNT(*) AS assigned_configs
+FROM machine_slot_configs msc
+JOIN machine_cabinets mc ON mc.id = msc.machine_cabinet_id
+WHERE mc.machine_id = '${MACHINE_ID}'
+  AND msc.is_current = true
+  AND msc.product_id IS NOT NULL;
+
+-- Named layout plane (admin GetMachineLayoutDetail)
+SELECT COUNT(*) AS assigned_layout_slots
+FROM machine_layout_slots mls
+JOIN machine_layouts ml ON ml.id = mls.layout_id
+WHERE ml.machine_id = '${MACHINE_ID}'
+  AND mls.product_id IS NOT NULL;
 EOF
 
 if [[ -n "$LAYOUT_ID" ]]; then
