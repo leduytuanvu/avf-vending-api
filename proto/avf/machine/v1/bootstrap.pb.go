@@ -2715,6 +2715,126 @@ func (x *GetMachineLayoutLibraryResponse) GetReportedActiveLayoutId() string {
 	return ""
 }
 
+type GetMachineLayoutDetailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	LayoutId      string                 `protobuf:"bytes,2,opt,name=layout_id,json=layoutId,proto3" json:"layout_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMachineLayoutDetailRequest) Reset() {
+	*x = GetMachineLayoutDetailRequest{}
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMachineLayoutDetailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMachineLayoutDetailRequest) ProtoMessage() {}
+
+func (x *GetMachineLayoutDetailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMachineLayoutDetailRequest.ProtoReflect.Descriptor instead.
+func (*GetMachineLayoutDetailRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *GetMachineLayoutDetailRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetMachineLayoutDetailRequest) GetLayoutId() string {
+	if x != nil {
+		return x.LayoutId
+	}
+	return ""
+}
+
+type GetMachineLayoutDetailResponse struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Meta          *MachineResponseMeta       `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Layout        *MachineLayoutSummary      `protobuf:"bytes,2,opt,name=layout,proto3" json:"layout,omitempty"`
+	Slots         []*LayoutSnapshotSlot      `protobuf:"bytes,3,rep,name=slots,proto3" json:"slots,omitempty"`
+	MergePairs    []*LayoutSnapshotMergePair `protobuf:"bytes,4,rep,name=merge_pairs,json=mergePairs,proto3" json:"merge_pairs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMachineLayoutDetailResponse) Reset() {
+	*x = GetMachineLayoutDetailResponse{}
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMachineLayoutDetailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMachineLayoutDetailResponse) ProtoMessage() {}
+
+func (x *GetMachineLayoutDetailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMachineLayoutDetailResponse.ProtoReflect.Descriptor instead.
+func (*GetMachineLayoutDetailResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *GetMachineLayoutDetailResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetMachineLayoutDetailResponse) GetLayout() *MachineLayoutSummary {
+	if x != nil {
+		return x.Layout
+	}
+	return nil
+}
+
+func (x *GetMachineLayoutDetailResponse) GetSlots() []*LayoutSnapshotSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *GetMachineLayoutDetailResponse) GetMergePairs() []*LayoutSnapshotMergePair {
+	if x != nil {
+		return x.MergePairs
+	}
+	return nil
+}
+
 type ReportLayoutSnapshotRequest struct {
 	state              protoimpl.MessageState     `protogen:"open.v1"`
 	Meta               *MachineRequestMeta        `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -2741,7 +2861,7 @@ type ReportLayoutSnapshotRequest struct {
 
 func (x *ReportLayoutSnapshotRequest) Reset() {
 	*x = ReportLayoutSnapshotRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[29]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2753,7 +2873,7 @@ func (x *ReportLayoutSnapshotRequest) String() string {
 func (*ReportLayoutSnapshotRequest) ProtoMessage() {}
 
 func (x *ReportLayoutSnapshotRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[29]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2766,7 +2886,7 @@ func (x *ReportLayoutSnapshotRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportLayoutSnapshotRequest.ProtoReflect.Descriptor instead.
 func (*ReportLayoutSnapshotRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{29}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *ReportLayoutSnapshotRequest) GetMeta() *MachineRequestMeta {
@@ -2909,7 +3029,7 @@ type ReportLayoutSnapshotResponse struct {
 
 func (x *ReportLayoutSnapshotResponse) Reset() {
 	*x = ReportLayoutSnapshotResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[30]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2921,7 +3041,7 @@ func (x *ReportLayoutSnapshotResponse) String() string {
 func (*ReportLayoutSnapshotResponse) ProtoMessage() {}
 
 func (x *ReportLayoutSnapshotResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[30]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2934,7 +3054,7 @@ func (x *ReportLayoutSnapshotResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportLayoutSnapshotResponse.ProtoReflect.Descriptor instead.
 func (*ReportLayoutSnapshotResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{30}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ReportLayoutSnapshotResponse) GetMeta() *MachineResponseMeta {
@@ -2989,7 +3109,7 @@ type ReportLayoutSnapshotBatchRequest struct {
 
 func (x *ReportLayoutSnapshotBatchRequest) Reset() {
 	*x = ReportLayoutSnapshotBatchRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[31]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3001,7 +3121,7 @@ func (x *ReportLayoutSnapshotBatchRequest) String() string {
 func (*ReportLayoutSnapshotBatchRequest) ProtoMessage() {}
 
 func (x *ReportLayoutSnapshotBatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[31]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3014,7 +3134,7 @@ func (x *ReportLayoutSnapshotBatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportLayoutSnapshotBatchRequest.ProtoReflect.Descriptor instead.
 func (*ReportLayoutSnapshotBatchRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{31}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ReportLayoutSnapshotBatchRequest) GetMeta() *MachineRequestMeta {
@@ -3041,7 +3161,7 @@ type ReportLayoutSnapshotBatchResponse struct {
 
 func (x *ReportLayoutSnapshotBatchResponse) Reset() {
 	*x = ReportLayoutSnapshotBatchResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[32]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3053,7 +3173,7 @@ func (x *ReportLayoutSnapshotBatchResponse) String() string {
 func (*ReportLayoutSnapshotBatchResponse) ProtoMessage() {}
 
 func (x *ReportLayoutSnapshotBatchResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[32]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3066,7 +3186,7 @@ func (x *ReportLayoutSnapshotBatchResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use ReportLayoutSnapshotBatchResponse.ProtoReflect.Descriptor instead.
 func (*ReportLayoutSnapshotBatchResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{32}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ReportLayoutSnapshotBatchResponse) GetMeta() *MachineResponseMeta {
@@ -3096,7 +3216,7 @@ type AckLayoutActivationRequest struct {
 
 func (x *AckLayoutActivationRequest) Reset() {
 	*x = AckLayoutActivationRequest{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[33]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3108,7 +3228,7 @@ func (x *AckLayoutActivationRequest) String() string {
 func (*AckLayoutActivationRequest) ProtoMessage() {}
 
 func (x *AckLayoutActivationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[33]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3121,7 +3241,7 @@ func (x *AckLayoutActivationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckLayoutActivationRequest.ProtoReflect.Descriptor instead.
 func (*AckLayoutActivationRequest) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{33}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *AckLayoutActivationRequest) GetMeta() *MachineRequestMeta {
@@ -3170,7 +3290,7 @@ type AckLayoutActivationResponse struct {
 
 func (x *AckLayoutActivationResponse) Reset() {
 	*x = AckLayoutActivationResponse{}
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[34]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3182,7 +3302,7 @@ func (x *AckLayoutActivationResponse) String() string {
 func (*AckLayoutActivationResponse) ProtoMessage() {}
 
 func (x *AckLayoutActivationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[34]
+	mi := &file_avf_machine_v1_bootstrap_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3195,7 +3315,7 @@ func (x *AckLayoutActivationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AckLayoutActivationResponse.ProtoReflect.Descriptor instead.
 func (*AckLayoutActivationResponse) Descriptor() ([]byte, []int) {
-	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{34}
+	return file_avf_machine_v1_bootstrap_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AckLayoutActivationResponse) GetMeta() *MachineResponseMeta {
@@ -3481,7 +3601,16 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\alayouts\x18\x02 \x03(\v2$.avf.machine.v1.MachineLayoutSummaryR\alayouts\x12(\n" +
 	"\x10active_layout_id\x18\x03 \x01(\tR\x0eactiveLayoutId\x127\n" +
 	"\x18desired_active_layout_id\x18\x04 \x01(\tR\x15desiredActiveLayoutId\x129\n" +
-	"\x19reported_active_layout_id\x18\x05 \x01(\tR\x16reportedActiveLayoutId\"\xce\x06\n" +
+	"\x19reported_active_layout_id\x18\x05 \x01(\tR\x16reportedActiveLayoutId\"t\n" +
+	"\x1dGetMachineLayoutDetailRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1b\n" +
+	"\tlayout_id\x18\x02 \x01(\tR\blayoutId\"\x9b\x02\n" +
+	"\x1eGetMachineLayoutDetailResponse\x127\n" +
+	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12<\n" +
+	"\x06layout\x18\x02 \x01(\v2$.avf.machine.v1.MachineLayoutSummaryR\x06layout\x128\n" +
+	"\x05slots\x18\x03 \x03(\v2\".avf.machine.v1.LayoutSnapshotSlotR\x05slots\x12H\n" +
+	"\vmerge_pairs\x18\x04 \x03(\v2'.avf.machine.v1.LayoutSnapshotMergePairR\n" +
+	"mergePairs\"\xce\x06\n" +
 	"\x1bReportLayoutSnapshotRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1f\n" +
 	"\vsnapshot_id\x18\x02 \x01(\tR\n" +
@@ -3541,14 +3670,15 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"!LAYOUT_SNAPSHOT_REASON_ACTIVATION\x10\x04\x12(\n" +
 	"$LAYOUT_SNAPSHOT_REASON_LEGACY_REPORT\x10\x05\x12&\n" +
 	"\"LAYOUT_SNAPSHOT_REASON_PERIODIC_5M\x10\x06\x12,\n" +
-	"(LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT\x10\a2\x85\b\n" +
+	"(LAYOUT_SNAPSHOT_REASON_TECHNICIAN_COMMIT\x10\a2\xfe\b\n" +
 	"\x17MachineBootstrapService\x12Y\n" +
 	"\fGetBootstrap\x12#.avf.machine.v1.GetBootstrapRequest\x1a$.avf.machine.v1.GetBootstrapResponse\x12x\n" +
 	"\aCheckIn\x125.avf.machine.v1.MachineBootstrapServiceCheckInRequest\x1a6.avf.machine.v1.MachineBootstrapServiceCheckInResponse\x12e\n" +
 	"\x10AckConfigVersion\x12'.avf.machine.v1.AckConfigVersionRequest\x1a(.avf.machine.v1.AckConfigVersionResponse\x12b\n" +
 	"\x0fCheckForUpdates\x12&.avf.machine.v1.CheckForUpdatesRequest\x1a'.avf.machine.v1.CheckForUpdatesResponse\x12h\n" +
 	"\x11ReportLocalLayout\x12(.avf.machine.v1.ReportLocalLayoutRequest\x1a).avf.machine.v1.ReportLocalLayoutResponse\x12z\n" +
-	"\x17GetMachineLayoutLibrary\x12..avf.machine.v1.GetMachineLayoutLibraryRequest\x1a/.avf.machine.v1.GetMachineLayoutLibraryResponse\x12q\n" +
+	"\x17GetMachineLayoutLibrary\x12..avf.machine.v1.GetMachineLayoutLibraryRequest\x1a/.avf.machine.v1.GetMachineLayoutLibraryResponse\x12w\n" +
+	"\x16GetMachineLayoutDetail\x12-.avf.machine.v1.GetMachineLayoutDetailRequest\x1a..avf.machine.v1.GetMachineLayoutDetailResponse\x12q\n" +
 	"\x14ReportLayoutSnapshot\x12+.avf.machine.v1.ReportLayoutSnapshotRequest\x1a,.avf.machine.v1.ReportLayoutSnapshotResponse\x12\x80\x01\n" +
 	"\x19ReportLayoutSnapshotBatch\x120.avf.machine.v1.ReportLayoutSnapshotBatchRequest\x1a1.avf.machine.v1.ReportLayoutSnapshotBatchResponse\x12n\n" +
 	"\x13AckLayoutActivation\x12*.avf.machine.v1.AckLayoutActivationRequest\x1a+.avf.machine.v1.AckLayoutActivationResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
@@ -3566,7 +3696,7 @@ func file_avf_machine_v1_bootstrap_proto_rawDescGZIP() []byte {
 }
 
 var file_avf_machine_v1_bootstrap_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 38)
+var file_avf_machine_v1_bootstrap_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(LayoutSource)(0),                              // 0: avf.machine.v1.LayoutSource
 	(LayoutSnapshotReason)(0),                      // 1: avf.machine.v1.LayoutSnapshotReason
@@ -3599,95 +3729,104 @@ var file_avf_machine_v1_bootstrap_proto_goTypes = []any{
 	(*MachineLayoutSummary)(nil),                   // 28: avf.machine.v1.MachineLayoutSummary
 	(*GetMachineLayoutLibraryRequest)(nil),         // 29: avf.machine.v1.GetMachineLayoutLibraryRequest
 	(*GetMachineLayoutLibraryResponse)(nil),        // 30: avf.machine.v1.GetMachineLayoutLibraryResponse
-	(*ReportLayoutSnapshotRequest)(nil),            // 31: avf.machine.v1.ReportLayoutSnapshotRequest
-	(*ReportLayoutSnapshotResponse)(nil),           // 32: avf.machine.v1.ReportLayoutSnapshotResponse
-	(*ReportLayoutSnapshotBatchRequest)(nil),       // 33: avf.machine.v1.ReportLayoutSnapshotBatchRequest
-	(*ReportLayoutSnapshotBatchResponse)(nil),      // 34: avf.machine.v1.ReportLayoutSnapshotBatchResponse
-	(*AckLayoutActivationRequest)(nil),             // 35: avf.machine.v1.AckLayoutActivationRequest
-	(*AckLayoutActivationResponse)(nil),            // 36: avf.machine.v1.AckLayoutActivationResponse
-	nil,                                            // 37: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
-	nil,                                            // 38: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	nil,                                            // 39: avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
-	(*timestamppb.Timestamp)(nil),                  // 40: google.protobuf.Timestamp
-	(*MachineRequestMeta)(nil),                     // 41: avf.machine.v1.MachineRequestMeta
-	(*structpb.Struct)(nil),                        // 42: google.protobuf.Struct
-	(*MachineResponseMeta)(nil),                    // 43: avf.machine.v1.MachineResponseMeta
+	(*GetMachineLayoutDetailRequest)(nil),          // 31: avf.machine.v1.GetMachineLayoutDetailRequest
+	(*GetMachineLayoutDetailResponse)(nil),         // 32: avf.machine.v1.GetMachineLayoutDetailResponse
+	(*ReportLayoutSnapshotRequest)(nil),            // 33: avf.machine.v1.ReportLayoutSnapshotRequest
+	(*ReportLayoutSnapshotResponse)(nil),           // 34: avf.machine.v1.ReportLayoutSnapshotResponse
+	(*ReportLayoutSnapshotBatchRequest)(nil),       // 35: avf.machine.v1.ReportLayoutSnapshotBatchRequest
+	(*ReportLayoutSnapshotBatchResponse)(nil),      // 36: avf.machine.v1.ReportLayoutSnapshotBatchResponse
+	(*AckLayoutActivationRequest)(nil),             // 37: avf.machine.v1.AckLayoutActivationRequest
+	(*AckLayoutActivationResponse)(nil),            // 38: avf.machine.v1.AckLayoutActivationResponse
+	nil,                                            // 39: avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	nil,                                            // 40: avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	nil,                                            // 41: avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
+	(*timestamppb.Timestamp)(nil),                  // 42: google.protobuf.Timestamp
+	(*MachineRequestMeta)(nil),                     // 43: avf.machine.v1.MachineRequestMeta
+	(*structpb.Struct)(nil),                        // 44: google.protobuf.Struct
+	(*MachineResponseMeta)(nil),                    // 45: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_bootstrap_proto_depIdxs = []int32{
 	0,  // 0: avf.machine.v1.MachineLayoutAssignment.source:type_name -> avf.machine.v1.LayoutSource
-	40, // 1: avf.machine.v1.MachineLayoutAssignment.published_at:type_name -> google.protobuf.Timestamp
-	41, // 2: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	40, // 3: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
-	40, // 4: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
-	42, // 5: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
+	42, // 1: avf.machine.v1.MachineLayoutAssignment.published_at:type_name -> google.protobuf.Timestamp
+	43, // 2: avf.machine.v1.GetBootstrapRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	42, // 3: avf.machine.v1.BootstrapMachine.created_at:type_name -> google.protobuf.Timestamp
+	42, // 4: avf.machine.v1.BootstrapMachine.updated_at:type_name -> google.protobuf.Timestamp
+	44, // 5: avf.machine.v1.BootstrapCabinet.metadata:type_name -> google.protobuf.Struct
 	6,  // 6: avf.machine.v1.BootstrapCabinet.slots:type_name -> avf.machine.v1.BootstrapSlot
 	7,  // 7: avf.machine.v1.BootstrapTopology.cabinets:type_name -> avf.machine.v1.BootstrapCabinet
 	9,  // 8: avf.machine.v1.BootstrapCatalog.products:type_name -> avf.machine.v1.BootstrapCatalogProduct
-	37, // 9: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
+	39, // 9: avf.machine.v1.RuntimeHints.feature_flags:type_name -> avf.machine.v1.RuntimeHints.FeatureFlagsEntry
 	13, // 10: avf.machine.v1.RuntimeHints.pending_machine_config_rollouts:type_name -> avf.machine.v1.PendingRolloutHint
 	11, // 11: avf.machine.v1.RuntimeHints.sell_readiness:type_name -> avf.machine.v1.SellReadiness
 	14, // 12: avf.machine.v1.PaymentMethodsConfig.providers:type_name -> avf.machine.v1.PaymentProviderCapability
 	5,  // 13: avf.machine.v1.GetBootstrapResponse.machine:type_name -> avf.machine.v1.BootstrapMachine
 	8,  // 14: avf.machine.v1.GetBootstrapResponse.topology:type_name -> avf.machine.v1.BootstrapTopology
 	10, // 15: avf.machine.v1.GetBootstrapResponse.catalog:type_name -> avf.machine.v1.BootstrapCatalog
-	40, // 16: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
+	42, // 16: avf.machine.v1.GetBootstrapResponse.server_time:type_name -> google.protobuf.Timestamp
 	4,  // 17: avf.machine.v1.GetBootstrapResponse.mqtt:type_name -> avf.machine.v1.MqttConfigMetadata
 	12, // 18: avf.machine.v1.GetBootstrapResponse.runtime_hints:type_name -> avf.machine.v1.RuntimeHints
-	43, // 19: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	45, // 19: avf.machine.v1.GetBootstrapResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	15, // 20: avf.machine.v1.GetBootstrapResponse.payment_methods:type_name -> avf.machine.v1.PaymentMethodsConfig
 	2,  // 21: avf.machine.v1.GetBootstrapResponse.server_layout:type_name -> avf.machine.v1.MachineLayoutAssignment
 	2,  // 22: avf.machine.v1.GetBootstrapResponse.local_layout:type_name -> avf.machine.v1.MachineLayoutAssignment
 	0,  // 23: avf.machine.v1.GetBootstrapResponse.desired_source:type_name -> avf.machine.v1.LayoutSource
-	41, // 24: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	38, // 25: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
-	43, // 26: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	41, // 27: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	42, // 28: avf.machine.v1.AckConfigVersionRequest.effective_device_config:type_name -> google.protobuf.Struct
-	39, // 29: avf.machine.v1.AckConfigVersionRequest.field_ack:type_name -> avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
+	43, // 24: avf.machine.v1.MachineBootstrapServiceCheckInRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	40, // 25: avf.machine.v1.MachineBootstrapServiceCheckInRequest.attributes:type_name -> avf.machine.v1.MachineBootstrapServiceCheckInRequest.AttributesEntry
+	45, // 26: avf.machine.v1.MachineBootstrapServiceCheckInResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	43, // 27: avf.machine.v1.AckConfigVersionRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	44, // 28: avf.machine.v1.AckConfigVersionRequest.effective_device_config:type_name -> google.protobuf.Struct
+	41, // 29: avf.machine.v1.AckConfigVersionRequest.field_ack:type_name -> avf.machine.v1.AckConfigVersionRequest.FieldAckEntry
 	0,  // 30: avf.machine.v1.AckConfigVersionRequest.applied_source:type_name -> avf.machine.v1.LayoutSource
-	43, // 31: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	41, // 32: avf.machine.v1.CheckForUpdatesRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	41, // 33: avf.machine.v1.ReportLocalLayoutRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	45, // 31: avf.machine.v1.AckConfigVersionResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	43, // 32: avf.machine.v1.CheckForUpdatesRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	43, // 33: avf.machine.v1.ReportLocalLayoutRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	23, // 34: avf.machine.v1.ReportLocalLayoutRequest.slots:type_name -> avf.machine.v1.ReportLocalLayoutSlot
-	43, // 35: avf.machine.v1.ReportLocalLayoutResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	41, // 36: avf.machine.v1.GetMachineLayoutLibraryRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	43, // 37: avf.machine.v1.GetMachineLayoutLibraryResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	45, // 35: avf.machine.v1.ReportLocalLayoutResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	43, // 36: avf.machine.v1.GetMachineLayoutLibraryRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	45, // 37: avf.machine.v1.GetMachineLayoutLibraryResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	28, // 38: avf.machine.v1.GetMachineLayoutLibraryResponse.layouts:type_name -> avf.machine.v1.MachineLayoutSummary
-	41, // 39: avf.machine.v1.ReportLayoutSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	40, // 40: avf.machine.v1.ReportLayoutSnapshotRequest.captured_at:type_name -> google.protobuf.Timestamp
-	1,  // 41: avf.machine.v1.ReportLayoutSnapshotRequest.snapshot_reason:type_name -> avf.machine.v1.LayoutSnapshotReason
-	26, // 42: avf.machine.v1.ReportLayoutSnapshotRequest.merge_pairs:type_name -> avf.machine.v1.LayoutSnapshotMergePair
-	27, // 43: avf.machine.v1.ReportLayoutSnapshotRequest.slots:type_name -> avf.machine.v1.LayoutSnapshotSlot
-	43, // 44: avf.machine.v1.ReportLayoutSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	41, // 45: avf.machine.v1.ReportLayoutSnapshotBatchRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	31, // 46: avf.machine.v1.ReportLayoutSnapshotBatchRequest.snapshots:type_name -> avf.machine.v1.ReportLayoutSnapshotRequest
-	43, // 47: avf.machine.v1.ReportLayoutSnapshotBatchResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	32, // 48: avf.machine.v1.ReportLayoutSnapshotBatchResponse.results:type_name -> avf.machine.v1.ReportLayoutSnapshotResponse
-	41, // 49: avf.machine.v1.AckLayoutActivationRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	43, // 50: avf.machine.v1.AckLayoutActivationResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	3,  // 51: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
-	17, // 52: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
-	19, // 53: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
-	21, // 54: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
-	24, // 55: avf.machine.v1.MachineBootstrapService.ReportLocalLayout:input_type -> avf.machine.v1.ReportLocalLayoutRequest
-	29, // 56: avf.machine.v1.MachineBootstrapService.GetMachineLayoutLibrary:input_type -> avf.machine.v1.GetMachineLayoutLibraryRequest
-	31, // 57: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshot:input_type -> avf.machine.v1.ReportLayoutSnapshotRequest
-	33, // 58: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshotBatch:input_type -> avf.machine.v1.ReportLayoutSnapshotBatchRequest
-	35, // 59: avf.machine.v1.MachineBootstrapService.AckLayoutActivation:input_type -> avf.machine.v1.AckLayoutActivationRequest
-	16, // 60: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
-	18, // 61: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
-	20, // 62: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
-	22, // 63: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
-	25, // 64: avf.machine.v1.MachineBootstrapService.ReportLocalLayout:output_type -> avf.machine.v1.ReportLocalLayoutResponse
-	30, // 65: avf.machine.v1.MachineBootstrapService.GetMachineLayoutLibrary:output_type -> avf.machine.v1.GetMachineLayoutLibraryResponse
-	32, // 66: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshot:output_type -> avf.machine.v1.ReportLayoutSnapshotResponse
-	34, // 67: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshotBatch:output_type -> avf.machine.v1.ReportLayoutSnapshotBatchResponse
-	36, // 68: avf.machine.v1.MachineBootstrapService.AckLayoutActivation:output_type -> avf.machine.v1.AckLayoutActivationResponse
-	60, // [60:69] is the sub-list for method output_type
-	51, // [51:60] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	43, // 39: avf.machine.v1.GetMachineLayoutDetailRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	45, // 40: avf.machine.v1.GetMachineLayoutDetailResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	28, // 41: avf.machine.v1.GetMachineLayoutDetailResponse.layout:type_name -> avf.machine.v1.MachineLayoutSummary
+	27, // 42: avf.machine.v1.GetMachineLayoutDetailResponse.slots:type_name -> avf.machine.v1.LayoutSnapshotSlot
+	26, // 43: avf.machine.v1.GetMachineLayoutDetailResponse.merge_pairs:type_name -> avf.machine.v1.LayoutSnapshotMergePair
+	43, // 44: avf.machine.v1.ReportLayoutSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	42, // 45: avf.machine.v1.ReportLayoutSnapshotRequest.captured_at:type_name -> google.protobuf.Timestamp
+	1,  // 46: avf.machine.v1.ReportLayoutSnapshotRequest.snapshot_reason:type_name -> avf.machine.v1.LayoutSnapshotReason
+	26, // 47: avf.machine.v1.ReportLayoutSnapshotRequest.merge_pairs:type_name -> avf.machine.v1.LayoutSnapshotMergePair
+	27, // 48: avf.machine.v1.ReportLayoutSnapshotRequest.slots:type_name -> avf.machine.v1.LayoutSnapshotSlot
+	45, // 49: avf.machine.v1.ReportLayoutSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	43, // 50: avf.machine.v1.ReportLayoutSnapshotBatchRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	33, // 51: avf.machine.v1.ReportLayoutSnapshotBatchRequest.snapshots:type_name -> avf.machine.v1.ReportLayoutSnapshotRequest
+	45, // 52: avf.machine.v1.ReportLayoutSnapshotBatchResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	34, // 53: avf.machine.v1.ReportLayoutSnapshotBatchResponse.results:type_name -> avf.machine.v1.ReportLayoutSnapshotResponse
+	43, // 54: avf.machine.v1.AckLayoutActivationRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	45, // 55: avf.machine.v1.AckLayoutActivationResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	3,  // 56: avf.machine.v1.MachineBootstrapService.GetBootstrap:input_type -> avf.machine.v1.GetBootstrapRequest
+	17, // 57: avf.machine.v1.MachineBootstrapService.CheckIn:input_type -> avf.machine.v1.MachineBootstrapServiceCheckInRequest
+	19, // 58: avf.machine.v1.MachineBootstrapService.AckConfigVersion:input_type -> avf.machine.v1.AckConfigVersionRequest
+	21, // 59: avf.machine.v1.MachineBootstrapService.CheckForUpdates:input_type -> avf.machine.v1.CheckForUpdatesRequest
+	24, // 60: avf.machine.v1.MachineBootstrapService.ReportLocalLayout:input_type -> avf.machine.v1.ReportLocalLayoutRequest
+	29, // 61: avf.machine.v1.MachineBootstrapService.GetMachineLayoutLibrary:input_type -> avf.machine.v1.GetMachineLayoutLibraryRequest
+	31, // 62: avf.machine.v1.MachineBootstrapService.GetMachineLayoutDetail:input_type -> avf.machine.v1.GetMachineLayoutDetailRequest
+	33, // 63: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshot:input_type -> avf.machine.v1.ReportLayoutSnapshotRequest
+	35, // 64: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshotBatch:input_type -> avf.machine.v1.ReportLayoutSnapshotBatchRequest
+	37, // 65: avf.machine.v1.MachineBootstrapService.AckLayoutActivation:input_type -> avf.machine.v1.AckLayoutActivationRequest
+	16, // 66: avf.machine.v1.MachineBootstrapService.GetBootstrap:output_type -> avf.machine.v1.GetBootstrapResponse
+	18, // 67: avf.machine.v1.MachineBootstrapService.CheckIn:output_type -> avf.machine.v1.MachineBootstrapServiceCheckInResponse
+	20, // 68: avf.machine.v1.MachineBootstrapService.AckConfigVersion:output_type -> avf.machine.v1.AckConfigVersionResponse
+	22, // 69: avf.machine.v1.MachineBootstrapService.CheckForUpdates:output_type -> avf.machine.v1.CheckForUpdatesResponse
+	25, // 70: avf.machine.v1.MachineBootstrapService.ReportLocalLayout:output_type -> avf.machine.v1.ReportLocalLayoutResponse
+	30, // 71: avf.machine.v1.MachineBootstrapService.GetMachineLayoutLibrary:output_type -> avf.machine.v1.GetMachineLayoutLibraryResponse
+	32, // 72: avf.machine.v1.MachineBootstrapService.GetMachineLayoutDetail:output_type -> avf.machine.v1.GetMachineLayoutDetailResponse
+	34, // 73: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshot:output_type -> avf.machine.v1.ReportLayoutSnapshotResponse
+	36, // 74: avf.machine.v1.MachineBootstrapService.ReportLayoutSnapshotBatch:output_type -> avf.machine.v1.ReportLayoutSnapshotBatchResponse
+	38, // 75: avf.machine.v1.MachineBootstrapService.AckLayoutActivation:output_type -> avf.machine.v1.AckLayoutActivationResponse
+	66, // [66:76] is the sub-list for method output_type
+	56, // [56:66] is the sub-list for method input_type
+	56, // [56:56] is the sub-list for extension type_name
+	56, // [56:56] is the sub-list for extension extendee
+	0,  // [0:56] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_bootstrap_proto_init() }
@@ -3702,7 +3841,7 @@ func file_avf_machine_v1_bootstrap_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_bootstrap_proto_rawDesc), len(file_avf_machine_v1_bootstrap_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   38,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

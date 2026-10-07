@@ -25,6 +25,7 @@ const (
 	MachineBootstrapService_CheckForUpdates_FullMethodName           = "/avf.machine.v1.MachineBootstrapService/CheckForUpdates"
 	MachineBootstrapService_ReportLocalLayout_FullMethodName         = "/avf.machine.v1.MachineBootstrapService/ReportLocalLayout"
 	MachineBootstrapService_GetMachineLayoutLibrary_FullMethodName   = "/avf.machine.v1.MachineBootstrapService/GetMachineLayoutLibrary"
+	MachineBootstrapService_GetMachineLayoutDetail_FullMethodName    = "/avf.machine.v1.MachineBootstrapService/GetMachineLayoutDetail"
 	MachineBootstrapService_ReportLayoutSnapshot_FullMethodName      = "/avf.machine.v1.MachineBootstrapService/ReportLayoutSnapshot"
 	MachineBootstrapService_ReportLayoutSnapshotBatch_FullMethodName = "/avf.machine.v1.MachineBootstrapService/ReportLayoutSnapshotBatch"
 	MachineBootstrapService_AckLayoutActivation_FullMethodName       = "/avf.machine.v1.MachineBootstrapService/AckLayoutActivation"
@@ -42,6 +43,7 @@ type MachineBootstrapServiceClient interface {
 	CheckForUpdates(ctx context.Context, in *CheckForUpdatesRequest, opts ...grpc.CallOption) (*CheckForUpdatesResponse, error)
 	ReportLocalLayout(ctx context.Context, in *ReportLocalLayoutRequest, opts ...grpc.CallOption) (*ReportLocalLayoutResponse, error)
 	GetMachineLayoutLibrary(ctx context.Context, in *GetMachineLayoutLibraryRequest, opts ...grpc.CallOption) (*GetMachineLayoutLibraryResponse, error)
+	GetMachineLayoutDetail(ctx context.Context, in *GetMachineLayoutDetailRequest, opts ...grpc.CallOption) (*GetMachineLayoutDetailResponse, error)
 	ReportLayoutSnapshot(ctx context.Context, in *ReportLayoutSnapshotRequest, opts ...grpc.CallOption) (*ReportLayoutSnapshotResponse, error)
 	ReportLayoutSnapshotBatch(ctx context.Context, in *ReportLayoutSnapshotBatchRequest, opts ...grpc.CallOption) (*ReportLayoutSnapshotBatchResponse, error)
 	AckLayoutActivation(ctx context.Context, in *AckLayoutActivationRequest, opts ...grpc.CallOption) (*AckLayoutActivationResponse, error)
@@ -115,6 +117,16 @@ func (c *machineBootstrapServiceClient) GetMachineLayoutLibrary(ctx context.Cont
 	return out, nil
 }
 
+func (c *machineBootstrapServiceClient) GetMachineLayoutDetail(ctx context.Context, in *GetMachineLayoutDetailRequest, opts ...grpc.CallOption) (*GetMachineLayoutDetailResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMachineLayoutDetailResponse)
+	err := c.cc.Invoke(ctx, MachineBootstrapService_GetMachineLayoutDetail_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *machineBootstrapServiceClient) ReportLayoutSnapshot(ctx context.Context, in *ReportLayoutSnapshotRequest, opts ...grpc.CallOption) (*ReportLayoutSnapshotResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReportLayoutSnapshotResponse)
@@ -157,6 +169,7 @@ type MachineBootstrapServiceServer interface {
 	CheckForUpdates(context.Context, *CheckForUpdatesRequest) (*CheckForUpdatesResponse, error)
 	ReportLocalLayout(context.Context, *ReportLocalLayoutRequest) (*ReportLocalLayoutResponse, error)
 	GetMachineLayoutLibrary(context.Context, *GetMachineLayoutLibraryRequest) (*GetMachineLayoutLibraryResponse, error)
+	GetMachineLayoutDetail(context.Context, *GetMachineLayoutDetailRequest) (*GetMachineLayoutDetailResponse, error)
 	ReportLayoutSnapshot(context.Context, *ReportLayoutSnapshotRequest) (*ReportLayoutSnapshotResponse, error)
 	ReportLayoutSnapshotBatch(context.Context, *ReportLayoutSnapshotBatchRequest) (*ReportLayoutSnapshotBatchResponse, error)
 	AckLayoutActivation(context.Context, *AckLayoutActivationRequest) (*AckLayoutActivationResponse, error)
@@ -187,6 +200,9 @@ func (UnimplementedMachineBootstrapServiceServer) ReportLocalLayout(context.Cont
 }
 func (UnimplementedMachineBootstrapServiceServer) GetMachineLayoutLibrary(context.Context, *GetMachineLayoutLibraryRequest) (*GetMachineLayoutLibraryResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMachineLayoutLibrary not implemented")
+}
+func (UnimplementedMachineBootstrapServiceServer) GetMachineLayoutDetail(context.Context, *GetMachineLayoutDetailRequest) (*GetMachineLayoutDetailResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMachineLayoutDetail not implemented")
 }
 func (UnimplementedMachineBootstrapServiceServer) ReportLayoutSnapshot(context.Context, *ReportLayoutSnapshotRequest) (*ReportLayoutSnapshotResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReportLayoutSnapshot not implemented")
@@ -327,6 +343,24 @@ func _MachineBootstrapService_GetMachineLayoutLibrary_Handler(srv interface{}, c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineBootstrapService_GetMachineLayoutDetail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMachineLayoutDetailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineBootstrapServiceServer).GetMachineLayoutDetail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineBootstrapService_GetMachineLayoutDetail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineBootstrapServiceServer).GetMachineLayoutDetail(ctx, req.(*GetMachineLayoutDetailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MachineBootstrapService_ReportLayoutSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ReportLayoutSnapshotRequest)
 	if err := dec(in); err != nil {
@@ -411,6 +445,10 @@ var MachineBootstrapService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMachineLayoutLibrary",
 			Handler:    _MachineBootstrapService_GetMachineLayoutLibrary_Handler,
+		},
+		{
+			MethodName: "GetMachineLayoutDetail",
+			Handler:    _MachineBootstrapService_GetMachineLayoutDetail_Handler,
 		},
 		{
 			MethodName: "ReportLayoutSnapshot",

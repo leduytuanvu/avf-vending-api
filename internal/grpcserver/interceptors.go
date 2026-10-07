@@ -705,6 +705,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineBootstrapService_AckConfigVersion_FullMethodName,
 		machinev1.MachineBootstrapService_ReportLocalLayout_FullMethodName,
 		machinev1.MachineBootstrapService_GetMachineLayoutLibrary_FullMethodName,
+		machinev1.MachineBootstrapService_GetMachineLayoutDetail_FullMethodName,
 		machinev1.MachineBootstrapService_ReportLayoutSnapshot_FullMethodName,
 		machinev1.MachineBootstrapService_ReportLayoutSnapshotBatch_FullMethodName,
 		machinev1.MachineBootstrapService_AckLayoutActivation_FullMethodName,

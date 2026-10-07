@@ -619,6 +619,73 @@ func (s *machineBootstrapServer) GetMachineLayoutLibrary(ctx context.Context, re
 	return resp, nil
 }
 
+func (s *machineBootstrapServer) GetMachineLayoutDetail(ctx context.Context, req *machinev1.GetMachineLayoutDetailRequest) (*machinev1.GetMachineLayoutDetailResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	layoutIDStr := ""
+	if req != nil {
+		layoutIDStr = strings.TrimSpace(req.GetLayoutId())
+	}
+	if layoutIDStr == "" {
+		return nil, status.Error(codes.InvalidArgument, "layout_id is required")
+	}
+	layoutID, err := uuid.Parse(layoutIDStr)
+	if err != nil || layoutID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "layout_id is invalid")
+	}
+	svc := &layoutassignment.Service{Pool: s.deps.Pool}
+	detail, derr := svc.GetMachineLayoutDetail(ctx, claims.MachineID, layoutID)
+	if derr != nil {
+		if errors.Is(derr, layoutassignment.ErrLayoutNotFound) {
+			return nil, status.Error(codes.NotFound, "layout_not_found")
+		}
+		return nil, status.Error(codes.Internal, "layout_detail_read_failed")
+	}
+	rid := ""
+	if req != nil && req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	slots := make([]*machinev1.LayoutSnapshotSlot, 0, len(detail.Slots))
+	for _, sl := range detail.Slots {
+		slots = append(slots, &machinev1.LayoutSnapshotSlot{
+			SlotCode:             sl.SlotCode,
+			SlotOrdinal:          sl.SlotOrdinal,
+			LogicalCoordinate:    sl.LogicalCoordinate,
+			PhysicalLane:         sl.PhysicalLane,
+			ProductId:            sl.ProductID,
+			MaxQuantity:          sl.MaxQuantity,
+			PriceMinor:           sl.PriceMinor,
+			LocalPricingRevision: sl.LocalPricingRevision,
+			CurrentInventory:     sl.CurrentInventory,
+			Enabled:              sl.Enabled,
+			OperationalState:     sl.OperationalState,
+		})
+	}
+	mergePairs := make([]*machinev1.LayoutSnapshotMergePair, 0, len(detail.MergePairs))
+	for _, p := range detail.MergePairs {
+		mergePairs = append(mergePairs, &machinev1.LayoutSnapshotMergePair{
+			LeftSlotCode:  p.LeftSlotCode,
+			RightSlotCode: p.RightSlotCode,
+		})
+	}
+	return &machinev1.GetMachineLayoutDetailResponse{
+		Meta: responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+		Layout: &machinev1.MachineLayoutSummary{
+			LayoutId:       detail.Summary.LayoutID.String(),
+			Name:           detail.Summary.Name,
+			Status:         detail.Summary.Status,
+			GridRows:       detail.Summary.GridRows,
+			GridCols:       detail.Summary.GridCols,
+			LayoutRevision: detail.Summary.Revision,
+			Fingerprint:    detail.Summary.Fingerprint,
+		},
+		Slots:      slots,
+		MergePairs: mergePairs,
+	}, nil
+}
+
 func (s *machineBootstrapServer) ReportLayoutSnapshot(ctx context.Context, req *machinev1.ReportLayoutSnapshotRequest) (*machinev1.ReportLayoutSnapshotResponse, error) {
 	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
 	if !ok {

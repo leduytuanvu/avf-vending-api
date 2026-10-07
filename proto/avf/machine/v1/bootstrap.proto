@@ -16,6 +16,7 @@ service MachineBootstrapService {
   rpc CheckForUpdates(CheckForUpdatesRequest) returns (CheckForUpdatesResponse);
   rpc ReportLocalLayout(ReportLocalLayoutRequest) returns (ReportLocalLayoutResponse);
   rpc GetMachineLayoutLibrary(GetMachineLayoutLibraryRequest) returns (GetMachineLayoutLibraryResponse);
+  rpc GetMachineLayoutDetail(GetMachineLayoutDetailRequest) returns (GetMachineLayoutDetailResponse);
   rpc ReportLayoutSnapshot(ReportLayoutSnapshotRequest) returns (ReportLayoutSnapshotResponse);
   rpc ReportLayoutSnapshotBatch(ReportLayoutSnapshotBatchRequest) returns (ReportLayoutSnapshotBatchResponse);
   rpc AckLayoutActivation(AckLayoutActivationRequest) returns (AckLayoutActivationResponse);
@@ -328,6 +329,18 @@ message GetMachineLayoutLibraryResponse {
   string active_layout_id = 3;
   string desired_active_layout_id = 4;
   string reported_active_layout_id = 5;
+}
+
+message GetMachineLayoutDetailRequest {
+  MachineRequestMeta meta = 1;
+  string layout_id = 2;
+}
+
+message GetMachineLayoutDetailResponse {
+  MachineResponseMeta meta = 1;
+  MachineLayoutSummary layout = 2;
+  repeated LayoutSnapshotSlot slots = 3;
+  repeated LayoutSnapshotMergePair merge_pairs = 4;
 }
 
 message ReportLayoutSnapshotRequest {
