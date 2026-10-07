@@ -95,6 +95,9 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 	}
 	if in.Revision == storedRev {
 		if inFP == storedFP {
+			if err := s.repairNamedLayoutMaterializationIfNeeded(ctx, in, inFP); err != nil {
+				return ReportLocalLayoutResult{}, err
+			}
 			return ReportLocalLayoutResult{Accepted: true, StoredRevision: storedRev, StoredGeneration: in.LocalGeneration, StoredFingerprint: storedFP}, nil
 		}
 		return ReportLocalLayoutResult{}, ErrLayoutRevisionConflict
@@ -154,6 +157,46 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 	}
 
 	return ReportLocalLayoutResult{Accepted: true, StoredRevision: in.Revision, StoredGeneration: in.LocalGeneration, StoredFingerprint: inFP}, nil
+}
+
+func (s *Service) repairNamedLayoutMaterializationIfNeeded(ctx context.Context, in ReportLocalLayoutInput, fingerprint string) error {
+	mirrorAssignments := countMirrorProductAssignments(in.SlotsJSON)
+	if mirrorAssignments == 0 {
+		return nil
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	layoutID, err := s.resolveNamedLayoutIDForMaterialize(ctx, tx, in.MachineID, in.LocalLayoutID)
+	if err != nil {
+		return err
+	}
+	if layoutID == uuid.Nil {
+		return nil
+	}
+	q := pgxutil.NewQueries(tx)
+	slotRows, err := q.ListMachineLayoutSlots(ctx, layoutID)
+	if err != nil {
+		return err
+	}
+	if !needsNamedLayoutMaterialization(mirrorAssignments, countAssignedNamedLayoutSlots(slotRows)) {
+		return nil
+	}
+	if err := s.materializeDeviceSlotsToNamedLayout(
+		ctx,
+		tx,
+		in.MachineID,
+		in.LocalLayoutID,
+		in.SlotsJSON,
+		fingerprint,
+		"report_local_layout_repair",
+	); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func validateReportedSlotsUnique(slotsJSON []byte) error {

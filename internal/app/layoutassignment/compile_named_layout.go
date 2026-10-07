@@ -163,3 +163,29 @@ func (s *Service) resolveNamedLayoutIDForMaterialize(
 	}
 	return uuid.Nil, nil
 }
+
+func countMirrorProductAssignments(slotsJSON []byte) int {
+	slots := ParseMirrorSlots(slotsJSON)
+	n := 0
+	for _, sl := range slots {
+		if strings.TrimSpace(sl.ProductID) != "" {
+			n++
+		}
+	}
+	return n
+}
+
+func countAssignedNamedLayoutSlots(slotRows []db.MachineLayoutSlot) int {
+	n := 0
+	for _, sl := range slotRows {
+		if sl.ProductID.Valid && sl.ProductID.Bytes != uuid.Nil {
+			n++
+		}
+	}
+	return n
+}
+
+// needsNamedLayoutMaterialization reports when mirror/snapshot payload has assignments but named slots do not.
+func needsNamedLayoutMaterialization(mirrorAssignments, namedAssignments int) bool {
+	return mirrorAssignments > 0 && namedAssignments == 0
+}
