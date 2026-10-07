@@ -167,7 +167,7 @@ INSERT INTO machine_layout_snapshot_history (
     $10,
     $11,
     $12,
-    $13
+    COALESCE(NULLIF(sqlc.arg('payload')::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING *;
 

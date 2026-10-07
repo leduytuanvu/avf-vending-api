@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -45,6 +46,23 @@ func TestNormalizeIntervalKey_floorsToUtcHalfHour(t *testing.T) {
 func TestValidateLayoutName_rejectsBlank(t *testing.T) {
 	require.Error(t, ValidateLayoutName("  "))
 	require.NoError(t, ValidateLayoutName("Layout 1"))
+}
+
+func TestBuildSnapshotPayloadJSON_validForPgjsonRequiredString(t *testing.T) {
+	layoutID := uuid.New()
+	payloadJSON, err := buildSnapshotPayloadJSON(ReportLayoutSnapshotInput{
+		LayoutID:       layoutID,
+		ActiveLayoutID: layoutID,
+		GridRows:       6,
+		GridCols:       10,
+		SlotsJSON:      []byte(`[{"slotCode":"A1","currentInventory":0}]`),
+	})
+	require.NoError(t, err)
+	require.True(t, json.Valid(payloadJSON))
+
+	encoded := pgjson.RequiredString(payloadJSON)
+	require.True(t, json.Valid([]byte(encoded)))
+	require.Contains(t, encoded, `"slots"`)
 }
 
 func TestNormalizeSnapshotReason_defaultsLegacy(t *testing.T) {

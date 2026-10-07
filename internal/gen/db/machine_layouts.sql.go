@@ -381,7 +381,7 @@ INSERT INTO machine_layout_snapshot_history (
     $10,
     $11,
     $12,
-    $13
+    COALESCE(NULLIF($13::text, '')::jsonb, '{}'::jsonb)
 )
 RETURNING id, snapshot_id, machine_id, layout_id, device_instance_id, capture_sequence, interval_key, captured_at, received_at, device_generation, base_server_revision, fingerprint, snapshot_reason, payload_version, payload, created_at
 `
@@ -399,7 +399,7 @@ type InsertMachineLayoutSnapshotHistoryParams struct {
 	Fingerprint        string
 	SnapshotReason     string
 	PayloadVersion     int32
-	Payload            []byte
+	Payload            string
 }
 
 func (q *Queries) InsertMachineLayoutSnapshotHistory(ctx context.Context, arg InsertMachineLayoutSnapshotHistoryParams) (MachineLayoutSnapshotHistory, error) {

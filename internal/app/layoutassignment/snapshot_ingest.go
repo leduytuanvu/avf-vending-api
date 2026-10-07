@@ -173,7 +173,7 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		Fingerprint:        strings.TrimSpace(in.Fingerprint),
 		SnapshotReason:     normalizeSnapshotReason(in.SnapshotReason),
 		PayloadVersion:     in.PayloadVersion,
-		Payload:            payloadJSON,
+		Payload:            pgjson.RequiredString(payloadJSON),
 	})
 	if err != nil {
 		return ReportLayoutSnapshotResult{}, err
