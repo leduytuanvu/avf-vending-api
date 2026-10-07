@@ -110,6 +110,14 @@ FROM machine_layout_slots
 WHERE layout_id = $1
 ORDER BY slot_ordinal ASC;
 
+-- name: DeleteMachineLayoutSlotsByLayoutID :exec
+DELETE FROM machine_layout_slots
+WHERE layout_id = $1;
+
+-- name: DeleteMachineLayoutMergePairsByLayoutID :exec
+DELETE FROM machine_layout_merge_pairs
+WHERE layout_id = $1;
+
 -- name: InsertMachineLayoutMergePair :exec
 INSERT INTO machine_layout_merge_pairs (
     layout_id,

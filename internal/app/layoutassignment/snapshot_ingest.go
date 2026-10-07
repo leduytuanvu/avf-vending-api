@@ -210,6 +210,18 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		return ReportLayoutSnapshotResult{}, err
 	}
 
+	if err := s.materializeDeviceSlotsToNamedLayout(
+		ctx,
+		tx,
+		in.MachineID,
+		in.LayoutID,
+		in.SlotsJSON,
+		in.Fingerprint,
+		"snapshot_ingest:"+normalizeSnapshotReason(in.SnapshotReason),
+	); err != nil {
+		return ReportLayoutSnapshotResult{}, err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return ReportLayoutSnapshotResult{}, err
 	}

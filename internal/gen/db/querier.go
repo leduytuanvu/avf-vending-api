@@ -233,6 +233,8 @@ type Querier interface {
 	CountPaymentProviderSettlementsForOrg(ctx context.Context) (int64, error)
 	CountRolloutTargetsByStatus(ctx context.Context, arg CountRolloutTargetsByStatusParams) (int64, error)
 	CountSucceededMachineActivationClaims(ctx context.Context, activationCodeID pgtype.UUID) (int64, error)
+	DeleteMachineLayoutMergePairsByLayoutID(ctx context.Context, layoutID uuid.UUID) error
+	DeleteMachineLayoutSlotsByLayoutID(ctx context.Context, layoutID uuid.UUID) error
 	DeleteMachineMQTTCredentials(ctx context.Context, machineID uuid.UUID) error
 	DeleteMachinePaymentMethods(ctx context.Context, machineID uuid.UUID) error
 	DeleteStaleMachineIdempotencyInProgress(ctx context.Context, arg DeleteStaleMachineIdempotencyInProgressParams) error

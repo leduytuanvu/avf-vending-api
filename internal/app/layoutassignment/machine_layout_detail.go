@@ -39,6 +39,9 @@ type MachineLayoutDetailView struct {
 }
 
 // GetMachineLayoutDetail returns one named layout owned by [machineID].
+// Slot assignments come from machine_layout_slots (admin/template plane), not from
+// machine_local_layout_mirror or snapshot history — device reports must be compiled via
+// materializeDeviceSlotsToNamedLayout after ingest.
 func (s *Service) GetMachineLayoutDetail(ctx context.Context, machineID, layoutID uuid.UUID) (*MachineLayoutDetailView, error) {
 	if s.Pool == nil {
 		return nil, fmt.Errorf("database pool is not configured")

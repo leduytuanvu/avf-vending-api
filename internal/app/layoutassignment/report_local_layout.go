@@ -16,7 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ReportLocalLayout upserts the LOCAL mirror and reported layout state in one transaction.
+// ReportLocalLayout upserts the LOCAL mirror (machine_local_layout_mirror) and reported layout state.
+// Named layout slots used by GetMachineLayoutDetail are updated via materializeDeviceSlotsToNamedLayout.
 // When snapshot ingest is enabled, also appends immutable history via ReportLayoutSnapshot.
 func (s *Service) ReportLocalLayout(ctx context.Context, auth MachineAuthContext, in ReportLocalLayoutInput) (ReportLocalLayoutResult, error) {
 	if SnapshotIngestEnabled(ctx, s.FeatureFlags, in.MachineID) {
@@ -118,6 +119,18 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 		ReportedAt:       now,
 		DeviceInstanceID: strings.TrimSpace(in.DeviceInstanceID),
 	}); err != nil {
+		return ReportLocalLayoutResult{}, err
+	}
+
+	if err := s.materializeDeviceSlotsToNamedLayout(
+		ctx,
+		tx,
+		in.MachineID,
+		in.LocalLayoutID,
+		in.SlotsJSON,
+		inFP,
+		"report_local_layout",
+	); err != nil {
 		return ReportLocalLayoutResult{}, err
 	}
 

@@ -72,6 +72,26 @@ func (q *Queries) CountMachineLayoutsForMachine(ctx context.Context, machineID u
 	return count, err
 }
 
+const DeleteMachineLayoutMergePairsByLayoutID = `-- name: DeleteMachineLayoutMergePairsByLayoutID :exec
+DELETE FROM machine_layout_merge_pairs
+WHERE layout_id = $1
+`
+
+func (q *Queries) DeleteMachineLayoutMergePairsByLayoutID(ctx context.Context, layoutID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, DeleteMachineLayoutMergePairsByLayoutID, layoutID)
+	return err
+}
+
+const DeleteMachineLayoutSlotsByLayoutID = `-- name: DeleteMachineLayoutSlotsByLayoutID :exec
+DELETE FROM machine_layout_slots
+WHERE layout_id = $1
+`
+
+func (q *Queries) DeleteMachineLayoutSlotsByLayoutID(ctx context.Context, layoutID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, DeleteMachineLayoutSlotsByLayoutID, layoutID)
+	return err
+}
+
 const GetMachineLayoutByID = `-- name: GetMachineLayoutByID :one
 SELECT id, machine_id, name, status, grid_rows, grid_cols, layout_revision, fingerprint, source_template_version_id, is_archived, created_at, updated_at
 FROM machine_layouts
