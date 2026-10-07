@@ -131,6 +131,18 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		return ReportLayoutSnapshotResult{}, err
 	}
 
+	if dupByID, err := readQ.GetMachineLayoutSnapshotHistoryBySnapshotID(ctx, in.SnapshotID); err == nil {
+		return ReportLayoutSnapshotResult{
+			Accepted:              true,
+			Duplicate:             true,
+			StoredSnapshotID:      dupByID.SnapshotID,
+			StoredCaptureSequence: dupByID.CaptureSequence,
+			StoredFingerprint:     strings.TrimSpace(dupByID.Fingerprint),
+		}, nil
+	} else if err != pgx.ErrNoRows {
+		return ReportLayoutSnapshotResult{}, err
+	}
+
 	layoutRow, layoutErr := readQ.GetMachineLayoutByID(ctx, db.GetMachineLayoutByIDParams{
 		ID:        in.LayoutID,
 		MachineID: in.MachineID,
