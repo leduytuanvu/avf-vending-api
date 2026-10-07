@@ -16,6 +16,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -223,38 +224,25 @@ func MaterializeCommerceTopologyInTx(
 		if code == "" {
 			continue
 		}
+		idx := physicaltopology.SlotIndexFromCode(code, int(gridCols))
+		slotIdx := pgtype.Int4{Int32: idx, Valid: idx > 0}
 		if existing, ok := byCode[code]; ok {
-			idx := physicaltopology.SlotIndexFromCode(code, int(gridCols))
-			slotIdx := pgtype.Int4{Int32: idx, Valid: idx > 0}
 			if currentSlotConfigMatchesDesired(existing, cabRow.ID, layoutLayoutID, slotIdx, pgtype.UUID{Valid: false}, defaultSlotCapacity, 0) {
 				continue
 			}
-			if existing.MachineCabinetID != cabRow.ID || existing.MachineSlotLayoutID != layoutLayoutID || !pgInt4Equal(existing.SlotIndex, slotIdx) {
-				if err := relinkCurrentMachineSlotConfigInTx(ctx, tx, existing.ID, cabRow.ID, layoutLayoutID, slotIdx, meta); err != nil {
-					return out, err
-				}
-				out.SlotConfigsUpdated++
-				continue
-			}
-			continue
 		}
-		idx := physicaltopology.SlotIndexFromCode(code, int(gridCols))
-		_, applyErr := q.FleetAdminApplyMachineSlotConfigCurrent(ctx, db.FleetAdminApplyMachineSlotConfigCurrentParams{
-			MachineID:           machineID,
-			SlotCode:            code,
-			MachineCabinetID:    cabRow.ID,
-			MachineSlotLayoutID: layoutLayoutID,
-			SlotIndex:           pgtype.Int4{Int32: idx, Valid: idx > 0},
-			ProductID:           pgtype.UUID{Valid: false},
-			MaxQuantity:         defaultSlotCapacity,
-			PriceMinor:          0,
-			EffectiveFrom:       eff,
-			Metadata:            meta,
-		})
+		created, updated, applyErr := ApplyOrRelinkCurrentMachineSlotConfig(
+			ctx, tx, byCode, machineID, code, cabRow.ID, layoutLayoutID,
+			slotIdx, pgtype.UUID{Valid: false}, defaultSlotCapacity, 0, eff, meta,
+		)
 		if applyErr != nil {
 			return out, applyErr
 		}
-		out.SlotConfigsCreated++
+		if created {
+			out.SlotConfigsCreated++
+		} else if updated {
+			out.SlotConfigsUpdated++
+		}
 	}
 
 	return out, nil
@@ -316,12 +304,12 @@ func relinkCurrentMachineSlotConfigInTx(
 	cabID, layoutID uuid.UUID,
 	slotIdx pgtype.Int4,
 	meta string,
-) error {
+) (bool, error) {
 	var slotIndex any
 	if slotIdx.Valid {
 		slotIndex = slotIdx.Int32
 	}
-	_, err := tx.Exec(ctx, `
+	tag, err := tx.Exec(ctx, `
 UPDATE machine_slot_configs
 SET
   machine_cabinet_id = $2,
@@ -331,7 +319,60 @@ SET
   updated_at = now()
 WHERE id = $1 AND is_current = true
 `, configID, cabID, layoutID, slotIndex, meta)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() > 0, nil
+}
+
+func isDuplicateCurrentMachineSlotConfig(err error) bool {
+	var pe *pgconn.PgError
+	if !errors.As(err, &pe) {
+		return false
+	}
+	return pe.Code == "23505" && pe.ConstraintName == "ux_machine_slot_configs_current_machine_slot"
+}
+
+func clearCurrentMachineSlotConfigsForCode(ctx context.Context, tx pgx.Tx, machineID uuid.UUID, slotCode string) error {
+	_, err := tx.Exec(ctx, `
+UPDATE machine_slot_configs
+SET is_current = FALSE, effective_to = coalesce(effective_to, now()), updated_at = now()
+WHERE machine_id = $1 AND slot_code = $2 AND is_current
+`, machineID, slotCode)
 	return err
+}
+
+func inventoryRowFromSlotConfig(cfg db.MachineSlotConfig) db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow {
+	return db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow{
+		ID:                  cfg.ID,
+		MachineID:           cfg.MachineID,
+		MachineCabinetID:    cfg.MachineCabinetID,
+		MachineSlotLayoutID: cfg.MachineSlotLayoutID,
+		SlotCode:            cfg.SlotCode,
+		SlotIndex:           cfg.SlotIndex,
+		ProductID:           cfg.ProductID,
+		MaxQuantity:         cfg.MaxQuantity,
+		PriceMinor:          cfg.PriceMinor,
+	}
+}
+
+func applyCurrentMachineSlotConfig(
+	ctx context.Context,
+	q *db.Queries,
+	tx pgx.Tx,
+	arg db.FleetAdminApplyMachineSlotConfigCurrentParams,
+) (db.MachineSlotConfig, error) {
+	cfg, err := q.FleetAdminApplyMachineSlotConfigCurrent(ctx, arg)
+	if err == nil {
+		return cfg, nil
+	}
+	if !isDuplicateCurrentMachineSlotConfig(err) {
+		return db.MachineSlotConfig{}, err
+	}
+	if err := clearCurrentMachineSlotConfigsForCode(ctx, tx, arg.MachineID, arg.SlotCode); err != nil {
+		return db.MachineSlotConfig{}, err
+	}
+	return q.FleetAdminApplyMachineSlotConfigCurrent(ctx, arg)
 }
 
 // ApplyOrRelinkCurrentMachineSlotConfig skips matching current configs, relinks cabinet/layout
@@ -361,14 +402,24 @@ func ApplyOrRelinkCurrentMachineSlotConfig(
 			existing.MaxQuantity == maxQty &&
 			existing.PriceMinor == priceMinor
 		if needsRelink && commerceUnchanged {
-			if err := relinkCurrentMachineSlotConfigInTx(ctx, tx, existing.ID, cabID, layoutID, slotIdx, meta); err != nil {
-				return false, false, err
+			relinked, relinkErr := relinkCurrentMachineSlotConfigInTx(ctx, tx, existing.ID, cabID, layoutID, slotIdx, meta)
+			if relinkErr != nil {
+				return false, false, relinkErr
 			}
-			return false, true, nil
+			if relinked {
+				if existingByCode != nil {
+					next := existing
+					next.MachineCabinetID = cabID
+					next.MachineSlotLayoutID = layoutID
+					next.SlotIndex = slotIdx
+					existingByCode[slotCode] = next
+				}
+				return false, true, nil
+			}
 		}
 	}
 	q := pgxutil.NewQueries(tx)
-	_, err = q.FleetAdminApplyMachineSlotConfigCurrent(ctx, db.FleetAdminApplyMachineSlotConfigCurrentParams{
+	applied, err := applyCurrentMachineSlotConfig(ctx, q, tx, db.FleetAdminApplyMachineSlotConfigCurrentParams{
 		MachineID:           machineID,
 		SlotCode:            slotCode,
 		MachineCabinetID:    cabID,
@@ -382,6 +433,9 @@ func ApplyOrRelinkCurrentMachineSlotConfig(
 	})
 	if err != nil {
 		return false, false, err
+	}
+	if existingByCode != nil {
+		existingByCode[slotCode] = inventoryRowFromSlotConfig(applied)
 	}
 	if err := ensureLegacySlotStateFromCommerceConfig(ctx, q, machineID, slotIdx, pid, maxQty, priceMinor); err != nil {
 		return false, false, err

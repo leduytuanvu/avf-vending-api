@@ -210,7 +210,7 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		return ReportLayoutSnapshotResult{}, err
 	}
 
-	if err := s.materializeDeviceSlotsToNamedLayout(
+	commerceDeferred, err := s.materializeDeviceSlotsToNamedLayout(
 		ctx,
 		tx,
 		in.MachineID,
@@ -218,12 +218,16 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		in.SlotsJSON,
 		in.Fingerprint,
 		"snapshot_ingest:"+normalizeSnapshotReason(in.SnapshotReason),
-	); err != nil {
+	)
+	if err != nil {
 		return ReportLayoutSnapshotResult{}, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return ReportLayoutSnapshotResult{}, err
+	}
+	if commerceDeferred {
+		s.runDeferredCommerceReconcile(ctx, in.MachineID)
 	}
 
 	storedRev := int32(in.CaptureSequence)

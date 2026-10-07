@@ -125,7 +125,7 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 		return ReportLocalLayoutResult{}, err
 	}
 
-	if err := s.materializeDeviceSlotsToNamedLayout(
+	commerceDeferred, err := s.materializeDeviceSlotsToNamedLayout(
 		ctx,
 		tx,
 		in.MachineID,
@@ -133,7 +133,8 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 		in.SlotsJSON,
 		inFP,
 		"report_local_layout",
-	); err != nil {
+	)
+	if err != nil {
 		return ReportLocalLayoutResult{}, err
 	}
 
@@ -154,6 +155,9 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 
 	if err := tx.Commit(ctx); err != nil {
 		return ReportLocalLayoutResult{}, err
+	}
+	if commerceDeferred {
+		s.runDeferredCommerceReconcile(ctx, in.MachineID)
 	}
 
 	return ReportLocalLayoutResult{Accepted: true, StoredRevision: in.Revision, StoredGeneration: in.LocalGeneration, StoredFingerprint: inFP}, nil
@@ -185,7 +189,7 @@ func (s *Service) repairNamedLayoutMaterializationIfNeeded(ctx context.Context, 
 	if !needsNamedLayoutMaterialization(mirrorAssignments, countAssignedNamedLayoutSlots(slotRows)) {
 		return nil
 	}
-	if err := s.materializeDeviceSlotsToNamedLayout(
+	commerceDeferred, err := s.materializeDeviceSlotsToNamedLayout(
 		ctx,
 		tx,
 		in.MachineID,
@@ -193,10 +197,17 @@ func (s *Service) repairNamedLayoutMaterializationIfNeeded(ctx context.Context, 
 		in.SlotsJSON,
 		fingerprint,
 		"report_local_layout_repair",
-	); err != nil {
+	)
+	if err != nil {
 		return err
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if commerceDeferred {
+		s.runDeferredCommerceReconcile(ctx, in.MachineID)
+	}
+	return nil
 }
 
 func validateReportedSlotsUnique(slotsJSON []byte) error {

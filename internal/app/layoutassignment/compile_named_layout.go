@@ -3,6 +3,7 @@ package layoutassignment
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/fleet"
@@ -17,6 +18,7 @@ import (
 // materializeDeviceSlotsToNamedLayout replaces machine_layout_slots for a named layout from a device
 // mirror/snapshot slots JSON array, then syncs commerce slot configs so catalog/planogram and
 // GetMachineLayoutDetail stay aligned.
+// materializeDeviceSlotsToNamedLayout returns true when commerce slot-config sync failed but named layout slots were kept.
 func (s *Service) materializeDeviceSlotsToNamedLayout(
 	ctx context.Context,
 	tx pgx.Tx,
@@ -25,13 +27,13 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 	slotsJSON []byte,
 	fingerprint string,
 	materializedBy string,
-) error {
+) (commerceSyncDeferred bool, err error) {
 	layoutID, err := s.resolveNamedLayoutIDForMaterialize(ctx, tx, machineID, hintLayoutID)
 	if err != nil {
-		return err
+		return false, err
 	}
 	if layoutID == uuid.Nil {
-		return nil
+		return false, nil
 	}
 	q := pgxutil.NewQueries(tx)
 	layout, err := q.GetMachineLayoutByID(ctx, db.GetMachineLayoutByIDParams{
@@ -39,17 +41,17 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 		MachineID: machineID,
 	})
 	if err != nil {
-		return err
+		return false, err
 	}
 	mirrorSlots := ParseMirrorSlots(slotsJSON)
 	if len(mirrorSlots) == 0 {
-		return nil
+		return false, nil
 	}
 	if err := q.DeleteMachineLayoutMergePairsByLayoutID(ctx, layoutID); err != nil {
-		return err
+		return false, err
 	}
 	if err := q.DeleteMachineLayoutSlotsByLayoutID(ctx, layoutID); err != nil {
-		return err
+		return false, err
 	}
 	cols := int(layout.GridCols)
 	for _, sl := range mirrorSlots {
@@ -107,7 +109,7 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 			Enabled:          enabled,
 			OperationalState: opState,
 		}); err != nil {
-			return err
+			return false, err
 		}
 	}
 	fp := strings.TrimSpace(fingerprint)
@@ -120,10 +122,25 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 		LayoutRevision:  pgtype.Int4{Int32: layout.LayoutRevision + 1, Valid: true},
 		Fingerprint:     pgtype.Text{String: fp, Valid: true},
 	}); err != nil {
-		return err
+		return false, err
 	}
-	_, err = fleet.SyncNamedLayoutSlotsToCurrentConfigs(ctx, tx, machineID, layoutID, materializedBy)
-	return err
+	if _, err := tx.Exec(ctx, "SAVEPOINT layout_commerce_sync"); err != nil {
+		return false, err
+	}
+	_, syncErr := fleet.SyncNamedLayoutSlotsToCurrentConfigs(ctx, tx, machineID, layoutID, materializedBy)
+	if syncErr != nil {
+		_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT layout_commerce_sync")
+		_, _ = tx.Exec(ctx, "RELEASE SAVEPOINT layout_commerce_sync")
+		slog.Warn("LAYOUT_MATERIALIZE_COMMERCE_SYNC_DEFERRED",
+			"machine_id", machineID.String(),
+			"layout_id", layoutID.String(),
+			"materialized_by", materializedBy,
+			"error", syncErr.Error(),
+		)
+		return true, nil
+	}
+	_, _ = tx.Exec(ctx, "RELEASE SAVEPOINT layout_commerce_sync")
+	return false, nil
 }
 
 func (s *Service) resolveNamedLayoutIDForMaterialize(
@@ -188,4 +205,17 @@ func countAssignedNamedLayoutSlots(slotRows []db.MachineLayoutSlot) int {
 // needsNamedLayoutMaterialization reports when mirror/snapshot payload has assignments but named slots do not.
 func needsNamedLayoutMaterialization(mirrorAssignments, namedAssignments int) bool {
 	return mirrorAssignments > 0 && namedAssignments == 0
+}
+
+func (s *Service) runDeferredCommerceReconcile(ctx context.Context, machineID uuid.UUID) {
+	if s.Pool == nil || machineID == uuid.Nil {
+		return
+	}
+	_, _, err := fleet.ReconcileCommerceTopology(ctx, s.Pool, machineID, false)
+	if err != nil {
+		slog.Warn("LAYOUT_COMMERCE_RECONCILE_AFTER_DEFER_FAILED",
+			"machine_id", machineID.String(),
+			"error", err.Error(),
+		)
+	}
 }
