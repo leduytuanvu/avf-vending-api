@@ -59,13 +59,34 @@ WHERE mik.machine_id = :'machine_id'::uuid
   AND mik.idempotency_key NOT LIKE '%:payout:%'
 ORDER BY mik.last_seen_at DESC;
 
--- 5) APPLY (destructive): remove poisoned ledger rows only — uncomment after review
--- DELETE FROM machine_idempotency_keys mik
--- WHERE mik.machine_id = :'machine_id'::uuid
---   AND mik.idempotency_key LIKE 'cash_movement:%'
---   AND mik.idempotency_key NOT LIKE '%:payout:%'
---   AND NOT EXISTS (
---       SELECT 1 FROM cash_acceptance_events cae
---       WHERE cae.machine_id = mik.machine_id
---         AND mik.idempotency_key LIKE '%' || cae.device_event_id
---   );
+\echo '=== Poison candidates (section 4) ==='
+
+\if :{?dry_run}
+\else
+\set dry_run 1
+\endif
+
+\if :dry_run
+\echo '=== DRY RUN: would delete poisoned idempotency keys (no writes) ==='
+SELECT mik.idempotency_key, mik.status, mik.last_seen_at
+FROM machine_idempotency_keys mik
+WHERE mik.machine_id = :'machine_id'::uuid
+  AND mik.idempotency_key LIKE 'cash_movement:%'
+  AND mik.idempotency_key NOT LIKE '%:payout:%'
+  AND NOT EXISTS (
+      SELECT 1 FROM cash_acceptance_events cae
+      WHERE cae.machine_id = mik.machine_id
+        AND mik.idempotency_key LIKE '%' || cae.device_event_id
+  );
+\else
+\echo '=== APPLY: deleting poisoned idempotency keys ==='
+DELETE FROM machine_idempotency_keys mik
+WHERE mik.machine_id = :'machine_id'::uuid
+  AND mik.idempotency_key LIKE 'cash_movement:%'
+  AND mik.idempotency_key NOT LIKE '%:payout:%'
+  AND NOT EXISTS (
+      SELECT 1 FROM cash_acceptance_events cae
+      WHERE cae.machine_id = mik.machine_id
+        AND mik.idempotency_key LIKE '%' || cae.device_event_id
+  );
+\endif
