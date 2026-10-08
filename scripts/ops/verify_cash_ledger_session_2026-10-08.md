@@ -31,9 +31,24 @@ Log: `OUTBOX_SEQUENCED_NON_COMMERCE_PUSH_FAILED` → `invalid cash movements pay
 2. If payload uses `device_event_id` / snake_case → **dead-letter** after one canonical remap attempt, or fix payload per `OutboxCanonicalMapper` and retry sync.
 3. Do **not** delete `machine_idempotency_keys` rows that already ingested acceptance; for keys **succeeded** with **no** acceptance row, run read-only section “Idempotency succeeded without acceptance” in [`verify_cash_ledger_session.sql`](verify_cash_ledger_session.sql), then optional poison DELETE per [`repair_cash_movement_idempotency_poison.sql`](repair_cash_movement_idempotency_poison.sql) section 5.
 
-## Follow-up engineering
+## Follow-up engineering (shipped 2026-10-08)
 
-- Investigate why `outbox_push_accepted` / idempotency `succeeded` does not create `cash_acceptance_events` (empty `events[]` after protojson, wrong `kind`, or replay skipping ingest).
-- Complete payout sync for notes 2–3 (`ImmediateSyncWorker` / unblock CASH floor).
+**Root cause:** `PushOfflineEvents` idempotency cached success while `ReportCashMovements` ingested **0** rows (proto payload without `deviceEventId` / replay skip on `machine_offline_events.processed`).
 
-Re-run verify: workflow `production-verify-cash-ledger-session` or `bash scripts/ops/verify_cash_ledger_session.sh` on prod runner.
+**Fixes:**
+
+- API `05fb776c`: reject empty ingest (`invalid cash movements payload`); ops repair also sets `machine_offline_events` → `failed_retryable` for bill `cash_movement` keys without acceptance.
+- App `d45355a9`: always remap `commerce.report_cash_movements` wire payload via `OutboxCanonicalMapper`.
+
+**Prod actions triggered:**
+
+- Deploy: workflow `production-self-hosted-build-deploy` run [37735008385](https://github.com/leduytuanvu/avf-vending-api/actions/runs/37735008385)
+- Repair (apply): `production-repair-cash-idempotency-poison` run [37735012361](https://github.com/leduytuanvu/avf-vending-api/actions/runs/37735012361)
+
+**On device after API deploy + app build with `d45355a9`:**
+
+1. Dead-letter or fix outbox `CASH` seq **101** (`291a2dfd…:2E0204`) if still `invalid cash movements payload`.
+2. Force sync / restart app; watch `outbox_push_accepted` and no `OUTBOX_REPLAY_STALLED_AT_HEAD`.
+3. Re-run `production-verify-cash-ledger-session` for the test window (or a new field session).
+
+Payout notes 2–3 still depend on unblocking CASH floor and sync.
