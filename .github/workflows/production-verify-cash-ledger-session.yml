@@ -1,0 +1,167 @@
+name: Production verify cash ledger session
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      machine_id:
+        description: Machine UUID
+        required: false
+        default: "01a0a7e5-3c68-7895-b526-bcb6504bccfb"
+        type: string
+      window_from:
+        description: "Acceptance window start (timestamptz)"
+        required: false
+        default: "2026-10-08 05:30:00+00"
+        type: string
+      window_to:
+        description: "Acceptance window end (timestamptz)"
+        required: false
+        default: "2026-10-08 06:15:00+00"
+        type: string
+      withdrawal_id:
+        description: Withdrawal UUID from device log
+        required: false
+        default: "a1803384-dfb8-4d2d-89ec-7cef515eeb85"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-verify-cash-ledger-session
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify cash ledger session
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 15
+    env:
+      MACHINE_ID: ${{ inputs.machine_id }}
+      WINDOW_FROM: ${{ inputs.window_from }}
+      WINDOW_TO: ${{ inputs.window_to }}
+      WITHDRAWAL_ID: ${{ inputs.withdrawal_id }}
+      API_BASE: https://api.ldtv.dev
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
+      ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
+      E2E_PROD_ADMIN_PASSWORD: ${{ secrets.E2E_PROD_ADMIN_PASSWORD }}
+      ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+      E2E_PROD_ADMIN_EMAIL: ${{ secrets.E2E_PROD_ADMIN_EMAIL }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: DB verify (read-only)
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_verify() {
+            MACHINE_ID="${MACHINE_ID}" WINDOW_FROM="${WINDOW_FROM}" WINDOW_TO="${WINDOW_TO}" WITHDRAWAL_ID="${WITHDRAWAL_ID}" \
+              bash scripts/ops/verify_cash_ledger_session.sh
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export MACHINE_ID='${MACHINE_ID}' WINDOW_FROM='${WINDOW_FROM}' WINDOW_TO='${WINDOW_TO}' WITHDRAWAL_ID='${WITHDRAWAL_ID}' && \
+              bash scripts/ops/verify_cash_ledger_session.sh" | tee verify-cash-ledger.log
+          else
+            run_verify | tee verify-cash-ledger.log
+          fi
+
+      - name: Admin API cash ledger
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ROOT="${GITHUB_WORKSPACE}"
+          # shellcheck source=scripts/e2e/lib/common.sh
+          source "${ROOT}/scripts/e2e/lib/common.sh"
+          export BASE_URL="${API_BASE}"
+          e2e_init_run_dir "production-verify-cash-ledger-session"
+          token="$(e2e_admin_token)" || {
+            echo "FAIL: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})"
+            exit 1
+          }
+          FROM_ISO="$(python3 - <<'PY'
+          from datetime import datetime, timezone
+          import os
+          s = os.environ["WINDOW_FROM"].replace(" ", "T", 1).replace("+00", "Z") if "+00" in os.environ["WINDOW_FROM"] else os.environ["WINDOW_FROM"]
+          print(s if s.endswith("Z") else s + "Z")
+          PY
+          )"
+          TO_ISO="$(python3 - <<'PY'
+          import os
+          s = os.environ["WINDOW_TO"].replace(" ", "T", 1).replace("+00", "Z") if "+00" in os.environ["WINDOW_TO"] else os.environ["WINDOW_TO"]
+          print(s if s.endswith("Z") else s + "Z")
+          PY
+          )"
+          url="${BASE_URL%/}/v1/admin/cash/ledger?machineId=${MACHINE_ID}&from=${FROM_ISO}&to=${TO_ISO}&limit=100"
+          body="$(mktemp)"
+          code="$(curl -sS -o "${body}" -w '%{http_code}' \
+            -H "Authorization: Bearer ${token}" \
+            -H "Accept: application/json" \
+            --connect-timeout 8 --max-time 30 \
+            "${url}")"
+          echo "GET cash/ledger http=${code}"
+          echo "url=${url}"
+          if [[ "${code}" == "200" ]]; then
+            jq '{
+              total: (.items | length),
+              bill_credit_10k: ([.items[] | select(.eventType == "bill_credit" and .amountMinor == 10000)] | length),
+              payout: ([.items[] | select(.eventType | test("payout"; "i"))] | length),
+              sample: (.items[0:8] | map({eventType, amountMinor, occurredAt, machineId}))
+            }' "${body}"
+            echo "--- payout withdrawal filter (client) ---"
+            jq --arg wid "${WITHDRAWAL_ID}" \
+              '[.items[] | select(.withdrawalId == $wid or (.metadata? // {} | tostring | contains($wid)))] | length' "${body}" 2>/dev/null || true
+          else
+            head -c 800 "${body}" || true
+            exit 1
+          fi
+          rm -f "${body}"
+          echo "--- DB excerpt from verify-cash-ledger.log ---"
+          grep -E 'bill_credit_10k_count|payout_event_count|^[0-9]+ rows' verify-cash-ledger.log || true
