@@ -6,8 +6,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SQL_FILE="${ROOT}/scripts/ops/verify_cash_ledger_session.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
 MACHINE_ID="${MACHINE_ID:-01a0a7e5-3c68-7895-b526-bcb6504bccfb}"
-WINDOW_FROM="${WINDOW_FROM:-2026-10-08 05:30:00+00}"
-WINDOW_TO="${WINDOW_TO:-2026-10-08 06:15:00+00}"
+WINDOW_FROM="${WINDOW_FROM:-2026-10-08T05:30:00+00}"
+WINDOW_TO="${WINDOW_TO:-2026-10-08T06:15:00+00}"
 WITHDRAWAL_ID="${WITHDRAWAL_ID:-a1803384-dfb8-4d2d-89ec-7cef515eeb85}"
 
 fail() { echo "verify-cash-ledger: error: $*" >&2; exit 1; }
@@ -61,10 +61,10 @@ run_sql() {
     "${POSTGRES_TOOLS_IMAGE}" \
     psql "${psql_url}" \
       -v ON_ERROR_STOP=1 \
-      -v "machine_id_input=${MACHINE_ID}" \
-      -v "window_from_input=${WINDOW_FROM}" \
-      -v "window_to_input=${WINDOW_TO}" \
-      -v "withdrawal_id_input=${WITHDRAWAL_ID}" \
+      -v "machine_id=${MACHINE_ID}" \
+      -v "window_from=${WINDOW_FROM}" \
+      -v "window_to=${WINDOW_TO}" \
+      -v "withdrawal_id=${WITHDRAWAL_ID}" \
       -f "/ops/$(basename "${SQL_FILE}")"
 }
 

@@ -1,20 +1,8 @@
 -- Read-only verify: bill credits + payout for a machine session window.
 \set machine_id '01a0a7e5-3c68-7895-b526-bcb6504bccfb'
-\if :{?machine_id_input}
-\set machine_id :'machine_id_input'
-\endif
-\set window_from '2026-10-08 05:30:00+00'
-\if :{?window_from_input}
-\set window_from :'window_from_input'
-\endif
-\set window_to '2026-10-08 06:15:00+00'
-\if :{?window_to_input}
-\set window_to :'window_to_input'
-\endif
+\set window_from '2026-10-08T05:30:00+00'
+\set window_to '2026-10-08T06:15:00+00'
 \set withdrawal_id 'a1803384-dfb8-4d2d-89ec-7cef515eeb85'
-\if :{?withdrawal_id_input}
-\set withdrawal_id :'withdrawal_id_input'
-\endif
 
 \echo '=== Session verify ==='
 \echo 'machine_id=' :machine_id
@@ -55,7 +43,7 @@ SELECT device_event_id,
        occurred_at_device
 FROM cash_payout_events
 WHERE machine_id = :'machine_id'::uuid
-  AND withdrawal_id = :'withdrawal_id'::uuid
+  AND withdrawal_id = :'withdrawal_id'
 ORDER BY note_sequence, occurred_at_device;
 
 \echo ''
@@ -63,7 +51,7 @@ ORDER BY note_sequence, occurred_at_device;
 SELECT count(*) AS payout_event_count
 FROM cash_payout_events
 WHERE machine_id = :'machine_id'::uuid
-  AND withdrawal_id = :'withdrawal_id'::uuid;
+  AND withdrawal_id = :'withdrawal_id';
 
 \echo ''
 \echo '=== Stuck idempotency (seq101 driver credit key) ==='

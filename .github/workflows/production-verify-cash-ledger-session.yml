@@ -14,12 +14,12 @@ on:
       window_from:
         description: "Acceptance window start (timestamptz)"
         required: false
-        default: "2026-10-08 05:30:00+00"
+        default: "2026-10-08T05:30:00+00"
         type: string
       window_to:
         description: "Acceptance window end (timestamptz)"
         required: false
-        default: "2026-10-08 06:15:00+00"
+        default: "2026-10-08T06:15:00+00"
         type: string
       withdrawal_id:
         description: Withdrawal UUID from device log
@@ -126,9 +126,8 @@ jobs:
             echo "FAIL: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})"
             exit 1
           }
-          export WINDOW_FROM WINDOW_TO
-          FROM_ISO="$(python3 -c "import os; s=os.environ['WINDOW_FROM'].strip().replace(' ', 'T', 1); print(s.replace('+00','Z') if '+00' in s else (s+'Z' if not s.endswith('Z') else s))")"
-          TO_ISO="$(python3 -c "import os; s=os.environ['WINDOW_TO'].strip().replace(' ', 'T', 1); print(s.replace('+00','Z') if '+00' in s else (s+'Z' if not s.endswith('Z') else s))")"
+          FROM_ISO="${WINDOW_FROM//+00/Z}"
+          TO_ISO="${WINDOW_TO//+00/Z}"
           url="${BASE_URL%/}/v1/admin/cash/ledger?machineId=${MACHINE_ID}&from=${FROM_ISO}&to=${TO_ISO}&limit=100"
           body="$(mktemp)"
           code="$(curl -sS -o "${body}" -w '%{http_code}' \
