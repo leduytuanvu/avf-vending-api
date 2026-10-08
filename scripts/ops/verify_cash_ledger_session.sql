@@ -25,22 +25,24 @@
 \echo '=== Bill credits (cash_acceptance_events) ==='
 SELECT device_event_id,
        denomination_minor,
-       raw_record_hex,
-       occurred_at_device,
+       credit_source,
+       raw_metadata->>'raw_record_hex' AS raw_record_hex,
+       COALESCE(occurred_at_device, accepted_at) AS occurred_at_device,
+       accepted_at,
        created_at
 FROM cash_acceptance_events
 WHERE machine_id = :'machine_id'::uuid
-  AND occurred_at_device >= :'window_from'::timestamptz
-  AND occurred_at_device < :'window_to'::timestamptz
-ORDER BY occurred_at_device;
+  AND accepted_at >= :'window_from'::timestamptz
+  AND accepted_at < :'window_to'::timestamptz
+ORDER BY accepted_at;
 
 \echo ''
 \echo '=== Bill credit count (10k minor) ==='
 SELECT count(*) AS bill_credit_10k_count
 FROM cash_acceptance_events
 WHERE machine_id = :'machine_id'::uuid
-  AND occurred_at_device >= :'window_from'::timestamptz
-  AND occurred_at_device < :'window_to'::timestamptz
+  AND accepted_at >= :'window_from'::timestamptz
+  AND accepted_at < :'window_to'::timestamptz
   AND denomination_minor = 10000;
 
 \echo ''

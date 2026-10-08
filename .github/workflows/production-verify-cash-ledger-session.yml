@@ -126,19 +126,9 @@ jobs:
             echo "FAIL: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})"
             exit 1
           }
-          FROM_ISO="$(python3 - <<'PY'
-          from datetime import datetime, timezone
-          import os
-          s = os.environ["WINDOW_FROM"].replace(" ", "T", 1).replace("+00", "Z") if "+00" in os.environ["WINDOW_FROM"] else os.environ["WINDOW_FROM"]
-          print(s if s.endswith("Z") else s + "Z")
-          PY
-          )"
-          TO_ISO="$(python3 - <<'PY'
-          import os
-          s = os.environ["WINDOW_TO"].replace(" ", "T", 1).replace("+00", "Z") if "+00" in os.environ["WINDOW_TO"] else os.environ["WINDOW_TO"]
-          print(s if s.endswith("Z") else s + "Z")
-          PY
-          )"
+          export WINDOW_FROM WINDOW_TO
+          FROM_ISO="$(python3 -c "import os; s=os.environ['WINDOW_FROM'].strip().replace(' ', 'T', 1); print(s.replace('+00','Z') if '+00' in s else (s+'Z' if not s.endswith('Z') else s))")"
+          TO_ISO="$(python3 -c "import os; s=os.environ['WINDOW_TO'].strip().replace(' ', 'T', 1); print(s.replace('+00','Z') if '+00' in s else (s+'Z' if not s.endswith('Z') else s))")"
           url="${BASE_URL%/}/v1/admin/cash/ledger?machineId=${MACHINE_ID}&from=${FROM_ISO}&to=${TO_ISO}&limit=100"
           body="$(mktemp)"
           code="$(curl -sS -o "${body}" -w '%{http_code}' \
