@@ -842,6 +842,9 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 			RawMetadata:               rawMeta,
 		})
 	}
+	if err := validateReportCashMovementsProto(req); err != nil {
+		return nil, err
+	}
 	res, err := svc.ReportCashMovements(ctx, appcommerce.RecordCashMovementsInput{
 		MachineID:      claims.MachineID,
 		IdempotencyKey: wctx.IdempotencyKey,
@@ -850,11 +853,35 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
+	if res.AcceptedCount == 0 {
+		return nil, status.Error(codes.InvalidArgument, "invalid cash movements payload")
+	}
 	return &machinev1.ReportCashMovementsResponse{
 		Replay:         res.Replay,
 		AcceptedCount:  res.AcceptedCount,
 		DuplicateCount: res.DuplicateCount,
 	}, nil
+}
+
+// validateReportCashMovementsProto rejects offline/proto payloads that unmarshaled but carry no ingestible device_event_id.
+func validateReportCashMovementsProto(req *machinev1.ReportCashMovementsRequest) error {
+	if req == nil || len(req.GetEvents()) == 0 {
+		return status.Error(codes.InvalidArgument, "invalid cash movements payload")
+	}
+	ingestible := 0
+	for _, ev := range req.GetEvents() {
+		if ev == nil {
+			continue
+		}
+		if strings.TrimSpace(ev.GetDeviceEventId()) == "" {
+			continue
+		}
+		ingestible++
+	}
+	if ingestible == 0 {
+		return status.Error(codes.InvalidArgument, "invalid cash movements payload")
+	}
+	return nil
 }
 
 func (s *machineCommerceServer) getStatus(ctx context.Context, claims plauth.MachineAccessClaims, svc appcommerce.Orchestrator, orderID uuid.UUID, slotIndex int32) (appcommerce.CheckoutStatusView, error) {

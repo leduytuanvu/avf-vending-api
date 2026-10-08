@@ -79,6 +79,20 @@ WHERE mik.machine_id = :'machine_id'::uuid
         AND mik.idempotency_key LIKE '%' || cae.device_event_id
   );
 \else
+\echo '=== APPLY: reset offline ledger rows (processed bill cash without acceptance) ==='
+UPDATE machine_offline_events moe
+SET processing_status = 'failed_retryable',
+    processing_error = 'ops_repair: missing cash_acceptance_events'
+WHERE moe.machine_id = :'machine_id'::uuid
+  AND moe.idempotency_key LIKE 'cash_movement:%'
+  AND moe.idempotency_key NOT LIKE '%:payout:%'
+  AND lower(moe.processing_status) IN ('processed', 'succeeded')
+  AND NOT EXISTS (
+      SELECT 1 FROM cash_acceptance_events cae
+      WHERE cae.machine_id = moe.machine_id
+        AND moe.idempotency_key LIKE '%' || cae.device_event_id
+  );
+
 \echo '=== APPLY: deleting poisoned idempotency keys ==='
 DELETE FROM machine_idempotency_keys mik
 WHERE mik.machine_id = :'machine_id'::uuid

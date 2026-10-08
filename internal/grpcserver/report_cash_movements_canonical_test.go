@@ -1,6 +1,7 @@
 package grpcserver
 
 import (
+	"strings"
 	"testing"
 
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
@@ -36,6 +37,24 @@ func TestReportCashMovementsRequest_protojsonUnmarshal_canonicalBillCredit(t *te
 	}
 	if req.Events[0].RawRecordHex != "4:10000:230004" {
 		t.Fatalf("rawRecordHex: got %q", req.Events[0].RawRecordHex)
+	}
+}
+
+func TestReportCashMovementsRequest_protojsonUnmarshal_requiresDeviceEventId(t *testing.T) {
+	t.Parallel()
+	const payload = `{
+  "context": {"idempotencyKey": "cash_movement:m:1", "clientEventId": "c"},
+  "events": [{"kind": "bill_credit", "denominationMinor": 10000, "currency": "VND"}]
+}`
+	var req machinev1.ReportCashMovementsRequest
+	if err := protojson.Unmarshal([]byte(payload), &req); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(req.Events) != 1 || strings.TrimSpace(req.Events[0].GetDeviceEventId()) != "" {
+		t.Fatalf("expected one event with empty deviceEventId, got %+v", req.Events)
+	}
+	if err := validateReportCashMovementsProto(&req); err == nil {
+		t.Fatal("expected validate to reject empty deviceEventId")
 	}
 }
 
