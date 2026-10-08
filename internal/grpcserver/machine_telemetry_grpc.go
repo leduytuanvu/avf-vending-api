@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/alerts"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -386,6 +387,46 @@ func (s *machineTelemetryServer) existingTelemetryPayload(ctx context.Context, m
 	return payload, true, nil
 }
 
+func telemetryStatusForCashMovementForensic(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	key string,
+) (*machinev1.TelemetryEventStatus, bool) {
+	deviceID := machineruntime.DeviceEventIDFromCashMovementIdempotencyKey(machineID, key)
+	if deviceID == "" {
+		return nil, false
+	}
+	if strings.HasPrefix(deviceID, "payout:") {
+		exists, err := q.CashPayoutExistsForMachineDevice(ctx, db.CashPayoutExistsForMachineDeviceParams{
+			MachineID:     machineID,
+			DeviceEventID: deviceID,
+		})
+		if err != nil || !exists {
+			return nil, false
+		}
+		return &machinev1.TelemetryEventStatus{
+			IdempotencyKey: key,
+			Status:         "processed",
+			Retryable:      false,
+			EventType:      "commerce.report_cash_movements",
+		}, true
+	}
+	exists, err := q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
+		MachineID:     machineID,
+		DeviceEventID: deviceID,
+	})
+	if err != nil || !exists {
+		return nil, false
+	}
+	return &machinev1.TelemetryEventStatus{
+		IdempotencyKey: key,
+		Status:         "processed",
+		Retryable:      false,
+		EventType:      "commerce.report_cash_movements",
+	}, true
+}
+
 func telemetryStatusForKey(ctx context.Context, q *db.Queries, machineID uuid.UUID, raw string) (*machinev1.TelemetryEventStatus, error) {
 	key := strings.TrimSpace(raw)
 	if key == "" {
@@ -396,6 +437,9 @@ func telemetryStatusForKey(ctx context.Context, q *db.Queries, machineID uuid.UU
 		IdempotencyKey: key,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
+		if st, ok := telemetryStatusForCashMovementForensic(ctx, q, machineID, key); ok {
+			return st, nil
+		}
 		return telemetryStatusForKeyOfflineFallback(ctx, q, machineID, key)
 	}
 	if err != nil {

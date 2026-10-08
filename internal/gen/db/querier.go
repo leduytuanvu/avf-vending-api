@@ -116,6 +116,8 @@ type Querier interface {
 	BumpMachineCommandSequence(ctx context.Context, id uuid.UUID) (int64, error)
 	BumpMachineCredentialVersion(ctx context.Context, id uuid.UUID) (int64, error)
 	CancelPaymentByID(ctx context.Context, id uuid.UUID) (Payment, error)
+	CashAcceptanceExistsForMachineDevice(ctx context.Context, arg CashAcceptanceExistsForMachineDeviceParams) (bool, error)
+	CashPayoutExistsForMachineDevice(ctx context.Context, arg CashPayoutExistsForMachineDeviceParams) (bool, error)
 	CashSettlementLastClosedAt(ctx context.Context, machineID uuid.UUID) (time.Time, error)
 	CashSettlementNetExpectedMinor(ctx context.Context, arg CashSettlementNetExpectedMinorParams) (int64, error)
 	CatalogAdminCountBrands(ctx context.Context) (int64, error)

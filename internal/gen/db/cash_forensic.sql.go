@@ -13,6 +13,46 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const CashAcceptanceExistsForMachineDevice = `-- name: CashAcceptanceExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_acceptance_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists
+`
+
+type CashAcceptanceExistsForMachineDeviceParams struct {
+	MachineID     uuid.UUID
+	DeviceEventID string
+}
+
+func (q *Queries) CashAcceptanceExistsForMachineDevice(ctx context.Context, arg CashAcceptanceExistsForMachineDeviceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, CashAcceptanceExistsForMachineDevice, arg.MachineID, arg.DeviceEventID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const CashPayoutExistsForMachineDevice = `-- name: CashPayoutExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_payout_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists
+`
+
+type CashPayoutExistsForMachineDeviceParams struct {
+	MachineID     uuid.UUID
+	DeviceEventID string
+}
+
+func (q *Queries) CashPayoutExistsForMachineDevice(ctx context.Context, arg CashPayoutExistsForMachineDeviceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, CashPayoutExistsForMachineDevice, arg.MachineID, arg.DeviceEventID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const GetCashAcceptanceEventByID = `-- name: GetCashAcceptanceEventByID :one
 SELECT id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, boot_id, occurred_at_device, raw_metadata, created_at
 FROM cash_acceptance_events

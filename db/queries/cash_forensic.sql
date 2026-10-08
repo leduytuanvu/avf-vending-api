@@ -278,6 +278,20 @@ SELECT *
 FROM cash_acceptance_events
 WHERE id = $1;
 
+-- name: CashAcceptanceExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_acceptance_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists;
+
+-- name: CashPayoutExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_payout_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists;
+
 -- name: ListCashAcceptanceEventsForMachineSince :many
 SELECT *
 FROM cash_acceptance_events
