@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avf/avf-vending-api/internal/app/planogramlayoutmerge"
 	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
@@ -211,6 +212,10 @@ func ApplyMergePairBatch(ctx context.Context, pool *pgxpool.Pool, in MergePairBa
 		if err := mirrorMergeMetadata(ctx, q, in.MachineID, pair); err != nil {
 			return zero, err
 		}
+	}
+
+	if err := planogramlayoutmerge.MirrorLaneMergesToNamedLayout(ctx, q, in.MachineID); err != nil {
+		return zero, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {

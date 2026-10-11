@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/fleet"
+	"github.com/avf/avf-vending-api/internal/app/planogramlayoutmerge"
 	"github.com/avf/avf-vending-api/internal/app/physicaltopology"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
@@ -46,9 +47,6 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 	mirrorSlots := ParseMirrorSlots(slotsJSON)
 	if len(mirrorSlots) == 0 {
 		return false, nil
-	}
-	if err := q.DeleteMachineLayoutMergePairsByLayoutID(ctx, layoutID); err != nil {
-		return false, err
 	}
 	if err := q.DeleteMachineLayoutSlotsByLayoutID(ctx, layoutID); err != nil {
 		return false, err
@@ -122,6 +120,9 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 		LayoutRevision:  pgtype.Int4{Int32: layout.LayoutRevision + 1, Valid: true},
 		Fingerprint:     pgtype.Text{String: fp, Valid: true},
 	}); err != nil {
+		return false, err
+	}
+	if err := planogramlayoutmerge.RebuildNamedLayoutMergePairsFromLane(ctx, q, machineID, layoutID); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, "SAVEPOINT layout_commerce_sync"); err != nil {
