@@ -517,16 +517,18 @@ func (s *machineBootstrapServer) ReportLocalLayout(ctx context.Context, req *mac
 	}
 	svc := &layoutassignment.Service{Pool: s.deps.Pool}
 	out, rerr := svc.ReportLocalLayout(ctx, layoutassignment.MachineAuthContext{MachineID: claims.MachineID}, layoutassignment.ReportLocalLayoutInput{
-		MachineID:        claims.MachineID,
-		LocalLayoutID:    localLayoutID,
-		Revision:         req.GetRevision(),
-		Rows:             req.GetRows(),
-		Columns:          req.GetColumns(),
-		SlotsJSON:        slotsJSON,
-		Fingerprint:      req.GetFingerprint(),
-		DeviceInstanceID: req.GetDeviceInstanceId(),
-		IdempotencyKey:   req.GetMeta().GetIdempotencyKey(),
-		LocalGeneration:  req.GetLocalGeneration(),
+		MachineID:               claims.MachineID,
+		LocalLayoutID:           localLayoutID,
+		Revision:                req.GetRevision(),
+		Rows:                    req.GetRows(),
+		Columns:                 req.GetColumns(),
+		SlotsJSON:               slotsJSON,
+		Fingerprint:             req.GetFingerprint(),
+		DeviceInstanceID:        req.GetDeviceInstanceId(),
+		IdempotencyKey:          req.GetMeta().GetIdempotencyKey(),
+		LocalGeneration:         req.GetLocalGeneration(),
+		MergePairs:              mapReportLocalLayoutMergePairs(req.GetMergePairs()),
+		MergeTopologyIncluded:   req.GetMergeTopologyIncluded(),
 	})
 	if rerr != nil {
 		return nil, mapReportLocalLayoutError(rerr)
@@ -575,6 +577,25 @@ func marshalReportLocalLayoutSlots(slots []*machinev1.ReportLocalLayoutSlot) ([]
 		})
 	}
 	return json.Marshal(out)
+}
+
+func mapReportLocalLayoutMergePairs(pairs []*machinev1.LayoutSnapshotMergePair) []layoutassignment.SnapshotMergePairInput {
+	out := make([]layoutassignment.SnapshotMergePairInput, 0, len(pairs))
+	for _, p := range pairs {
+		if p == nil {
+			continue
+		}
+		left := strings.TrimSpace(p.GetLeftSlotCode())
+		right := strings.TrimSpace(p.GetRightSlotCode())
+		if left == "" || right == "" {
+			continue
+		}
+		out = append(out, layoutassignment.SnapshotMergePairInput{
+			LeftSlotCode:  left,
+			RightSlotCode: right,
+		})
+	}
+	return out
 }
 
 func (s *machineBootstrapServer) GetMachineLayoutLibrary(ctx context.Context, req *machinev1.GetMachineLayoutLibraryRequest) (*machinev1.GetMachineLayoutLibraryResponse, error) {
@@ -803,23 +824,24 @@ func mapReportLayoutSnapshotRequest(machineID uuid.UUID, req *machinev1.ReportLa
 		baseRev = &v
 	}
 	return layoutassignment.ReportLayoutSnapshotInput{
-		MachineID:          machineID,
-		SnapshotID:         snapshotID,
-		LayoutID:           layoutID,
-		LayoutName:         req.GetLayoutName(),
-		DeviceInstanceID:   req.GetDeviceInstanceId(),
-		CaptureSequence:    req.GetCaptureSequence(),
-		DeviceGeneration:   req.GetDeviceGeneration(),
-		CapturedAt:         capturedAt,
-		IntervalKey:        req.GetIntervalKey(),
-		BaseServerRevision: baseRev,
-		Fingerprint:        req.GetFingerprint(),
-		PayloadVersion:     req.GetPayloadVersion(),
-		SnapshotReason:     mapSnapshotReasonProto(req.GetSnapshotReason()),
-		GridRows:           req.GetGridRows(),
-		GridCols:           req.GetGridCols(),
-		ActiveLayoutID:     activeLayoutID,
-		SlotsJSON:          slotsJSON,
+		MachineID:               machineID,
+		SnapshotID:              snapshotID,
+		LayoutID:                layoutID,
+		LayoutName:              req.GetLayoutName(),
+		DeviceInstanceID:        req.GetDeviceInstanceId(),
+		CaptureSequence:         req.GetCaptureSequence(),
+		DeviceGeneration:        req.GetDeviceGeneration(),
+		CapturedAt:              capturedAt,
+		IntervalKey:             req.GetIntervalKey(),
+		BaseServerRevision:      baseRev,
+		Fingerprint:             req.GetFingerprint(),
+		PayloadVersion:          req.GetPayloadVersion(),
+		SnapshotReason:          mapSnapshotReasonProto(req.GetSnapshotReason()),
+		GridRows:                req.GetGridRows(),
+		GridCols:                req.GetGridCols(),
+		ActiveLayoutID:          activeLayoutID,
+		MergePairs:    mapReportLocalLayoutMergePairs(req.GetMergePairs()),
+		SlotsJSON:     slotsJSON,
 	}, nil
 }
 

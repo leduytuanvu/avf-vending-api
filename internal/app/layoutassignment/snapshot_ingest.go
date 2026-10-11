@@ -53,9 +53,10 @@ type ReportLayoutSnapshotInput struct {
 	GridRows           int32
 	GridCols           int32
 	ActiveLayoutID     uuid.UUID
-	MergePairs         []SnapshotMergePairInput
-	Slots              []SnapshotSlotInput
-	SlotsJSON          []byte
+	MergePairs              []SnapshotMergePairInput
+	MergeTopologyIncluded   bool
+	Slots                   []SnapshotSlotInput
+	SlotsJSON               []byte
 }
 
 type SnapshotMergePairInput struct {
@@ -230,6 +231,7 @@ func (s *Service) ReportLayoutSnapshot(ctx context.Context, auth MachineAuthCont
 		in.SlotsJSON,
 		in.Fingerprint,
 		"snapshot_ingest:"+normalizeSnapshotReason(in.SnapshotReason),
+		materializeMergeTopologyFromSnapshot(in),
 	)
 	if err != nil {
 		return ReportLayoutSnapshotResult{}, err
@@ -411,20 +413,22 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 func ReportLayoutSnapshotFromLocalLayout(in ReportLocalLayoutInput) ReportLayoutSnapshotInput {
 	capturedAt := time.Now().UTC()
 	return ReportLayoutSnapshotInput{
-		MachineID:          in.MachineID,
-		SnapshotID:         in.LocalLayoutID,
-		LayoutID:           in.LocalLayoutID,
-		DeviceInstanceID:   in.DeviceInstanceID,
-		CaptureSequence:    int64(in.Revision),
-		DeviceGeneration:   in.LocalGeneration,
-		CapturedAt:         capturedAt,
-		BaseServerRevision: &in.Revision,
-		Fingerprint:        in.Fingerprint,
-		PayloadVersion:     DefaultSnapshotPayloadVersion,
-		SnapshotReason:     SnapshotReasonLegacyReport,
-		GridRows:           in.Rows,
-		GridCols:           in.Columns,
-		ActiveLayoutID:     in.LocalLayoutID,
-		SlotsJSON:          in.SlotsJSON,
+		MachineID:             in.MachineID,
+		SnapshotID:            in.LocalLayoutID,
+		LayoutID:              in.LocalLayoutID,
+		DeviceInstanceID:      in.DeviceInstanceID,
+		CaptureSequence:       int64(in.Revision),
+		DeviceGeneration:      in.LocalGeneration,
+		CapturedAt:            capturedAt,
+		BaseServerRevision:    &in.Revision,
+		Fingerprint:           in.Fingerprint,
+		PayloadVersion:        DefaultSnapshotPayloadVersion,
+		SnapshotReason:        SnapshotReasonLegacyReport,
+		GridRows:              in.Rows,
+		GridCols:              in.Columns,
+		ActiveLayoutID:        in.LocalLayoutID,
+		MergePairs:            in.MergePairs,
+		MergeTopologyIncluded: in.MergeTopologyIncluded,
+		SlotsJSON:             in.SlotsJSON,
 	}
 }

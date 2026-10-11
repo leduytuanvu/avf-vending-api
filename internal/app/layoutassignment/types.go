@@ -131,16 +131,18 @@ type MachineAuthContext struct {
 
 // ReportLocalLayoutInput is device-authored LOCAL layout reporting.
 type ReportLocalLayoutInput struct {
-	MachineID        uuid.UUID
-	LocalLayoutID    uuid.UUID
-	Revision         int32
-	Rows             int32
-	Columns          int32
-	SlotsJSON        []byte
-	Fingerprint      string
-	DeviceInstanceID string
-	IdempotencyKey   string
-	LocalGeneration  int64
+	MachineID               uuid.UUID
+	LocalLayoutID           uuid.UUID
+	Revision                int32
+	Rows                    int32
+	Columns                 int32
+	SlotsJSON               []byte
+	Fingerprint             string
+	DeviceInstanceID        string
+	IdempotencyKey          string
+	LocalGeneration         int64
+	MergePairs              []SnapshotMergePairInput
+	MergeTopologyIncluded   bool
 }
 
 // ReportLocalLayoutResult is returned after a device LOCAL layout report.

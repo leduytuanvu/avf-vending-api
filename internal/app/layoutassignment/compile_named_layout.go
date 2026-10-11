@@ -16,6 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// MaterializeMergeTopology carries optional device-reported merge pairs for named layout materialize.
+type MaterializeMergeTopology struct {
+	Included bool
+	Pairs    []planogramlayoutmerge.DeviceMergePair
+}
+
 // materializeDeviceSlotsToNamedLayout replaces machine_layout_slots for a named layout from a device
 // mirror/snapshot slots JSON array, then syncs commerce slot configs so catalog/planogram and
 // GetMachineLayoutDetail stay aligned.
@@ -28,6 +34,7 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 	slotsJSON []byte,
 	fingerprint string,
 	materializedBy string,
+	mergeTopology *MaterializeMergeTopology,
 ) (commerceSyncDeferred bool, err error) {
 	layoutID, err := s.resolveNamedLayoutIDForMaterialize(ctx, tx, machineID, hintLayoutID)
 	if err != nil {
@@ -122,7 +129,13 @@ func (s *Service) materializeDeviceSlotsToNamedLayout(
 	}); err != nil {
 		return false, err
 	}
-	if err := planogramlayoutmerge.RebuildNamedLayoutMergePairsFromLane(ctx, q, machineID, layoutID); err != nil {
+	if mergeTopology != nil && mergeTopology.Included {
+		if err := planogramlayoutmerge.ReplaceMachineMergeTopologyFromDeviceReport(
+			ctx, q, machineID, layoutID, mergeTopology.Pairs,
+		); err != nil {
+			return false, err
+		}
+	} else if err := planogramlayoutmerge.RebuildNamedLayoutMergePairsFromLane(ctx, q, machineID, layoutID); err != nil {
 		return false, err
 	}
 	if _, err := tx.Exec(ctx, "SAVEPOINT layout_commerce_sync"); err != nil {

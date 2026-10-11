@@ -265,6 +265,9 @@ message ReportLocalLayoutRequest {
   string fingerprint = 7;
   string device_instance_id = 8;
   int64 local_generation = 9;
+  repeated LayoutSnapshotMergePair merge_pairs = 10;
+  // When true, merge_pairs is authoritative for lane + named layout merge tables (empty list clears merges).
+  bool merge_topology_included = 11;
 }
 
 message ReportLocalLayoutResponse {

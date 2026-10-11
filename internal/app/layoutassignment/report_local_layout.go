@@ -133,6 +133,7 @@ func (s *Service) reportLocalLayoutLegacy(ctx context.Context, auth MachineAuthC
 		in.SlotsJSON,
 		inFP,
 		"report_local_layout",
+		materializeMergeTopologyFromReport(in),
 	)
 	if err != nil {
 		return ReportLocalLayoutResult{}, err
@@ -197,6 +198,7 @@ func (s *Service) repairNamedLayoutMaterializationIfNeeded(ctx context.Context, 
 		in.SlotsJSON,
 		fingerprint,
 		"report_local_layout_repair",
+		materializeMergeTopologyFromReport(in),
 	)
 	if err != nil {
 		return err
