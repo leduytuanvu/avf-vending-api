@@ -47,3 +47,15 @@ Structured logs:
 ## Weak network
 
 Throttle (e.g. 3G profile) and repeat. Prefetch hit should remove one full `CreateQuote` RTT before materialize/payment.
+
+## Guided matrix (Windows)
+
+From `avf-vending-app` with kiosk on adb:
+
+```powershell
+.\scripts\diagnostics\run-qr-latency-measurement-matrix.ps1
+# or one scenario:
+.\scripts\diagnostics\run-qr-latency-measurement-matrix.ps1 -Scenario 5sku
+```
+
+After each QR checkout on production API (`CREATE_QUOTE_PHASES` in server logs), compare `pricing_ms` for `line_count=1` vs `5`.
