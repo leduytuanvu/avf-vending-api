@@ -4,11 +4,16 @@ Use this checklist before/after quote prefetch, batch pricing, or checkout snaps
 
 ## Archived baseline (no adb device, 2026-10-13)
 
-- Field capture matrix **not run** (`adb devices` empty).
+- Field capture matrix **not run** (`adb devices` empty on 2026-10-13 after deploy).
 - Prior log excerpt (`.cursor_log_1625_vend.txt`): failed prefetch quotes + materialize `CreateQuote` ~2981ms for 3 lines — indicates **duplicate quote RPC** on old APK and quote-bound materialize.
-- Production API at measurement time: `git_sha` `cf37e65c` (batch quote + `CREATE_QUOTE_PHASES`); deploy newer API for `pricing_mode` / snapshot topology skip.
+- Production API deployed: `git_sha` **`e7002faa`** (2026-10-12T23:41:52Z) — snapshot topology quote + `CREATE_ORDER_FROM_QUOTE_PHASES` + `pricing_mode` on `CREATE_QUOTE_PHASES`.
+- Kiosk APK: `assembleTcnProductionRelease` built locally; **not installed** (no adb). Install path: `app/build/outputs/apk/tcnProduction/release/`.
 
 Re-run `run-qr-latency-measurement-matrix.ps1` when a kiosk is on adb and append results below.
+
+### Infra decision (pre-matrix)
+
+Per [qr-infra-scaling-decision.md](qr-infra-scaling-decision.md): **no VPS scale** until matrix + server logs show quote/DB dominance over `psp_create_ms` + kiosk RTT.
 
 ## 1 SKU vs many SKU (client)
 
