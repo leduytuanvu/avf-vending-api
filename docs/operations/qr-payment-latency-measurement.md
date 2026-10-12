@@ -2,6 +2,14 @@
 
 Use this checklist before/after quote prefetch, batch pricing, or checkout snapshot changes.
 
+## Archived baseline (no adb device, 2026-10-13)
+
+- Field capture matrix **not run** (`adb devices` empty).
+- Prior log excerpt (`.cursor_log_1625_vend.txt`): failed prefetch quotes + materialize `CreateQuote` ~2981ms for 3 lines — indicates **duplicate quote RPC** on old APK and quote-bound materialize.
+- Production API at measurement time: `git_sha` `cf37e65c` (batch quote + `CREATE_QUOTE_PHASES`); deploy newer API for `pricing_mode` / snapshot topology skip.
+
+Re-run `run-qr-latency-measurement-matrix.ps1` when a kiosk is on adb and append results below.
+
 ## 1 SKU vs many SKU (client)
 
 1. Capture logcat during one QR checkout per scenario (1 line, 5 lines, high qty).
@@ -39,8 +47,11 @@ Structured logs:
 
 | Log | Fields |
 |-----|--------|
-| `CREATE_QUOTE_PHASES` | `line_count`, `pricing_ms`, `persist_ms`, `total_ms`, `has_pricing_snapshot` |
+| `CREATE_QUOTE_PHASES` | `line_count`, `pricing_ms`, `persist_ms`, `total_ms`, `has_pricing_snapshot`, `pricing_mode` |
+| `CREATE_ORDER_FROM_QUOTE_PHASES` | `vend_unit_count`, `vend_insert_ms`, `total_ms` |
 | `CREATE_PAYMENT_SESSION_PHASES` | `order_load_ms`, `psp_create_ms`, `total_ms`, … |
+
+**Bulk vend insert:** only implement if `vend_insert_ms` is material vs `total_ms` at high `vend_unit_count`; logging is live for that decision (see `qr-infra-scaling-decision.md`).
 
 **Interpretation:** If `psp_create_ms` dominates `total_ms` on payment session, quote work is not the QR bottleneck. If `CREATE_QUOTE_PHASES pricing_ms` scales with SKU count, batch pricing may still need tuning.
 

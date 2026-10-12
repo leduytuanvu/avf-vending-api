@@ -246,6 +246,10 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		return CreateQuoteResult{}, err
 	}
 	persistMs := time.Since(persistStart).Milliseconds()
+	pricingMode := "server_priced"
+	if in.PricingSnapshot != nil {
+		pricingMode = "machine_snapshot_topology"
+	}
 	slog.Info("CREATE_QUOTE_PHASES",
 		"machine_id", in.MachineID.String(),
 		"line_count", len(in.Lines),
@@ -253,6 +257,7 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		"persist_ms", persistMs,
 		"total_ms", pricingMs+persistMs,
 		"has_pricing_snapshot", in.PricingSnapshot != nil,
+		"pricing_mode", pricingMode,
 	)
 	out := mapPersistQuoteResult(persisted)
 	out.Lines = views

@@ -46,6 +46,11 @@ func matchSlotRow(in SaleLineSelector, r db.InventoryAdminListCurrentMachineSlot
 	}
 }
 
+// PickSlotRowFromInventory selects the current slot config row for a sale line selector.
+func PickSlotRowFromInventory(rows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, in SaleLineSelector) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
+	return pickSlotRow(rows, uuid.Nil, in)
+}
+
 func pickSlotRow(rows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, org uuid.UUID, in SaleLineSelector) (db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow, error) {
 	var hits []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow
 	for _, r := range rows {

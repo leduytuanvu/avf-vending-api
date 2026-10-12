@@ -8,6 +8,18 @@ func (s *Service) resolveCreateQuoteSaleLines(ctx context.Context, in CreateQuot
 	if len(in.Lines) == 0 {
 		return nil, ErrInvalidArgument
 	}
+	if in.PricingSnapshot != nil {
+		snap := *in.PricingSnapshot
+		if err := validateMachinePricingSnapshotMultiLine(snap, len(in.Lines)); err == nil {
+			resolved, snapErr := s.resolveQuoteLinesFromMachineSnapshot(ctx, in, snap)
+			if snapErr == nil {
+				return resolved, nil
+			}
+			if !IsAssortmentStaleError(snapErr) {
+				return nil, snapErr
+			}
+		}
+	}
 	if batch, ok := s.saleLines.(BatchQuoteSaleLineResolver); ok {
 		inputs := make([]QuoteSaleLineResolveInput, len(in.Lines))
 		for i, line := range in.Lines {

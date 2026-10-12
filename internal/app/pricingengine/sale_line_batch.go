@@ -48,6 +48,24 @@ func (e *Engine) EvaluateSaleLines(ctx context.Context, reqs []EvaluateSaleLineR
 	if err != nil {
 		return nil, err
 	}
+	productIDs := make([]uuid.UUID, 0, len(reqs))
+	seenProducts := make(map[uuid.UUID]struct{}, len(reqs))
+	for _, req := range reqs {
+		pid := req.Selector.ProductID
+		if pid == uuid.Nil {
+			continue
+		}
+		if _, ok := seenProducts[pid]; ok {
+			continue
+		}
+		seenProducts[pid] = struct{}{}
+		productIDs = append(productIDs, pid)
+	}
+	if len(productIDs) > 0 {
+		if err := batch.PrefetchProductMeta(ctx, productIDs); err != nil {
+			return nil, err
+		}
+	}
 	out := make([]EvaluateSaleLineResult, len(reqs))
 	for i, req := range reqs {
 		in := req.Selector

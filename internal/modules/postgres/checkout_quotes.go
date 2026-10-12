@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -254,8 +255,10 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 	}
 
 	// One vend_session per unit quantity is intentional: kiosk vend orchestration and line_sequence
-	// map 1:1 to physical dispense attempts. Do not collapse to per-line qty without a vend contract audit.
+	// map 1:1 to physical dispense attempts. Bulk insert deferred until CREATE_ORDER_FROM_QUOTE_PHASES shows vend_insert_ms dominance.
 	var vendLines []appcommerce.PersistOrderFromQuoteVendLine
+	vendInsertStart := time.Now()
+	vendUnitCount := int32(0)
 	lineSeq := int32(0)
 	for _, ql := range quoteLines {
 		qty := ql.Quantity
@@ -263,6 +266,7 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 			qty = 1
 		}
 		for u := int32(0); u < qty; u++ {
+			vendUnitCount++
 			lineSeq++
 			vRow, err := q.InsertVendSessionWithLineSequence(ctx, db.InsertVendSessionWithLineSequenceParams{
 				OrderID:            orderRow.ID,
@@ -289,6 +293,13 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 			})
 		}
 	}
+	vendInsertMs := time.Since(vendInsertStart).Milliseconds()
+	slog.Info("CREATE_ORDER_FROM_QUOTE_PHASES",
+		"order_id", orderRow.ID.String(),
+		"quote_line_count", len(quoteLines),
+		"vend_unit_count", vendUnitCount,
+		"vend_insert_ms", vendInsertMs,
+	)
 
 	if _, err := q.MarkCheckoutQuoteConsumed(ctx, quote.QuoteID); err != nil {
 		return appcommerce.PersistOrderFromQuoteResult{}, err

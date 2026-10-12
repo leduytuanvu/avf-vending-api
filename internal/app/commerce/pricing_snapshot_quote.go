@@ -146,6 +146,11 @@ func mirrorSlotKey(slotCode, productID string) string {
 	return strings.ToUpper(slotCode) + "|" + strings.TrimSpace(productID)
 }
 
+// SnapshotLineUnitPrice returns the machine snapshot unit price for a quote line sequence.
+func SnapshotLineUnitPrice(snap MachinePricingSnapshotInput, seq int32, fallback int64) int64 {
+	return snapshotLineUnitPrice(snap, seq, fallback)
+}
+
 func snapshotLineUnitPrice(snap MachinePricingSnapshotInput, seq int32, fallback int64) int64 {
 	for _, ln := range snap.Lines {
 		if ln.LineSequence == seq {

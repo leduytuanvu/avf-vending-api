@@ -322,6 +322,30 @@ func (r *recordingSaleLineResolver) LookupSlotDisplay(context.Context, uuid.UUID
 	return r.line, nil
 }
 
+func (r *recordingSaleLineResolver) ResolveQuoteSaleLines(_ context.Context, _ uuid.UUID, lines []QuoteSaleLineResolveInput) ([]ResolvedSaleLine, error) {
+	out := make([]ResolvedSaleLine, len(lines))
+	for i, ln := range lines {
+		qty := ln.Qty
+		if qty <= 0 {
+			qty = 1
+		}
+		line := r.line
+		line.SubtotalMinor = line.PriceMinor * int64(qty)
+		line.TotalMinor = line.SubtotalMinor
+		out[i] = line
+	}
+	return out, nil
+}
+
+func (r *recordingSaleLineResolver) ResolveQuoteLinesFromMachineSnapshot(
+	_ context.Context,
+	_ uuid.UUID,
+	lines []QuoteSaleLineResolveInput,
+	_ MachinePricingSnapshotInput,
+) ([]ResolvedSaleLine, error) {
+	return r.ResolveQuoteSaleLines(context.Background(), uuid.Nil, lines)
+}
+
 type captureOrderVendWorkflow struct {
 	lastInput domaincommerce.CreateOrderVendInput
 }

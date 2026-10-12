@@ -59,3 +59,13 @@ type QuoteSaleLineResolveInput struct {
 type BatchQuoteSaleLineResolver interface {
 	ResolveQuoteSaleLines(ctx context.Context, machineID uuid.UUID, lines []QuoteSaleLineResolveInput) ([]ResolvedSaleLine, error)
 }
+
+// SnapshotQuoteTopologyResolver maps checkout lines to slot topology using machine snapshot prices (no promo engine).
+type SnapshotQuoteTopologyResolver interface {
+	ResolveQuoteLinesFromMachineSnapshot(
+		ctx context.Context,
+		machineID uuid.UUID,
+		lines []QuoteSaleLineResolveInput,
+		snap MachinePricingSnapshotInput,
+	) ([]ResolvedSaleLine, error)
+}
