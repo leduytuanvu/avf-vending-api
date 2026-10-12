@@ -48,3 +48,14 @@ type QuantityAwareSaleLineResolver interface {
 	SaleLineResolver
 	ResolveSaleLineWithQuantity(ctx context.Context, in ResolveSaleLineInput, qty int32) (ResolvedSaleLine, error)
 }
+
+// QuoteSaleLineResolveInput is one checkout cart line for batched quote pricing.
+type QuoteSaleLineResolveInput struct {
+	In  ResolveSaleLineInput
+	Qty int32
+}
+
+// BatchQuoteSaleLineResolver prices an entire quote with one slot-config load and pricing batch.
+type BatchQuoteSaleLineResolver interface {
+	ResolveQuoteSaleLines(ctx context.Context, machineID uuid.UUID, lines []QuoteSaleLineResolveInput) ([]ResolvedSaleLine, error)
+}

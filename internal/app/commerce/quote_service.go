@@ -124,24 +124,16 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		views        []QuoteLineView
 		subtotal     int64
 	)
-	for i, line := range in.Lines {
+	priceStart := time.Now()
+	resolvedLines, err := s.resolveCreateQuoteSaleLines(ctx, in)
+	if err != nil {
+		return CreateQuoteResult{}, err
+	}
+	for i, resolved := range resolvedLines {
+		line := in.Lines[i]
 		qty := line.Quantity
 		if qty <= 0 {
 			qty = 1
-		}
-		resIn := ResolveSaleLineInput{
-			MachineID:   in.MachineID,
-			ProductID:   line.ProductID,
-			SlotID:      line.SlotID,
-			CabinetCode: line.CabinetCode,
-			SlotCode:    line.SlotCode,
-			SlotIndex:   line.SlotIndex,
-		}
-		var resolved ResolvedSaleLine
-		var err error
-		resolved, err = s.resolveCheckoutSaleLine(ctx, resIn, in.PricingSnapshot, qty)
-		if err != nil {
-			return CreateQuoteResult{}, err
 		}
 		seq := int32(i + 1)
 		lineSub := resolved.TotalMinor
@@ -172,6 +164,7 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 			PromotionLabel:     resolved.PromotionLabel,
 		})
 	}
+	pricingMs := time.Since(priceStart).Milliseconds()
 	discountMinor := int64(0)
 	serverReferencePayable := subtotal
 	payable := subtotal - discountMinor
@@ -233,6 +226,7 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 		}
 	}
 	serverRef := serverReferencePayable
+	persistStart := time.Now()
 	persisted, err := store.CreateQuoteWithLines(ctx, PersistQuoteInput{
 		MachineID:                   in.MachineID,
 		Currency:                    strings.ToUpper(strings.TrimSpace(in.Currency)),
@@ -251,6 +245,15 @@ func (s *Service) CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQ
 	if err != nil {
 		return CreateQuoteResult{}, err
 	}
+	persistMs := time.Since(persistStart).Milliseconds()
+	slog.Info("CREATE_QUOTE_PHASES",
+		"machine_id", in.MachineID.String(),
+		"line_count", len(in.Lines),
+		"pricing_ms", pricingMs,
+		"persist_ms", persistMs,
+		"total_ms", pricingMs+persistMs,
+		"has_pricing_snapshot", in.PricingSnapshot != nil,
+	)
 	out := mapPersistQuoteResult(persisted)
 	out.Lines = views
 	return out, nil

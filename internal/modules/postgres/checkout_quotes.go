@@ -253,6 +253,8 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		return appcommerce.PersistOrderFromQuoteResult{}, err
 	}
 
+	// One vend_session per unit quantity is intentional: kiosk vend orchestration and line_sequence
+	// map 1:1 to physical dispense attempts. Do not collapse to per-line qty without a vend contract audit.
 	var vendLines []appcommerce.PersistOrderFromQuoteVendLine
 	lineSeq := int32(0)
 	for _, ql := range quoteLines {

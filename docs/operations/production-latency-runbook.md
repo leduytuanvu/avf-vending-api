@@ -76,7 +76,9 @@ OPS_METRICS_URL=http://127.0.0.1:8081/metrics ./scripts/production/verify-pool-a
 SSH_HOST=root@<app-vps> APP_NODE_DIR=/opt/avf/app-node ./scripts/production/correlate-qr-payment-latency.sh
 ```
 
-Server structured phases: log `CREATE_PAYMENT_SESSION_PHASES` (`order_load_ms`, `start_payment_outbox_ms`, `bind_pre_ms`, `psp_create_ms`, `bind_post_ms`, `total_ms`).
+Server structured phases: log `CREATE_PAYMENT_SESSION_PHASES` (`order_load_ms`, `start_payment_outbox_ms`, `bind_pre_ms`, `psp_create_ms`, `bind_post_ms`, `total_ms`) and `CREATE_QUOTE_PHASES` (`pricing_ms`, `persist_ms`, `line_count`).
+
+See [QR payment latency measurement](./qr-payment-latency-measurement.md) for 1 vs N SKU scenarios.
 
 ## Related
 
