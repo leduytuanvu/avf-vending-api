@@ -92,6 +92,37 @@ LEFT JOIN products p ON p.id = vs.product_id
 ORDER BY vs.created_at;
 
 \echo ''
+\echo '=== payment_attempts payload contains transId ==='
+SELECT pa.id,
+       pa.provider_reference,
+       pa.state,
+       pa.created_at,
+       p.order_id,
+       p.state AS payment_state,
+       left(pa.payload::text, 200) AS payload_preview
+FROM payment_attempts pa
+INNER JOIN payments p ON p.id = pa.payment_id
+WHERE pa.payload::text ILIKE ('%' || btrim(:'momo_trans_id') || '%')
+   OR pa.payload->>'transId' = btrim(:'momo_trans_id')
+ORDER BY pa.created_at DESC
+LIMIT 10;
+
+\echo ''
+\echo '=== payment_provider_events fleet-wide transId ==='
+SELECT ppe.id,
+       ppe.payment_id,
+       ppe.provider,
+       ppe.received_at,
+       ppe.payload->>'orderId' AS order_id,
+       ppe.payload->>'transId' AS trans_id,
+       ppe.payload->>'resultCode' AS result_code
+FROM payment_provider_events ppe
+WHERE ppe.payload->>'transId' = btrim(:'momo_trans_id')
+   OR ppe.payload::text ILIKE ('%' || btrim(:'momo_trans_id') || '%')
+ORDER BY ppe.received_at DESC
+LIMIT 10;
+
+\echo ''
 \echo '=== payments summary for matched orders ==='
 WITH matched_orders AS (
     SELECT DISTINCT p.order_id
