@@ -101,7 +101,6 @@ func (p *Publisher) Health(ctx context.Context) error {
 
 // PublishDeviceDispatch publishes JSON payload to the machine commands/dispatch channel (QoS 1, not retained).
 func (p *Publisher) PublishDeviceDispatch(ctx context.Context, machineID uuid.UUID, payload []byte) error {
-	_ = ctx
 	if p == nil || p.client == nil {
 		return fmt.Errorf("mqtt: nil publisher")
 	}
@@ -112,9 +111,22 @@ func (p *Publisher) PublishDeviceDispatch(ctx context.Context, machineID uuid.UU
 	}
 	tok := p.client.Publish(topic, 1, false, payload)
 	start := time.Now()
-	tok.Wait()
-	d := time.Since(start).Seconds()
+	waitDur := 5 * time.Second
+	if ctx != nil {
+		if dl, ok := ctx.Deadline(); ok {
+			waitDur = time.Until(dl)
+			if waitDur <= 0 {
+				waitDur = time.Millisecond
+			}
+		}
+	}
+	if !tok.WaitTimeout(waitDur) {
+		mqttPublishDuration.WithLabelValues("error").Observe(time.Since(start).Seconds())
+		mqttPublishFailuresTotal.WithLabelValues("timeout").Inc()
+		return fmt.Errorf("mqtt publish: timed out waiting for broker ack")
+	}
 	if tok.Error() != nil {
+		d := time.Since(start).Seconds()
 		mqttPublishDuration.WithLabelValues("error").Observe(d)
 		mqttPublishFailuresTotal.WithLabelValues("broker").Inc()
 		if p.log != nil {
@@ -122,6 +134,6 @@ func (p *Publisher) PublishDeviceDispatch(ctx context.Context, machineID uuid.UU
 		}
 		return fmt.Errorf("mqtt publish: %w", tok.Error())
 	}
-	mqttPublishDuration.WithLabelValues("ok").Observe(d)
+	mqttPublishDuration.WithLabelValues("ok").Observe(time.Since(start).Seconds())
 	return nil
 }

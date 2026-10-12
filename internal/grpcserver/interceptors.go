@@ -333,9 +333,22 @@ func unaryAccessLogInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 			fields = append(fields, zap.String("error_code", ""), zap.String("error_message", ""))
 		}
 		fields = append(fields, grpcActorIdentityFields(ctx)...)
-		log.Info("grpc unary completed", fields...)
+		if isHotGRPCAccessLogMethod(info.FullMethod) && err == nil {
+			log.Debug("grpc unary completed", fields...)
+		} else {
+			log.Info("grpc unary completed", fields...)
+		}
 		return resp, err
 	}
+}
+
+func isHotGRPCAccessLogMethod(fullMethod string) bool {
+	m := strings.ToLower(fullMethod)
+	return strings.Contains(m, "heartbeat") ||
+		strings.Contains(m, "checkin") ||
+		strings.Contains(m, "getorderstatus") ||
+		strings.Contains(m, "pushtelemetry") ||
+		strings.Contains(m, "submittelemetry")
 }
 
 func unaryDeadlineInterceptor(cfg *config.Config) grpc.UnaryServerInterceptor {
@@ -517,6 +530,9 @@ func unaryMachineAuth(ctx context.Context, req any, info *grpc.UnaryServerInfo, 
 	if err := checkMachineBearerRevocation(ctx, cfg, accessRevocation, claims); err != nil {
 		recordGRPCAuthFailureFromStatus(err)
 		return nil, err
+	}
+	if skipCredentialUsedTouchForMethod(info.FullMethod) {
+		ctx = withSkipCredentialUsedTouch(ctx)
 	}
 	if machineTokenChecker != nil {
 		if err := machineTokenChecker.ValidateMachineAccessClaims(ctx, claims); err != nil {
@@ -762,6 +778,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCommerceService_ReportVendSuccess_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendFailure_FullMethodName,
 		machinev1.MachineCommerceService_CancelOrder_FullMethodName,
+		machinev1.MachineCommerceService_ReportCashMovements_FullMethodName,
 		machinev1.MachineSaleService_CreateSale_FullMethodName,
 		machinev1.MachineSaleService_AttachPayment_FullMethodName,
 		machinev1.MachineSaleService_ConfirmCashReceived_FullMethodName,

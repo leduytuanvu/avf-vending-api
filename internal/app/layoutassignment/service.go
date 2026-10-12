@@ -191,6 +191,9 @@ func (s *Service) AssignServerLayout(ctx context.Context, in AssignServerLayoutI
 	if err := tx.Commit(ctx); err != nil {
 		return AssignServerLayoutResult{}, err
 	}
+	if s.Setup != nil {
+		s.Setup.NotifyCatalogMutated(ctx, in.MachineID)
+	}
 
 	state, _ := s.GetLayoutState(ctx, in.MachineID)
 	syncStatus := SyncStatusPending

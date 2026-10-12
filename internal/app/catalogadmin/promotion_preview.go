@@ -9,6 +9,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/app/pricingengine"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // Re-export promotion rule types for admin validation and docs.
@@ -89,6 +90,9 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		if err != nil {
 			return nil, err
 		}
+		if err := batch.PrefetchProductMeta(ctx, p.ProductIDs); err != nil {
+			return nil, err
+		}
 		out := &PromotionPreviewResult{At: at}
 		for _, pid := range p.ProductIDs {
 			row, ok := firstSlotRowForProduct(uuid.Nil, *p.MachineID, pid, rows)
@@ -167,6 +171,11 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		rulesByPromo[r.PromotionID] = append(rulesByPromo[r.PromotionID], r)
 	}
 
+	metaByProduct, err := pricingengine.LoadProductPromoMetaBatch(ctx, s.q, p.ProductIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, pid := range p.ProductIDs {
 		pln, ok := baseByProduct[pid]
 		if !ok {
@@ -174,17 +183,25 @@ func (s *Service) PreviewPromotions(ctx context.Context, p PromotionPreviewParam
 		}
 		base := pln.EffectiveMinor
 
-		cat, err := s.q.PromotionAdminGetProductCategory(ctx, pid)
-		if err != nil {
-			return nil, err
+		var categoryID pgtype.UUID
+		var tags []uuid.UUID
+		if pm, ok := metaByProduct[pid]; ok {
+			categoryID = pm.Category
+			tags = append([]uuid.UUID(nil), pm.Tags...)
+		} else {
+			c, err := s.q.PromotionAdminGetProductCategory(ctx, pid)
+			if err != nil {
+				return nil, err
+			}
+			categoryID = c
+			tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx, pid)
+			if err != nil {
+				return nil, err
+			}
+			tags = append([]uuid.UUID(nil), tagRows...)
 		}
-		tagRows, err := s.q.PromotionAdminListProductTagIDs(ctx, pid)
-		if err != nil {
-			return nil, err
-		}
-		tags := append([]uuid.UUID(nil), tagRows...)
 
-		eCtx := pricingengine.NewPromoEvalCtx(uuid.Nil, p.MachineID, p.SiteID, pid, cat, tags)
+		eCtx := pricingengine.NewPromoEvalCtx(uuid.Nil, p.MachineID, p.SiteID, pid, categoryID, tags)
 
 		var disc int64
 		var appIDs []uuid.UUID

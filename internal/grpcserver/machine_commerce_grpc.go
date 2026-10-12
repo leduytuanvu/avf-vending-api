@@ -1019,8 +1019,12 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
 		os := strings.ToLower(strings.TrimSpace(st.Order.Status))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
-			refreshOutcome := svc.RefreshPendingPaymentFromProvider(ctx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
-			paymentDiagnostic = strings.TrimSpace(refreshOutcome.Diagnostic)
+			if shouldRunOrderStatusPSPRefresh(orderID) {
+				refreshCtx, cancelRefresh := contextForOrderStatusPSPRefresh(ctx)
+				refreshOutcome := svc.RefreshPendingPaymentFromProvider(refreshCtx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
+				cancelRefresh()
+				paymentDiagnostic = strings.TrimSpace(refreshOutcome.Diagnostic)
+			}
 			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {
 				return nil, mapCommerceGRPCErr(err)

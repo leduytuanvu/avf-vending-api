@@ -132,10 +132,9 @@ func (s *machineRuntimeSessionServer) HeartbeatRuntimeSession(ctx context.Contex
 	if err != nil {
 		return nil, mapRuntimeSessionRPCError(ctx, claims.MachineID, "runtime_session.heartbeat.failed", err)
 	}
-	online, _ := rt.ComputeMachineOnlineStatus(ctx, claims.MachineID)
 	return &machinev1.HeartbeatRuntimeSessionResponse{
 		Meta:    machineResponseMetaOK(req.GetMeta()),
-		Session: mapRuntimeSessionProto(row, online),
+		Session: mapRuntimeSessionProto(row, "online"),
 	}, nil
 }
 

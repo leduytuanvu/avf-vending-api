@@ -256,3 +256,13 @@ WHERE product_id = $1;
 SELECT category_id
 FROM products
 WHERE id = $1;
+
+-- name: PromotionAdminGetProductCategories :many
+SELECT id, category_id
+FROM products
+WHERE id = ANY($1::uuid[]);
+
+-- name: PromotionAdminListProductTagIDsForProducts :many
+SELECT product_id, tag_id
+FROM product_tags
+WHERE product_id = ANY($1::uuid[]);

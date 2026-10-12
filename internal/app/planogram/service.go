@@ -389,6 +389,9 @@ func (s *Service) PublishDraft(ctx context.Context, scopeID, machineID, draftID 
 	if err := tx.Commit(ctx); err != nil {
 		return PublishResult{}, err
 	}
+	if s.setup != nil {
+		s.setup.NotifyCatalogMutated(ctx, machineID)
+	}
 
 	res := PublishResult{
 		DraftID:                     draftID,
@@ -513,6 +516,9 @@ func (s *Service) Rollback(ctx context.Context, scopeID, machineID, versionID uu
 	_ = mc
 	if err := tx.Commit(ctx); err != nil {
 		return PublishResult{}, err
+	}
+	if s.setup != nil {
+		s.setup.NotifyCatalogMutated(ctx, machineID)
 	}
 
 	res := PublishResult{

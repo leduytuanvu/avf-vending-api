@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -41,6 +42,7 @@ import (
 	platformpayments "github.com/avf/avf-vending-api/internal/platform/payments"
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // HTTPApplication groups versioned HTTP API application services (ports only at the HTTP boundary).
@@ -146,6 +148,8 @@ type HTTPApplicationDeps struct {
 	LoginFailures    plauth.LoginFailureCounter
 	// SaleCatalog optional shared snapshot builder for HTTP + gRPC (e.g. Redis cache).
 	SaleCatalog appsalecatalog.SnapshotBuilder
+	// SaleCatalogCacheRedis optional; used to invalidate head cache on slot mutations.
+	SaleCatalogCacheRedis *goredis.Client
 	// EnterpriseAudit optional; when nil it is constructed from Store.Pool().
 	EnterpriseAudit *appaudit.Service
 	// CashSettlementVarianceReviewThresholdMinor from CASH_SETTLEMENT_VARIANCE_REVIEW_THRESHOLD_MINOR (0 = use handler default).
@@ -230,11 +234,12 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 		pm.MaxUploadBytes = deps.Artifacts.MaxUploadBytes()
 		pm.PresignTTL = deps.Artifacts.DownloadPresignTTL()
 	}
+	catalogMediaBumper := wrapCatalogMediaCacheBumper(deps.CatalogMediaCacheBumper, deps.SaleCatalogCacheRedis)
 	catSvc, err := appcatalogadmin.NewService(queries, pool, auditSvc, pm)
 	if err != nil {
 		panic("api.NewHTTPApplication: catalog admin: " + err.Error())
 	}
-	catSvc.SetCatalogCacheInvalidator(deps.CatalogMediaCacheBumper)
+	catSvc.SetCatalogCacheInvalidator(catalogMediaBumper)
 	catSvc.SetPromotionAuditHook(appcatalogadmin.EnterprisePromotionAuditHook(auditSvc))
 	invSvc, err := appinventoryadmin.NewService(queries)
 	if err != nil {
@@ -295,6 +300,12 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 	}
 
 	setupRepo := postgres.NewSetupRepository(pool)
+	if deps.SaleCatalogCacheRedis != nil {
+		rdb := deps.SaleCatalogCacheRedis
+		setupRepo.OnCatalogMutated = func(ctx context.Context, machineID uuid.UUID) {
+			appsalecatalog.InvalidateRedisSnapshotCache(ctx, rdb, machineID)
+		}
+	}
 	planogramSvc := appplanogram.NewService(appplanogram.Deps{
 		Pool:           pool,
 		Setup:          setupRepo,
@@ -309,7 +320,7 @@ func NewHTTPApplication(deps HTTPApplicationDeps) *HTTPApplication {
 			Audit:            auditSvc,
 			PresignPutTTL:    15 * time.Minute,
 			MaxUploadBytes:   10 << 20,
-			Cache:            deps.CatalogMediaCacheBumper,
+			Cache:            catalogMediaBumper,
 			ThumbMaxPixels:   deps.ProductMediaThumbSize,
 			DisplayMaxPixels: deps.ProductMediaDisplaySize,
 			External:         deps.ExternalProductImages,

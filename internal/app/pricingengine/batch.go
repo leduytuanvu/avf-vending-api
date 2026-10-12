@@ -11,6 +11,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Batch struct {
@@ -27,6 +28,8 @@ type Batch struct {
 
 	overridePrice map[uuid.UUID]int64
 	overrideCur   map[uuid.UUID]string
+
+	productMeta map[uuid.UUID]ProductPromoMeta
 }
 
 // NewBatch loads promotion state and machine price overrides once for many catalog lines.
@@ -106,6 +109,36 @@ func (e *Engine) newBatch(ctx context.Context, scopeID, machineID uuid.UUID, at 
 	}, nil
 }
 
+// PrefetchProductMeta loads product category and tag IDs for catalog pricing (avoids per-slot queries).
+func (b *Batch) PrefetchProductMeta(ctx context.Context, productIDs []uuid.UUID) error {
+	if b == nil || b.q == nil {
+		return fmt.Errorf("pricingengine: nil batch")
+	}
+	meta, err := LoadProductPromoMetaBatch(ctx, b.q, productIDs)
+	if err != nil {
+		return err
+	}
+	b.productMeta = meta
+	return nil
+}
+
+func (b *Batch) productCategoryAndTags(ctx context.Context, productID uuid.UUID) (pgtype.UUID, []uuid.UUID, error) {
+	if b.productMeta != nil {
+		if m, ok := b.productMeta[productID]; ok {
+			return m.Category, append([]uuid.UUID(nil), m.Tags...), nil
+		}
+	}
+	cat, err := b.q.PromotionAdminGetProductCategory(ctx, productID)
+	if err != nil {
+		return pgtype.UUID{}, nil, err
+	}
+	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx, productID)
+	if err != nil {
+		return pgtype.UUID{}, nil, err
+	}
+	return cat, append([]uuid.UUID(nil), tagRows...), nil
+}
+
 // PriceLine applies machine overrides and active promotions to one slot line.
 func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResult, error) {
 	out := LinePriceResult{}
@@ -133,15 +166,10 @@ func (b *Batch) PriceLine(ctx context.Context, in PriceLineInput) (LinePriceResu
 	}
 	machPtr := &b.machineID
 	sitePtr := &b.siteID
-	cat, err := b.q.PromotionAdminGetProductCategory(ctx, in.ProductID)
+	cat, tags, err := b.productCategoryAndTags(ctx, in.ProductID)
 	if err != nil {
 		return out, err
 	}
-	tagRows, err := b.q.PromotionAdminListProductTagIDs(ctx, in.ProductID)
-	if err != nil {
-		return out, err
-	}
-	tags := append([]uuid.UUID(nil), tagRows...)
 	eCtx := NewPromoEvalCtx(uuid.Nil, machPtr, sitePtr, in.ProductID, cat, tags)
 	var disc int64
 	var applied []uuid.UUID

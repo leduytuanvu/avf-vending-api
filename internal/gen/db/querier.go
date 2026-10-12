@@ -663,6 +663,7 @@ type Querier interface {
 	PromotionAdminCountPromotions(ctx context.Context, dollar_1 bool) (int64, error)
 	PromotionAdminDeletePromotionTarget(ctx context.Context, arg PromotionAdminDeletePromotionTargetParams) (int64, error)
 	PromotionAdminDeleteRulesForPromotion(ctx context.Context, promotionID uuid.UUID) error
+	PromotionAdminGetProductCategories(ctx context.Context, dollar_1 []uuid.UUID) ([]PromotionAdminGetProductCategoriesRow, error)
 	PromotionAdminGetProductCategory(ctx context.Context, id uuid.UUID) (pgtype.UUID, error)
 	PromotionAdminGetPromotion(ctx context.Context, id uuid.UUID) (Promotion, error)
 	PromotionAdminGetPromotionTarget(ctx context.Context, arg PromotionAdminGetPromotionTargetParams) (PromotionTarget, error)
@@ -670,6 +671,7 @@ type Querier interface {
 	PromotionAdminInsertPromotionRule(ctx context.Context, arg PromotionAdminInsertPromotionRuleParams) (PromotionRule, error)
 	PromotionAdminInsertPromotionTarget(ctx context.Context, arg PromotionAdminInsertPromotionTargetParams) (PromotionTarget, error)
 	PromotionAdminListProductTagIDs(ctx context.Context, productID uuid.UUID) ([]uuid.UUID, error)
+	PromotionAdminListProductTagIDsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]ProductTag, error)
 	PromotionAdminListPromotions(ctx context.Context, arg PromotionAdminListPromotionsParams) ([]Promotion, error)
 	PromotionAdminListPromotionsForPreview(ctx context.Context, dollar_1 time.Time) ([]Promotion, error)
 	PromotionAdminListRulesForPromotion(ctx context.Context, promotionID uuid.UUID) ([]PromotionRule, error)

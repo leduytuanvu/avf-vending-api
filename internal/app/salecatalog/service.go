@@ -3,6 +3,7 @@ package salecatalog
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -125,11 +126,22 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		return out, setupapp.ErrNotFound
 	}
 	q := pgxutil.NewQueries(s.pool)
+
+	var cfgVersion int64
+	ver, verErr := q.GetMachineShadowVersion(ctx, machineID)
+	if verErr != nil {
+		if verErr != pgx.ErrNoRows {
+			return out, verErr
+		}
+		cfgVersion = 0
+	} else {
+		cfgVersion = ver
+	}
 	bootstrap, err := s.repo.GetMachineBootstrap(ctx, machineID)
 	if err != nil {
 		return out, err
 	}
-	slotView, err := s.repo.GetMachineSlotView(ctx, machineID)
+	legacySlots, err := s.repo.ListMachineLegacySlots(ctx, machineID)
 	if err != nil {
 		return out, err
 	}
@@ -140,7 +152,7 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		price     int64
 		planogram string
 	})
-	for _, l := range slotView.LegacySlots {
+	for _, l := range legacySlots {
 		legacyByIndex[l.SlotIndex] = struct {
 			qty       int32
 			maxQty    int32
@@ -154,38 +166,11 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		sortByProduct[ap.ProductID] = ap.SortOrder
 	}
 
-	var cfgVersion int64
-	ver, err := q.GetMachineShadowVersion(ctx, machineID)
-	if err != nil {
-		if err != pgx.ErrNoRows {
-			return out, err
-		}
-		cfgVersion = 0
-	} else {
-		cfgVersion = ver
-	}
-
 	cur, err := q.InventoryAdminGetOrgDefaultCurrency(ctx)
 	if err != nil {
 		return out, err
 	}
 	currencyUpper := strings.ToUpper(strings.TrimSpace(cur))
-
-	if opts.IfNoneMatchConfigVersion != nil && *opts.IfNoneMatchConfigVersion == cfgVersion {
-		notLoaded := Snapshot{
-			ConfigVersion: cfgVersion,
-			Currency:      currencyUpper,
-			Items:         nil,
-		}
-		return Snapshot{
-			MachineID:      machineID,
-			SiteID:         bootstrap.Machine.SiteID,
-			ConfigVersion:  cfgVersion,
-			CatalogVersion: RuntimeSaleCatalogFingerprint(bootstrap, notLoaded, opts),
-			NotModified:    true,
-			GeneratedAt:    time.Now().UTC(),
-		}, nil
-	}
 
 	productIDs := make([]uuid.UUID, 0)
 	for _, sl := range bootstrap.CurrentCabinetSlots {
@@ -232,6 +217,11 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 	priceBatch, batchErr := pricingengine.New(s.pool).NewBatch(ctx, uuid.Nil, machineID, genAt)
 	if batchErr != nil {
 		return out, batchErr
+	}
+	if len(productIDs) > 0 {
+		if perr := priceBatch.PrefetchProductMeta(ctx, productIDs); perr != nil {
+			return out, perr
+		}
 	}
 	for _, sl := range bootstrap.CurrentCabinetSlots {
 		if !sl.IsCurrent || sl.ProductID == nil {
@@ -467,11 +457,23 @@ func (s *Service) BuildSnapshot(ctx context.Context, machineID uuid.UUID, opts O
 		"includeImages", opts.IncludeImages,
 		"pagination", "none_single_snapshot",
 	)
+	catalogFP := RuntimeSaleCatalogFingerprint(bootstrap, partial, opts)
+	if opts.IfNoneMatchConfigVersion != nil && *opts.IfNoneMatchConfigVersion == cfgVersion {
+		return Snapshot{
+			MachineID:      machineID,
+			SiteID:         bootstrap.Machine.SiteID,
+			ConfigVersion:  cfgVersion,
+			CatalogVersion: catalogFP,
+			Currency:       currencyUpper,
+			NotModified:    true,
+			GeneratedAt:    genAt,
+		}, nil
+	}
 	return Snapshot{
 		MachineID:      machineID,
 		SiteID:         bootstrap.Machine.SiteID,
 		ConfigVersion:  cfgVersion,
-		CatalogVersion: RuntimeSaleCatalogFingerprint(bootstrap, partial, opts),
+		CatalogVersion: catalogFP,
 		Currency:       currencyUpper,
 		GeneratedAt:    genAt,
 		Items:          items,
@@ -503,6 +505,10 @@ func shortNameFromAttrs(full string, attrs []byte) string {
 		return full[:24]
 	}
 	return full
+}
+
+func isSetupNotFound(err error) bool {
+	return errors.Is(err, pgx.ErrNoRows)
 }
 
 var _ SnapshotBuilder = (*Service)(nil)

@@ -178,3 +178,51 @@ LIMIT $2`
 	}
 	return out, rows.Err()
 }
+
+// StalePendingMQTTAttempt is a transport attempt waiting for async MQTT publish.
+type StalePendingMQTTAttempt struct {
+	AttemptID uuid.UUID
+	MachineID uuid.UUID
+	Payload   []byte
+}
+
+// IsMQTTDispatchAttemptPending reports whether the attempt row is still awaiting transport publish.
+func (s *Store) IsMQTTDispatchAttemptPending(ctx context.Context, attemptID uuid.UUID) bool {
+	if s == nil || s.pool == nil || attemptID == uuid.Nil {
+		return false
+	}
+	var status string
+	err := s.pool.QueryRow(ctx, `SELECT status FROM machine_command_attempts WHERE id = $1`, attemptID).Scan(&status)
+	return err == nil && status == "pending"
+}
+
+// ListStalePendingMQTTDispatchAttempts returns pending attempts older than minAge for reclaim/republish.
+func (s *Store) ListStalePendingMQTTDispatchAttempts(ctx context.Context, minAge time.Duration, limit int32) ([]StalePendingMQTTAttempt, error) {
+	if s == nil || s.pool == nil {
+		return nil, fmt.Errorf("postgres: nil store")
+	}
+	if limit <= 0 {
+		limit = 32
+	}
+	const q = `
+SELECT mca.id, mca.machine_id, mca.request_payload_json
+FROM machine_command_attempts mca
+WHERE mca.status = 'pending'
+  AND mca.sent_at < now() - ($1::bigint * interval '1 microsecond')
+ORDER BY mca.sent_at ASC
+LIMIT $2`
+	rows, err := s.pool.Query(ctx, q, minAge.Microseconds(), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []StalePendingMQTTAttempt
+	for rows.Next() {
+		var r StalePendingMQTTAttempt
+		if err := rows.Scan(&r.AttemptID, &r.MachineID, &r.Payload); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}

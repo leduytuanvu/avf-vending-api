@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	domaindevice "github.com/avf/avf-vending-api/internal/domain/device"
@@ -42,7 +43,12 @@ type MQTTCommandDispatcher struct {
 	ackTimeout         time.Duration
 	publishMaxAttempts int
 	retryBackoff       time.Duration
+	publishQueue       chan mqttPublishJob
+	publishMu          sync.Mutex
+	publishInFlight    map[uuid.UUID]struct{}
 }
+
+const mqttPublishTimeoutPerTry = 5 * time.Second
 
 // MQTTCommandDispatcherDeps wires the dispatcher.
 type MQTTCommandDispatcherDeps struct {
@@ -83,6 +89,7 @@ func NewMQTTCommandDispatcher(d MQTTCommandDispatcherDeps) *MQTTCommandDispatche
 		ackTimeout:         ack,
 		publishMaxAttempts: attempts,
 		retryBackoff:       backoff,
+		publishQueue:       make(chan mqttPublishJob, 512),
 	}
 }
 
@@ -336,38 +343,21 @@ func (d *MQTTCommandDispatcher) DispatchRemoteMQTTCommand(ctx context.Context, i
 		}, nil
 	}
 
-	var publishErr error
-	for attempt := 0; attempt < d.publishMaxAttempts; attempt++ {
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				publishErr = ctx.Err()
-				break
-			case <-time.After(d.retryBackoff):
-			}
-		}
-		publishErr = d.pub.PublishDeviceDispatch(ctx, appendIn.MachineID, wireBytes)
-		if publishErr == nil {
-			break
-		}
-	}
-	if publishErr != nil {
-		_ = d.store.MarkMQTTDispatchAttemptPublishFailed(ctx, att.ID, "mqtt_publish: "+truncateErr(publishErr, 400))
-		return RemoteCommandDispatchResult{}, fmt.Errorf("device: mqtt publish: %w", publishErr)
-	}
-
 	ackDeadline := time.Now().Add(d.ackTimeout)
-	if err := d.store.MarkMQTTDispatchAttemptSent(ctx, att.ID, ackDeadline); err != nil {
-		return RemoteCommandDispatchResult{}, err
-	}
+	d.enqueueMQTTPublish(mqttPublishJob{
+		attemptID:   att.ID,
+		machineID:   appendIn.MachineID,
+		wireBytes:   wireBytes,
+		ackDeadline: ackDeadline,
+	})
 
 	return RemoteCommandDispatchResult{
 		CommandID:        appendRes.CommandID,
 		Sequence:         appendRes.Sequence,
 		AttemptID:        att.ID,
 		Replay:           appendRes.Replay,
-		DispatchState:    "published",
-		Lifecycle:        "published",
+		DispatchState:    "queued",
+		Lifecycle:        "queued",
 		MQTTTopic:        mqttTopicForMeta,
 		PayloadSHA256Hex: payloadSHAHex,
 		AckDeadline:      &ackDeadline,
@@ -659,4 +649,44 @@ func (d *MQTTCommandDispatcher) ListRecentCommandReceipts(ctx context.Context, m
 		})
 	}
 	return out, nil
+}
+
+func (d *MQTTCommandDispatcher) mqttPublishReclaimMinAge() time.Duration {
+	if d == nil {
+		return 6 * time.Second
+	}
+	attempts := d.publishMaxAttempts
+	if attempts <= 0 {
+		attempts = 3
+	}
+	backoff := d.retryBackoff
+	if backoff <= 0 {
+		backoff = 150 * time.Millisecond
+	}
+	return time.Duration(attempts)*mqttPublishTimeoutPerTry + time.Duration(attempts-1)*backoff + 500*time.Millisecond
+}
+
+func (d *MQTTCommandDispatcher) beginMQTTAttemptPublish(attemptID uuid.UUID) bool {
+	if d == nil || attemptID == uuid.Nil {
+		return false
+	}
+	d.publishMu.Lock()
+	defer d.publishMu.Unlock()
+	if d.publishInFlight == nil {
+		d.publishInFlight = make(map[uuid.UUID]struct{})
+	}
+	if _, ok := d.publishInFlight[attemptID]; ok {
+		return false
+	}
+	d.publishInFlight[attemptID] = struct{}{}
+	return true
+}
+
+func (d *MQTTCommandDispatcher) endMQTTAttemptPublish(attemptID uuid.UUID) {
+	if d == nil || attemptID == uuid.Nil {
+		return
+	}
+	d.publishMu.Lock()
+	defer d.publishMu.Unlock()
+	delete(d.publishInFlight, attemptID)
 }

@@ -55,6 +55,37 @@ func (q *Queries) PromotionAdminDeleteRulesForPromotion(ctx context.Context, pro
 	return err
 }
 
+const PromotionAdminGetProductCategories = `-- name: PromotionAdminGetProductCategories :many
+SELECT id, category_id
+FROM products
+WHERE id = ANY($1::uuid[])
+`
+
+type PromotionAdminGetProductCategoriesRow struct {
+	ID         uuid.UUID
+	CategoryID pgtype.UUID
+}
+
+func (q *Queries) PromotionAdminGetProductCategories(ctx context.Context, dollar_1 []uuid.UUID) ([]PromotionAdminGetProductCategoriesRow, error) {
+	rows, err := q.db.Query(ctx, PromotionAdminGetProductCategories, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PromotionAdminGetProductCategoriesRow{}
+	for rows.Next() {
+		var i PromotionAdminGetProductCategoriesRow
+		if err := rows.Scan(&i.ID, &i.CategoryID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const PromotionAdminGetProductCategory = `-- name: PromotionAdminGetProductCategory :one
 SELECT category_id
 FROM products
@@ -336,6 +367,32 @@ func (q *Queries) PromotionAdminListProductTagIDs(ctx context.Context, productID
 			return nil, err
 		}
 		items = append(items, tag_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const PromotionAdminListProductTagIDsForProducts = `-- name: PromotionAdminListProductTagIDsForProducts :many
+SELECT product_id, tag_id
+FROM product_tags
+WHERE product_id = ANY($1::uuid[])
+`
+
+func (q *Queries) PromotionAdminListProductTagIDsForProducts(ctx context.Context, dollar_1 []uuid.UUID) ([]ProductTag, error) {
+	rows, err := q.db.Query(ctx, PromotionAdminListProductTagIDsForProducts, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ProductTag{}
+	for rows.Next() {
+		var i ProductTag
+		if err := rows.Scan(&i.ProductID, &i.TagID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -224,10 +224,11 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 	}
 	if cfg.RedisRuntime.CacheEnabled && rt.Redis() != nil && cfg.RedisRuntime.SaleCatalogCacheTTL > 0 {
 		saleCatalog = &appsalecatalog.RedisCachedSnapshotBuilder{
-			Inner: saleCatalogInner,
-			Pool:  rt.Pool(),
-			RDB:   rt.Redis(),
-			TTL:   cfg.RedisRuntime.SaleCatalogCacheTTL,
+			Inner:          saleCatalogInner,
+			Pool:           rt.Pool(),
+			RDB:            rt.Redis(),
+			TTL:            cfg.RedisRuntime.SaleCatalogCacheTTL,
+			MediaCompanyID: cfg.MediaUpload.CompanyID,
 		}
 	}
 	httpApp := api.NewHTTPApplication(api.HTTPApplicationDeps{
@@ -263,7 +264,12 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 		MachineStaleThreshold:                      cfg.MachineStaleThreshold,
 		IncidentAlertPolicy:                        alerts.Policy{Cooldown: cfg.Telegram.IncidentCooldown, RepeatMode: alerts.NormalizeRepeatMode(cfg.Telegram.RepeatMode)},
 		DeviceClockSkew:                            cfg.DeviceClockSkew,
+		SaleCatalog:                                saleCatalog,
+		SaleCatalogCacheRedis:                      rt.Redis(),
 	})
+	if httpApp.RemoteCommands != nil {
+		httpApp.RemoteCommands.StartBackgroundWorkers(context.Background())
+	}
 	if rt.Deps.PaymentProviders != nil {
 		if reg, ok := rt.Deps.PaymentProviders.(*platformpayments.Registry); ok {
 			httpApp.PaymentProviders = reg

@@ -49,7 +49,7 @@ func TestMapSlotConfigsToPlanogram_mapsAssignmentAndStock(t *testing.T) {
 	out := mapSlotConfigsToPlanogram(configs, inv)
 	require.Len(t, out, 1)
 	require.Equal(t, "A1", out[0]["laneCode"])
-	require.Equal(t, 4, out[0]["stockOnHand"])
+	require.Equal(t, int32(4), out[0]["stockOnHand"])
 	assign, ok := out[0]["assignment"].(map[string]any)
 	require.True(t, ok)
 	require.Equal(t, pid.String(), assign["productId"])

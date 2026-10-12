@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/avf/avf-vending-api/internal/app/mediaadmin"
+	"github.com/avf/avf-vending-api/internal/domain/org"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -19,6 +20,13 @@ import (
 func saleCatalogRedisCacheKey(machineID uuid.UUID, shadowVer, maxCfgRev, mediaEpoch int64, inclU, inclI bool) string {
 	return fmt.Sprintf("avf:v1:cache:salecat:%s:%d:%d:%d:%t:%t",
 		machineID.String(), shadowVer, maxCfgRev, mediaEpoch, inclU, inclI)
+}
+
+type saleCatalogHeadEntry struct {
+	ShadowVer  int64    `json:"shadowVer"`
+	MaxCfgRev  int64    `json:"maxCfgRev"`
+	MediaEpoch int64    `json:"mediaEpoch"`
+	Snap       Snapshot `json:"snap"`
 }
 
 var catalogCacheHits = promauto.NewCounter(prometheus.CounterOpts{
@@ -38,10 +46,11 @@ var catalogCacheMiss = promauto.NewCounter(prometheus.CounterOpts{
 // machine_configs.config_revision (planogram publish), org media epoch, and snapshot flags.
 // Invalidation is implicit when shadow version, applied config revision, or media epoch bumps (TTL is a backstop).
 type RedisCachedSnapshotBuilder struct {
-	Inner SnapshotBuilder
-	Pool  *pgxpool.Pool
-	RDB   *goredis.Client
-	TTL   time.Duration
+	Inner           SnapshotBuilder
+	Pool            *pgxpool.Pool
+	RDB             *goredis.Client
+	TTL             time.Duration
+	MediaCompanyID  uuid.UUID
 }
 
 // BuildSnapshot implements SnapshotBuilder.
@@ -56,26 +65,34 @@ func (c *RedisCachedSnapshotBuilder) BuildSnapshot(ctx context.Context, machineI
 		return c.Inner.BuildSnapshot(ctx, machineID, opts)
 	}
 
-	q := db.New(c.Pool)
-	cfgVer, err := q.GetMachineShadowVersion(ctx, machineID)
+	headKey := saleCatalogRedisHeadKey(machineID, opts.IncludeUnavailable, opts.IncludeImages)
+	if raw, err := c.RDB.Get(ctx, headKey).Bytes(); err == nil && len(raw) > 0 {
+		var head saleCatalogHeadEntry
+		if json.Unmarshal(raw, &head) == nil && head.Snap.MachineID == machineID && !head.Snap.NotModified {
+			shadowVer, maxCfgRev, mediaEpoch, verr := c.currentCacheVersions(ctx, machineID)
+			if verr == nil && saleCatalogHeadMatchesVersions(head, shadowVer, maxCfgRev, mediaEpoch) {
+				catalogCacheHits.Inc()
+				return head.Snap, nil
+			}
+			_ = c.RDB.Del(ctx, headKey).Err()
+		}
+	}
+
+	shadowVer, maxCfgRev, mediaEpoch, err := c.currentCacheVersions(ctx, machineID)
 	if err != nil {
 		if err != pgx.ErrNoRows {
 			return Snapshot{}, err
 		}
-		cfgVer = 0
+		shadowVer, maxCfgRev, mediaEpoch = 0, 0, 0
 	}
-	var maxCfgRev int64
-	if err := c.Pool.QueryRow(ctx, `SELECT COALESCE(MAX(config_revision), 0) FROM machine_configs WHERE machine_id = $1`, machineID).Scan(&maxCfgRev); err != nil {
-		return c.Inner.BuildSnapshot(ctx, machineID, opts)
-	}
-	mediaEpoch := mediaadmin.ReadMediaEpoch(ctx, c.RDB, uuid.Nil)
-	cacheKey := saleCatalogRedisCacheKey(machineID, cfgVer, maxCfgRev, mediaEpoch, opts.IncludeUnavailable, opts.IncludeImages)
+	cacheKey := saleCatalogRedisCacheKey(machineID, shadowVer, maxCfgRev, mediaEpoch, opts.IncludeUnavailable, opts.IncludeImages)
 
 	raw, err := c.RDB.Get(ctx, cacheKey).Bytes()
 	if err == nil && len(raw) > 0 {
 		var snap Snapshot
 		if json.Unmarshal(raw, &snap) == nil && snap.MachineID == machineID {
 			catalogCacheHits.Inc()
+			c.storeHead(ctx, headKey, shadowVer, maxCfgRev, mediaEpoch, snap)
 			return snap, nil
 		}
 	}
@@ -85,10 +102,54 @@ func (c *RedisCachedSnapshotBuilder) BuildSnapshot(ctx context.Context, machineI
 	if err != nil {
 		return snap, err
 	}
-	if !snap.NotModified && len(snap.Items) >= 0 {
+	if !snap.NotModified {
 		if b, mErr := json.Marshal(snap); mErr == nil {
 			_ = c.RDB.Set(ctx, cacheKey, b, c.TTL).Err()
+			c.storeHead(ctx, headKey, shadowVer, maxCfgRev, mediaEpoch, snap)
 		}
 	}
 	return snap, nil
+}
+
+func (c *RedisCachedSnapshotBuilder) mediaCompanyID() uuid.UUID {
+	if c == nil {
+		return uuid.Nil
+	}
+	if c.MediaCompanyID != uuid.Nil {
+		return c.MediaCompanyID
+	}
+	return org.DefaultCompanyID
+}
+
+func (c *RedisCachedSnapshotBuilder) currentCacheVersions(ctx context.Context, machineID uuid.UUID) (shadowVer, maxCfgRev, mediaEpoch int64, err error) {
+	q := db.New(c.Pool)
+	cfgVer, err := q.GetMachineShadowVersion(ctx, machineID)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			cfgVer = 0
+		} else {
+			return 0, 0, 0, err
+		}
+	}
+	shadowVer = cfgVer
+	if err := c.Pool.QueryRow(ctx, `SELECT COALESCE(MAX(config_revision), 0) FROM machine_configs WHERE machine_id = $1`, machineID).Scan(&maxCfgRev); err != nil {
+		return 0, 0, 0, err
+	}
+	mediaEpoch = mediaadmin.ReadMediaEpoch(ctx, c.RDB, c.mediaCompanyID())
+	return shadowVer, maxCfgRev, mediaEpoch, nil
+}
+
+func (c *RedisCachedSnapshotBuilder) storeHead(ctx context.Context, headKey string, shadowVer, maxCfgRev, mediaEpoch int64, snap Snapshot) {
+	if c == nil || c.RDB == nil || c.TTL <= 0 {
+		return
+	}
+	head := saleCatalogHeadEntry{
+		ShadowVer:  shadowVer,
+		MaxCfgRev:  maxCfgRev,
+		MediaEpoch: mediaEpoch,
+		Snap:       snap,
+	}
+	if b, err := json.Marshal(head); err == nil {
+		_ = c.RDB.Set(ctx, headKey, b, c.TTL).Err()
+	}
 }

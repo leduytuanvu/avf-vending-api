@@ -18,11 +18,22 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
 )
 
 // SetupRepository implements setupapp.Repository using sqlc queries.
 type SetupRepository struct {
 	pool *pgxpool.Pool
+	// OnCatalogMutated is optional; wired at bootstrap to drop sale-catalog Redis head cache.
+	OnCatalogMutated func(ctx context.Context, machineID uuid.UUID)
+}
+
+// NotifyCatalogMutated invokes OnCatalogMutated when wired (after commits that bypass SaveDraftOrCurrentSlotConfigs).
+func (r *SetupRepository) NotifyCatalogMutated(ctx context.Context, machineID uuid.UUID) {
+	if r == nil || r.OnCatalogMutated == nil || machineID == uuid.Nil {
+		return
+	}
+	r.OnCatalogMutated(ctx, machineID)
 }
 
 // NewSetupRepository returns a topology / slot-config repository backed by pool.
@@ -361,7 +372,13 @@ func (r *SetupRepository) SaveDraftOrCurrentSlotConfigs(ctx context.Context, mac
 		return err
 	}
 
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	if r.OnCatalogMutated != nil {
+		r.OnCatalogMutated(ctx, machineID)
+	}
+	return nil
 }
 
 // SaveDraftOrCurrentSlotConfigsInTx applies slot config save within an existing transaction.
@@ -386,24 +403,43 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		return setupapp.MachineBootstrap{}, setupapp.ErrMachineNotEligibleForBootstrap
 	}
 
-	cabs, err := q.FleetAdminListMachineCabinets(ctx, machineID)
-	if err != nil {
-		return setupapp.MachineBootstrap{}, err
-	}
-
-	assortRows, err := q.FleetAdminListAssortmentProductsByMachine(ctx, machineID)
-	if err != nil {
-		return setupapp.MachineBootstrap{}, err
-	}
-
-	cfgRows, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(ctx, machineID)
-	if err != nil {
-		return setupapp.MachineBootstrap{}, err
-	}
-
+	var cabs []db.MachineCabinet
+	var assortRows []db.FleetAdminListAssortmentProductsByMachineRow
+	var cfgRows []db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow
+	var mergeRows []db.MachineLaneMergePair
 	var pvID *uuid.UUID
 	var pvNo int32
-	if meta, perr := q.PlanogramGetPublishedMetaForMachine(ctx, machineID); perr == nil {
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		rows, err := q.FleetAdminListMachineCabinets(gctx, machineID)
+		if err != nil {
+			return err
+		}
+		cabs = rows
+		return nil
+	})
+	g.Go(func() error {
+		rows, err := q.FleetAdminListAssortmentProductsByMachine(gctx, machineID)
+		if err != nil {
+			return err
+		}
+		assortRows = rows
+		return nil
+	})
+	g.Go(func() error {
+		rows, err := q.InventoryAdminListCurrentMachineSlotConfigsByMachine(gctx, machineID)
+		if err != nil {
+			return err
+		}
+		cfgRows = rows
+		return nil
+	})
+	g.Go(func() error {
+		meta, perr := q.PlanogramGetPublishedMetaForMachine(gctx, machineID)
+		if perr != nil {
+			return nil
+		}
 		if meta.PublishedPlanogramVersionID.Valid {
 			u := uuid.UUID(meta.PublishedPlanogramVersionID.Bytes)
 			pvID = &u
@@ -411,6 +447,18 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		if meta.VersionNo.Valid {
 			pvNo = meta.VersionNo.Int32
 		}
+		return nil
+	})
+	g.Go(func() error {
+		rows, merr := q.PlanogramListActiveMergePairsForMachine(gctx, machineID)
+		if merr != nil {
+			return merr
+		}
+		mergeRows = rows
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return setupapp.MachineBootstrap{}, err
 	}
 
 	cabinets := mapSetupCabinetViews(cabs)
@@ -438,8 +486,7 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		PublishedPlanogramVersionID: pvID,
 		PublishedPlanogramVersionNo: pvNo,
 	}
-	mergeRows, merr := q.PlanogramListActiveMergePairsForMachine(ctx, machineID)
-	if merr == nil {
+	if len(mergeRows) > 0 {
 		out.MergePairs = make([]setupapp.LaneMergePair, 0, len(mergeRows))
 		for _, row := range mergeRows {
 			out.MergePairs = append(out.MergePairs, setupapp.LaneMergePair{
@@ -454,6 +501,16 @@ func (r *SetupRepository) GetMachineBootstrap(ctx context.Context, machineID uui
 		}
 	}
 	return out, nil
+}
+
+// ListMachineLegacySlots returns planogram-backed legacy slot rows (qty/price fallback for sale catalog).
+func (r *SetupRepository) ListMachineLegacySlots(ctx context.Context, machineID uuid.UUID) ([]setupapp.LegacySlotRow, error) {
+	q := pgxutil.NewQueries(r.pool)
+	legacy, err := q.InventoryAdminListMachineSlots(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	return mapLegacySlotRows(legacy), nil
 }
 
 // GetMachineSlotView returns legacy planogram slot rows plus current cabinet slot config rows.
