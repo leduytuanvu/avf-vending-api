@@ -1,0 +1,101 @@
+name: Production inspect machine product sales
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      machine_code:
+        description: Machine code (e.g. AVF000132)
+        required: false
+        default: "AVF000132"
+        type: string
+      window_from:
+        description: "Sales window start (timestamptz)"
+        required: false
+        default: "2026-10-09 00:00:00+07"
+        type: string
+      product_skus:
+        description: "Comma-separated product SKUs"
+        required: false
+        default: "1702,1711"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-inspect-machine-product-sales
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect machine product sales
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 10
+    env:
+      MACHINE_CODE: ${{ inputs.machine_code }}
+      WINDOW_FROM: ${{ inputs.window_from }}
+      PRODUCT_SKUS: ${{ inputs.product_skus }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: DB inspect (read-only)
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          run_inspect() {
+            MACHINE_CODE="${MACHINE_CODE}" WINDOW_FROM="${WINDOW_FROM}" PRODUCT_SKUS="${PRODUCT_SKUS}" \
+              bash scripts/ops/inspect_machine_product_sales.sh
+          }
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export MACHINE_CODE='${MACHINE_CODE}' WINDOW_FROM='${WINDOW_FROM}' PRODUCT_SKUS='${PRODUCT_SKUS}' && \
+              bash scripts/ops/inspect_machine_product_sales.sh" | tee inspect-machine-product-sales.log
+          else
+            run_inspect | tee inspect-machine-product-sales.log
+          fi
