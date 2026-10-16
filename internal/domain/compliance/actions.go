@@ -122,6 +122,7 @@ const (
 	ActionMachineCommerceVendSuccess            = "machine.commerce.vend_success"
 	ActionMachineCommerceVendFailure            = "machine.commerce.vend_failure"
 	ActionMachineCommerceOrderCancelled         = "machine.commerce.order_cancelled"
+	ActionMachineCommerceOrderUnknown           = "machine.commerce.order_unknown"
 
 	// Data retention (P2.2): admin-initiated telemetry/enterprise pruning and dry-run previews.
 	ActionRetentionDryRun = "retention.dry_run"

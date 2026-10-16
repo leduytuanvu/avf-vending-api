@@ -695,7 +695,7 @@ func resolveMultiLineTerminalOrderStatus(sessions []db.ListVendSessionsByOrderRo
 
 func isTerminalOrderStatus(status string) bool {
 	switch strings.ToLower(strings.TrimSpace(status)) {
-	case "completed", "partially_completed", "failed", "cancelled":
+	case "completed", "partially_completed", "failed", "cancelled", "unknown":
 		return true
 	default:
 		return false

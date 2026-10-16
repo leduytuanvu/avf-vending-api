@@ -778,6 +778,7 @@ func requiresMachineAccessJWT(fullMethod string) bool {
 		machinev1.MachineCommerceService_ReportVendSuccess_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendFailure_FullMethodName,
 		machinev1.MachineCommerceService_CancelOrder_FullMethodName,
+		machinev1.MachineCommerceService_MarkOrderUnknown_FullMethodName,
 		machinev1.MachineCommerceService_ReportCashMovements_FullMethodName,
 		machinev1.MachineSaleService_CreateSale_FullMethodName,
 		machinev1.MachineSaleService_AttachPayment_FullMethodName,

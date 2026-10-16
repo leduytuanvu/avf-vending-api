@@ -120,7 +120,7 @@ func checkMachineOrderCheckoutWindow(o domaincommerce.Order, maxAge time.Duratio
 
 func orderStatusTerminal(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "completed", "partially_completed", "failed", "cancelled":
+	case "completed", "partially_completed", "failed", "cancelled", "unknown":
 		return true
 	default:
 		return false
@@ -1586,6 +1586,52 @@ func (s *machineCommerceServer) CancelOrder(ctx context.Context, req *machinev1.
 		"reason":          reason,
 	})
 	return &machinev1.CancelOrderResponse{Replay: false, OrderId: o2.ID.String(), OrderStatus: o2.Status}, nil
+}
+
+func (s *machineCommerceServer) MarkOrderUnknown(ctx context.Context, req *machinev1.MarkOrderUnknownRequest) (*machinev1.MarkOrderUnknownResponse, error) {
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "empty request")
+	}
+	wctx, err := parseMachineMutationContext(ctx, req.GetContext())
+	if err != nil {
+		return nil, err
+	}
+	claims, svc, store, err := s.requireCommerce(ctx)
+	if err != nil {
+		return nil, err
+	}
+	orderID, err := uuid.Parse(strings.TrimSpace(req.GetOrderId()))
+	if err != nil || orderID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
+	}
+	principal := machinePrincipalFromAccessClaims(claims)
+	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	o, err := store.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	if o.MachineID != claims.MachineID {
+		return nil, status.Error(codes.PermissionDenied, "order machine mismatch")
+	}
+	if strings.EqualFold(strings.TrimSpace(o.Status), "unknown") {
+		return &machinev1.MarkOrderUnknownResponse{Replay: true, OrderId: o.ID.String(), OrderStatus: o.Status}, nil
+	}
+	if orderStatusTerminal(o.Status) {
+		return nil, status.Error(codes.FailedPrecondition, "order is terminal")
+	}
+	reason := strings.TrimSpace(req.GetReason())
+	o2, err := svc.MarkOrderUnknown(ctx, uuid.Nil, orderID, reason)
+	if err != nil {
+		return nil, mapCommerceGRPCErr(err)
+	}
+	s.auditCommerce(ctx, claims, compliance.ActionMachineCommerceOrderUnknown, map[string]any{
+		"order_id":        orderID.String(),
+		"idempotency_key": wctx.IdempotencyKey,
+		"reason":          reason,
+	})
+	return &machinev1.MarkOrderUnknownResponse{Replay: false, OrderId: o2.ID.String(), OrderStatus: o2.Status}, nil
 }
 
 func parseOptionalPaymentID(raw string) *uuid.UUID {

@@ -102,6 +102,7 @@ type Orchestrator interface {
 
 	EnsureCommerceCallerOrderAccess(ctx context.Context, companyID, orderID uuid.UUID, p plauth.Principal) error
 	CancelOrder(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)
+	MarkOrderUnknown(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error)
 	ConfirmCashPayment(ctx context.Context, in ConfirmCashPaymentInput) (ConfirmCashPaymentResult, error)
 	CancelPaymentSession(ctx context.Context, in CancelPaymentSessionInput) (CancelPaymentSessionResult, error)
 	GetOrderMoneyView(ctx context.Context, orderID uuid.UUID) (OrderMoneyView, error)

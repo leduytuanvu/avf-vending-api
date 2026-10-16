@@ -100,6 +100,8 @@ func decorateMachineLedgerReplayResponse(resp proto.Message) {
 		m.Replay = true
 	case *machinev1.CancelOrderResponse:
 		m.Replay = true
+	case *machinev1.MarkOrderUnknownResponse:
+		m.Replay = true
 	case *machinev1.CreateSaleResponse:
 		if o := m.GetOrder(); o != nil {
 			o.Replay = true
@@ -152,6 +154,7 @@ func isMachineIdempotentMutation(fullMethod string) bool {
 		machinev1.MachineCommerceService_ReportVendSuccess_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendFailure_FullMethodName,
 		machinev1.MachineCommerceService_CancelOrder_FullMethodName,
+		machinev1.MachineCommerceService_MarkOrderUnknown_FullMethodName,
 		machinev1.MachineSaleService_CreateSale_FullMethodName,
 		machinev1.MachineSaleService_AttachPayment_FullMethodName,
 		machinev1.MachineSaleService_ConfirmCashReceived_FullMethodName,
@@ -211,6 +214,8 @@ func newMachineMutationResponse(fullMethod string) proto.Message {
 		return &machinev1.ReportVendFailureResponse{}
 	case machinev1.MachineCommerceService_CancelOrder_FullMethodName:
 		return &machinev1.CancelOrderResponse{}
+	case machinev1.MachineCommerceService_MarkOrderUnknown_FullMethodName:
+		return &machinev1.MarkOrderUnknownResponse{}
 	case machinev1.MachineSaleService_CreateSale_FullMethodName:
 		return &machinev1.CreateSaleResponse{}
 	case machinev1.MachineSaleService_AttachPayment_FullMethodName:

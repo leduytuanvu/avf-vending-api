@@ -626,6 +626,33 @@ func (s *Service) CancelOrder(ctx context.Context, companyID, orderID uuid.UUID,
 	return s.life.UpdateOrderStatus(ctx, orderID, companyID, "cancelled")
 }
 
+// MarkOrderUnknown closes a non-terminal order when the kiosk cannot report vend outcome
+// (crash, superseded checkout, stale session). Idempotent when already unknown.
+func (s *Service) MarkOrderUnknown(ctx context.Context, companyID, orderID uuid.UUID, reason string) (domaincommerce.Order, error) {
+	if s.life == nil {
+		return domaincommerce.Order{}, ErrNotConfigured
+	}
+	if orderID == uuid.Nil {
+		return domaincommerce.Order{}, errors.Join(ErrInvalidArgument, errors.New("order_id must be set"))
+	}
+	o, err := s.life.GetOrderByID(ctx, orderID)
+	if err != nil {
+		return domaincommerce.Order{}, err
+	}
+	if uuid.Nil != companyID {
+		return domaincommerce.Order{}, ErrOrgMismatch
+	}
+	st := strings.ToLower(strings.TrimSpace(o.Status))
+	if st == "unknown" {
+		return o, nil
+	}
+	if orderStatusTerminal(st) {
+		return domaincommerce.Order{}, ErrIllegalTransition
+	}
+	_ = strings.TrimSpace(reason)
+	return s.life.UpdateOrderStatus(ctx, orderID, companyID, "unknown")
+}
+
 // CreateRefund records a refund request against the latest captured payment.
 func (s *Service) CreateRefund(ctx context.Context, in CreateRefundInput) (RefundRowView, error) {
 	if s.life == nil {

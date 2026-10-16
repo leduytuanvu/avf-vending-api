@@ -1,5 +1,19 @@
 # Stuck order status sync (ops)
 
+## Classify sync gap vs legitimate QR cancel (2026-10-15 `01a13f` prefix)
+
+```bash
+psql "$DATABASE_URL" -v machine_code='AVF000109' -v id_prefix='01a13f' \
+  -f scripts/ops/classify_order_sync_status.sql
+```
+
+Columns `sync_class` and `target_status_hint` separate:
+
+- `terminal_ok` — admin matches expected end state
+- `likely_qr_abandon_or_orphan_created` — materialized, no capture (often `cancelled` after expire)
+- `stale_vending_or_finalize_gap` / `rollup_stuck_or_missing_finalize` — machine finished but server non-terminal → check logcat + Pha B flush
+- `unknown_if_machine_lost_session` — should become API `unknown` after reconciliation (crash, new checkout, TTL)
+
 ## Inspect AVF000109 / 01a132 cluster (2026-10-13)
 
 ```bash
@@ -16,6 +30,15 @@ psql "$DATABASE_URL" -v dry_run=1 -v order_id='<uuid>' \
 ```
 
 Only when vend_sessions show `in_progress` but field confirms dispense completed/failed.
+
+## Mark stale non-terminal as `unknown` (TTL)
+
+```bash
+psql "$DATABASE_URL" -v dry_run=1 -v stale_minutes=45 -v machine_code='AVF000109' \
+  -f scripts/ops/mark_stale_non_terminal_orders_unknown.sql
+```
+
+Set `dry_run=0` only after reviewing candidates. Prefer machine `MarkOrderUnknown` when logcat shows normal checkout superseded or crash recovery.
 
 ## Monitor stale (no auto-complete)
 

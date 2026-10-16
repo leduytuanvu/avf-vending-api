@@ -30,6 +30,8 @@ service MachineCommerceService {
   rpc ReportVendSuccess(ReportVendSuccessRequest) returns (ReportVendSuccessResponse);
   rpc ReportVendFailure(ReportVendFailureRequest) returns (ReportVendFailureResponse);
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+  // Marks a non-terminal order as unknown when the kiosk lost local checkout closure (crash, superseded checkout, stale session).
+  rpc MarkOrderUnknown(MarkOrderUnknownRequest) returns (MarkOrderUnknownResponse);
   // Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
   rpc CancelPaymentSession(CancelPaymentSessionRequest) returns (CancelPaymentSessionResponse);
 }
@@ -487,6 +489,19 @@ message CancelOrderRequest {
 }
 
 message CancelOrderResponse {
+  bool replay = 1;
+  string order_id = 2;
+  string order_status = 3;
+}
+
+message MarkOrderUnknownRequest {
+  IdempotencyContext context = 1;
+  string order_id = 2;
+  // crash_recovery | stale_non_terminal | superseded_by_new_checkout
+  string reason = 3;
+}
+
+message MarkOrderUnknownResponse {
   bool replay = 1;
   string order_id = 2;
   string order_status = 3;
