@@ -4401,12 +4401,15 @@ func DocOpV1PaymentGet() {}
 
 // DocOpV1OrdersList godoc
 // @Summary List orders for company
-// @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** (UUID), **search** (substring on order id or idempotency key), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
+// @Description Read-only `orders` rows for reconciliation and support dashboards. **platform_admin** requires **single_company_admin_context** query; **admin** is JWT-scoped. Filters: **status** (order.status lifecycle), **machine_id** / **machine_ids** (comma-separated UUIDs), **machine_code** (prefix on machine code), **payment_method**, **search** (substring on order id or idempotency key only), **from** / **to** inclusive on `orders.created_at` (defaults apply when omitted). Pagination: **limit** default 50, max **500**, **offset**. Typed `items` + `meta.total` envelope matches payments list for shared client parsing.
 // @Tags Commerce
 // @Security BearerAuth
 // @Produce json
 // @Param status query string false "Order status filter"
-// @Param machine_id query string false "Filter by machine UUID"
+// @Param machine_id query string false "Filter by machine UUID (legacy single machine)"
+// @Param machine_ids query string false "Comma-separated machine UUIDs"
+// @Param machine_code query string false "Machine code prefix (e.g. AVF000173)"
+// @Param payment_method query string false "Payment provider filter"
 // @Param search query string false "Substring search on order id or idempotency key"
 // @Param from query string false "created_at lower bound (RFC3339)"
 // @Param to query string false "created_at upper bound (RFC3339)"

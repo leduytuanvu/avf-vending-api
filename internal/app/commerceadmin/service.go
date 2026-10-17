@@ -123,11 +123,13 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerc
 	}
 	st, en := timeRangeOrAll(scope.From, scope.To)
 	filterStatus := strings.TrimSpace(scope.Status) != ""
-	filterMachine := scope.MachineID != nil && *scope.MachineID != uuid.Nil
-	mid := uuid.Nil
-	if filterMachine {
-		mid = *scope.MachineID
+	machineIDs := scope.MachineIDs
+	if len(machineIDs) == 0 && scope.MachineID != nil && *scope.MachineID != uuid.Nil {
+		machineIDs = []uuid.UUID{*scope.MachineID}
 	}
+	filterMachineIDs := len(machineIDs) > 0
+	machineCode := strings.TrimSpace(scope.MachineCode)
+	filterMachineCode := machineCode != ""
 	search := strings.TrimSpace(scope.Search)
 	filterSearch := search != ""
 	paymentMethod := strings.TrimSpace(scope.PaymentMethod)
@@ -136,28 +138,32 @@ func (s *Service) ListOrders(ctx context.Context, scope listscope.CompanyCommerc
 	listArg := db.CommerceAdminListOrdersParams{
 		Column1:  filterStatus,
 		Column2:  strings.TrimSpace(scope.Status),
-		Column3:  filterMachine,
-		Column4:  mid,
-		Column5:  st,
-		Column6:  en,
-		Column7:  filterSearch,
-		Column8:  search,
-		Column9:  filterPayment,
-		Column10: paymentMethod,
+		Column3:  filterMachineIDs,
+		Column4:  machineIDs,
+		Column5:  filterMachineCode,
+		Column6:  machineCode,
+		Column7:  st,
+		Column8:  en,
+		Column9:  filterSearch,
+		Column10: search,
+		Column11: filterPayment,
+		Column12: paymentMethod,
 		Limit:    scope.Limit,
 		Offset:   scope.Offset,
 	}
 	countArg := db.CommerceAdminCountOrdersParams{
 		Column1:  filterStatus,
 		Column2:  strings.TrimSpace(scope.Status),
-		Column3:  filterMachine,
-		Column4:  mid,
-		Column5:  st,
-		Column6:  en,
-		Column7:  filterSearch,
-		Column8:  search,
-		Column9:  filterPayment,
-		Column10: paymentMethod,
+		Column3:  filterMachineIDs,
+		Column4:  machineIDs,
+		Column5:  filterMachineCode,
+		Column6:  machineCode,
+		Column7:  st,
+		Column8:  en,
+		Column9:  filterSearch,
+		Column10: search,
+		Column11: filterPayment,
+		Column12: paymentMethod,
 	}
 	rows, err := s.q.CommerceAdminListOrders(ctx, listArg)
 	if err != nil {

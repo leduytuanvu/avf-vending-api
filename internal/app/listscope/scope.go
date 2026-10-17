@@ -27,6 +27,8 @@ type CompanyCommerce struct {
 	Offset          int32
 	Status          string
 	MachineID       *uuid.UUID
+	MachineIDs      []uuid.UUID
+	MachineCode     string
 	PaymentMethod   string
 	CaseType        string
 	Search          string

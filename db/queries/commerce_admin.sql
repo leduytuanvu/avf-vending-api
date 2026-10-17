@@ -27,20 +27,20 @@ INNER JOIN machines m ON m.id = o.machine_id
 LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
-    AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
-    AND o.created_at >= $5::timestamptz
-    AND o.created_at <= $6::timestamptz
-    AND (
-        $7::boolean IS FALSE
-        OR o.id::text ILIKE ('%' || $8::text || '%')
-        OR (
-            o.idempotency_key IS NOT NULL
-            AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
-        )
-        OR m.code ILIKE ('%' || $8::text || '%')
-    )
+    AND ($3::boolean IS FALSE OR o.machine_id = ANY($4::uuid[]))
+    AND ($5::boolean IS FALSE OR m.code ILIKE ($6::text || '%'))
+    AND o.created_at >= $7::timestamptz
+    AND o.created_at <= $8::timestamptz
     AND (
         $9::boolean IS FALSE
+        OR o.id::text ILIKE ('%' || $10::text || '%')
+        OR (
+            o.idempotency_key IS NOT NULL
+            AND o.idempotency_key::text ILIKE ('%' || $10::text || '%')
+        )
+    )
+    AND (
+        $11::boolean IS FALSE
         OR COALESCE(
             wp.provider,
             (
@@ -51,11 +51,11 @@ WHERE
                 LIMIT 1
             ),
             ''
-        ) = $10::text
+        ) = $12::text
     )
 ORDER BY
     o.created_at DESC
-LIMIT $11 OFFSET $12;
+LIMIT $13 OFFSET $14;
 
 -- name: CommerceAdminCountOrders :one
 SELECT
@@ -65,20 +65,20 @@ INNER JOIN machines m ON m.id = o.machine_id
 LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
-    AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
-    AND o.created_at >= $5::timestamptz
-    AND o.created_at <= $6::timestamptz
-    AND (
-        $7::boolean IS FALSE
-        OR o.id::text ILIKE ('%' || $8::text || '%')
-        OR (
-            o.idempotency_key IS NOT NULL
-            AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
-        )
-        OR m.code ILIKE ('%' || $8::text || '%')
-    )
+    AND ($3::boolean IS FALSE OR o.machine_id = ANY($4::uuid[]))
+    AND ($5::boolean IS FALSE OR m.code ILIKE ($6::text || '%'))
+    AND o.created_at >= $7::timestamptz
+    AND o.created_at <= $8::timestamptz
     AND (
         $9::boolean IS FALSE
+        OR o.id::text ILIKE ('%' || $10::text || '%')
+        OR (
+            o.idempotency_key IS NOT NULL
+            AND o.idempotency_key::text ILIKE ('%' || $10::text || '%')
+        )
+    )
+    AND (
+        $11::boolean IS FALSE
         OR COALESCE(
             wp.provider,
             (
@@ -89,7 +89,7 @@ WHERE
                 LIMIT 1
             ),
             ''
-        ) = $10::text
+        ) = $12::text
     );
 
 -- name: CommerceAdminListPayments :many

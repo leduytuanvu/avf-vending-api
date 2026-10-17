@@ -21,20 +21,20 @@ INNER JOIN machines m ON m.id = o.machine_id
 LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
-    AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
-    AND o.created_at >= $5::timestamptz
-    AND o.created_at <= $6::timestamptz
-    AND (
-        $7::boolean IS FALSE
-        OR o.id::text ILIKE ('%' || $8::text || '%')
-        OR (
-            o.idempotency_key IS NOT NULL
-            AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
-        )
-        OR m.code ILIKE ('%' || $8::text || '%')
-    )
+    AND ($3::boolean IS FALSE OR o.machine_id = ANY($4::uuid[]))
+    AND ($5::boolean IS FALSE OR m.code ILIKE ($6::text || '%'))
+    AND o.created_at >= $7::timestamptz
+    AND o.created_at <= $8::timestamptz
     AND (
         $9::boolean IS FALSE
+        OR o.id::text ILIKE ('%' || $10::text || '%')
+        OR (
+            o.idempotency_key IS NOT NULL
+            AND o.idempotency_key::text ILIKE ('%' || $10::text || '%')
+        )
+    )
+    AND (
+        $11::boolean IS FALSE
         OR COALESCE(
             wp.provider,
             (
@@ -45,7 +45,7 @@ WHERE
                 LIMIT 1
             ),
             ''
-        ) = $10::text
+        ) = $12::text
     )
 `
 
@@ -53,13 +53,15 @@ type CommerceAdminCountOrdersParams struct {
 	Column1  bool
 	Column2  string
 	Column3  bool
-	Column4  uuid.UUID
-	Column5  time.Time
-	Column6  time.Time
-	Column7  bool
-	Column8  string
+	Column4  []uuid.UUID
+	Column5  bool
+	Column6  string
+	Column7  time.Time
+	Column8  time.Time
 	Column9  bool
 	Column10 string
+	Column11 bool
+	Column12 string
 }
 
 func (q *Queries) CommerceAdminCountOrders(ctx context.Context, arg CommerceAdminCountOrdersParams) (int64, error) {
@@ -74,6 +76,8 @@ func (q *Queries) CommerceAdminCountOrders(ctx context.Context, arg CommerceAdmi
 		arg.Column8,
 		arg.Column9,
 		arg.Column10,
+		arg.Column11,
+		arg.Column12,
 	)
 	var cnt int64
 	err := row.Scan(&cnt)
@@ -433,20 +437,20 @@ INNER JOIN machines m ON m.id = o.machine_id
 LEFT JOIN payments wp ON wp.id = o.winning_payment_id
 WHERE
     ($1::boolean IS FALSE OR o.status = $2::text)
-    AND ($3::boolean IS FALSE OR o.machine_id = $4::uuid)
-    AND o.created_at >= $5::timestamptz
-    AND o.created_at <= $6::timestamptz
-    AND (
-        $7::boolean IS FALSE
-        OR o.id::text ILIKE ('%' || $8::text || '%')
-        OR (
-            o.idempotency_key IS NOT NULL
-            AND o.idempotency_key::text ILIKE ('%' || $8::text || '%')
-        )
-        OR m.code ILIKE ('%' || $8::text || '%')
-    )
+    AND ($3::boolean IS FALSE OR o.machine_id = ANY($4::uuid[]))
+    AND ($5::boolean IS FALSE OR m.code ILIKE ($6::text || '%'))
+    AND o.created_at >= $7::timestamptz
+    AND o.created_at <= $8::timestamptz
     AND (
         $9::boolean IS FALSE
+        OR o.id::text ILIKE ('%' || $10::text || '%')
+        OR (
+            o.idempotency_key IS NOT NULL
+            AND o.idempotency_key::text ILIKE ('%' || $10::text || '%')
+        )
+    )
+    AND (
+        $11::boolean IS FALSE
         OR COALESCE(
             wp.provider,
             (
@@ -457,24 +461,26 @@ WHERE
                 LIMIT 1
             ),
             ''
-        ) = $10::text
+        ) = $12::text
     )
 ORDER BY
     o.created_at DESC
-LIMIT $11 OFFSET $12
+LIMIT $13 OFFSET $14
 `
 
 type CommerceAdminListOrdersParams struct {
 	Column1  bool
 	Column2  string
 	Column3  bool
-	Column4  uuid.UUID
-	Column5  time.Time
-	Column6  time.Time
-	Column7  bool
-	Column8  string
+	Column4  []uuid.UUID
+	Column5  bool
+	Column6  string
+	Column7  time.Time
+	Column8  time.Time
 	Column9  bool
 	Column10 string
+	Column11 bool
+	Column12 string
 	Limit    int32
 	Offset   int32
 }
@@ -506,6 +512,8 @@ func (q *Queries) CommerceAdminListOrders(ctx context.Context, arg CommerceAdmin
 		arg.Column8,
 		arg.Column9,
 		arg.Column10,
+		arg.Column11,
+		arg.Column12,
 		arg.Limit,
 		arg.Offset,
 	)

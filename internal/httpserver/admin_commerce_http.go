@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,6 +20,52 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+func parseCommerceMachineIDFilters(q url.Values) ([]uuid.UUID, *uuid.UUID, error) {
+	seen := make(map[uuid.UUID]struct{})
+	var ids []uuid.UUID
+	var single *uuid.UUID
+
+	appendID := func(raw string) error {
+		mid, perr := uuid.Parse(strings.TrimSpace(raw))
+		if perr != nil || mid == uuid.Nil {
+			return listscope.ErrInvalidListQuery
+		}
+		if _, ok := seen[mid]; ok {
+			return nil
+		}
+		seen[mid] = struct{}{}
+		ids = append(ids, mid)
+		if single == nil {
+			single = &mid
+		}
+		return nil
+	}
+
+	if raw := strings.TrimSpace(q.Get("machine_id")); raw != "" {
+		if err := appendID(raw); err != nil {
+			return nil, nil, err
+		}
+	}
+	if raw := strings.TrimSpace(q.Get("machine_ids")); raw != "" {
+		for _, part := range strings.Split(raw, ",") {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+			if err := appendID(part); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	if len(ids) == 1 {
+		return ids, single, nil
+	}
+	if len(ids) > 1 {
+		return ids, nil, nil
+	}
+	return nil, nil, nil
+}
+
 func parseCompanyCommerceListScope(r *http.Request) (listscope.CompanyCommerce, error) {
 	p, ok := auth.PrincipalFromContext(r.Context())
 	if !ok {
@@ -29,13 +76,9 @@ func parseCompanyCommerceListScope(r *http.Request) (listscope.CompanyCommerce, 
 		return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
 	}
 	q := r.URL.Query()
-	var machineID *uuid.UUID
-	if raw := strings.TrimSpace(q.Get("machine_id")); raw != "" {
-		mid, perr := uuid.Parse(raw)
-		if perr != nil || mid == uuid.Nil {
-			return listscope.CompanyCommerce{}, listscope.ErrInvalidListQuery
-		}
-		machineID = &mid
+	machineIDs, machineID, merr := parseCommerceMachineIDFilters(q)
+	if merr != nil {
+		return listscope.CompanyCommerce{}, merr
 	}
 	var from *time.Time
 	if raw := strings.TrimSpace(q.Get("from")); raw != "" {
@@ -61,7 +104,19 @@ func parseCompanyCommerceListScope(r *http.Request) (listscope.CompanyCommerce, 
 		u := t.UTC()
 		to = &u
 	}
-	return listscope.CompanyCommerce{IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin), Limit: limit, Offset: offset, Status: strings.TrimSpace(q.Get("status")), MachineID: machineID, PaymentMethod: strings.TrimSpace(q.Get("payment_method")), Search: strings.TrimSpace(q.Get("search")), From: from, To: to}, nil
+	return listscope.CompanyCommerce{
+		IsPlatformAdmin: p.HasRole(auth.RolePlatformAdmin),
+		Limit:           limit,
+		Offset:          offset,
+		Status:          strings.TrimSpace(q.Get("status")),
+		MachineID:       machineID,
+		MachineIDs:      machineIDs,
+		MachineCode:     strings.TrimSpace(q.Get("machine_code")),
+		PaymentMethod:   strings.TrimSpace(q.Get("payment_method")),
+		Search:          strings.TrimSpace(q.Get("search")),
+		From:            from,
+		To:              to,
+	}, nil
 }
 
 func mountAdminCommerceRoutes(r chi.Router, app *api.HTTPApplication, writeRL func(http.Handler) http.Handler) {
