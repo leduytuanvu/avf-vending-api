@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -119,6 +120,19 @@ func TestMapCommerceGRPCErrForOp_createQuoteNotPaymentSessionReason(t *testing.T
 	err := &pgconn.PgError{Code: "22P02", Message: "invalid input syntax for type json", TableName: "checkout_quotes", ColumnName: "machine_pricing_snapshot"}
 	st, ok := status.FromError(mapCommerceGRPCErrForOp(OpCreateQuote, err))
 	if !ok || st.Code() != codes.Internal || st.Message() != "quote_persistence_failed" {
+		t.Fatalf("got code=%v msg=%q ok=%v", st.Code(), st.Message(), ok)
+	}
+}
+
+func TestMapCommerceVendCloseBusinessErr_topology(t *testing.T) {
+	t.Parallel()
+	st, ok := status.FromError(mapCommerceVendCloseErr(
+		OpConfirmVendSuccess,
+		errors.New("postgres: no machine_slot_config for slot_index=9 product=abc"),
+		uuid.Nil,
+		"idem-1",
+	))
+	if !ok || st.Code() != codes.FailedPrecondition || st.Message() != "machine_slot_topology_missing" {
 		t.Fatalf("got code=%v msg=%q ok=%v", st.Code(), st.Message(), ok)
 	}
 }

@@ -209,6 +209,48 @@ func mapCommerceGRPCErr(err error) error {
 	return mapCommerceGRPCErrForOp(OpGenericCommerce, err)
 }
 
+func mapCommerceVendCloseErr(op CommerceOperation, err error, orderID uuid.UUID, idemKey string) error {
+	if err == nil {
+		return nil
+	}
+	if _, ok := status.FromError(err); ok {
+		return err
+	}
+	pctx := CommercePersistenceContext{
+		OrderID:        orderID,
+		IdempotencyKey: idemKey,
+	}
+	if mapped := mapCommercePersistenceErrForOp(op, err, pctx); mapped != nil {
+		return mapped
+	}
+	if mapped := mapCommerceVendCloseBusinessErr(err); mapped != nil {
+		return mapped
+	}
+	return mapCommerceGRPCErrForOp(op, err)
+}
+
+// mapCommerceVendCloseBusinessErr maps vend finalize errors that should not surface as opaque INTERNAL persistence.
+func mapCommerceVendCloseBusinessErr(err error) error {
+	if err == nil {
+		return nil
+	}
+	msg := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(msg, "no machine_slot_config"),
+		strings.Contains(msg, "no machine_slot_state"),
+		strings.Contains(msg, "no unassigned machine_slot_config"):
+		return status.Error(codes.FailedPrecondition, "machine_slot_topology_missing")
+	case strings.Contains(msg, "insufficient stock"):
+		return status.Error(codes.ResourceExhausted, strings.TrimSpace(err.Error()))
+	case strings.Contains(msg, "vend session must be success before inventory"):
+		return status.Error(codes.FailedPrecondition, "vend_inventory_precondition")
+	case strings.Contains(msg, "vend session does not match"):
+		return status.Error(codes.FailedPrecondition, "vend_session_mismatch")
+	default:
+		return nil
+	}
+}
+
 func mapCommerceGRPCErrForOp(op CommerceOperation, err error) error {
 	if err == nil {
 		return nil
@@ -483,9 +525,34 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 	if err != nil {
 		return nil, err
 	}
-	orderID, err := uuid.Parse(strings.TrimSpace(req.GetOrderId()))
-	if err != nil || orderID == uuid.Nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid order_id")
+	var orderID uuid.UUID
+	var materializedOrderID string
+	quoteIDRaw := strings.TrimSpace(req.GetQuoteId())
+	if quoteIDRaw != "" {
+		quoteID, qerr := uuid.Parse(quoteIDRaw)
+		if qerr != nil || quoteID == uuid.Nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid quote_id")
+		}
+		idemKey := wctx.IdempotencyKey
+		if clientCheckout := strings.TrimSpace(req.GetClientCheckoutId()); clientCheckout != "" {
+			idemKey = "local_pay:" + clientCheckout
+		}
+		orderOut, oerr := svc.CreateOrderFromQuote(ctx, appcommerce.CreateOrderFromQuoteInput{
+			MachineID:      claims.MachineID,
+			QuoteID:        quoteID,
+			PaymentMethod:  provider,
+			IdempotencyKey: idemKey,
+		})
+		if oerr != nil {
+			return nil, mapCommerceGRPCErrForOp(OpCreateOrderFromQuote, oerr)
+		}
+		orderID = orderOut.OrderID
+		materializedOrderID = orderOut.OrderID.String()
+	} else {
+		orderID, err = uuid.Parse(strings.TrimSpace(req.GetOrderId()))
+		if err != nil || orderID == uuid.Nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid order_id")
+		}
 	}
 	principal := machinePrincipalFromAccessClaims(claims)
 	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
@@ -583,13 +650,17 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		zap.Int64("duration_ms", time.Since(started).Milliseconds()),
 	)
 
-	return &machinev1.CreatePaymentSessionResponse{
+	resp := &machinev1.CreatePaymentSessionResponse{
 		Replay:         res.Replay,
 		PaymentId:      res.Payment.ID.String(),
 		PaymentState:   res.Payment.State,
 		OutboxEventId:  res.Outbox.ID,
 		QrPayloadOrUrl: res.QRPayloadOrURL,
-	}, nil
+	}
+	if materializedOrderID != "" {
+		resp.MaterializedOrderId = &materializedOrderID
+	}
+	return resp, nil
 }
 
 func (s *machineCommerceServer) AttachPaymentResult(ctx context.Context, req *machinev1.CreatePaymentSessionRequest) (*machinev1.CreatePaymentSessionResponse, error) {
@@ -1372,7 +1443,7 @@ func (s *machineCommerceServer) confirmVendSuccess(ctx context.Context, claims p
 		ReconciliationEventType:   outboxRecon,
 	})
 	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
+		return nil, mapCommerceVendCloseErr(OpConfirmVendSuccess, err, orderID, wctx.IdempotencyKey)
 	}
 
 	fullReplay := fout.OrderVendReplay && fout.InventoryReplay
@@ -1514,7 +1585,7 @@ func (s *machineCommerceServer) ReportVendFailure(ctx context.Context, req *mach
 		ReconciliationEventType:   outboxRecon,
 	})
 	if err != nil {
-		return nil, mapCommerceGRPCErr(err)
+		return nil, mapCommerceVendCloseErr(OpReportVendFailure, err, orderID, wctx.IdempotencyKey)
 	}
 	vendReplay = vendReplay || fout.OrderVendReplay
 

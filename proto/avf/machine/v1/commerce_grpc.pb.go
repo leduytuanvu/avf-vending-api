@@ -19,24 +19,25 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	MachineCommerceService_CreateOrder_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CreateOrder"
-	MachineCommerceService_CreateQuote_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CreateQuote"
-	MachineCommerceService_CreateOrderFromQuote_FullMethodName = "/avf.machine.v1.MachineCommerceService/CreateOrderFromQuote"
-	MachineCommerceService_CreatePaymentSession_FullMethodName = "/avf.machine.v1.MachineCommerceService/CreatePaymentSession"
-	MachineCommerceService_AttachPaymentResult_FullMethodName  = "/avf.machine.v1.MachineCommerceService/AttachPaymentResult"
-	MachineCommerceService_ConfirmCashPayment_FullMethodName   = "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment"
-	MachineCommerceService_CreateCashCheckout_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CreateCashCheckout"
-	MachineCommerceService_ReportCashMovements_FullMethodName  = "/avf.machine.v1.MachineCommerceService/ReportCashMovements"
-	MachineCommerceService_GetOrder_FullMethodName             = "/avf.machine.v1.MachineCommerceService/GetOrder"
-	MachineCommerceService_GetOrderStatus_FullMethodName       = "/avf.machine.v1.MachineCommerceService/GetOrderStatus"
-	MachineCommerceService_GetPaymentStatus_FullMethodName     = "/avf.machine.v1.MachineCommerceService/GetPaymentStatus"
-	MachineCommerceService_StartVend_FullMethodName            = "/avf.machine.v1.MachineCommerceService/StartVend"
-	MachineCommerceService_ConfirmVendSuccess_FullMethodName   = "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess"
-	MachineCommerceService_ReportVendSuccess_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportVendSuccess"
-	MachineCommerceService_ReportVendFailure_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportVendFailure"
-	MachineCommerceService_CancelOrder_FullMethodName          = "/avf.machine.v1.MachineCommerceService/CancelOrder"
-	MachineCommerceService_MarkOrderUnknown_FullMethodName     = "/avf.machine.v1.MachineCommerceService/MarkOrderUnknown"
-	MachineCommerceService_CancelPaymentSession_FullMethodName = "/avf.machine.v1.MachineCommerceService/CancelPaymentSession"
+	MachineCommerceService_CreateOrder_FullMethodName            = "/avf.machine.v1.MachineCommerceService/CreateOrder"
+	MachineCommerceService_CreateQuote_FullMethodName            = "/avf.machine.v1.MachineCommerceService/CreateQuote"
+	MachineCommerceService_CreateOrderFromQuote_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CreateOrderFromQuote"
+	MachineCommerceService_CreatePaymentSession_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CreatePaymentSession"
+	MachineCommerceService_AttachPaymentResult_FullMethodName    = "/avf.machine.v1.MachineCommerceService/AttachPaymentResult"
+	MachineCommerceService_ConfirmCashPayment_FullMethodName     = "/avf.machine.v1.MachineCommerceService/ConfirmCashPayment"
+	MachineCommerceService_CreateCashCheckout_FullMethodName     = "/avf.machine.v1.MachineCommerceService/CreateCashCheckout"
+	MachineCommerceService_ReportCashMovements_FullMethodName    = "/avf.machine.v1.MachineCommerceService/ReportCashMovements"
+	MachineCommerceService_GetOrder_FullMethodName               = "/avf.machine.v1.MachineCommerceService/GetOrder"
+	MachineCommerceService_GetOrderStatus_FullMethodName         = "/avf.machine.v1.MachineCommerceService/GetOrderStatus"
+	MachineCommerceService_GetPaymentStatus_FullMethodName       = "/avf.machine.v1.MachineCommerceService/GetPaymentStatus"
+	MachineCommerceService_StartVend_FullMethodName              = "/avf.machine.v1.MachineCommerceService/StartVend"
+	MachineCommerceService_ConfirmVendSuccess_FullMethodName     = "/avf.machine.v1.MachineCommerceService/ConfirmVendSuccess"
+	MachineCommerceService_ReportVendSuccess_FullMethodName      = "/avf.machine.v1.MachineCommerceService/ReportVendSuccess"
+	MachineCommerceService_ReportVendFailure_FullMethodName      = "/avf.machine.v1.MachineCommerceService/ReportVendFailure"
+	MachineCommerceService_CancelOrder_FullMethodName            = "/avf.machine.v1.MachineCommerceService/CancelOrder"
+	MachineCommerceService_MarkOrderUnknown_FullMethodName       = "/avf.machine.v1.MachineCommerceService/MarkOrderUnknown"
+	MachineCommerceService_CancelPaymentSession_FullMethodName   = "/avf.machine.v1.MachineCommerceService/CancelPaymentSession"
+	MachineCommerceService_CommitLocalFulfillment_FullMethodName = "/avf.machine.v1.MachineCommerceService/CommitLocalFulfillment"
 )
 
 // MachineCommerceServiceClient is the client API for MachineCommerceService service.
@@ -70,6 +71,8 @@ type MachineCommerceServiceClient interface {
 	MarkOrderUnknown(ctx context.Context, in *MarkOrderUnknownRequest, opts ...grpc.CallOption) (*MarkOrderUnknownResponse, error)
 	// Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
 	CancelPaymentSession(ctx context.Context, in *CancelPaymentSessionRequest, opts ...grpc.CallOption) (*CancelPaymentSessionResponse, error)
+	// Post-local-terminal batch: materialize order, attach payment evidence, apply vend line outcomes.
+	CommitLocalFulfillment(ctx context.Context, in *CommitLocalFulfillmentRequest, opts ...grpc.CallOption) (*CommitLocalFulfillmentResponse, error)
 }
 
 type machineCommerceServiceClient struct {
@@ -260,6 +263,16 @@ func (c *machineCommerceServiceClient) CancelPaymentSession(ctx context.Context,
 	return out, nil
 }
 
+func (c *machineCommerceServiceClient) CommitLocalFulfillment(ctx context.Context, in *CommitLocalFulfillmentRequest, opts ...grpc.CallOption) (*CommitLocalFulfillmentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommitLocalFulfillmentResponse)
+	err := c.cc.Invoke(ctx, MachineCommerceService_CommitLocalFulfillment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineCommerceServiceServer is the server API for MachineCommerceService service.
 // All implementations must embed UnimplementedMachineCommerceServiceServer
 // for forward compatibility.
@@ -291,6 +304,8 @@ type MachineCommerceServiceServer interface {
 	MarkOrderUnknown(context.Context, *MarkOrderUnknownRequest) (*MarkOrderUnknownResponse, error)
 	// Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
 	CancelPaymentSession(context.Context, *CancelPaymentSessionRequest) (*CancelPaymentSessionResponse, error)
+	// Post-local-terminal batch: materialize order, attach payment evidence, apply vend line outcomes.
+	CommitLocalFulfillment(context.Context, *CommitLocalFulfillmentRequest) (*CommitLocalFulfillmentResponse, error)
 	mustEmbedUnimplementedMachineCommerceServiceServer()
 }
 
@@ -354,6 +369,9 @@ func (UnimplementedMachineCommerceServiceServer) MarkOrderUnknown(context.Contex
 }
 func (UnimplementedMachineCommerceServiceServer) CancelPaymentSession(context.Context, *CancelPaymentSessionRequest) (*CancelPaymentSessionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CancelPaymentSession not implemented")
+}
+func (UnimplementedMachineCommerceServiceServer) CommitLocalFulfillment(context.Context, *CommitLocalFulfillmentRequest) (*CommitLocalFulfillmentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CommitLocalFulfillment not implemented")
 }
 func (UnimplementedMachineCommerceServiceServer) mustEmbedUnimplementedMachineCommerceServiceServer() {
 }
@@ -701,6 +719,24 @@ func _MachineCommerceService_CancelPaymentSession_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineCommerceService_CommitLocalFulfillment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CommitLocalFulfillmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineCommerceServiceServer).CommitLocalFulfillment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineCommerceService_CommitLocalFulfillment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineCommerceServiceServer).CommitLocalFulfillment(ctx, req.(*CommitLocalFulfillmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineCommerceService_ServiceDesc is the grpc.ServiceDesc for MachineCommerceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -779,6 +815,10 @@ var MachineCommerceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelPaymentSession",
 			Handler:    _MachineCommerceService_CancelPaymentSession_Handler,
+		},
+		{
+			MethodName: "CommitLocalFulfillment",
+			Handler:    _MachineCommerceService_CommitLocalFulfillment_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -34,6 +34,8 @@ service MachineCommerceService {
   rpc MarkOrderUnknown(MarkOrderUnknownRequest) returns (MarkOrderUnknownResponse);
   // Cancels the latest non-captured payment for an order; order remains payable for a new attempt.
   rpc CancelPaymentSession(CancelPaymentSessionRequest) returns (CancelPaymentSessionResponse);
+  // Post-local-terminal batch: materialize order, attach payment evidence, apply vend line outcomes.
+  rpc CommitLocalFulfillment(CommitLocalFulfillmentRequest) returns (CommitLocalFulfillmentResponse);
 }
 
 // MachineSaleService is the native vending machine runtime sale API (Machine JWT).
@@ -240,6 +242,10 @@ message CreatePaymentSessionRequest {
   int32 attempt_seq = 9;
   // Payment id superseded by this session when regenerating QR.
   optional string supersedes_payment_id = 10;
+  // When set, server materializes order from quote for PSP session (local-first checkout).
+  optional string quote_id = 11;
+  // Machine-local checkout id (pricing snapshot id) for idempotent order-from-quote.
+  optional string client_checkout_id = 12;
 }
 
 message CreatePaymentSessionResponse {
@@ -249,6 +255,8 @@ message CreatePaymentSessionResponse {
   int64 outbox_event_id = 4;
   // Opaque provider payload or HTTPS URL for QR presentation (never raw image bytes).
   string qr_payload_or_url = 5;
+  // Populated when quote_id path materialized a server order for this session.
+  optional string materialized_order_id = 6;
 }
 
 message CashAcceptanceEvent {
@@ -521,4 +529,31 @@ message CancelPaymentSessionResponse {
   string order_status = 3;
   string payment_id = 4;
   string payment_state = 5;
+}
+
+message CommitLocalFulfillmentLine {
+  int32 line_sequence = 1;
+  string slot_code = 2;
+  string dispense_status = 3;
+  optional string failure_code = 4;
+  optional string transaction_id = 5;
+}
+
+message CommitLocalFulfillmentRequest {
+  IdempotencyContext context = 1;
+  string client_order_id = 2;
+  string pricing_snapshot_id = 3;
+  string terminal_status = 4;
+  string terminal_description = 5;
+  optional string error_code = 6;
+  int64 sealed_at_ms = 7;
+  optional string payment_id = 8;
+  optional string quote_id = 9;
+  repeated CommitLocalFulfillmentLine lines = 10;
+}
+
+message CommitLocalFulfillmentResponse {
+  bool replay = 1;
+  string server_order_id = 2;
+  string order_status = 3;
 }
