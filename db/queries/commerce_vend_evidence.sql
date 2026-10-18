@@ -20,8 +20,8 @@ VALUES (
     $6,
     $7,
     $8,
-    $9,
-    $10
+    COALESCE(NULLIF(sqlc.arg(raw)::text, '')::jsonb, '{}'::jsonb),
+    $9
 )
 ON CONFLICT (dedupe_key) DO NOTHING
 RETURNING *;

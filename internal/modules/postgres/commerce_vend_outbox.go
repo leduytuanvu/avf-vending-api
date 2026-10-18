@@ -86,7 +86,7 @@ func persistVendHardwareEvidenceTx(ctx context.Context, q *db.Queries, in persis
 		CorrelationID:  in.Evidence.CorrelationID,
 		CommandID:      strings.TrimSpace(in.Evidence.Command.CommandID),
 		EvidenceDigest: in.Evidence.EvidenceDigest(),
-		Raw:            raw,
+		Raw:            pgjson.RequiredString(raw),
 		DedupeKey:      dedupe,
 	})
 	if err != nil {

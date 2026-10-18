@@ -136,3 +136,17 @@ func TestMapCommerceVendCloseBusinessErr_topology(t *testing.T) {
 		t.Fatalf("got code=%v msg=%q ok=%v", st.Code(), st.Message(), ok)
 	}
 }
+
+func TestMapCommerceVendCloseErr_inventoryJsonPersistence(t *testing.T) {
+	t.Parallel()
+	pgErr := &pgconn.PgError{
+		Code:       "22P02",
+		Message:    "invalid input syntax for type json",
+		TableName:  "inventory_events",
+		ColumnName: "metadata",
+	}
+	st, ok := status.FromError(mapCommerceVendCloseErr(OpConfirmVendSuccess, pgErr, uuid.Nil, "idem-vend"))
+	if !ok || st.Code() != codes.Internal || st.Message() != "vend_close_persistence_failed" {
+		t.Fatalf("got code=%v msg=%q ok=%v", st.Code(), st.Message(), ok)
+	}
+}

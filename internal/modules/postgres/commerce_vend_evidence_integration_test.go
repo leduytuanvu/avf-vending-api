@@ -46,7 +46,7 @@ func TestVendHardwareEvidence_InsertDedupeKeyIdempotent(t *testing.T) {
 		CorrelationID:  uuid.New(),
 		CommandID:      "cmd-test-1",
 		EvidenceDigest: "digest-abc",
-		Raw:            json.RawMessage(`{"source":"integration_test"}`),
+		Raw:            `{"source":"integration_test"}`,
 		DedupeKey:      dedupe,
 	}
 	_, err = q.InsertVendHardwareEvidence(ctx, params)

@@ -411,7 +411,15 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 	if verificationStatus == "" {
 		verificationStatus = domaincommerce.VerificationUnverified
 	}
-	if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
+	if in.LineSequence > 0 {
+		if _, err := q.SetVendSessionVerificationStatusByLineSequence(ctx, db.SetVendSessionVerificationStatusByLineSequenceParams{
+			VerificationStatus: verificationStatus,
+			OrderID:            in.OrderID,
+			LineSequence:       in.LineSequence,
+		}); err != nil {
+			return appcommerce.FulfillFailedVendResult{}, err
+		}
+	} else if _, err := q.SetVendSessionVerificationStatus(ctx, db.SetVendSessionVerificationStatusParams{
 		VerificationStatus: verificationStatus,
 		OrderID:            in.OrderID,
 		SlotIndex:          slotIndex,

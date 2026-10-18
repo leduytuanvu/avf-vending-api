@@ -9,6 +9,9 @@ Install a build containing:
 
 - `PaymentBillCashRailPolicy` + unified vend confirm evidence (`VendLineCommerceEvidenceStore`)
 - `PaymentViewModel.cashPaymentReady` wired to `observeCashRailReady()`
+- Vend idempotency recovery on `idempotency_payload_mismatch` + outbox rekey on `vend_close_persistence_failed`
+
+Deploy API build that binds `vend_hardware_evidence.raw` as UTF-8 jsonb text (fixes SQLSTATE 22P02 on confirm/report vend with evidence).
 
 After deploy, prefer **outbox replay** (device online) before manual SQL when idempotency keys are not poisoned.
 

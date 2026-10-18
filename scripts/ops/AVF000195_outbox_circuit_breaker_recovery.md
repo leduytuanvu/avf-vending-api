@@ -3,6 +3,15 @@
 When logcat shows `OUTBOX_COMMERCE_PUSH_FAILED ... Sync circuit breaker is open`, commerce replay
 (`offline-sale`, `offline-vend-*`) is blocked until the breaker closes.
 
+After deploying API fix for `vend_hardware_evidence.raw` jsonb bind (22P02 → `vend_close_persistence_failed`)
+and the app vend idempotency recovery build:
+
+1. Inspect head-of-line outbox row (`seq=131` or current floor): note `event_type`, `idempotency_key`, `last_error`.
+2. If `last_error` is `vend_close_persistence_failed` or `idempotency_payload_mismatch` on `VEND`, allow one sync
+   cycle so `OUTBOX_VEND_CLOSE_FAILURE_REKEYED` / `OUTBOX_VEND_MISMATCH_REKEYED` can advance the queue.
+3. If head is poisoned `CASH` idempotency, follow
+   [`repair_cash_movement_idempotency_poison_01a11014.md`](repair_cash_movement_idempotency_poison_01a11014.md).
+
 ## Checklist
 
 1. Confirm network to `api.ldtv.dev` is stable from the machine.
