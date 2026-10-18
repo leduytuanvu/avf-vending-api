@@ -1,0 +1,69 @@
+name: Production inspect app node B API version
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_inspect:
+        description: "Must be exactly INSPECT_APP_NODE_B_VERSION"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-inspect-app-node-b-api-version
+  cancel-in-progress: false
+
+jobs:
+  inspect:
+    name: Inspect API /version on node B
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+      APP_NODE_B_HOST: ${{ secrets.PRODUCTION_APP_NODE_B_HOST || vars.PRODUCTION_APP_NODE_B_HOST || '' }}
+
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm_inspect }}" == "INSPECT_APP_NODE_B_VERSION" ]] \
+            || { echo "error: confirm_inspect must be INSPECT_APP_NODE_B_VERSION"; exit 1; }
+          [[ -n "${APP_NODE_B_HOST}" ]] || { echo "error: APP_NODE_B_HOST not configured"; exit 1; }
+
+      - name: Install SSH credentials
+        shell: bash
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY || secrets.PROD_SSH_KEY || secrets.VPS_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS_CONTENT: ${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS || vars.PRODUCTION_SSH_KNOWN_HOSTS || secrets.PROD_SSH_KNOWN_HOSTS || vars.PROD_SSH_KNOWN_HOSTS }}
+          SSH_PORT: ${{ secrets.PRODUCTION_SSH_PORT || vars.PRODUCTION_SSH_PORT || secrets.VPS_SSH_PORT || '22' }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/production_deploy_key
+          chmod 600 ~/.ssh/production_deploy_key
+          if [[ -n "${SSH_KNOWN_HOSTS_CONTENT}" ]]; then
+            printf '%s\n' "${SSH_KNOWN_HOSTS_CONTENT}" > ~/.ssh/known_hosts
+          else
+            touch ~/.ssh/known_hosts
+          fi
+          ssh-keyscan -H -p "${SSH_PORT}" "${APP_NODE_B_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          chmod 600 ~/.ssh/known_hosts
+          echo "SSH_PORT=${SSH_PORT}" >> "$GITHUB_ENV"
+          echo "SSH_OPTS=-o BatchMode=yes -o IdentitiesOnly=yes -i ${HOME}/.ssh/production_deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${HOME}/.ssh/known_hosts -o GlobalKnownHostsFile=${HOME}/.ssh/known_hosts" >> "$GITHUB_ENV"
+
+      - name: wget /version inside api container on B
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          target="${SSH_USER}@${APP_NODE_B_HOST}"
+          read -r -a ssh_opts <<< "${SSH_OPTS}"
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/app-node"
+          ssh "${ssh_opts[@]}" -p "${SSH_PORT}" "${target}" \
+            "cd '${remote_dir}' && docker compose --env-file .env.app-node -f docker-compose.app-node.yml exec -T api wget -qO- http://127.0.0.1:8080/version"
