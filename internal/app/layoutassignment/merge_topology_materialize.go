@@ -22,6 +22,10 @@ func materializeMergeTopologyFromSnapshot(in ReportLayoutSnapshotInput) *Materia
 		// Technician snapshot uploads may send pairs without the explicit flag during rollout.
 		included = true
 	}
+	if !included && in.SnapshotReason == SnapshotReasonTechnicianCommit {
+		// Technician leave snapshot may carry an explicit empty pair list after split-all.
+		included = true
+	}
 	if !included {
 		return nil
 	}

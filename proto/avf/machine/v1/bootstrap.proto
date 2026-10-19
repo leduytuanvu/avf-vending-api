@@ -365,6 +365,8 @@ message ReportLayoutSnapshotRequest {
   string active_layout_id = 16;
   repeated LayoutSnapshotMergePair merge_pairs = 17;
   repeated LayoutSnapshotSlot slots = 18;
+  // When true, empty merge_pairs means explicit clear (technician split-all); do not rebuild from lane plane.
+  bool merge_topology_included = 19;
 }
 
 message ReportLayoutSnapshotResponse {

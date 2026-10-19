@@ -2872,8 +2872,10 @@ type ReportLayoutSnapshotRequest struct {
 	ActiveLayoutId     string                     `protobuf:"bytes,16,opt,name=active_layout_id,json=activeLayoutId,proto3" json:"active_layout_id,omitempty"`
 	MergePairs         []*LayoutSnapshotMergePair `protobuf:"bytes,17,rep,name=merge_pairs,json=mergePairs,proto3" json:"merge_pairs,omitempty"`
 	Slots              []*LayoutSnapshotSlot      `protobuf:"bytes,18,rep,name=slots,proto3" json:"slots,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// When true, empty merge_pairs means explicit clear (technician split-all); do not rebuild from lane plane.
+	MergeTopologyIncluded bool `protobuf:"varint,19,opt,name=merge_topology_included,json=mergeTopologyIncluded,proto3" json:"merge_topology_included,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ReportLayoutSnapshotRequest) Reset() {
@@ -3030,6 +3032,13 @@ func (x *ReportLayoutSnapshotRequest) GetSlots() []*LayoutSnapshotSlot {
 		return x.Slots
 	}
 	return nil
+}
+
+func (x *ReportLayoutSnapshotRequest) GetMergeTopologyIncluded() bool {
+	if x != nil {
+		return x.MergeTopologyIncluded
+	}
+	return false
 }
 
 type ReportLayoutSnapshotResponse struct {
@@ -3631,7 +3640,7 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x06layout\x18\x02 \x01(\v2$.avf.machine.v1.MachineLayoutSummaryR\x06layout\x128\n" +
 	"\x05slots\x18\x03 \x03(\v2\".avf.machine.v1.LayoutSnapshotSlotR\x05slots\x12H\n" +
 	"\vmerge_pairs\x18\x04 \x03(\v2'.avf.machine.v1.LayoutSnapshotMergePairR\n" +
-	"mergePairs\"\xce\x06\n" +
+	"mergePairs\"\x86\a\n" +
 	"\x1bReportLayoutSnapshotRequest\x126\n" +
 	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1f\n" +
 	"\vsnapshot_id\x18\x02 \x01(\tR\n" +
@@ -3655,7 +3664,8 @@ const file_avf_machine_v1_bootstrap_proto_rawDesc = "" +
 	"\x10active_layout_id\x18\x10 \x01(\tR\x0eactiveLayoutId\x12H\n" +
 	"\vmerge_pairs\x18\x11 \x03(\v2'.avf.machine.v1.LayoutSnapshotMergePairR\n" +
 	"mergePairs\x128\n" +
-	"\x05slots\x18\x12 \x03(\v2\".avf.machine.v1.LayoutSnapshotSlotR\x05slots\"\xa6\x02\n" +
+	"\x05slots\x18\x12 \x03(\v2\".avf.machine.v1.LayoutSnapshotSlotR\x05slots\x126\n" +
+	"\x17merge_topology_included\x18\x13 \x01(\bR\x15mergeTopologyIncluded\"\xa6\x02\n" +
 	"\x1cReportLayoutSnapshotResponse\x127\n" +
 	"\x04meta\x18\x01 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12\x1a\n" +
 	"\baccepted\x18\x02 \x01(\bR\baccepted\x12\x1c\n" +

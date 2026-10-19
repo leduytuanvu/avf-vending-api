@@ -840,8 +840,9 @@ func mapReportLayoutSnapshotRequest(machineID uuid.UUID, req *machinev1.ReportLa
 		GridRows:                req.GetGridRows(),
 		GridCols:                req.GetGridCols(),
 		ActiveLayoutID:          activeLayoutID,
-		MergePairs:    mapReportLocalLayoutMergePairs(req.GetMergePairs()),
-		SlotsJSON:     slotsJSON,
+		MergePairs:              mapReportLocalLayoutMergePairs(req.GetMergePairs()),
+		MergeTopologyIncluded:   req.GetMergeTopologyIncluded(),
+		SlotsJSON:               slotsJSON,
 	}, nil
 }
 
