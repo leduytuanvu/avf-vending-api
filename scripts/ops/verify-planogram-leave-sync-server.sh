@@ -79,6 +79,12 @@ FROM machine_layout_slots mls
 JOIN machine_layouts ml ON ml.id = mls.layout_id
 WHERE ml.machine_id = '${MACHINE_ID}'
   AND mls.product_id IS NOT NULL;
+
+-- TCN merge topology (lane plane — GET /planogram/merge-pairs bootstrap)
+SELECT COUNT(*) AS active_lane_merge_pairs
+FROM machine_lane_merge_pairs
+WHERE machine_id = '${MACHINE_ID}'
+  AND is_active = true;
 EOF
 
 if [[ -n "$LAYOUT_ID" ]]; then
@@ -90,6 +96,17 @@ FROM machine_layout_snapshot_history
 WHERE machine_id = '${MACHINE_ID}' AND layout_id = '${LAYOUT_ID}'
 ORDER BY capture_sequence DESC
 LIMIT 5;
+
+-- Named layout merge pairs (GetMachineLayoutDetail merge_pairs)
+SELECT COUNT(*) AS layout_merge_pairs
+FROM machine_layout_merge_pairs
+WHERE layout_id = '${LAYOUT_ID}';
+
+SELECT left_slot_code, right_slot_code
+FROM machine_layout_merge_pairs
+WHERE layout_id = '${LAYOUT_ID}'
+ORDER BY left_slot_code
+LIMIT 20;
 EOF
 fi
 
