@@ -549,14 +549,14 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		orderID = orderOut.OrderID
 		materializedOrderID = orderOut.OrderID.String()
 	} else if req.GetPricingSnapshot() != nil {
+		inlineCur := strings.ToUpper(strings.TrimSpace(req.GetCurrency()))
+		if inlineCur == "" || len(inlineCur) != 3 {
+			return nil, status.Error(codes.InvalidArgument, "currency must be a 3-letter ISO code")
+		}
 		pricingSnap, perr := appcommerce.MachinePricingSnapshotFromProto(req.GetPricingSnapshot())
 		if perr != nil {
 			return nil, mapCommerceGRPCErr(perr)
 		}
-		wireSnap := appcommerce.AppCheckoutPricingSnapshotFromPricingInput(pricingSnap, cur)
-		idemKey := wctx.IdempotencyKey
-		if clientCheckout := strings.TrimSpace(req.GetClientCheckoutId()); clientCheckout != "" {
-			idemKey = "local_pay:" + clientCheckout
 		idemKey := wctx.IdempotencyKey
 		if clientCheckout := strings.TrimSpace(req.GetClientCheckoutId()); clientCheckout != "" {
 			idemKey = "local_pay:" + clientCheckout
@@ -568,6 +568,10 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 			PaymentMethod:   provider,
 			IdempotencyKey:  idemKey,
 		})
+		if merr != nil {
+			return nil, mapCommerceGRPCErr(merr)
+		}
+		orderID = matID
 		materializedOrderID = matID.String()
 	} else {
 		orderID, err = uuid.Parse(strings.TrimSpace(req.GetOrderId()))
