@@ -184,6 +184,7 @@ func TestMachineGRPC_Commerce_CashSale_EndToEnd(t *testing.T) {
 	require.Equal(t, qtyAfter, qtyAfter2, "replay must not decrement again")
 }
 
+// Local-first vend replay: ConfirmVendSuccess may arrive before StartVend (outbox ordering).
 func TestMachineGRPC_Commerce_ConfirmVendSuccess_AutoStartsFromPending(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	cfg := testMachineGRPCConfig()

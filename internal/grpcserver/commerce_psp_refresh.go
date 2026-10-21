@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const orderStatusPSPRefreshCooldown = 2 * time.Second
+const orderStatusPSPRefreshCooldown = 1500 * time.Millisecond
 const orderStatusPSPRefreshTimeout = 800 * time.Millisecond
 
 var orderStatusPSPRefreshLast sync.Map // uuid.UUID -> time.Time

@@ -34,11 +34,11 @@ func HashMutationRequest(msg proto.Message) ([]byte, error) {
 		return nil, errors.New("machineidempotency: nil message")
 	}
 	cl := proto.Clone(msg)
-	scrubRequestIDsForLedger(cl.ProtoReflect())
+	scrubVolatileFieldsForLedger(cl.ProtoReflect())
 	return StableProtoHash(cl)
 }
 
-func scrubRequestIDsForLedger(msg protoreflect.Message) {
+func scrubVolatileFieldsForLedger(msg protoreflect.Message) {
 	if !msg.IsValid() {
 		return
 	}
@@ -51,14 +51,28 @@ func scrubRequestIDsForLedger(msg protoreflect.Message) {
 		if !msg.Has(fd) {
 			continue
 		}
+		name := string(fd.Name())
 		switch fd.Kind() {
 		case protoreflect.MessageKind:
-			scrubRequestIDsForLedger(msg.Get(fd).Message())
+			if isVolatileTimestampField(name) {
+				msg.Clear(fd)
+				continue
+			}
+			scrubVolatileFieldsForLedger(msg.Get(fd).Message())
 		case protoreflect.StringKind:
-			if string(fd.Name()) == "request_id" {
+			if name == "request_id" || name == "client_event_id" || name == "simulation_run_id" {
 				msg.Clear(fd)
 			}
 		}
+	}
+}
+
+func isVolatileTimestampField(name string) bool {
+	switch name {
+	case "client_created_at", "captured_at", "generated_at", "occurred_at":
+		return true
+	default:
+		return false
 	}
 }
 

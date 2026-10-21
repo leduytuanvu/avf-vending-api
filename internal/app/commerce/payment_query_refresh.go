@@ -16,7 +16,7 @@ import (
 
 const (
 	paymentQueryMinIntervalDefault  = 5 * time.Second
-	paymentQueryMinIntervalActiveQR = 3 * time.Second
+	paymentQueryMinIntervalActiveQR = 1500 * time.Millisecond
 	paymentQueryAcceleratedWindow   = 2 * time.Minute
 )
 

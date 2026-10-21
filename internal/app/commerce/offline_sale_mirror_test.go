@@ -123,6 +123,7 @@ func TestCreateOfflineOrderFromSnapshot_mirrorWhenPublishedAssortmentStale(t *te
 		snap,
 		pricingSnap,
 		"VND",
+		"cash",
 		"offline-sale:stale",
 	)
 	require.NoError(t, err)

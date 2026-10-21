@@ -327,7 +327,9 @@ func RunAPI(ctx context.Context, cfg *config.Config, log *zap.Logger) error {
 				return
 			}
 			idem := appcommerce.PaymentCapturedMQTTIdempotencyKey(evt.PaymentID.String(), evt.WebhookEventID)
-			if _, err := dispatcher.DispatchRemoteMQTTCommand(ctx, appdevice.RemoteCommandDispatchInput{
+			dispatchCtx, cancelDispatch := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+			defer cancelDispatch()
+			if _, err := dispatcher.DispatchRemoteMQTTCommand(dispatchCtx, appdevice.RemoteCommandDispatchInput{
 				Append: domaindevice.AppendCommandInput{
 					MachineID:      evt.MachineID,
 					CommandType:    "payment.captured",
