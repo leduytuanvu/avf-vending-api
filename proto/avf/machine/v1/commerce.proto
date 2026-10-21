@@ -246,6 +246,8 @@ message CreatePaymentSessionRequest {
   optional string quote_id = 11;
   // Machine-local checkout id (pricing snapshot id) for idempotent order-from-quote.
   optional string client_checkout_id = 12;
+  // Cold-path: materialize quote+order inside this RPC when quote_id is absent (wire-safe for old clients).
+  optional MachinePricingSnapshot pricing_snapshot = 13;
 }
 
 message CreatePaymentSessionResponse {

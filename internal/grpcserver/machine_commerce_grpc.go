@@ -548,6 +548,27 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		}
 		orderID = orderOut.OrderID
 		materializedOrderID = orderOut.OrderID.String()
+	} else if req.GetPricingSnapshot() != nil {
+		pricingSnap, perr := appcommerce.MachinePricingSnapshotFromProto(req.GetPricingSnapshot())
+		if perr != nil {
+			return nil, mapCommerceGRPCErr(perr)
+		}
+		wireSnap := appcommerce.AppCheckoutPricingSnapshotFromPricingInput(pricingSnap, cur)
+		idemKey := wctx.IdempotencyKey
+		if clientCheckout := strings.TrimSpace(req.GetClientCheckoutId()); clientCheckout != "" {
+			idemKey = "local_pay:" + clientCheckout
+		idemKey := wctx.IdempotencyKey
+		if clientCheckout := strings.TrimSpace(req.GetClientCheckoutId()); clientCheckout != "" {
+			idemKey = "local_pay:" + clientCheckout
+		}
+		matID, merr := svc.MaterializeOrderForPaymentSession(ctx, appcommerce.MaterializeOrderForPaymentSessionInput{
+			MachineID:       claims.MachineID,
+			PricingSnapshot: pricingSnap,
+			Currency:        inlineCur,
+			PaymentMethod:   provider,
+			IdempotencyKey:  idemKey,
+		})
+		materializedOrderID = matID.String()
 	} else {
 		orderID, err = uuid.Parse(strings.TrimSpace(req.GetOrderId()))
 		if err != nil || orderID == uuid.Nil {

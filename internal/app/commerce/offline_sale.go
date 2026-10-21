@@ -100,7 +100,7 @@ func (s *Service) ProcessOfflineSale(
 	}
 
 	pricingSnap := machinePricingSnapshotFromAppCheckout(snap, payable)
-	orderID, err := s.createOfflineOrderFromSnapshot(ctx, machineID, snap, pricingSnap, currency, key)
+	orderID, err := s.createOfflineOrderFromSnapshot(ctx, machineID, snap, pricingSnap, currency, "cash", key)
 	if err != nil {
 		return err
 	}
@@ -124,14 +124,88 @@ func (s *Service) ProcessOfflineSale(
 	return nil
 }
 
+// MaterializeOrderForPaymentSessionInput materializes a server order for inline CreatePaymentSession pricing_snapshot.
+type MaterializeOrderForPaymentSessionInput struct {
+	MachineID       uuid.UUID
+	PricingSnapshot MachinePricingSnapshotInput
+	Currency        string
+	PaymentMethod   string
+	IdempotencyKey  string
+}
+
+// MaterializeOrderForPaymentSession implements Orchestrator for gRPC cold-path payment session.
+func (s *Service) MaterializeOrderForPaymentSession(
+	ctx context.Context,
+	in MaterializeOrderForPaymentSessionInput,
+) (uuid.UUID, error) {
+	cur := strings.ToUpper(strings.TrimSpace(in.Currency))
+	wireSnap := AppCheckoutPricingSnapshotFromPricingInput(in.PricingSnapshot, cur)
+	return s.MaterializeOrderFromPricingSnapshotInput(
+		ctx,
+		in.MachineID,
+		in.PricingSnapshot,
+		wireSnap,
+		cur,
+		in.PaymentMethod,
+		in.IdempotencyKey,
+	)
+}
+
+// MaterializeOrderFromPricingSnapshotInput creates a server order from a sealed client pricing snapshot.
+func (s *Service) MaterializeOrderFromPricingSnapshotInput(
+	ctx context.Context,
+	machineID uuid.UUID,
+	pricingSnap MachinePricingSnapshotInput,
+	wireSnap appCheckoutPricingSnapshot,
+	currency string,
+	paymentMethod string,
+	idempotencyKey string,
+) (uuid.UUID, error) {
+	pm := strings.TrimSpace(paymentMethod)
+	if pm == "" {
+		pm = "default"
+	}
+	return s.createOfflineOrderFromSnapshot(ctx, machineID, wireSnap, pricingSnap, currency, pm, idempotencyKey)
+}
+
+// AppCheckoutPricingSnapshotFromPricingInput builds wire snapshot metadata from proto-mapped input.
+func AppCheckoutPricingSnapshotFromPricingInput(in MachinePricingSnapshotInput, currency string) appCheckoutPricingSnapshot {
+	lines := make([]appCheckoutLine, 0, len(in.Lines))
+	for _, ln := range in.Lines {
+		lines = append(lines, appCheckoutLine{
+			SlotCode:       strings.TrimSpace(ln.SlotCode),
+			ProductID:      ln.ProductID.String(),
+			UnitPriceMinor: ln.UnitPriceMinor,
+			Quantity:       int(ln.Quantity),
+		})
+	}
+	payable := in.TotalMinor
+	if payable <= 0 {
+		payable = in.SubtotalMinor
+	}
+	return appCheckoutPricingSnapshot{
+		SnapshotID:           strings.TrimSpace(in.SnapshotID),
+		PayableTotalMinor:    payable,
+		Currency:             strings.TrimSpace(currency),
+		LocalPricingRevision: in.LocalPricingRevision,
+		SlotConfigVersion:    int(in.SlotConfigVersion),
+		Lines:                lines,
+	}
+}
+
 func (s *Service) createOfflineOrderFromSnapshot(
 	ctx context.Context,
 	machineID uuid.UUID,
 	snap appCheckoutPricingSnapshot,
 	pricingSnap MachinePricingSnapshotInput,
 	currency string,
+	paymentMethod string,
 	key string,
 ) (uuid.UUID, error) {
+	pm := strings.TrimSpace(paymentMethod)
+	if pm == "" {
+		pm = "default"
+	}
 	if len(snap.Lines) == 1 {
 		line := snap.Lines[0]
 		productID, err := uuid.Parse(strings.TrimSpace(line.ProductID))
@@ -201,7 +275,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 	quoteOut, err := s.CreateQuote(ctx, CreateQuoteInput{
 		MachineID:       machineID,
 		Currency:        currency,
-		PaymentMethod:   "cash",
+		PaymentMethod:   pm,
 		Lines:           quoteLines,
 		IdempotencyKey:  quoteKey,
 		PricingSnapshot: &pricingSnap,
@@ -213,7 +287,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 	orderOut, err := s.CreateOrderFromQuote(ctx, CreateOrderFromQuoteInput{
 		MachineID:       machineID,
 		QuoteID:         quoteOut.QuoteID,
-		PaymentMethod:   "cash",
+		PaymentMethod:   pm,
 		IdempotencyKey:  coKey,
 		PricingSnapshot: &pricingSnap,
 	})

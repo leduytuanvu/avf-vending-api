@@ -1623,8 +1623,10 @@ type CreatePaymentSessionRequest struct {
 	QuoteId *string `protobuf:"bytes,11,opt,name=quote_id,json=quoteId,proto3,oneof" json:"quote_id,omitempty"`
 	// Machine-local checkout id (pricing snapshot id) for idempotent order-from-quote.
 	ClientCheckoutId *string `protobuf:"bytes,12,opt,name=client_checkout_id,json=clientCheckoutId,proto3,oneof" json:"client_checkout_id,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// Cold-path: materialize quote+order inside this RPC when quote_id is absent (wire-safe for old clients).
+	PricingSnapshot *MachinePricingSnapshot `protobuf:"bytes,13,opt,name=pricing_snapshot,json=pricingSnapshot,proto3,oneof" json:"pricing_snapshot,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *CreatePaymentSessionRequest) Reset() {
@@ -1739,6 +1741,13 @@ func (x *CreatePaymentSessionRequest) GetClientCheckoutId() string {
 		return *x.ClientCheckoutId
 	}
 	return ""
+}
+
+func (x *CreatePaymentSessionRequest) GetPricingSnapshot() *MachinePricingSnapshot {
+	if x != nil {
+		return x.PricingSnapshot
+	}
+	return nil
 }
 
 type CreatePaymentSessionResponse struct {
@@ -4657,7 +4666,7 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x04meta\x18\t \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\x12%\n" +
 	"\x0epricing_source\x18\n" +
 	" \x01(\tR\rpricingSource\x12?\n" +
-	"\x1cserver_reference_total_minor\x18\v \x01(\x03R\x19serverReferenceTotalMinor\"\xe8\x04\n" +
+	"\x1cserver_reference_total_minor\x18\v \x01(\x03R\x19serverReferenceTotalMinor\"\xd5\x05\n" +
 	"\x1bCreatePaymentSessionRequest\x12<\n" +
 	"\acontext\x18\x01 \x01(\v2\".avf.machine.v1.IdempotencyContextR\acontext\x12\x19\n" +
 	"\border_id\x18\x02 \x01(\tR\aorderId\x12\x1a\n" +
@@ -4674,11 +4683,13 @@ const file_avf_machine_v1_commerce_proto_rawDesc = "" +
 	"\x15supersedes_payment_id\x18\n" +
 	" \x01(\tH\x01R\x13supersedesPaymentId\x88\x01\x01\x12\x1e\n" +
 	"\bquote_id\x18\v \x01(\tH\x02R\aquoteId\x88\x01\x01\x121\n" +
-	"\x12client_checkout_id\x18\f \x01(\tH\x03R\x10clientCheckoutId\x88\x01\x01B\r\n" +
+	"\x12client_checkout_id\x18\f \x01(\tH\x03R\x10clientCheckoutId\x88\x01\x01\x12V\n" +
+	"\x10pricing_snapshot\x18\r \x01(\v2&.avf.machine.v1.MachinePricingSnapshotH\x04R\x0fpricingSnapshot\x88\x01\x01B\r\n" +
 	"\v_simulationB\x18\n" +
 	"\x16_supersedes_payment_idB\v\n" +
 	"\t_quote_idB\x15\n" +
-	"\x13_client_checkout_id\"\xa0\x02\n" +
+	"\x13_client_checkout_idB\x13\n" +
+	"\x11_pricing_snapshot\"\xa0\x02\n" +
 	"\x1cCreatePaymentSessionResponse\x12\x16\n" +
 	"\x06replay\x18\x01 \x01(\bR\x06replay\x12\x1d\n" +
 	"\n" +
@@ -5096,88 +5107,89 @@ var file_avf_machine_v1_commerce_proto_depIdxs = []int32{
 	57, // 28: avf.machine.v1.CreateOrderFromQuoteResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	55, // 29: avf.machine.v1.CreatePaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
 	7,  // 30: avf.machine.v1.CreatePaymentSessionRequest.simulation:type_name -> avf.machine.v1.SimulationContext
-	54, // 31: avf.machine.v1.CashAcceptanceEvent.accepted_at:type_name -> google.protobuf.Timestamp
-	55, // 32: avf.machine.v1.ConfirmCashPaymentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	7,  // 33: avf.machine.v1.ConfirmCashPaymentRequest.simulation:type_name -> avf.machine.v1.SimulationContext
-	54, // 34: avf.machine.v1.ConfirmCashPaymentRequest.consented_at:type_name -> google.protobuf.Timestamp
-	21, // 35: avf.machine.v1.ConfirmCashPaymentRequest.cash_acceptance_events:type_name -> avf.machine.v1.CashAcceptanceEvent
-	54, // 36: avf.machine.v1.CashMovementEvent.occurred_at:type_name -> google.protobuf.Timestamp
-	55, // 37: avf.machine.v1.ReportCashMovementsRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	24, // 38: avf.machine.v1.ReportCashMovementsRequest.events:type_name -> avf.machine.v1.CashMovementEvent
-	54, // 39: avf.machine.v1.GetOrderResponse.order_created_at:type_name -> google.protobuf.Timestamp
-	17, // 40: avf.machine.v1.GetOrderResponse.vend_lines:type_name -> avf.machine.v1.OrderVendLineResponse
-	33, // 41: avf.machine.v1.VendHardwareEvidence.command:type_name -> avf.machine.v1.HardwareCommandRef
-	34, // 42: avf.machine.v1.VendHardwareEvidence.bill_final:type_name -> avf.machine.v1.BillFinalRecord
-	35, // 43: avf.machine.v1.VendHardwareEvidence.tcn_dispense:type_name -> avf.machine.v1.TcnDispenseRecord
-	55, // 44: avf.machine.v1.StartVendRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	55, // 45: avf.machine.v1.ConfirmVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	36, // 46: avf.machine.v1.ConfirmVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	55, // 47: avf.machine.v1.ReportVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	36, // 48: avf.machine.v1.ReportVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	55, // 49: avf.machine.v1.ReportVendFailureRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	36, // 50: avf.machine.v1.ReportVendFailureRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
-	55, // 51: avf.machine.v1.CancelOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	55, // 52: avf.machine.v1.MarkOrderUnknownRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	55, // 53: avf.machine.v1.CancelPaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	55, // 54: avf.machine.v1.CommitLocalFulfillmentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
-	51, // 55: avf.machine.v1.CommitLocalFulfillmentRequest.lines:type_name -> avf.machine.v1.CommitLocalFulfillmentLine
-	10, // 56: avf.machine.v1.MachineCommerceService.CreateOrder:input_type -> avf.machine.v1.CreateOrderRequest
-	13, // 57: avf.machine.v1.MachineCommerceService.CreateQuote:input_type -> avf.machine.v1.CreateQuoteRequest
-	16, // 58: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:input_type -> avf.machine.v1.CreateOrderFromQuoteRequest
-	19, // 59: avf.machine.v1.MachineCommerceService.CreatePaymentSession:input_type -> avf.machine.v1.CreatePaymentSessionRequest
-	19, // 60: avf.machine.v1.MachineCommerceService.AttachPaymentResult:input_type -> avf.machine.v1.CreatePaymentSessionRequest
-	22, // 61: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
-	22, // 62: avf.machine.v1.MachineCommerceService.CreateCashCheckout:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
-	25, // 63: avf.machine.v1.MachineCommerceService.ReportCashMovements:input_type -> avf.machine.v1.ReportCashMovementsRequest
-	27, // 64: avf.machine.v1.MachineCommerceService.GetOrder:input_type -> avf.machine.v1.GetOrderRequest
-	29, // 65: avf.machine.v1.MachineCommerceService.GetOrderStatus:input_type -> avf.machine.v1.GetOrderStatusRequest
-	31, // 66: avf.machine.v1.MachineCommerceService.GetPaymentStatus:input_type -> avf.machine.v1.GetPaymentStatusRequest
-	37, // 67: avf.machine.v1.MachineCommerceService.StartVend:input_type -> avf.machine.v1.StartVendRequest
-	39, // 68: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
-	41, // 69: avf.machine.v1.MachineCommerceService.ReportVendSuccess:input_type -> avf.machine.v1.ReportVendSuccessRequest
-	43, // 70: avf.machine.v1.MachineCommerceService.ReportVendFailure:input_type -> avf.machine.v1.ReportVendFailureRequest
-	45, // 71: avf.machine.v1.MachineCommerceService.CancelOrder:input_type -> avf.machine.v1.CancelOrderRequest
-	47, // 72: avf.machine.v1.MachineCommerceService.MarkOrderUnknown:input_type -> avf.machine.v1.MarkOrderUnknownRequest
-	49, // 73: avf.machine.v1.MachineCommerceService.CancelPaymentSession:input_type -> avf.machine.v1.CancelPaymentSessionRequest
-	52, // 74: avf.machine.v1.MachineCommerceService.CommitLocalFulfillment:input_type -> avf.machine.v1.CommitLocalFulfillmentRequest
-	0,  // 75: avf.machine.v1.MachineSaleService.CreateSale:input_type -> avf.machine.v1.CreateSaleRequest
-	2,  // 76: avf.machine.v1.MachineSaleService.AttachPayment:input_type -> avf.machine.v1.AttachPaymentRequest
-	4,  // 77: avf.machine.v1.MachineSaleService.ConfirmCashReceived:input_type -> avf.machine.v1.ConfirmCashReceivedRequest
-	37, // 78: avf.machine.v1.MachineSaleService.StartVend:input_type -> avf.machine.v1.StartVendRequest
-	39, // 79: avf.machine.v1.MachineSaleService.CompleteVend:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
-	43, // 80: avf.machine.v1.MachineSaleService.FailVend:input_type -> avf.machine.v1.ReportVendFailureRequest
-	45, // 81: avf.machine.v1.MachineSaleService.CancelSale:input_type -> avf.machine.v1.CancelOrderRequest
-	11, // 82: avf.machine.v1.MachineCommerceService.CreateOrder:output_type -> avf.machine.v1.CreateOrderResponse
-	15, // 83: avf.machine.v1.MachineCommerceService.CreateQuote:output_type -> avf.machine.v1.CreateQuoteResponse
-	18, // 84: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:output_type -> avf.machine.v1.CreateOrderFromQuoteResponse
-	20, // 85: avf.machine.v1.MachineCommerceService.CreatePaymentSession:output_type -> avf.machine.v1.CreatePaymentSessionResponse
-	20, // 86: avf.machine.v1.MachineCommerceService.AttachPaymentResult:output_type -> avf.machine.v1.CreatePaymentSessionResponse
-	23, // 87: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
-	23, // 88: avf.machine.v1.MachineCommerceService.CreateCashCheckout:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
-	26, // 89: avf.machine.v1.MachineCommerceService.ReportCashMovements:output_type -> avf.machine.v1.ReportCashMovementsResponse
-	28, // 90: avf.machine.v1.MachineCommerceService.GetOrder:output_type -> avf.machine.v1.GetOrderResponse
-	30, // 91: avf.machine.v1.MachineCommerceService.GetOrderStatus:output_type -> avf.machine.v1.GetOrderStatusResponse
-	32, // 92: avf.machine.v1.MachineCommerceService.GetPaymentStatus:output_type -> avf.machine.v1.GetPaymentStatusResponse
-	38, // 93: avf.machine.v1.MachineCommerceService.StartVend:output_type -> avf.machine.v1.StartVendResponse
-	40, // 94: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
-	42, // 95: avf.machine.v1.MachineCommerceService.ReportVendSuccess:output_type -> avf.machine.v1.ReportVendSuccessResponse
-	44, // 96: avf.machine.v1.MachineCommerceService.ReportVendFailure:output_type -> avf.machine.v1.ReportVendFailureResponse
-	46, // 97: avf.machine.v1.MachineCommerceService.CancelOrder:output_type -> avf.machine.v1.CancelOrderResponse
-	48, // 98: avf.machine.v1.MachineCommerceService.MarkOrderUnknown:output_type -> avf.machine.v1.MarkOrderUnknownResponse
-	50, // 99: avf.machine.v1.MachineCommerceService.CancelPaymentSession:output_type -> avf.machine.v1.CancelPaymentSessionResponse
-	53, // 100: avf.machine.v1.MachineCommerceService.CommitLocalFulfillment:output_type -> avf.machine.v1.CommitLocalFulfillmentResponse
-	1,  // 101: avf.machine.v1.MachineSaleService.CreateSale:output_type -> avf.machine.v1.CreateSaleResponse
-	3,  // 102: avf.machine.v1.MachineSaleService.AttachPayment:output_type -> avf.machine.v1.AttachPaymentResponse
-	5,  // 103: avf.machine.v1.MachineSaleService.ConfirmCashReceived:output_type -> avf.machine.v1.ConfirmCashReceivedResponse
-	38, // 104: avf.machine.v1.MachineSaleService.StartVend:output_type -> avf.machine.v1.StartVendResponse
-	40, // 105: avf.machine.v1.MachineSaleService.CompleteVend:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
-	44, // 106: avf.machine.v1.MachineSaleService.FailVend:output_type -> avf.machine.v1.ReportVendFailureResponse
-	46, // 107: avf.machine.v1.MachineSaleService.CancelSale:output_type -> avf.machine.v1.CancelOrderResponse
-	82, // [82:108] is the sub-list for method output_type
-	56, // [56:82] is the sub-list for method input_type
-	56, // [56:56] is the sub-list for extension type_name
-	56, // [56:56] is the sub-list for extension extendee
-	0,  // [0:56] is the sub-list for field type_name
+	9,  // 31: avf.machine.v1.CreatePaymentSessionRequest.pricing_snapshot:type_name -> avf.machine.v1.MachinePricingSnapshot
+	54, // 32: avf.machine.v1.CashAcceptanceEvent.accepted_at:type_name -> google.protobuf.Timestamp
+	55, // 33: avf.machine.v1.ConfirmCashPaymentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	7,  // 34: avf.machine.v1.ConfirmCashPaymentRequest.simulation:type_name -> avf.machine.v1.SimulationContext
+	54, // 35: avf.machine.v1.ConfirmCashPaymentRequest.consented_at:type_name -> google.protobuf.Timestamp
+	21, // 36: avf.machine.v1.ConfirmCashPaymentRequest.cash_acceptance_events:type_name -> avf.machine.v1.CashAcceptanceEvent
+	54, // 37: avf.machine.v1.CashMovementEvent.occurred_at:type_name -> google.protobuf.Timestamp
+	55, // 38: avf.machine.v1.ReportCashMovementsRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	24, // 39: avf.machine.v1.ReportCashMovementsRequest.events:type_name -> avf.machine.v1.CashMovementEvent
+	54, // 40: avf.machine.v1.GetOrderResponse.order_created_at:type_name -> google.protobuf.Timestamp
+	17, // 41: avf.machine.v1.GetOrderResponse.vend_lines:type_name -> avf.machine.v1.OrderVendLineResponse
+	33, // 42: avf.machine.v1.VendHardwareEvidence.command:type_name -> avf.machine.v1.HardwareCommandRef
+	34, // 43: avf.machine.v1.VendHardwareEvidence.bill_final:type_name -> avf.machine.v1.BillFinalRecord
+	35, // 44: avf.machine.v1.VendHardwareEvidence.tcn_dispense:type_name -> avf.machine.v1.TcnDispenseRecord
+	55, // 45: avf.machine.v1.StartVendRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	55, // 46: avf.machine.v1.ConfirmVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 47: avf.machine.v1.ConfirmVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	55, // 48: avf.machine.v1.ReportVendSuccessRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 49: avf.machine.v1.ReportVendSuccessRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	55, // 50: avf.machine.v1.ReportVendFailureRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	36, // 51: avf.machine.v1.ReportVendFailureRequest.evidence:type_name -> avf.machine.v1.VendHardwareEvidence
+	55, // 52: avf.machine.v1.CancelOrderRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	55, // 53: avf.machine.v1.MarkOrderUnknownRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	55, // 54: avf.machine.v1.CancelPaymentSessionRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	55, // 55: avf.machine.v1.CommitLocalFulfillmentRequest.context:type_name -> avf.machine.v1.IdempotencyContext
+	51, // 56: avf.machine.v1.CommitLocalFulfillmentRequest.lines:type_name -> avf.machine.v1.CommitLocalFulfillmentLine
+	10, // 57: avf.machine.v1.MachineCommerceService.CreateOrder:input_type -> avf.machine.v1.CreateOrderRequest
+	13, // 58: avf.machine.v1.MachineCommerceService.CreateQuote:input_type -> avf.machine.v1.CreateQuoteRequest
+	16, // 59: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:input_type -> avf.machine.v1.CreateOrderFromQuoteRequest
+	19, // 60: avf.machine.v1.MachineCommerceService.CreatePaymentSession:input_type -> avf.machine.v1.CreatePaymentSessionRequest
+	19, // 61: avf.machine.v1.MachineCommerceService.AttachPaymentResult:input_type -> avf.machine.v1.CreatePaymentSessionRequest
+	22, // 62: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
+	22, // 63: avf.machine.v1.MachineCommerceService.CreateCashCheckout:input_type -> avf.machine.v1.ConfirmCashPaymentRequest
+	25, // 64: avf.machine.v1.MachineCommerceService.ReportCashMovements:input_type -> avf.machine.v1.ReportCashMovementsRequest
+	27, // 65: avf.machine.v1.MachineCommerceService.GetOrder:input_type -> avf.machine.v1.GetOrderRequest
+	29, // 66: avf.machine.v1.MachineCommerceService.GetOrderStatus:input_type -> avf.machine.v1.GetOrderStatusRequest
+	31, // 67: avf.machine.v1.MachineCommerceService.GetPaymentStatus:input_type -> avf.machine.v1.GetPaymentStatusRequest
+	37, // 68: avf.machine.v1.MachineCommerceService.StartVend:input_type -> avf.machine.v1.StartVendRequest
+	39, // 69: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
+	41, // 70: avf.machine.v1.MachineCommerceService.ReportVendSuccess:input_type -> avf.machine.v1.ReportVendSuccessRequest
+	43, // 71: avf.machine.v1.MachineCommerceService.ReportVendFailure:input_type -> avf.machine.v1.ReportVendFailureRequest
+	45, // 72: avf.machine.v1.MachineCommerceService.CancelOrder:input_type -> avf.machine.v1.CancelOrderRequest
+	47, // 73: avf.machine.v1.MachineCommerceService.MarkOrderUnknown:input_type -> avf.machine.v1.MarkOrderUnknownRequest
+	49, // 74: avf.machine.v1.MachineCommerceService.CancelPaymentSession:input_type -> avf.machine.v1.CancelPaymentSessionRequest
+	52, // 75: avf.machine.v1.MachineCommerceService.CommitLocalFulfillment:input_type -> avf.machine.v1.CommitLocalFulfillmentRequest
+	0,  // 76: avf.machine.v1.MachineSaleService.CreateSale:input_type -> avf.machine.v1.CreateSaleRequest
+	2,  // 77: avf.machine.v1.MachineSaleService.AttachPayment:input_type -> avf.machine.v1.AttachPaymentRequest
+	4,  // 78: avf.machine.v1.MachineSaleService.ConfirmCashReceived:input_type -> avf.machine.v1.ConfirmCashReceivedRequest
+	37, // 79: avf.machine.v1.MachineSaleService.StartVend:input_type -> avf.machine.v1.StartVendRequest
+	39, // 80: avf.machine.v1.MachineSaleService.CompleteVend:input_type -> avf.machine.v1.ConfirmVendSuccessRequest
+	43, // 81: avf.machine.v1.MachineSaleService.FailVend:input_type -> avf.machine.v1.ReportVendFailureRequest
+	45, // 82: avf.machine.v1.MachineSaleService.CancelSale:input_type -> avf.machine.v1.CancelOrderRequest
+	11, // 83: avf.machine.v1.MachineCommerceService.CreateOrder:output_type -> avf.machine.v1.CreateOrderResponse
+	15, // 84: avf.machine.v1.MachineCommerceService.CreateQuote:output_type -> avf.machine.v1.CreateQuoteResponse
+	18, // 85: avf.machine.v1.MachineCommerceService.CreateOrderFromQuote:output_type -> avf.machine.v1.CreateOrderFromQuoteResponse
+	20, // 86: avf.machine.v1.MachineCommerceService.CreatePaymentSession:output_type -> avf.machine.v1.CreatePaymentSessionResponse
+	20, // 87: avf.machine.v1.MachineCommerceService.AttachPaymentResult:output_type -> avf.machine.v1.CreatePaymentSessionResponse
+	23, // 88: avf.machine.v1.MachineCommerceService.ConfirmCashPayment:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
+	23, // 89: avf.machine.v1.MachineCommerceService.CreateCashCheckout:output_type -> avf.machine.v1.ConfirmCashPaymentResponse
+	26, // 90: avf.machine.v1.MachineCommerceService.ReportCashMovements:output_type -> avf.machine.v1.ReportCashMovementsResponse
+	28, // 91: avf.machine.v1.MachineCommerceService.GetOrder:output_type -> avf.machine.v1.GetOrderResponse
+	30, // 92: avf.machine.v1.MachineCommerceService.GetOrderStatus:output_type -> avf.machine.v1.GetOrderStatusResponse
+	32, // 93: avf.machine.v1.MachineCommerceService.GetPaymentStatus:output_type -> avf.machine.v1.GetPaymentStatusResponse
+	38, // 94: avf.machine.v1.MachineCommerceService.StartVend:output_type -> avf.machine.v1.StartVendResponse
+	40, // 95: avf.machine.v1.MachineCommerceService.ConfirmVendSuccess:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
+	42, // 96: avf.machine.v1.MachineCommerceService.ReportVendSuccess:output_type -> avf.machine.v1.ReportVendSuccessResponse
+	44, // 97: avf.machine.v1.MachineCommerceService.ReportVendFailure:output_type -> avf.machine.v1.ReportVendFailureResponse
+	46, // 98: avf.machine.v1.MachineCommerceService.CancelOrder:output_type -> avf.machine.v1.CancelOrderResponse
+	48, // 99: avf.machine.v1.MachineCommerceService.MarkOrderUnknown:output_type -> avf.machine.v1.MarkOrderUnknownResponse
+	50, // 100: avf.machine.v1.MachineCommerceService.CancelPaymentSession:output_type -> avf.machine.v1.CancelPaymentSessionResponse
+	53, // 101: avf.machine.v1.MachineCommerceService.CommitLocalFulfillment:output_type -> avf.machine.v1.CommitLocalFulfillmentResponse
+	1,  // 102: avf.machine.v1.MachineSaleService.CreateSale:output_type -> avf.machine.v1.CreateSaleResponse
+	3,  // 103: avf.machine.v1.MachineSaleService.AttachPayment:output_type -> avf.machine.v1.AttachPaymentResponse
+	5,  // 104: avf.machine.v1.MachineSaleService.ConfirmCashReceived:output_type -> avf.machine.v1.ConfirmCashReceivedResponse
+	38, // 105: avf.machine.v1.MachineSaleService.StartVend:output_type -> avf.machine.v1.StartVendResponse
+	40, // 106: avf.machine.v1.MachineSaleService.CompleteVend:output_type -> avf.machine.v1.ConfirmVendSuccessResponse
+	44, // 107: avf.machine.v1.MachineSaleService.FailVend:output_type -> avf.machine.v1.ReportVendFailureResponse
+	46, // 108: avf.machine.v1.MachineSaleService.CancelSale:output_type -> avf.machine.v1.CancelOrderResponse
+	83, // [83:109] is the sub-list for method output_type
+	57, // [57:83] is the sub-list for method input_type
+	57, // [57:57] is the sub-list for extension type_name
+	57, // [57:57] is the sub-list for extension extendee
+	0,  // [0:57] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_commerce_proto_init() }

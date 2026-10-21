@@ -52,6 +52,7 @@ func TestCreateOfflineOrderFromSnapshot_singleLineUsesCheckoutMirror(t *testing.
 		snap,
 		pricingSnap,
 		"VND",
+		"cash",
 		"offline-sale:test",
 	)
 	require.NoError(t, err)

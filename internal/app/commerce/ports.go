@@ -82,6 +82,7 @@ type Orchestrator interface {
 	CreateOrder(ctx context.Context, in CreateOrderInput) (CreateOrderResult, error)
 	CreateQuote(ctx context.Context, in CreateQuoteInput) (CreateQuoteResult, error)
 	CreateOrderFromQuote(ctx context.Context, in CreateOrderFromQuoteInput) (CreateOrderFromQuoteResult, error)
+	MaterializeOrderForPaymentSession(ctx context.Context, in MaterializeOrderForPaymentSessionInput) (uuid.UUID, error)
 	StartPaymentWithOutbox(ctx context.Context, in StartPaymentInput) (domaincommerce.PaymentOutboxResult, error)
 	CreateMachinePaymentSession(ctx context.Context, in CreateMachinePaymentSessionInput) (CreateMachinePaymentSessionResult, error)
 	BindPaymentAttempt(ctx context.Context, in InsertPaymentAttemptParams) (PaymentAttemptView, error)
