@@ -123,6 +123,7 @@ is_compose_local_service_ref() {
 	nats://nats* | nats://nats:*) return 0 ;;
 	mqtt://mosquitto* | mqtt://mosquitto:*) return 0 ;;
 	postgres://postgres* | postgres://postgres:*) return 0 ;;
+	postgres://*@pgbouncer:* | postgres://*@pgbouncer/*) return 0 ;;
 	esac
 	case "${key}" in
 	REDIS_ADDR)
@@ -200,6 +201,37 @@ print(u.port or 0)
 PY
 }
 
+# App-node A may use Docker dbnet hostname pgbouncer:5432; B must use VPS A :6432 hairpin.
+rewrite_database_url_for_app_node_b() {
+	local url="$1"
+	python3 - "$url" <<'PY'
+import sys
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+
+raw = sys.argv[1].strip()
+if not raw:
+    print(raw)
+    raise SystemExit(0)
+u = urlparse(raw)
+host = (u.hostname or "").lower()
+if host != "pgbouncer":
+    print(raw)
+    raise SystemExit(0)
+port = u.port or 5432
+# Container :5432 on dbnet; remote app-node-b uses host-published transaction port.
+new_netloc = u.netloc
+if "@" in new_netloc:
+    userinfo, _ = new_netloc.rsplit("@", 1)
+    new_netloc = f"{userinfo}@72.62.244.94:6432"
+else:
+    new_netloc = "72.62.244.94:6432"
+q = parse_qs(u.query, keep_blank_values=True)
+q.setdefault("default_query_exec_mode", ["simple_protocol"])
+query = urlencode({k: v[0] for k, v in q.items()})
+print(urlunparse((u.scheme, new_netloc, u.path, u.params, query, u.fragment)))
+PY
+}
+
 NODE_LOCAL_KEYS=(
 	COMPOSE_PROJECT_NAME
 	APP_NODE_NAME
@@ -230,6 +262,13 @@ trap 'rm -f "${updates_file}"' EXIT
 for key in "${SHARED_SYNC_KEYS[@]}"; do
 	val="$(read_primary_runtime_value "${key}")"
 	[[ -n "${val}" ]] || continue
+	if [[ "${key}" == "DATABASE_URL" ]]; then
+		val="$(rewrite_database_url_for_app_node_b "${val}")"
+		note "DATABASE_URL for B: $(url_port "${val}") (rewritten if A used pgbouncer hostname)"
+	elif [[ "${key}" == "BACKUP_DATABASE_URL" ]]; then
+		# Host-side backup DSN is node-local on A; keep B's existing value.
+		continue
+	fi
 	append_line_to_updates "${key}" "${val}"
 done
 append_primary_api_redis_env
