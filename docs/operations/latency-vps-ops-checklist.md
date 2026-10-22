@@ -7,8 +7,10 @@ Run after code deploys that target REST/gRPC/MQTT latency. See [production-laten
 - [ ] Baseline: `BASE_URL=https://api.ldtv.dev ./scripts/production/measure-http-latency.sh`
 - [ ] `docker stats` on app-node (api, worker, mqtt-ingest, caddy)
 - [ ] Ops metrics: `http_request_duration_seconds`, `grpc_request_duration_seconds`, `avf_db_pool_acquired_conns`
-- [ ] Confirm `DATABASE_URL` uses Supabase **transaction pooler port 6543** (not session `:5432` pool_size=15)
-- [ ] Sum of `API_DATABASE_MAX_CONNS` + worker + mqtt-ingest + reconciler < ~60–70% of pooler limit
+- [ ] Confirm runtime `DATABASE_URL` uses self-hosted PgBouncer on VPS A **transaction port 6432** (`72.62.244.94:6432` or Docker hostname `pgbouncer:5432` on dbnet). Production rejects `127.0.0.1`/`localhost`.
+- [ ] Runtime `DATABASE_URL` includes `default_query_exec_mode=simple_protocol` **or** the running image has the pgx pool guard (`host=pgbouncer` / port `6432`). Burst `/v1/auth/login` must not return SQLSTATE 26000 (`stmtcache_*`).
+- [ ] Do **not** point production at the old Mumbai/Supabase pooler. Keep the Supabase project paused (do not delete) until 48h after cutover + off-box backup has run.
+- [ ] Sum of `API_DATABASE_MAX_CONNS` + worker + mqtt-ingest + reconciler < ~60–70% of PgBouncer/`max_client_conn`
 
 ## Safe tuning knobs (env on app-node)
 
