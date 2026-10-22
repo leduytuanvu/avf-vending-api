@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Ensure production app-node env uses live QR/card payment (MoMo/ZaloPay/VietQR/VNPay/ShopeePay).
-# Ensure MOMO_* / ZALOPAY_* / VNP_* credentials are set for every key in
+# Ensure MOMO_* / ZALOPAY_* / VNP_* / SHOPEEPAY_* credentials are set for every key in
 # COMMERCE_PAYMENT_PROVIDERS (default: momo,zalopay,vietqr). Add shopeepay
 # only after SHOPEEPAY_* is configured — production boot requires credentials for each allowlisted key.
+# ShopeePay notify URL: https://api.ldtv.dev/v1/commerce/webhooks/shopeepay
+# Also set SHOPEEPAY_CALLBACK_IP_WHITELIST and SHOPEEPAY_TRUST_PROXY=true behind Caddy.
 # Usage: apply_live_payment_app_node_env.sh [path/to/.env.app-node]
 set -euo pipefail
 

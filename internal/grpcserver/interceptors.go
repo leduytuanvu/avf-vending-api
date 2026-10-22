@@ -534,6 +534,7 @@ func unaryMachineAuth(ctx context.Context, req any, info *grpc.UnaryServerInfo, 
 	if skipCredentialUsedTouchForMethod(info.FullMethod) {
 		ctx = withSkipCredentialUsedTouch(ctx)
 	}
+	ctx = withMachineCredentialGateSnapshotBox(ctx)
 	if machineTokenChecker != nil {
 		if err := machineTokenChecker.ValidateMachineAccessClaims(ctx, claims); err != nil {
 			recordGRPCAuthFailureFromStatus(err)

@@ -8,7 +8,7 @@ source "${SHARED_ROOT}/scripts/lib_release.sh"
 
 ENV_FILE="${NODE_ROOT}/.env.app-node"
 COMPOSE_FILE="${NODE_ROOT}/docker-compose.app-node.yml"
-COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+compose_with_optional_dbnet "${ENV_FILE}" "${COMPOSE_FILE}"
 PHASE="startup"
 
 trap 'rc=$?; if [[ "${rc}" -ne 0 ]]; then echo "rollback_app_node: failed during ${PHASE}" >&2; fi' EXIT

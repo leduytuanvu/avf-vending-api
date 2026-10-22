@@ -115,17 +115,24 @@ func ZaloPayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config) 
 // ShopeePayNativeCallbackHandler handles POST /v1/commerce/webhooks/shopeepay.
 func ShopeePayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		softACK := func() {
+		reject := func(status int, msg string) {
+			writeJSON(w, status, map[string]any{"errcode": 1, "debug_msg": msg})
+		}
+		ack := func() {
 			writeJSON(w, http.StatusOK, map[string]any{"errcode": 0, "debug_msg": "success"})
 		}
 		body, err := io.ReadAll(io.LimitReader(r.Body, 1<<20))
 		if err != nil {
-			softACK()
+			reject(http.StatusBadRequest, "invalid body")
+			return
+		}
+		if app == nil || app.PaymentProviders == nil {
+			reject(http.StatusServiceUnavailable, "shopeepay not configured")
 			return
 		}
 		prov, ok := app.PaymentProviders.Get("shopeepay").(*platformpayments.ShopeePayProvider)
 		if !ok || prov == nil {
-			softACK()
+			reject(http.StatusServiceUnavailable, "shopeepay not configured")
 			return
 		}
 		log := observability.LoggerFromContext(r.Context(), zap.NewNop())
@@ -135,18 +142,42 @@ func ShopeePayNativeCallbackHandler(app *api.HTTPApplication, cfg *config.Config
 		)
 		clientID := strings.TrimSpace(r.Header.Get("X-Airpay-ClientId"))
 		signature := strings.TrimSpace(r.Header.Get("X-Airpay-Req-H"))
-		_, status, _, event, err := prov.VerifyAndParseCallback(body, clientID, signature, clientIP(r))
+		remoteIP := shopeeCallbackClientIP(r, prov.TrustProxy())
+		_, status, _, event, err := prov.VerifyAndParseCallback(body, clientID, signature, remoteIP)
 		if err != nil {
+			code, msg := platformpayments.ShopeeCallbackHTTPStatus(err)
 			log.Warn("PSP_WEBHOOK_SIGNATURE_INVALID",
 				zap.String("provider", "shopeepay"),
+				zap.Int("http_status", code),
 				zap.Error(err),
 			)
-			softACK()
+			reject(code, msg)
 			return
 		}
 		logPSPWebhookParsed(log, "shopeepay", event, status)
-		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "shopeepay", event, status, softACK, func(_ string) { softACK() })
+		handleNativePSPWebhookResponse(w, r.Context(), app, cfg, log, "shopeepay", event, status, ack, func(msg string) {
+			if strings.EqualFold(strings.TrimSpace(msg), "order not found") {
+				reject(http.StatusServiceUnavailable, "order not found")
+				return
+			}
+			reject(http.StatusBadRequest, msg)
+		})
 	}
+}
+
+func shopeeCallbackClientIP(r *http.Request, trustProxy bool) string {
+	if r == nil {
+		return ""
+	}
+	if trustProxy {
+		if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+			return strings.TrimSpace(strings.Split(xff, ",")[0])
+		}
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
+	}
+	return clientIP(r)
 }
 
 // VNPayNativeReturnHandler handles GET /v1/commerce/webhooks/vnpay/return.

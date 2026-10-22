@@ -25,3 +25,5 @@ Global `DATABASE_MAX_CONNS` must be ≥ sum of per-process effective max × app 
 - mqtt-ingest dispatch failures / lag → raise ingest CPU or `TELEMETRY_GLOBAL_MAX_INFLIGHT` only with evidence.
 
 See [production-latency-runbook](./production-latency-runbook.md).
+
+Idle production (few machines) must **not** jump to the ~500 column. Use [fleet-500-infra-checklist.md](./fleet-500-infra-checklist.md) when the live fleet is actually scaling.

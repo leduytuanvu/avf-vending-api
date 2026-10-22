@@ -523,6 +523,62 @@ func TestMachineGRPC_Commerce_CreatePaymentSession_QuoteIdMaterializesOrder(t *t
 	require.Equal(t, payable, got.GetTotalMinor())
 }
 
+func TestMachineGRPC_Commerce_CreatePaymentSession_TwoSandboxProvidersNoIdempotencyMismatch(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineCommerceServiceClient(conn)
+
+	idem := "quote-two-psp-" + uuid.NewString()
+	checkoutID := uuid.NewString()
+	quoteOut, err := cli.CreateQuote(md, &machinev1.CreateQuoteRequest{
+		Context:       testCommerceIdemCtx(idem+":quote", "evt-quote-two"),
+		Currency:      "USD",
+		PaymentMethod: "psp_grpc_int",
+		Lines: []*machinev1.QuoteLineInput{{
+			ProductId: testfixtures.DevProductWater.String(),
+			Slot:      &machinev1.SlotSelection{SlotIndex: ptrInt32(1)},
+			Quantity:  1,
+		}},
+	})
+	require.NoError(t, err)
+	quoteID := quoteOut.GetQuoteId()
+	payable := quoteOut.GetPayableMinor()
+
+	p1, err := cli.CreatePaymentSession(md, &machinev1.CreatePaymentSessionRequest{
+		Context:          testCommerceIdemCtx(idem+":pay-a", "evt-pay-a"),
+		QuoteId:          &quoteID,
+		ClientCheckoutId: &checkoutID,
+		Provider:         "psp_grpc_int",
+		PaymentState:     "created",
+		AmountMinor:      payable,
+		Currency:         "USD",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, p1.GetQrPayloadOrUrl())
+	require.NotEmpty(t, p1.GetMaterializedOrderId())
+	orderID := p1.GetMaterializedOrderId()
+
+	p2, err := cli.CreatePaymentSession(md, &machinev1.CreatePaymentSessionRequest{
+		Context:      testCommerceIdemCtx(idem+":pay-b", "evt-pay-b"),
+		OrderId:      orderID,
+		Provider:     "sandbox",
+		PaymentState: "created",
+		AmountMinor:  payable,
+		Currency:     "USD",
+	})
+	require.NoError(t, err)
+	require.NotEmpty(t, p2.GetQrPayloadOrUrl())
+	require.NotEqual(t, p1.GetPaymentId(), p2.GetPaymentId())
+
+	var n int
+	err = pool.QueryRow(ctx, `SELECT COUNT(*) FROM payments WHERE order_id = $1::uuid`, orderID).Scan(&n)
+	require.NoError(t, err)
+	require.Equal(t, 2, n)
+}
+
 func TestMachineGRPC_Commerce_CreatePaymentSession_QuoteIdAmountMismatchInvalidArgument(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	srv, issuer := machineCommerceTestServer(t, pool, testMachineGRPCConfig())
@@ -544,9 +600,10 @@ func TestMachineGRPC_Commerce_CreatePaymentSession_QuoteIdAmountMismatchInvalidA
 	require.NoError(t, err)
 	payable := quoteOut.GetPayableMinor()
 
+	badQuoteID := quoteOut.GetQuoteId()
 	_, err = cli.CreatePaymentSession(md, &machinev1.CreatePaymentSessionRequest{
 		Context:      testCommerceIdemCtx(idem+":pay", "evt-pay-bad-amt"),
-		QuoteId:      quoteOut.GetQuoteId(),
+		QuoteId:      &badQuoteID,
 		Provider:     "psp_grpc_int",
 		PaymentState: "created",
 		AmountMinor:  payable - 1,

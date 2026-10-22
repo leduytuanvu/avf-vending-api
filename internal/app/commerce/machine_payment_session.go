@@ -36,6 +36,8 @@ type CreateMachinePaymentSessionInput struct {
 	PreferredMethod     string // e.g. vietqr when using zalopay adapter
 	AttemptSeq          int32
 	SupersedesPaymentID *uuid.UUID
+	// LoadedOrder, when set and matching OrderID, skips a duplicate GetOrderByID.
+	LoadedOrder *domaincommerce.Order
 }
 
 // CreateMachinePaymentSessionResult returns provider-owned display material for the kiosk.
@@ -77,11 +79,17 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		return out, errors.Join(ErrInvalidArgument, errors.New("payment_state must be empty or created for PSP sessions"))
 	}
 	phaseStart = time.Now()
-	o, err := s.life.GetOrderByID(ctx, in.OrderID)
-	orderLoadMs := time.Since(phaseStart).Milliseconds()
-	if err != nil {
-		return out, err
+	var o domaincommerce.Order
+	var err error
+	if in.LoadedOrder != nil && in.LoadedOrder.ID == in.OrderID {
+		o = *in.LoadedOrder
+	} else {
+		o, err = s.life.GetOrderByID(ctx, in.OrderID)
+		if err != nil {
+			return out, err
+		}
 	}
+	orderLoadMs := time.Since(phaseStart).Milliseconds()
 	if o.MachineID != in.MachineID {
 		return out, errors.Join(ErrInvalidArgument, errors.New("order machine mismatch"))
 	}
@@ -108,29 +116,42 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 		"schema_version": 1,
 	})
 	outboxIdem := key + ":outbox:" + in.OrderID.String()
+	providerRef := strings.TrimSpace(in.ProviderReference)
+	if providerRef == "" {
+		providerRef = ref.GenerateFromUUID(uuid.New())
+	}
+	preCreatePayload, _ := json.Marshal(map[string]any{
+		"provider_reference": providerRef,
+		"bind_phase":         "pre_create",
+	})
 	phaseStart = time.Now()
 	payRes, err := s.StartPaymentWithOutbox(ctx, StartPaymentInput{
-		OrderID:              in.OrderID,
-		Provider:             pkey,
-		PaymentState:         "created",
-		AmountMinor:          o.TotalMinor,
-		Currency:             o.Currency,
-		IdempotencyKey:       key,
-		AttemptSeq:           in.AttemptSeq,
-		SupersedesPaymentID:  in.SupersedesPaymentID,
-		OutboxTopic:          in.OutboxTopic,
-		OutboxEventType:      in.OutboxEventType,
-		OutboxPayload:        outboxPayload,
-		OutboxAggregateType:  in.OutboxAggregate,
-		OutboxAggregateID:    in.OrderID,
-		OutboxIdempotencyKey: outboxIdem,
-		Simulated:            o.Simulated,
-		SimulationRunID:      derefString(o.SimulationRunID),
-		SimulationScenario:   derefString(o.SimulationScenario),
-		FakeBill:             o.FakeBill,
-		FakeBoard:            o.FakeBoard,
+		OrderID:               in.OrderID,
+		Provider:              pkey,
+		PaymentState:          "created",
+		AmountMinor:           o.TotalMinor,
+		Currency:              o.Currency,
+		IdempotencyKey:        key,
+		AttemptSeq:            in.AttemptSeq,
+		SupersedesPaymentID:   in.SupersedesPaymentID,
+		OutboxTopic:           in.OutboxTopic,
+		OutboxEventType:       in.OutboxEventType,
+		OutboxPayload:         outboxPayload,
+		OutboxAggregateType:   in.OutboxAggregate,
+		OutboxAggregateID:     in.OrderID,
+		OutboxIdempotencyKey:  outboxIdem,
+		Simulated:             o.Simulated,
+		SimulationRunID:       derefString(o.SimulationRunID),
+		SimulationScenario:    derefString(o.SimulationScenario),
+		FakeBill:              o.FakeBill,
+		FakeBoard:             o.FakeBoard,
+		BindAttemptState:      "created",
+		BindProviderReference: providerRef,
+		BindPayload:           preCreatePayload,
+		SkipOrderLookup:       true,
 	})
 	startPaymentOutboxMs := time.Since(phaseStart).Milliseconds()
+	bindPreMs := startPaymentOutboxMs
 	if err != nil {
 		return out, err
 	}
@@ -155,29 +176,11 @@ func (s *Service) CreateMachinePaymentSession(ctx context.Context, in CreateMach
 			zap.Bool("replay", true),
 			zap.Int64("order_load_ms", orderLoadMs),
 			zap.Int64("start_payment_outbox_ms", startPaymentOutboxMs),
+			zap.Int64("bind_pre_ms", bindPreMs),
 			zap.Int64("total_ms", time.Since(overallStart).Milliseconds()),
 		)
 		return out, nil
 	}
-
-	providerRef := strings.TrimSpace(in.ProviderReference)
-	if providerRef == "" {
-		providerRef = ref.GenerateFromUUID(payRes.Payment.ID)
-	}
-	preCreatePayload, _ := json.Marshal(map[string]any{
-		"provider_reference": providerRef,
-		"bind_phase":         "pre_create",
-	})
-	phaseStart = time.Now()
-	if _, err := s.BindPaymentAttempt(ctx, InsertPaymentAttemptParams{
-		PaymentID:         payRes.Payment.ID,
-		State:             "created",
-		ProviderReference: &providerRef,
-		Payload:           preCreatePayload,
-	}); err != nil {
-		return out, err
-	}
-	bindPreMs := time.Since(phaseStart).Milliseconds()
 
 	phaseStart = time.Now()
 	sess, err := prov.CreatePaymentSession(ctx, platformpayments.CreatePaymentSessionInput{

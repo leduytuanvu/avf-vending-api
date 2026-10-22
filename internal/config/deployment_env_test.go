@@ -35,6 +35,19 @@ func minimalStaging(t *testing.T) {
 	t.Setenv("HTTP_CORS_ALLOWED_ORIGINS", "")
 }
 
+func TestIsLocalDatabaseHost_DockerPgBouncerAndVpsNotLocal(t *testing.T) {
+	t.Parallel()
+	if isLocalDatabaseHost("pgbouncer") {
+		t.Fatal("docker hostname pgbouncer must not be treated as loopback")
+	}
+	if isLocalDatabaseHost("72.62.244.94") {
+		t.Fatal("VPS A public IP must not be treated as loopback")
+	}
+	if !isLocalDatabaseHost("localhost") || !isLocalDatabaseHost("127.0.0.1") {
+		t.Fatal("localhost/127.0.0.1 must remain local")
+	}
+}
+
 func TestLoad_Development_AllowsLocalhostDatabase(t *testing.T) {
 	setMinimalValidLoadEnv(t)
 	t.Setenv("DATABASE_URL", "postgres://u:p@127.0.0.1:5432/dev?sslmode=disable")

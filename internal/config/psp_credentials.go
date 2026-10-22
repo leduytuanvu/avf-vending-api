@@ -58,9 +58,13 @@ type ShopeePayTenantCredentials struct {
 
 // ShopeePayConfig holds AVF + TFO ShopeePay credentials and callback IP whitelist.
 type ShopeePayConfig struct {
-	AVF                 ShopeePayTenantCredentials
-	TFO                 ShopeePayTenantCredentials
-	CallbackIPWhitelist []string
+	AVF                     ShopeePayTenantCredentials
+	TFO                     ShopeePayTenantCredentials
+	CallbackIPWhitelist     []string
+	StoreExtIDAllowlist     []string
+	StoreExtIDAllowlistFile string
+	StoreExtIDAllowlistText string
+	TrustProxy              bool
 }
 
 // PSPCredentials aggregates all live payment gateway credentials.
@@ -136,6 +140,24 @@ func shopeeTenantWired(t ShopeePayTenantCredentials) bool {
 		strings.TrimSpace(t.StoreExtID) != ""
 }
 
+func shopeeTenantCallbackWired(t ShopeePayTenantCredentials) bool {
+	return strings.TrimSpace(t.CallbackURL) != ""
+}
+
+// ShopeePayCallbacksWired reports whether every configured ShopeePay tenant has a notify URL.
+func (c ShopeePayConfig) ShopeePayCallbacksWired() bool {
+	if !c.ShopeePayWired() {
+		return false
+	}
+	if shopeeTenantWired(c.AVF) && !shopeeTenantCallbackWired(c.AVF) {
+		return false
+	}
+	if shopeeTenantWired(c.TFO) && !shopeeTenantCallbackWired(c.TFO) {
+		return false
+	}
+	return true
+}
+
 func loadPSPCredentials() PSPCredentials {
 	return PSPCredentials{
 		MoMo: MoMoConfig{
@@ -177,27 +199,42 @@ func loadPSPCredentials() PSPCredentials {
 			EndpointQueryURL:    strings.TrimSpace(os.Getenv("VNP_END_POINT_QUERY_URL")),
 			ReturnURL:           strings.TrimSpace(os.Getenv("VNP_RETURN_URL")),
 		},
-		ShopeePay: ShopeePayConfig{
-			AVF: ShopeePayTenantCredentials{
-				ClientID:      strings.TrimSpace(os.Getenv("SHOPEEPAY_CLIENT_ID")),
-				SecretKey:     strings.TrimSpace(os.Getenv("SHOPEEPAY_SECRET_KEY")),
-				Endpoint:      strings.TrimSpace(os.Getenv("SHOPEEPAY_END_POINT")),
-				MerchantExtID: strings.TrimSpace(os.Getenv("SHOPEEPAY_MERCHANT_EXT_ID")),
-				StoreExtID:    strings.TrimSpace(os.Getenv("SHOPEEPAY_STORE_EXT_ID")),
-				CallbackURL:   strings.TrimSpace(os.Getenv("SHOPEEPAY_CALLBACK_URL")),
-				TerminalID:    strings.TrimSpace(os.Getenv("SHOPEEPAY_TERMINAL_ID")),
-			},
-			TFO: ShopeePayTenantCredentials{
-				ClientID:      strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_CLIENT_ID")),
-				SecretKey:     strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_SECRET_KEY")),
-				Endpoint:      strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_END_POINT")),
-				MerchantExtID: strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_MERCHANT_EXT_ID")),
-				StoreExtID:    strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_STORE_EXT_ID")),
-				CallbackURL:   strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_CALLBACK_URL")),
-				TerminalID:    strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_TERMINAL_ID")),
-			},
-			CallbackIPWhitelist: splitCSV(os.Getenv("SHOPEEPAY_CALLBACK_IP_WHITELIST")),
+		ShopeePay: loadShopeePayConfig(),
+	}
+}
+
+func loadShopeePayConfig() ShopeePayConfig {
+	filePath := strings.TrimSpace(os.Getenv("SHOPEEPAY_STORE_EXT_ID_ALLOWLIST_FILE"))
+	fileText := ""
+	if filePath != "" {
+		if b, err := os.ReadFile(filePath); err == nil {
+			fileText = string(b)
+		}
+	}
+	return ShopeePayConfig{
+		AVF: ShopeePayTenantCredentials{
+			ClientID:      strings.TrimSpace(os.Getenv("SHOPEEPAY_CLIENT_ID")),
+			SecretKey:     strings.TrimSpace(os.Getenv("SHOPEEPAY_SECRET_KEY")),
+			Endpoint:      strings.TrimSpace(os.Getenv("SHOPEEPAY_END_POINT")),
+			MerchantExtID: strings.TrimSpace(os.Getenv("SHOPEEPAY_MERCHANT_EXT_ID")),
+			StoreExtID:    strings.TrimSpace(os.Getenv("SHOPEEPAY_STORE_EXT_ID")),
+			CallbackURL:   strings.TrimSpace(os.Getenv("SHOPEEPAY_CALLBACK_URL")),
+			TerminalID:    strings.TrimSpace(os.Getenv("SHOPEEPAY_TERMINAL_ID")),
 		},
+		TFO: ShopeePayTenantCredentials{
+			ClientID:      strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_CLIENT_ID")),
+			SecretKey:     strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_SECRET_KEY")),
+			Endpoint:      strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_END_POINT")),
+			MerchantExtID: strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_MERCHANT_EXT_ID")),
+			StoreExtID:    strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_STORE_EXT_ID")),
+			CallbackURL:   strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_CALLBACK_URL")),
+			TerminalID:    strings.TrimSpace(os.Getenv("TFO_SHOPEEPAY_TERMINAL_ID")),
+		},
+		CallbackIPWhitelist:     splitCSV(os.Getenv("SHOPEEPAY_CALLBACK_IP_WHITELIST")),
+		StoreExtIDAllowlist:     splitCSV(os.Getenv("SHOPEEPAY_STORE_EXT_ID_ALLOWLIST")),
+		StoreExtIDAllowlistFile: filePath,
+		StoreExtIDAllowlistText: fileText,
+		TrustProxy:              getenvBool("SHOPEEPAY_TRUST_PROXY", false),
 	}
 }
 

@@ -73,6 +73,7 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 			c.recordFailure(ctx, claims, "machine_not_active")
 			return status.Error(codes.PermissionDenied, "machine not active")
 		}
+		storeMachineCredentialGateSnapshot(ctx, snapshotFromSessionGate(sg))
 		if !skipCredentialUsedTouchFromContext(ctx) {
 			_ = c.q.MarkMachineCredentialUsed(ctx, claims.MachineID)
 		}
@@ -97,6 +98,7 @@ func (c *sqlMachineTokenCredentialChecker) ValidateMachineAccessClaims(ctx conte
 		c.recordFailure(ctx, claims, "machine_not_active")
 		return status.Error(codes.PermissionDenied, "machine not active")
 	}
+	storeMachineCredentialGateSnapshot(ctx, snapshotFromCredentialGate(row))
 	if !skipCredentialUsedTouchFromContext(ctx) {
 		_ = c.q.MarkMachineCredentialUsed(ctx, claims.MachineID)
 	}

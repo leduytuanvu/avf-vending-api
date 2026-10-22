@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/config"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -46,12 +48,18 @@ type ReplaceInput struct {
 	Methods   []MethodRow
 }
 
+type overrideCacheEntry struct {
+	override  platformpayments.MachineMethodOverride
+	expiresAt time.Time
+}
+
 // Service manages per-machine payment method configuration.
 type Service struct {
-	pool  *pgxpool.Pool
-	cfg   *config.Config
-	reg   *platformpayments.Registry
-	audit compliance.EnterpriseRecorder
+	pool          *pgxpool.Pool
+	cfg           *config.Config
+	reg           *platformpayments.Registry
+	audit         compliance.EnterpriseRecorder
+	overrideCache sync.Map
 }
 
 // NewService constructs the machine payment methods admin service.
@@ -62,15 +70,56 @@ func NewService(pool *pgxpool.Pool, cfg *config.Config, reg *platformpayments.Re
 	return &Service{pool: pool, cfg: cfg, reg: reg, audit: audit}, nil
 }
 
+func (s *Service) cachedOverride(machineID uuid.UUID) (platformpayments.MachineMethodOverride, bool) {
+	if s == nil {
+		return platformpayments.MachineMethodOverride{}, false
+	}
+	v, ok := s.overrideCache.Load(machineID)
+	if !ok {
+		return platformpayments.MachineMethodOverride{}, false
+	}
+	e, ok := v.(overrideCacheEntry)
+	if !ok || time.Now().After(e.expiresAt) {
+		s.overrideCache.Delete(machineID)
+		return platformpayments.MachineMethodOverride{}, false
+	}
+	return e.override, true
+}
+
+func (s *Service) storeOverride(machineID uuid.UUID, override platformpayments.MachineMethodOverride) {
+	if s == nil {
+		return
+	}
+	s.overrideCache.Store(machineID, overrideCacheEntry{
+		override:  override,
+		expiresAt: time.Now().Add(30 * time.Second),
+	})
+}
+
+func (s *Service) invalidateOverride(machineID uuid.UUID) {
+	if s == nil {
+		return
+	}
+	s.overrideCache.Delete(machineID)
+}
+
 // OverrideForMachine loads per-machine narrowing for bootstrap/commerce resolution. Fail-open on error.
 func (s *Service) OverrideForMachine(ctx context.Context, machineID uuid.UUID) platformpayments.MachineMethodOverride {
 	if s == nil || machineID == uuid.Nil {
 		return platformpayments.MachineMethodOverride{}
 	}
+	if cached, ok := s.cachedOverride(machineID); ok {
+		return cached
+	}
 	q := db.New(s.pool)
 	rows, err := q.ListMachinePaymentMethods(ctx, machineID)
-	if err != nil || len(rows) == 0 {
+	if err != nil {
 		return platformpayments.MachineMethodOverride{}
+	}
+	if len(rows) == 0 {
+		empty := platformpayments.MachineMethodOverride{}
+		s.storeOverride(machineID, empty)
+		return empty
 	}
 	enabled := map[string]bool{}
 	for _, row := range rows {
@@ -82,7 +131,9 @@ func (s *Service) OverrideForMachine(ctx context.Context, machineID uuid.UUID) p
 			enabled[key] = true
 		}
 	}
-	return platformpayments.MachineMethodOverride{Configured: true, Enabled: enabled}
+	out := platformpayments.MachineMethodOverride{Configured: true, Enabled: enabled}
+	s.storeOverride(machineID, out)
+	return out
 }
 
 // DeploymentSupported returns method keys the deployment can offer (cash + wired QR providers).
@@ -205,5 +256,6 @@ func (s *Service) Replace(ctx context.Context, in ReplaceInput) (GetView, error)
 	if err := tx.Commit(ctx); err != nil {
 		return GetView{}, err
 	}
+	s.invalidateOverride(in.MachineID)
 	return s.Get(ctx, in.MachineID)
 }

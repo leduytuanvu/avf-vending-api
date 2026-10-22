@@ -1,0 +1,91 @@
+name: ${COMPOSE_PROJECT_NAME:-avf-vending-prod-db}
+
+networks:
+  dbnet:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - ${DB_NODE_ENV_FILE:-.env.db-node}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    # SSD/OLTP: alpine defaults assume HDD + JIT. Keep max_connections at image default (100);
+    # PgBouncer DEFAULT_POOL_SIZE=40 is the real backend cap.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=384MB
+      - -c
+      - effective_cache_size=3GB
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - jit=off
+      - -c
+      - shared_preload_libraries=pg_stat_statements
+    networks:
+      - dbnet
+    ports:
+      - "${POSTGRES_BIND_IP:-127.0.0.1}:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits:
+          cpus: "${POSTGRES_CPUS:-1.0}"
+          memory: ${POSTGRES_MEMORY_LIMIT:-1536M}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.23.1-p1
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB:?set POSTGRES_DB}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "200"
+      DEFAULT_POOL_SIZE: "40"
+      MIN_POOL_SIZE: "4"
+      RESERVE_POOL_SIZE: "5"
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits
+      ADMIN_USERS: ${POSTGRES_USER:?set POSTGRES_USER}
+    networks:
+      - dbnet
+    ports:
+      # edoburu/pgbouncer listens on 5432 inside the container.
+      - "${PGBOUNCER_BIND_IP:-127.0.0.1}:${PGBOUNCER_PORT:-6432}:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

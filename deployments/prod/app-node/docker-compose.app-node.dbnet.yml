@@ -1,0 +1,37 @@
+# VPS A only. Attaches app processes to the db-node compose network so
+# DATABASE_URL can use hostname pgbouncer:5432 (container port) instead of
+# hairpin 72.62.244.94:6432.
+#
+# Enable with ATTACH_APP_TO_DBNET=true in .env.app-node. Do not enable on
+# app-node-b — avf-vending-prod-db_dbnet does not exist there.
+networks:
+  dbnet:
+    external: true
+    name: avf-vending-prod-db_dbnet
+
+services:
+  migrate:
+    networks:
+      - internal
+      - edge
+      - dbnet
+  api:
+    networks:
+      - internal
+      - edge
+      - dbnet
+  worker:
+    networks:
+      - internal
+      - edge
+      - dbnet
+  reconciler:
+    networks:
+      - internal
+      - edge
+      - dbnet
+  mqtt-ingest:
+    networks:
+      - internal
+      - edge
+      - dbnet

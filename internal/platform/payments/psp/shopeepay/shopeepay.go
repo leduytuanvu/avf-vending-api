@@ -5,10 +5,18 @@ package shopeepay
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"net/url"
 	"strings"
 )
+
+// DefaultStoreAllowlistFile is the LIVE SPP store_ext_id list (machine codes).
+//
+//go:embed store_ext_id_allowlist.txt
+var DefaultStoreAllowlistFile string
 
 const (
 	// AmountFactor converts VND đồng to ShopeePay API amount units.
@@ -29,6 +37,33 @@ const (
 	TXStatusFailed      = 4
 	TXStatusExpired     = 6
 	TXStatusInvalidated = 7
+
+	LiveHost = "api.wallet.airpay.vn"
+	UATHost  = "api.uat.wallet.airpay.vn"
+
+	HeaderClientID = "X-Airpay-ClientId"
+	HeaderReqH     = "X-Airpay-Req-H"
+	HeaderRespH    = "X-Airpay-Resp-H"
+
+	QRCreatePath     = "/v3/merchant-host/qr/create"
+	QRInvalidatePath = "/v3/merchant-host/qr/invalidate"
+	TxnCheckPath     = "/v3/merchant-host/transaction/check"
+	RefundCreatePath = "/v3/merchant-host/transaction/refund/create-new"
+)
+
+var (
+	ErrCallbackForbiddenIP      = errors.New("forbidden ip")
+	ErrCallbackMissingClientID  = errors.New("missing client id")
+	ErrCallbackMissingSignature = errors.New("missing signature")
+	ErrCallbackUnknownClientID  = errors.New("unknown client id")
+	ErrCallbackInvalidSignature = errors.New("invalid signature")
+	ErrStoreNotAllowlisted      = errors.New("store_ext_id is not allowlisted")
+	ErrInvalidResponseSignature = errors.New("invalid response signature")
+	ErrRedirectBlocked          = errors.New("redirect blocked")
+	ErrEmptyEndpointHost        = errors.New("endpoint host is empty")
+	ErrUATEndpointOnProduction  = errors.New("uat endpoint blocked on production")
+	ErrNotLiveEndpoint          = errors.New("endpoint is not ShopeePay LIVE host")
+	ErrLiveEndpointBlocked      = errors.New("live endpoint blocked")
 )
 
 // Credentials holds ShopeePay MPM credentials for one tenant.
@@ -50,10 +85,56 @@ type TenantKeys struct {
 
 // ResolveTenant returns "tfo" when machineCode has prefix "TFO", otherwise "avf".
 func ResolveTenant(machineCode string) string {
-	if strings.HasPrefix(machineCode, "TFO") {
+	if strings.HasPrefix(strings.TrimSpace(machineCode), "TFO") {
 		return TenantTFO
 	}
 	return TenantAVF
+}
+
+// ResolveStoreExtID matches legacy Python: AVF*/TFO* machine codes are the SPP store_ext_id.
+func ResolveStoreExtID(machineCode, fallback string) string {
+	code := strings.TrimSpace(machineCode)
+	if code != "" && (strings.HasPrefix(code, "AVF") || strings.HasPrefix(code, "TFO")) {
+		return code
+	}
+	return strings.TrimSpace(fallback)
+}
+
+// EndpointHost returns the hostname of a ShopeePay END_POINT URL.
+func EndpointHost(endpoint string) string {
+	raw := strings.TrimSpace(endpoint)
+	if raw == "" {
+		return ""
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(u.Hostname())
+}
+
+// ValidateEndpoint enforces LIVE host on production and blocks LIVE elsewhere.
+func ValidateEndpoint(endpoint string, production bool) error {
+	host := EndpointHost(endpoint)
+	if host == "" {
+		return ErrEmptyEndpointHost
+	}
+	if production {
+		if host == LiveHost {
+			return nil
+		}
+		if host == UATHost {
+			return ErrUATEndpointOnProduction
+		}
+		return ErrNotLiveEndpoint
+	}
+	if host == LiveHost {
+		return ErrLiveEndpointBlocked
+	}
+	return nil
 }
 
 // ForTenant returns credentials for the given tenant key.
@@ -102,10 +183,63 @@ func ParseWhitelist(csv string) map[string]struct{} {
 	return out
 }
 
+// ParseAllowlistLines parses store_ext_id / machine codes, ignoring blanks and # comments.
+func ParseAllowlistLines(text string) map[string]struct{} {
+	out := make(map[string]struct{})
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(strings.TrimPrefix(line, "\r"))
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		out[line] = struct{}{}
+	}
+	return out
+}
+
+// ParseAllowlistCSV parses a CSV of store_ext_id values.
+func ParseAllowlistCSV(csv string) map[string]struct{} {
+	return ParseAllowlistLines(strings.ReplaceAll(csv, ",", "\n"))
+}
+
+// MergeAllowlist unions CSV codes, file contents, and optional extra maps.
+func MergeAllowlist(csv string, fileText string, extra ...map[string]struct{}) map[string]struct{} {
+	out := ParseAllowlistCSV(csv)
+	for code := range ParseAllowlistLines(fileText) {
+		out[code] = struct{}{}
+	}
+	for _, m := range extra {
+		for code := range m {
+			if strings.TrimSpace(code) == "" {
+				continue
+			}
+			out[code] = struct{}{}
+		}
+	}
+	return out
+}
+
+// StoreAllowed reports whether storeExtID may call SPP. Empty allowlist + failClosed → deny.
+func StoreAllowed(storeExtID string, allowlist map[string]struct{}, failClosed bool) bool {
+	storeExtID = strings.TrimSpace(storeExtID)
+	if len(allowlist) == 0 {
+		return !failClosed
+	}
+	if storeExtID == "" {
+		return false
+	}
+	_, ok := allowlist[storeExtID]
+	return ok
+}
+
 // ClientIPAllowed returns true when whitelist is empty (allow all) or ip is listed.
 func ClientIPAllowed(ip string, whitelist map[string]struct{}) bool {
+	return ClientIPPolicy(ip, whitelist, false)
+}
+
+// ClientIPPolicy is fail-closed when whitelist is empty and failClosed is true (production/staging).
+func ClientIPPolicy(ip string, whitelist map[string]struct{}, failClosed bool) bool {
 	if len(whitelist) == 0 {
-		return true
+		return !failClosed
 	}
 	if ip == "" {
 		return false
@@ -165,8 +299,8 @@ func SoftACKJSON() []byte {
 // BuildHeaders builds ShopeePay request headers with body signature.
 func BuildHeaders(clientID, secret string, body []byte) map[string]string {
 	return map[string]string{
-		"Content-Type":      "application/json",
-		"X-Airpay-ClientId": clientID,
-		"X-Airpay-Req-H":    SignBody(secret, body),
+		"Content-Type": "application/json",
+		HeaderClientID: clientID,
+		HeaderReqH:     SignBody(secret, body),
 	}
 }

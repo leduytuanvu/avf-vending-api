@@ -1,0 +1,6 @@
+# Install on VPS A as /etc/cron.d/avf-postgres-backup
+# Dumps via BACKUP_DATABASE_URL (direct Postgres :5432). Copy /var/backups or
+# deployments/prod/backups off-box.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+0 2 * * * root APP_NODE_ENV_FILE_PATH=/opt/avf/app-node/.env.app-node /opt/avf/deployments/prod/shared/scripts/backup_managed_postgres.sh execute >> /var/log/avf-postgres-backup.log 2>&1

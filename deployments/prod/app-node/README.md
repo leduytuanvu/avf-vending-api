@@ -24,6 +24,7 @@ Those dependencies are expected to be managed services or remote endpoints suppl
 ## Files
 
 - `docker-compose.app-node.yml`: app-side compose for each VPS
+- `docker-compose.app-node.dbnet.yml`: VPS A only; set `ATTACH_APP_TO_DBNET=true` to join `avf-vending-prod-db_dbnet` and use `DATABASE_URL=...@pgbouncer:5432/...`
 - `.env.app-node.example`: env template for each app VPS
 - `../shared/Caddyfile`: shared reverse-proxy config
 - `../shared/env-matrix.md`: app-node vs data-node env ownership

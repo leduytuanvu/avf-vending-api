@@ -349,3 +349,20 @@ ensure_edge_ports_free_for_caddy() {
 	done
 	sleep 1
 }
+
+# VPS A only: attach app processes to db-node dbnet when ATTACH_APP_TO_DBNET=true.
+# App-node B must leave this unset so compose does not require a missing external network.
+compose_with_optional_dbnet() {
+	local env_file="$1"
+	local compose_file="$2"
+	local node_root attach
+	node_root="$(cd "$(dirname "${compose_file}")" && pwd)"
+	COMPOSE=(docker compose --env-file "${env_file}" -f "${compose_file}")
+	if [[ ! -f "${node_root}/docker-compose.app-node.dbnet.yml" ]]; then
+		return 0
+	fi
+	attach="$(grep -E '^ATTACH_APP_TO_DBNET=' "${env_file}" 2>/dev/null | tail -n 1 | cut -d= -f2- | tr -d '[:space:]' | tr -d '"' | tr -d "'" || true)"
+	if [[ "${attach}" == "true" || "${attach}" == "1" ]]; then
+		COMPOSE+=(-f "${node_root}/docker-compose.app-node.dbnet.yml")
+	fi
+}

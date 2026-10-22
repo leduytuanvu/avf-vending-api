@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"testing"
 )
 
@@ -115,10 +116,75 @@ func TestSoftACK(t *testing.T) {
 func TestBuildHeaders(t *testing.T) {
 	body := []byte(`{"a":1}`)
 	h := BuildHeaders("client", "secret", body)
-	if h["X-Airpay-ClientId"] != "client" {
+	if h[HeaderClientID] != "client" {
 		t.Fatal("client id")
 	}
-	if h["X-Airpay-Req-H"] != SignBody("secret", body) {
+	if h[HeaderReqH] != SignBody("secret", body) {
 		t.Fatal("signature header")
+	}
+}
+
+func TestResolveStoreExtID(t *testing.T) {
+	if got := ResolveStoreExtID("AVF000079", "fallback"); got != "AVF000079" {
+		t.Fatalf("avf: %q", got)
+	}
+	if got := ResolveStoreExtID("TFO000001", "fallback"); got != "TFO000001" {
+		t.Fatalf("tfo: %q", got)
+	}
+	if got := ResolveStoreExtID("", "AVF000079"); got != "AVF000079" {
+		t.Fatalf("empty: %q", got)
+	}
+	if got := ResolveStoreExtID("UNKNOWN", "AVF000079"); got != "AVF000079" {
+		t.Fatalf("unknown: %q", got)
+	}
+}
+
+func TestValidateEndpoint(t *testing.T) {
+	if err := ValidateEndpoint("https://"+LiveHost, true); err != nil {
+		t.Fatalf("live prod: %v", err)
+	}
+	if err := ValidateEndpoint("https://"+UATHost, true); !errors.Is(err, ErrUATEndpointOnProduction) {
+		t.Fatalf("uat prod: %v", err)
+	}
+	if err := ValidateEndpoint("https://"+LiveHost, false); !errors.Is(err, ErrLiveEndpointBlocked) {
+		t.Fatalf("live non-prod: %v", err)
+	}
+	if err := ValidateEndpoint("https://"+UATHost, false); err != nil {
+		t.Fatalf("uat non-prod: %v", err)
+	}
+	if err := ValidateEndpoint("http://127.0.0.1:1234", false); err != nil {
+		t.Fatalf("loopback non-prod: %v", err)
+	}
+}
+
+func TestStoreAllowlist(t *testing.T) {
+	list := ParseAllowlistCSV("AVF000079, TFO000001")
+	if !StoreAllowed("AVF000079", list, true) {
+		t.Fatal("listed")
+	}
+	if StoreAllowed("AVF999999", list, true) {
+		t.Fatal("unlisted")
+	}
+	if StoreAllowed("AVF000079", nil, true) {
+		t.Fatal("empty fail-closed")
+	}
+	if !StoreAllowed("AVF000079", nil, false) {
+		t.Fatal("empty fail-open")
+	}
+	embedded := ParseAllowlistLines(DefaultStoreAllowlistFile)
+	if _, ok := embedded["AVF000079"]; !ok {
+		t.Fatal("embedded missing AVF000079")
+	}
+	if _, ok := embedded["AVF000195"]; !ok {
+		t.Fatal("embedded missing AVF000195")
+	}
+}
+
+func TestClientIPPolicy_FailClosed(t *testing.T) {
+	if ClientIPPolicy("1.2.3.4", nil, true) {
+		t.Fatal("empty whitelist fail-closed should deny")
+	}
+	if !ClientIPPolicy("1.2.3.4", nil, false) {
+		t.Fatal("empty whitelist fail-open should allow")
 	}
 }

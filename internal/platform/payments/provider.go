@@ -37,20 +37,22 @@ type CreatePaymentSessionResult struct {
 
 // CancelPaymentInput cancels or voids an in-flight authorization when supported by the PSP adapter.
 type CancelPaymentInput struct {
-	CompanyID         uuid.UUID
-	PaymentID         uuid.UUID
-	ProviderReference string
-	IdempotencyKey    string
+	CompanyID           uuid.UUID
+	PaymentID           uuid.UUID
+	ProviderReference   string
+	IdempotencyKey      string
+	MachineExternalCode string
 }
 
 // RefundPaymentInput requests money movement on the PSP (distinct from internal refund ledger rows).
 type RefundPaymentInput struct {
-	CompanyID         uuid.UUID
-	PaymentID         uuid.UUID
-	ProviderReference string
-	AmountMinor       int64
-	Currency          string
-	IdempotencyKey    string
+	CompanyID           uuid.UUID
+	PaymentID           uuid.UUID
+	ProviderReference   string
+	AmountMinor         int64
+	Currency            string
+	IdempotencyKey      string
+	MachineExternalCode string
 }
 
 // PaymentProvider is the enterprise integration surface for a single PSP key (mock, sandbox, or future live adapters).

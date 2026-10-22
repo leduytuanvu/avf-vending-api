@@ -8,7 +8,7 @@ source "${SHARED_ROOT}/scripts/lib_release.sh"
 
 ENV_FILE="${NODE_ROOT}/.env.app-node"
 COMPOSE_FILE="${NODE_ROOT}/docker-compose.app-node.yml"
-COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+compose_with_optional_dbnet "${ENV_FILE}" "${COMPOSE_FILE}"
 PHASE="startup"
 REPO_ROOT="$(cd "${NODE_ROOT}/../../.." && pwd)"
 MIGRATION_LOG_DIR="${PRODUCTION_MIGRATION_LOG_DIR:-/opt/avf-vending-api/deployments/prod/logs/migrations}"

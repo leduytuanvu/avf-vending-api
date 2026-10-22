@@ -9,7 +9,7 @@ source "${SHARED_ROOT}/scripts/lib_release.sh"
 
 ENV_FILE="${NODE_ROOT}/.env.app-node"
 COMPOSE_FILE="${NODE_ROOT}/docker-compose.app-node.yml"
-COMPOSE=(docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}")
+compose_with_optional_dbnet "${ENV_FILE}" "${COMPOSE_FILE}"
 init_state_dir
 
 require_file "${ENV_FILE}"

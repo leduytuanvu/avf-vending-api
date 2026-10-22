@@ -447,6 +447,9 @@ func (c *Config) validateLivePSPCredentials(provider string) error {
 		if !c.PSP.ShopeePay.ShopeePayWired() {
 			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires ShopeePay credentials for COMMERCE_PAYMENT_PROVIDER=%q (unwired)", k)
 		}
+		if !c.PSP.ShopeePay.ShopeePayCallbacksWired() {
+			return fmt.Errorf("config: APP_ENV=production with PAYMENT_ENV=live requires SHOPEEPAY_CALLBACK_URL (and TFO_SHOPEEPAY_CALLBACK_URL when TFO tenant is wired) for COMMERCE_PAYMENT_PROVIDER=%q", k)
+		}
 	}
 	return nil
 }

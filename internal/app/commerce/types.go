@@ -47,13 +47,18 @@ type StartPaymentInput struct {
 	OutboxAggregateID    uuid.UUID
 	OutboxIdempotencyKey string
 
-	Simulated           bool
-	SimulationRunID     string
-	SimulationScenario  string
-	FakeBill            bool
-	FakeBoard           bool
-	AttemptSeq          int32
-	SupersedesPaymentID *uuid.UUID
+	Simulated             bool
+	SimulationRunID       string
+	SimulationScenario    string
+	FakeBill              bool
+	FakeBoard             bool
+	AttemptSeq            int32
+	SupersedesPaymentID   *uuid.UUID
+	BindAttemptState      string
+	BindProviderReference string
+	BindPayload           []byte
+	// SkipOrderLookup skips the extra GetOrderByID when the caller already validated the order.
+	SkipOrderLookup bool
 }
 
 // AdvanceVendInput requests a vend_session state change for one slot on an order.

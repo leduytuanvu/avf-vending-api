@@ -338,6 +338,21 @@ func (s *Store) CreatePaymentWithOutbox(ctx context.Context, in commerce.Payment
 		return commerce.PaymentOutboxResult{}, err
 	}
 
+	if strings.TrimSpace(in.BindAttemptState) != "" {
+		var pref pgtype.Text
+		if strings.TrimSpace(in.BindProviderReference) != "" {
+			pref = pgtype.Text{String: strings.TrimSpace(in.BindProviderReference), Valid: true}
+		}
+		if _, bindErr := q.InsertPaymentAttempt(ctx, db.InsertPaymentAttemptParams{
+			PaymentID:         pRow.ID,
+			ProviderReference: pref,
+			State:             strings.TrimSpace(in.BindAttemptState),
+			Payload:           pgjson.RequiredString(in.BindPayload),
+		}); bindErr != nil {
+			return commerce.PaymentOutboxResult{}, bindErr
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return commerce.PaymentOutboxResult{}, err
 	}

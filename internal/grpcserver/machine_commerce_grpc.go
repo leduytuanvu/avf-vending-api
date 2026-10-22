@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
@@ -29,19 +30,61 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+type runtimeHintsFlagsEntry struct {
+	flags map[string]bool
+	until time.Time
+}
+
+type runtimeHintsFlagsCache struct {
+	mu    sync.Mutex
+	items map[uuid.UUID]runtimeHintsFlagsEntry
+}
+
+const runtimeHintsFlagsTTL = 15 * time.Second
+
+func (c *runtimeHintsFlagsCache) get(id uuid.UUID) (map[string]bool, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.items == nil {
+		return nil, false
+	}
+	ent, ok := c.items[id]
+	if !ok || !time.Now().Before(ent.until) {
+		if ok {
+			delete(c.items, id)
+		}
+		return nil, false
+	}
+	return ent.flags, true
+}
+
+func (c *runtimeHintsFlagsCache) put(id uuid.UUID, flags map[string]bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.items == nil {
+		c.items = make(map[uuid.UUID]runtimeHintsFlagsEntry)
+	}
+	c.items[id] = runtimeHintsFlagsEntry{flags: flags, until: time.Now().Add(runtimeHintsFlagsTTL)}
+}
+
 type machineCommerceServer struct {
 	machinev1.UnimplementedMachineCommerceServiceServer
-	deps MachineGRPCServicesDeps
+	deps              MachineGRPCServicesDeps
+	runtimeHintsFlags runtimeHintsFlagsCache
 }
 
 func (s *machineCommerceServer) machineFeatureFlags(ctx context.Context, machineID uuid.UUID) map[string]bool {
 	if s.deps.FeatureFlags == nil || machineID == uuid.Nil {
 		return nil
 	}
+	if cached, ok := s.runtimeHintsFlags.get(machineID); ok {
+		return cached
+	}
 	rh, err := s.deps.FeatureFlags.RuntimeHintsForMachine(ctx, machineID)
 	if err != nil || rh == nil {
 		return nil
 	}
+	s.runtimeHintsFlags.put(machineID, rh.FeatureFlags)
 	return rh.FeatureFlags
 }
 
@@ -76,15 +119,33 @@ func mapPaymentMethodsProto(m platformpayments.MachinePaymentMethodsView) *machi
 	}
 }
 
+type machineCodeCacheEntry struct {
+	code      string
+	expiresAt time.Time
+}
+
+var machineExternalCodeCache sync.Map // uuid.UUID -> machineCodeCacheEntry
+
 func machineExternalCode(ctx context.Context, deps MachineGRPCServicesDeps, machineID uuid.UUID) string {
 	if deps.Pool == nil || machineID == uuid.Nil {
 		return ""
+	}
+	if v, ok := machineExternalCodeCache.Load(machineID); ok {
+		e := v.(machineCodeCacheEntry)
+		if time.Now().Before(e.expiresAt) {
+			return e.code
+		}
 	}
 	m, err := db.New(deps.Pool).GetMachineByID(ctx, machineID)
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(m.Code)
+	code := strings.TrimSpace(m.Code)
+	machineExternalCodeCache.Store(machineID, machineCodeCacheEntry{
+		code:      code,
+		expiresAt: time.Now().Add(5 * time.Minute),
+	})
+	return code
 }
 
 func machinePrincipalFromAccessClaims(c plauth.MachineAccessClaims) plauth.Principal {
@@ -150,10 +211,13 @@ func mapCommercePaymentSessionErr(err error) error {
 		if mapped := mapCommercePersistenceErrForOp(OpCreatePaymentSession, err, CommercePersistenceContext{}); mapped != nil {
 			return mapped
 		}
-		if msg := err.Error(); strings.Contains(msg, "momo create failed") || strings.Contains(msg, "empty provider_reference") {
+		if msg := err.Error(); strings.Contains(msg, "momo create failed") ||
+			strings.Contains(msg, "shopeepay create failed") ||
+			strings.Contains(msg, "not allowlisted") ||
+			strings.Contains(msg, "empty provider_reference") {
 			return status.Error(codes.FailedPrecondition, "provider_rejected")
 		}
-		if strings.Contains(err.Error(), "momo create:") || strings.Contains(err.Error(), "timeout") {
+		if strings.Contains(err.Error(), "momo create:") || strings.Contains(err.Error(), "shopeepay create:") || strings.Contains(err.Error(), "timeout") {
 			return status.Error(codes.Unavailable, "provider_timeout")
 		}
 		return mapCommerceGRPCErrForOp(OpGenericCommerce, err)
@@ -579,10 +643,6 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 			return nil, status.Error(codes.InvalidArgument, "invalid order_id")
 		}
 	}
-	principal := machinePrincipalFromAccessClaims(claims)
-	if err := svc.EnsureCommerceCallerOrderAccess(ctx, uuid.Nil, orderID, principal); err != nil {
-		return nil, mapCommerceGRPCErr(err)
-	}
 	o, err := store.GetOrderByID(ctx, orderID)
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
@@ -639,6 +699,7 @@ func (s *machineCommerceServer) CreatePaymentSession(ctx context.Context, req *m
 		OutboxAggregate:     aggType,
 		MachineExternalCode: machineCode,
 		StoreID:             machineCode,
+		LoadedOrder:         &o,
 	})
 	if err != nil {
 		if st, ok := status.FromError(mapCommercePaymentSessionErr(err)); ok {

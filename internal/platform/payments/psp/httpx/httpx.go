@@ -112,3 +112,51 @@ func (c *Client) do(ctx context.Context, endpoint, contentType string, headers m
 	}
 	return respBody, resp.StatusCode, nil
 }
+
+// Result is a raw HTTP response from a PSP POST.
+type Result struct {
+	Body   []byte
+	Status int
+	Header http.Header
+}
+
+// PostJSONBytesResult POSTs raw JSON bytes and returns response headers (needed for X-Airpay-Resp-H).
+func (c *Client) PostJSONBytesResult(ctx context.Context, endpoint string, headers map[string]string, body []byte) (Result, error) {
+	if c == nil {
+		c = New(DefaultTimeout)
+	}
+	if c.HTTP == nil {
+		c.HTTP = &http.Client{Timeout: c.Timeout, Transport: defaultTransport}
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if _, ok := ctx.Deadline(); !ok && c.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.Timeout)
+		defer cancel()
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return Result{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		if strings.EqualFold(k, "Content-Type") {
+			continue
+		}
+		req.Header.Set(k, v)
+	}
+
+	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return Result{}, err
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Result{Status: resp.StatusCode, Header: resp.Header.Clone()}, err
+	}
+	return Result{Body: respBody, Status: resp.StatusCode, Header: resp.Header.Clone()}, nil
+}

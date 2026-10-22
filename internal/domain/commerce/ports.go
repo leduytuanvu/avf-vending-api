@@ -65,6 +65,10 @@ type PaymentOutboxInput struct {
 	FakeBoard            bool
 	AttemptSeq           int32
 	SupersedesPaymentID  *uuid.UUID
+	// Optional pre-PSP payment_attempt bind persisted in the same transaction as the payment+outbox row.
+	BindAttemptState      string
+	BindProviderReference string
+	BindPayload           []byte
 }
 
 // PaymentOutboxResult is the outcome of CreatePaymentWithOutbox.

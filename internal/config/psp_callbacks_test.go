@@ -26,6 +26,25 @@ func TestMoMoCallbacksWired_requiresIPNAndRedirectPerTenant(t *testing.T) {
 	require.False(t, missingRedirect.MoMoCallbacksWired())
 }
 
+func TestShopeePayCallbacksWired_requiresCallbackURL(t *testing.T) {
+	wired := config.ShopeePayConfig{
+		AVF: config.ShopeePayTenantCredentials{
+			ClientID:      "c",
+			SecretKey:     "s",
+			Endpoint:      "https://api.wallet.airpay.vn",
+			MerchantExtID: "AVF_M",
+			StoreExtID:    "AVF000079",
+			CallbackURL:   "https://api.ldtv.dev/v1/commerce/webhooks/shopeepay",
+		},
+	}
+	require.True(t, wired.ShopeePayWired())
+	require.True(t, wired.ShopeePayCallbacksWired())
+
+	missing := wired
+	missing.AVF.CallbackURL = ""
+	require.False(t, missing.ShopeePayCallbacksWired())
+}
+
 func TestZaloPayCallbacksWired_requiresCallbackURL(t *testing.T) {
 	wired := config.ZaloPayConfig{
 		AppID:       "1",

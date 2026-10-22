@@ -215,32 +215,35 @@ func (s *Service) StartPaymentWithOutbox(ctx context.Context, in StartPaymentInp
 	if err := validateStartPayment(in); err != nil {
 		return domaincommerce.PaymentOutboxResult{}, err
 	}
-	if s.life != nil {
+	if s.life != nil && !in.SkipOrderLookup {
 		_, err := s.life.GetOrderByID(ctx, in.OrderID)
 		if err != nil {
 			return domaincommerce.PaymentOutboxResult{}, err
 		}
 	}
 	return s.payments.CreatePaymentWithOutbox(ctx, domaincommerce.PaymentOutboxInput{
-		OrderID:              in.OrderID,
-		Provider:             strings.TrimSpace(in.Provider),
-		PaymentState:         in.PaymentState,
-		AmountMinor:          in.AmountMinor,
-		Currency:             strings.ToUpper(strings.TrimSpace(in.Currency)),
-		IdempotencyKey:       strings.TrimSpace(in.IdempotencyKey),
-		OutboxTopic:          strings.TrimSpace(in.OutboxTopic),
-		OutboxEventType:      strings.TrimSpace(in.OutboxEventType),
-		OutboxPayload:        in.OutboxPayload,
-		OutboxAggregateType:  strings.TrimSpace(in.OutboxAggregateType),
-		OutboxAggregateID:    in.OutboxAggregateID,
-		OutboxIdempotencyKey: strings.TrimSpace(in.OutboxIdempotencyKey),
-		Simulated:            in.Simulated,
-		SimulationRunID:      strings.TrimSpace(in.SimulationRunID),
-		SimulationScenario:   strings.TrimSpace(in.SimulationScenario),
-		FakeBill:             in.FakeBill,
-		FakeBoard:            in.FakeBoard,
-		AttemptSeq:           in.AttemptSeq,
-		SupersedesPaymentID:  in.SupersedesPaymentID,
+		OrderID:               in.OrderID,
+		Provider:              strings.TrimSpace(in.Provider),
+		PaymentState:          in.PaymentState,
+		AmountMinor:           in.AmountMinor,
+		Currency:              strings.ToUpper(strings.TrimSpace(in.Currency)),
+		IdempotencyKey:        strings.TrimSpace(in.IdempotencyKey),
+		OutboxTopic:           strings.TrimSpace(in.OutboxTopic),
+		OutboxEventType:       strings.TrimSpace(in.OutboxEventType),
+		OutboxPayload:         in.OutboxPayload,
+		OutboxAggregateType:   strings.TrimSpace(in.OutboxAggregateType),
+		OutboxAggregateID:     in.OutboxAggregateID,
+		OutboxIdempotencyKey:  strings.TrimSpace(in.OutboxIdempotencyKey),
+		Simulated:             in.Simulated,
+		SimulationRunID:       strings.TrimSpace(in.SimulationRunID),
+		SimulationScenario:    strings.TrimSpace(in.SimulationScenario),
+		FakeBill:              in.FakeBill,
+		FakeBoard:             in.FakeBoard,
+		AttemptSeq:            in.AttemptSeq,
+		SupersedesPaymentID:   in.SupersedesPaymentID,
+		BindAttemptState:      in.BindAttemptState,
+		BindProviderReference: in.BindProviderReference,
+		BindPayload:           in.BindPayload,
 	})
 }
 
