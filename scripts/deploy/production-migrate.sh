@@ -194,6 +194,23 @@ validate_image_migrations() {
 	fi
 }
 
+pg_dump_docker_network_args() {
+	local url="$1"
+	if [[ -n "${PG_DUMP_DOCKER_NETWORK:-}" ]]; then
+		printf '%s\0--network\0%s' "${PG_DUMP_DOCKER_NETWORK}"
+		return 0
+	fi
+	if python3 - "${url}" <<'PY'
+import sys
+from urllib.parse import urlparse
+host = (urlparse(sys.argv[1]).hostname or "").lower()
+sys.exit(0 if host in ("127.0.0.1", "localhost") else 1)
+PY
+	then
+		printf '%s\0--network\0host'
+	fi
+}
+
 backup_database() {
 	local backup_path="$1"
 	local dump_url
@@ -208,10 +225,15 @@ backup_database() {
 	local attempt=1
 	local max_attempts=5
 	local err_file
+	local -a pg_dump_network_args=()
 	err_file="$(mktemp)"
 	trap 'rm -f "${err_file}"' RETURN
+	if readarray -d '' -t pg_dump_network_args < <(pg_dump_docker_network_args "${dump_url}"); then
+		[[ "${#pg_dump_network_args[@]}" -gt 0 ]] || pg_dump_network_args=()
+	fi
 	while [[ "${attempt}" -le "${max_attempts}" ]]; do
 		if docker run --rm \
+			"${pg_dump_network_args[@]}" \
 			--env-file "${COMPOSE_ENV_FILE}" \
 			-e "DATABASE_URL=${dump_url}" \
 			-v "$(dirname "${backup_path}"):/backup" \
