@@ -311,6 +311,160 @@ func TestRefreshPendingPaymentFromProvider_queriesWhenSlotIndexMisses(t *testing
 	require.Equal(t, "captured", capture.got.NormalizedPaymentState)
 }
 
+type refreshPaymentsFinancialStub struct {
+	payments []domaincommerce.Payment
+}
+
+func (s *refreshPaymentsFinancialStub) ClaimWinningPayment(context.Context, uuid.UUID, uuid.UUID) (domaincommerce.Order, bool, error) {
+	return domaincommerce.Order{}, false, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) GetWinningPaymentForOrder(context.Context, uuid.UUID) (domaincommerce.Payment, error) {
+	return domaincommerce.Payment{}, ErrNotFound
+}
+
+func (s *refreshPaymentsFinancialStub) UpdatePaymentOutcome(context.Context, uuid.UUID, string) (domaincommerce.Payment, error) {
+	return domaincommerce.Payment{}, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) CancelPaymentByID(context.Context, uuid.UUID) (domaincommerce.Payment, error) {
+	return domaincommerce.Payment{}, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) GetLatestNonCapturedPaymentForOrder(context.Context, uuid.UUID) (domaincommerce.Payment, error) {
+	return domaincommerce.Payment{}, ErrNotFound
+}
+
+func (s *refreshPaymentsFinancialStub) ListPaymentsForOrder(context.Context, uuid.UUID) ([]domaincommerce.Payment, error) {
+	return s.payments, nil
+}
+
+func (s *refreshPaymentsFinancialStub) RecordCashAcceptanceEvents(context.Context, RecordCashAcceptanceEventsInput) error {
+	return nil
+}
+
+func (s *refreshPaymentsFinancialStub) RecordCashAllocation(context.Context, RecordCashAllocationInput) (CashAllocationView, error) {
+	return CashAllocationView{}, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) RecordCashChangeEvent(context.Context, RecordCashChangeEventInput) (CashChangeEventView, error) {
+	return CashChangeEventView{}, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) GetOrderMoneyView(context.Context, uuid.UUID) (OrderMoneyView, error) {
+	return OrderMoneyView{}, ErrNotConfigured
+}
+
+func (s *refreshPaymentsFinancialStub) InsertLedgerEntry(context.Context, LedgerEntryInput) error {
+	return nil
+}
+
+func (s *refreshPaymentsFinancialStub) UpsertReconciliationCase(context.Context, domaincommerce.ReconciliationCaseInput) (domaincommerce.ReconciliationCase, error) {
+	return domaincommerce.ReconciliationCase{}, ErrNotConfigured
+}
+
+type refreshMultiPaymentLife struct {
+	refreshLifecycleStub
+	byID map[uuid.UUID]domaincommerce.Payment
+}
+
+func (s *refreshMultiPaymentLife) GetPaymentByID(_ context.Context, paymentID uuid.UUID) (domaincommerce.Payment, error) {
+	if pay, ok := s.byID[paymentID]; ok {
+		return pay, nil
+	}
+	return domaincommerce.Payment{}, ErrNotFound
+}
+
+func (s *refreshMultiPaymentLife) GetLatestPaymentForOrder(context.Context, uuid.UUID) (domaincommerce.Payment, error) {
+	var latest domaincommerce.Payment
+	for _, pay := range s.byID {
+		if latest.ID == uuid.Nil || pay.CreatedAt.After(latest.CreatedAt) {
+			latest = pay
+		}
+	}
+	if latest.ID == uuid.Nil {
+		return domaincommerce.Payment{}, ErrNotFound
+	}
+	return latest, nil
+}
+
+type selectiveCaptureRefreshProvider struct {
+	capturePaymentID uuid.UUID
+	refreshQueryProvider
+}
+
+func (p *selectiveCaptureRefreshProvider) QueryPaymentStatus(_ context.Context, lookup domaincommerce.PaymentProviderLookup) (domaincommerce.PaymentStatusSnapshot, error) {
+	p.lastLookup = lookup
+	if lookup.PaymentID == p.capturePaymentID {
+		return domaincommerce.PaymentStatusSnapshot{
+			NormalizedState: "captured",
+			ProviderHint:    []byte(`{"resultCode":0}`),
+		}, nil
+	}
+	return domaincommerce.PaymentStatusSnapshot{NormalizedState: "pending"}, nil
+}
+
+func TestRefreshPendingPaymentFromProvider_capturesOlderPendingWhenLatestUnpaid(t *testing.T) {
+	orderID := uuid.New()
+	momoID := uuid.New()
+	shopeeID := uuid.New()
+	now := time.Now()
+	provider := &selectiveCaptureRefreshProvider{capturePaymentID: momoID}
+	momoPay := domaincommerce.Payment{
+		ID:          momoID,
+		OrderID:     orderID,
+		Provider:    "momo",
+		State:       "created",
+		AmountMinor: 2000,
+		CreatedAt:   now.Add(-2 * time.Minute),
+	}
+	shopeePay := domaincommerce.Payment{
+		ID:          shopeeID,
+		OrderID:     orderID,
+		Provider:    "shopeepay",
+		State:       "created",
+		AmountMinor: 2000,
+		CreatedAt:   now,
+	}
+	life := &refreshMultiPaymentLife{
+		refreshLifecycleStub: refreshLifecycleStub{
+			orderStatusLifecycleStub: orderStatusLifecycleStub{
+				order: domaincommerce.Order{ID: orderID, Status: "created"},
+				vend: domaincommerce.VendSession{
+					ID:      uuid.New(),
+					OrderID: orderID,
+					State:   "pending",
+				},
+				payment: shopeePay,
+			},
+			providerRef: "provider-ref",
+		},
+		byID: map[uuid.UUID]domaincommerce.Payment{
+			momoID:   momoPay,
+			shopeeID: shopeePay,
+		},
+	}
+	capture := &captureWebhookPersistence{}
+	fin := &refreshPaymentsFinancialStub{
+		payments: []domaincommerce.Payment{momoPay, shopeePay},
+	}
+	svc := NewService(Deps{
+		OrderVend:              stubOrderVend{},
+		PaymentOutbox:          stubPaymentOutbox{},
+		Lifecycle:              life,
+		WebhookPersist:         capture,
+		SaleLines:              stubSaleLineResolver{},
+		PaymentSessionRegistry: refreshProviderRegistry{provider: provider},
+		FinancialCorrectness:   fin,
+	})
+
+	out := svc.RefreshPendingPaymentFromProvider(context.Background(), uuid.Nil, orderID, "AVF-01")
+
+	require.Equal(t, "captured", out.Diagnostic)
+	require.Equal(t, momoID, capture.got.PaymentID)
+	require.Equal(t, "captured", capture.got.NormalizedPaymentState)
+}
+
 func TestPaymentQueryMinInterval_acceleratedWithinTwoMinutes(t *testing.T) {
 	t.Parallel()
 	createdAt := time.Now().Add(-30 * time.Second)
