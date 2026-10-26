@@ -1,0 +1,85 @@
+name: Production enable fleet payment methods
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = preview only, 0 = write cash/momo/zalopay/vietqr/shopeepay on every machine"
+        required: false
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-enable-fleet-payment-methods
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: Enable fleet payment methods
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    timeout-minutes: 10
+    env:
+      DRY_RUN: ${{ inputs.dry_run }}
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+
+    steps:
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          if [[ "${1:-}" == "--setup" ]]; then
+            if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+              echo "PRIV_MODE=direct"
+            elif sudo -n true 2>/dev/null; then
+              echo "PRIV_MODE=sudo-nopass"
+            elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+              echo "PRIV_MODE=su-root"
+            else
+              echo "PRIV_MODE=none"
+            fi
+            exit 0
+          fi
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+          SSH_USER="${SSH_USER}" PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" /tmp/avf-prod-root.sh --setup >> "$GITHUB_ENV"
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Apply payment methods
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          if [[ "${PRIV_MODE:-none}" != "none" ]]; then
+            PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' && bash scripts/ops/enable_fleet_payment_methods.sh" \
+              | tee enable-fleet-payment-methods.log
+          else
+            DRY_RUN="${DRY_RUN}" bash scripts/ops/enable_fleet_payment_methods.sh | tee enable-fleet-payment-methods.log
+          fi
