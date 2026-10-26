@@ -12,6 +12,8 @@ PRODUCT_SKUS="${PRODUCT_SKUS:-1702,1711}"
 fail() { echo "inspect-machine-product-sales: error: $*" >&2; exit 1; }
 note() { echo "inspect-machine-product-sales: $*"; }
 
+API_CONTAINER=""
+
 find_api_container() {
   docker ps --format '{{.Names}}' | grep -E 'api' | head -n1
 }
@@ -24,16 +26,15 @@ container_env() {
 }
 
 resolve_database_url() {
+  API_CONTAINER="$(find_api_container || true)"
   if [[ -n "${DATABASE_URL:-}" ]]; then
     note "using DATABASE_URL from environment"
     return 0
   fi
-  local api_container
-  api_container="$(find_api_container)"
-  [[ -n "${api_container}" ]] || return 1
-  DATABASE_URL="$(container_env "${api_container}" DATABASE_URL)"
+  [[ -n "${API_CONTAINER}" ]] || return 1
+  DATABASE_URL="$(container_env "${API_CONTAINER}" DATABASE_URL)"
   [[ -n "${DATABASE_URL}" ]] || return 1
-  note "api container=${api_container}"
+  note "api container=${API_CONTAINER}"
 }
 
 psql_database_url() {
@@ -54,7 +55,13 @@ run_sql() {
 
   local psql_url
   psql_url="$(psql_database_url)"
+  local docker_network_args=()
+  if [[ -n "${API_CONTAINER}" ]]; then
+    docker_network_args=(--network "container:${API_CONTAINER}")
+    note "psql network=container:${API_CONTAINER}"
+  fi
   docker run --rm \
+    "${docker_network_args[@]}" \
     -e "DATABASE_URL=${psql_url}" \
     -v "${ROOT}/scripts/ops:/ops:ro" \
     "${POSTGRES_TOOLS_IMAGE}" \
