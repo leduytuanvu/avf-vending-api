@@ -141,3 +141,17 @@ FROM (
 ) t
 WHERE rn <= 5
 ORDER BY sku, completed_at_vn DESC;
+
+\echo ''
+\echo '=== Payment methods (machine_payment_methods) ==='
+SELECT m.code AS machine_code,
+       m.name AS machine_name,
+       m.status AS machine_status,
+       mpm.method_key,
+       mpm.enabled,
+       mpm.sort_order,
+       mpm.updated_at AT TIME ZONE 'Asia/Ho_Chi_Minh' AS updated_at_vn
+FROM machines m
+LEFT JOIN machine_payment_methods mpm ON mpm.machine_id = m.id
+WHERE lower(btrim(m.code)) = lower(btrim(:'machine_code'))
+ORDER BY mpm.sort_order ASC NULLS LAST, mpm.method_key ASC;
