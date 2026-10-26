@@ -66,7 +66,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 		return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrIllegalTransition
 	}
 
-	payRow, err := q.GetLatestPaymentForOrder(ctx, in.OrderID)
+	payRow, err := resolveAuthoritativePaymentRow(ctx, q, in.OrderID, ordRow.WinningPaymentID)
 	if err != nil {
 		if isNoRows(err) {
 			return appcommerce.FulfillSuccessfulVendResult{}, appcommerce.ErrPaymentNotSettled
@@ -207,7 +207,7 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			"order_vend_replay":   orderVendReplay,
 			"machine_id":          machineID.String(),
 			"slot_index":          slotIndex,
-			"line_sequence":     in.LineSequence,
+			"line_sequence":       in.LineSequence,
 			"verification_status": verificationStatus,
 		})
 		if err != nil {
@@ -276,8 +276,8 @@ func (s *Store) FulfillSuccessfulVendAtomically(ctx context.Context, in appcomme
 			}
 			reconMeta, err := json.Marshal(map[string]any{
 				"verification_status": verificationStatus,
-				"slot_index":      slotIndex,
-				"line_sequence": in.LineSequence,
+				"slot_index":          slotIndex,
+				"line_sequence":       in.LineSequence,
 			})
 			if err != nil {
 				return appcommerce.FulfillSuccessfulVendResult{}, err
@@ -314,6 +314,36 @@ func derefStr(p *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*p)
+}
+
+// resolveAuthoritativePaymentRow prefers the claimed winning payment, then the latest
+// captured/partially_refunded row, then the newest payment. Prewarm QR rows created after
+// the winner must not block ConfirmVendSuccess.
+func resolveAuthoritativePaymentRow(ctx context.Context, q *db.Queries, orderID uuid.UUID, winning pgtype.UUID) (db.Payment, error) {
+	if winning.Valid {
+		payID := uuid.UUID(winning.Bytes)
+		if payID != uuid.Nil {
+			row, err := q.GetPaymentByID(ctx, payID)
+			if err == nil {
+				if row.OrderID == orderID {
+					return row, nil
+				}
+			} else if !isNoRows(err) {
+				return db.Payment{}, err
+			}
+		}
+	}
+	all, err := q.ListPaymentsForOrder(ctx, orderID)
+	if err != nil {
+		return db.Payment{}, err
+	}
+	for i := len(all) - 1; i >= 0; i-- {
+		st := strings.TrimSpace(all[i].State)
+		if st == "captured" || st == "partially_refunded" {
+			return all[i], nil
+		}
+	}
+	return q.GetLatestPaymentForOrder(ctx, orderID)
 }
 
 func pgtypeTextString(t pgtype.Text) string {
@@ -442,7 +472,7 @@ func (s *Store) FulfillFailedVendAtomically(ctx context.Context, in appcommerce.
 		return appcommerce.FulfillFailedVendResult{}, err
 	}
 
-	payRow, payErr := q.GetLatestPaymentForOrder(ctx, in.OrderID)
+	payRow, payErr := resolveAuthoritativePaymentRow(ctx, q, in.OrderID, ordRow.WinningPaymentID)
 	payCaptured := payErr == nil && (payRow.State == "captured" || payRow.State == "partially_refunded")
 	cashLocal := false
 	if payCaptured && payErr == nil {
