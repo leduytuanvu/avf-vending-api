@@ -126,8 +126,8 @@ jobs:
             echo "FAIL: admin login failed (http=${E2E_ADMIN_AUTH_HTTP_CODE:-unknown})"
             exit 1
           }
-          FROM_ISO="${WINDOW_FROM//+00/Z}"
-          TO_ISO="${WINDOW_TO//+00/Z}"
+          FROM_ISO="$(python3 -c 'from urllib.parse import quote; print(quote("'"${WINDOW_FROM}"'", safe=""))')"
+          TO_ISO="$(python3 -c 'from urllib.parse import quote; print(quote("'"${WINDOW_TO}"'", safe=""))')"
           url="${BASE_URL%/}/v1/admin/cash/ledger?machineId=${MACHINE_ID}&from=${FROM_ISO}&to=${TO_ISO}&limit=100"
           body="$(mktemp)"
           code="$(curl -sS -o "${body}" -w '%{http_code}' \
@@ -140,9 +140,9 @@ jobs:
           if [[ "${code}" == "200" ]]; then
             jq '{
               total: (.items | length),
-              bill_credit_10k: ([.items[] | select(.eventType == "bill_credit" and .amountMinor == 10000)] | length),
-              payout: ([.items[] | select(.eventType | test("payout"; "i"))] | length),
-              sample: (.items[0:8] | map({eventType, amountMinor, occurredAt, machineId}))
+              acceptance_10k: ([.items[] | select(.movementClass == "acceptance" and ((.amountMinor // .denominationMinor) == 10000))] | length),
+              payout: ([.items[] | select(.movementClass == "payout")] | length),
+              sample: (.items[0:8] | map({movementClass, eventType, amountMinor, occurredAt, machineId}))
             }' "${body}"
             echo "--- payout withdrawal filter (client) ---"
             jq --arg wid "${WITHDRAWAL_ID}" \

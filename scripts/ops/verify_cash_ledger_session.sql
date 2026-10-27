@@ -1,8 +1,21 @@
 -- Read-only verify: bill credits + payout for a machine session window.
+-- CLI `-v name=value` wins; these \set defaults apply only when a var is unset.
+\if :{?machine_id}
+\else
 \set machine_id '01a0a7e5-3c68-7895-b526-bcb6504bccfb'
+\endif
+\if :{?window_from}
+\else
 \set window_from '2026-10-08T05:30:00+00'
+\endif
+\if :{?window_to}
+\else
 \set window_to '2026-10-08T06:15:00+00'
+\endif
+\if :{?withdrawal_id}
+\else
 \set withdrawal_id 'a1803384-dfb8-4d2d-89ec-7cef515eeb85'
+\endif
 
 \echo '=== Session verify ==='
 \echo 'machine_id=' :machine_id
