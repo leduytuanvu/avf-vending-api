@@ -1010,14 +1010,18 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)
 	}
-	if res.AcceptedCount == 0 {
+	if cashMovementResultIsEmptyIngest(res.AcceptedCount, res.DuplicateCount) {
 		return nil, status.Error(codes.InvalidArgument, "invalid cash movements payload")
 	}
 	return &machinev1.ReportCashMovementsResponse{
-		Replay:         res.Replay,
+		Replay:         res.Replay || res.DuplicateCount > 0,
 		AcceptedCount:  res.AcceptedCount,
 		DuplicateCount: res.DuplicateCount,
 	}, nil
+}
+
+func cashMovementResultIsEmptyIngest(acceptedCount, duplicateCount int32) bool {
+	return acceptedCount == 0 && duplicateCount == 0
 }
 
 // validateReportCashMovementsProto rejects offline/proto payloads that unmarshaled but carry no ingestible device_event_id.

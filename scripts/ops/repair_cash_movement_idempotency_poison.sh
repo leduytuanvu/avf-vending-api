@@ -11,6 +11,8 @@ SQL_FILE="${ROOT}/scripts/ops/repair_cash_movement_idempotency_poison.sql"
 POSTGRES_TOOLS_IMAGE="${POSTGRES_TOOLS_IMAGE:-postgres:17-alpine}"
 DRY_RUN="${DRY_RUN:-0}"
 MACHINE_ID="${MACHINE_ID:-01a0a7e5-3c68-7895-b526-bcb6504bccfb}"
+KEY_TOKEN_A="${KEY_TOKEN_A:-920204}"
+KEY_TOKEN_B="${KEY_TOKEN_B:-940105}"
 
 fail() { echo "repair-cash-idempotency: error: $*" >&2; exit 1; }
 note() { echo "repair-cash-idempotency: $*"; }
@@ -72,9 +74,11 @@ run_sql() {
       -v ON_ERROR_STOP=1 \
       -v "dry_run=${DRY_RUN}" \
       -v "machine_id=${MACHINE_ID}" \
+      -v "key_token_a=${KEY_TOKEN_A}" \
+      -v "key_token_b=${KEY_TOKEN_B}" \
       -f "/ops/$(basename "${SQL_FILE}")"
 }
 
-note "dry_run=${DRY_RUN} machine_id=${MACHINE_ID}"
+note "dry_run=${DRY_RUN} machine_id=${MACHINE_ID} key_token_a=${KEY_TOKEN_A} key_token_b=${KEY_TOKEN_B}"
 run_sql
 note "done"

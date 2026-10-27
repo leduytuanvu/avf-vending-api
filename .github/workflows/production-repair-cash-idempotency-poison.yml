@@ -16,6 +16,16 @@ on:
         required: false
         default: "01a0a7e5-3c68-7895-b526-bcb6504bccfb"
         type: string
+      key_token_a:
+        description: "First cash_movement key hex to match (ICT bill)"
+        required: false
+        default: "920204"
+        type: string
+      key_token_b:
+        description: "Second cash_movement key hex to match (ICT bill)"
+        required: false
+        default: "940105"
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +43,8 @@ jobs:
     env:
       DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
       MACHINE_ID: ${{ inputs.machine_id }}
+      KEY_TOKEN_A: ${{ inputs.key_token_a }}
+      KEY_TOKEN_B: ${{ inputs.key_token_b }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
       E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
@@ -88,9 +100,9 @@ jobs:
           checkout_script="${GITHUB_WORKSPACE}/scripts/ops/repair_cash_movement_idempotency_poison.sh"
           run_repair() {
             if [[ -f "${checkout_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" bash "${checkout_script}"
+              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" bash "${checkout_script}"
             elif [[ -f "${deploy_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" bash "${deploy_script}"
+              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" bash "${deploy_script}"
             else
               echo "error: repair_cash_movement_idempotency_poison.sh not found" >&2
               exit 1
@@ -98,9 +110,9 @@ jobs:
           }
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' && \
-              if [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${checkout_script}'; \
-              elif [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${deploy_script}'; \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' && \
+              if [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' bash '${checkout_script}'; \
+              elif [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' bash '${deploy_script}'; \
               else echo 'error: script not found' >&2; exit 1; fi" \
               | tee repair-cash-idempotency.log
           else

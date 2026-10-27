@@ -175,6 +175,7 @@ FROM orders o
 WHERE o.machine_id = :'machine_id'::uuid
   AND o.id IN (
       '770a97e4-1693-4305-aeb7-d91e0d3a94a3'::uuid,
+      '01a17ea7-63f8-7eb3-9eb8-7c35a27650b5'::uuid,
       '01a17ea7-a2c6-7509-a53a-cd8cd519840b'::uuid,
       'b8eb380c-8492-410f-8428-6507f34a0964'::uuid,
       '01a17ea7-8439-7c04-948b-fdda8f0160e6'::uuid,
@@ -195,6 +196,7 @@ SELECT p.order_id,
 FROM payments p
 WHERE p.order_id IN (
       '770a97e4-1693-4305-aeb7-d91e0d3a94a3'::uuid,
+      '01a17ea7-63f8-7eb3-9eb8-7c35a27650b5'::uuid,
       '01a17ea7-a2c6-7509-a53a-cd8cd519840b'::uuid,
       'b8eb380c-8492-410f-8428-6507f34a0964'::uuid,
       '01a17ea7-8439-7c04-948b-fdda8f0160e6'::uuid,
@@ -216,6 +218,7 @@ FROM vend_sessions vs
 WHERE vs.machine_id = :'machine_id'::uuid
   AND vs.order_id IN (
       '770a97e4-1693-4305-aeb7-d91e0d3a94a3'::uuid,
+      '01a17ea7-63f8-7eb3-9eb8-7c35a27650b5'::uuid,
       '01a17ea7-a2c6-7509-a53a-cd8cd519840b'::uuid,
       'b8eb380c-8492-410f-8428-6507f34a0964'::uuid,
       '01a17ea7-8439-7c04-948b-fdda8f0160e6'::uuid,
@@ -283,12 +286,16 @@ FROM machine_offline_events moe
 WHERE moe.machine_id = :'machine_id'::uuid
   AND (
        moe.idempotency_key LIKE '%770a97e4-1693-4305-aeb7-d91e0d3a94a3%'
+    OR moe.idempotency_key LIKE '%01a17ea7-63f8-7eb3-9eb8-7c35a27650b5%'
     OR moe.idempotency_key LIKE '%01a17ea7-a2c6-7509-a53a-cd8cd519840b%'
+    OR moe.idempotency_key LIKE '%01a17ea7-8439-7c04-948b-fdda8f0160e6%'
     OR moe.idempotency_key LIKE '%b8eb380c-8492-410f-8428-6507f34a0964%'
     OR moe.idempotency_key LIKE '%920204%'
     OR moe.idempotency_key LIKE '%940105%'
     OR moe.payload::text LIKE '%770a97e4-1693-4305-aeb7-d91e0d3a94a3%'
+    OR moe.payload::text LIKE '%01a17ea7-63f8-7eb3-9eb8-7c35a27650b5%'
     OR moe.payload::text LIKE '%01a17ea7-a2c6-7509-a53a-cd8cd519840b%'
+    OR moe.payload::text LIKE '%01a17ea7-8439-7c04-948b-fdda8f0160e6%'
     OR moe.payload::text LIKE '%b8eb380c-8492-410f-8428-6507f34a0964%'
     OR moe.payload::text LIKE '%920204%'
     OR moe.payload::text LIKE '%940105%'

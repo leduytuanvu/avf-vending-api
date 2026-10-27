@@ -58,6 +58,19 @@ func TestReportCashMovementsRequest_protojsonUnmarshal_requiresDeviceEventId(t *
 	}
 }
 
+func TestCashMovementResultIsEmptyIngest(t *testing.T) {
+	t.Parallel()
+	if !cashMovementResultIsEmptyIngest(0, 0) {
+		t.Fatal("expected empty ingest when accepted and duplicate are both 0")
+	}
+	if cashMovementResultIsEmptyIngest(0, 1) {
+		t.Fatal("duplicate-only replay must not be treated as invalid payload")
+	}
+	if cashMovementResultIsEmptyIngest(1, 0) {
+		t.Fatal("accepted events must not be treated as empty ingest")
+	}
+}
+
 func TestReportCashMovementsRequest_protojsonUnmarshal_rejectsSnakeCaseEvents(t *testing.T) {
 	t.Parallel()
 	const payload = `{
