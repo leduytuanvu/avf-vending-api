@@ -153,4 +153,4 @@ jobs:
           fi
           rm -f "${body}"
           echo "--- DB excerpt from verify-cash-ledger.log ---"
-          grep -E 'bill_credit_10k_count|payout_event_count|^[0-9]+ rows' verify-cash-ledger.log || true
+          grep -E 'bill_credit_10k_count|payout_event_count|Session 01:37|Machine orders created|Offline events for session|Offline cash_movement|^[0-9]+ rows' verify-cash-ledger.log || true
