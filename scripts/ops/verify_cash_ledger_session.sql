@@ -228,12 +228,47 @@ ORDER BY vs.order_id, vs.line_sequence;
 SELECT o.id,
        o.status,
        o.total_minor,
+       o.pricing_source,
+       o.winning_payment_id,
        o.created_at
 FROM orders o
 WHERE o.machine_id = :'machine_id'::uuid
   AND o.created_at >= :'window_from'::timestamptz
   AND o.created_at < :'window_to'::timestamptz
 ORDER BY o.created_at;
+
+\echo ''
+\echo '=== Payments for orders created in window ==='
+SELECT p.order_id,
+       p.id AS payment_id,
+       p.provider,
+       p.state AS payment_state,
+       p.outcome,
+       p.amount_minor,
+       p.created_at
+FROM payments p
+JOIN orders o ON o.id = p.order_id
+WHERE o.machine_id = :'machine_id'::uuid
+  AND o.created_at >= :'window_from'::timestamptz
+  AND o.created_at < :'window_to'::timestamptz
+ORDER BY p.created_at;
+
+\echo ''
+\echo '=== Vend sessions for orders created in window ==='
+SELECT vs.order_id,
+       vs.line_sequence,
+       vs.slot_index,
+       vs.state,
+       vs.failure_reason,
+       vs.verification_status,
+       vs.started_at,
+       vs.completed_at
+FROM vend_sessions vs
+JOIN orders o ON o.id = vs.order_id
+WHERE o.machine_id = :'machine_id'::uuid
+  AND o.created_at >= :'window_from'::timestamptz
+  AND o.created_at < :'window_to'::timestamptz
+ORDER BY vs.order_id, vs.line_sequence;
 
 \echo ''
 \echo '=== Offline events for session orders / bill hex ==='
