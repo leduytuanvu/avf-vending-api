@@ -87,10 +87,10 @@ jobs:
           deploy_script="${PRODUCTION_DEPLOY_ROOT}/scripts/ops/repair_cash_movement_idempotency_poison.sh"
           checkout_script="${GITHUB_WORKSPACE}/scripts/ops/repair_cash_movement_idempotency_poison.sh"
           run_repair() {
-            if [[ -f "${deploy_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" bash "${deploy_script}"
-            elif [[ -f "${checkout_script}" ]]; then
+            if [[ -f "${checkout_script}" ]]; then
               DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" bash "${checkout_script}"
+            elif [[ -f "${deploy_script}" ]]; then
+              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" bash "${deploy_script}"
             else
               echo "error: repair_cash_movement_idempotency_poison.sh not found" >&2
               exit 1
@@ -99,8 +99,8 @@ jobs:
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
               "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' && \
-              if [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${deploy_script}'; \
-              elif [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${checkout_script}'; \
+              if [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${checkout_script}'; \
+              elif [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' bash '${deploy_script}'; \
               else echo 'error: script not found' >&2; exit 1; fi" \
               | tee repair-cash-idempotency.log
           else
@@ -109,6 +109,7 @@ jobs:
 
       - name: Upload repair log
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: repair-cash-idempotency-${{ github.run_id }}
