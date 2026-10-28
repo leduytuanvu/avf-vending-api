@@ -1,7 +1,10 @@
 package grpcserver
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -295,13 +298,25 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		return events[i].GetMeta().GetOfflineSequence() < events[j].GetMeta().GetOfflineSequence()
 	})
 	streamName := resolveOfflineStreamName(req.GetMeta(), events)
-	cursor, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: streamName})
-	if errors.Is(err, pgx.ErrNoRows) {
-		cursor.LastSequence = 0
-	} else if err != nil {
+	cursors := map[string]*db.MachineSyncCursor{}
+	loadCursor := func(name string) (*db.MachineSyncCursor, error) {
+		if st, ok := cursors[name]; ok {
+			return st, nil
+		}
+		row, err := q.GetMachineSyncCursor(ctx, db.GetMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: name})
+		if errors.Is(err, pgx.ErrNoRows) {
+			row.LastSequence = 0
+		} else if err != nil {
+			return nil, err
+		}
+		copied := row
+		cursors[name] = &copied
+		return cursors[name], nil
+	}
+	cursor, err := loadCursor(streamName)
+	if err != nil {
 		return nil, status.Error(codes.Internal, "offline cursor lookup failed")
 	}
-	expected := cursor.LastSequence + 1
 	gapTolerant := s.offlineSequenceGapTolerant()
 	results := make([]*machinev1.OfflineEventResult, 0, len(events)+len(req.GetAbandoned()))
 	abandonedResults, err := s.applyAbandonedOfflineSequences(
@@ -309,41 +324,45 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		q,
 		claims.MachineID,
 		streamName,
-		&cursor,
+		cursor,
 		req.GetAbandoned(),
 	)
 	if err != nil {
 		return nil, err
 	}
 	results = append(results, abandonedResults...)
-	expected = cursor.LastSequence + 1
 	batchRetryable := false
+	lastCursorSeq := cursor.LastSequence
 	for _, ev := range events {
 		if ev == nil || ev.GetMeta() == nil {
 			return nil, status.Error(codes.InvalidArgument, "offline event meta required")
 		}
-		seq := ev.GetMeta().GetOfflineSequence()
-		if seq <= cursor.LastSequence {
-			productionmetrics.RecordOfflineEventResult("skipped_already_synced")
-			results = append(results, &machinev1.OfflineEventResult{
-				OfflineSequence: seq,
-				IdempotencyKey:  ev.GetMeta().GetIdempotencyKey(),
-				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
-				Reason:          "offline sequence already synced",
-			})
-			continue
+		evStream := resolveOfflineStreamNameForEvent(req.GetMeta(), ev)
+		st, err := loadCursor(evStream)
+		if err != nil {
+			return nil, status.Error(codes.Internal, "offline cursor lookup failed")
 		}
-		if seq != expected {
+		seq := ev.GetMeta().GetOfflineSequence()
+		streamExpected := st.LastSequence + 1
+		if seq <= st.LastSequence {
+			skip, skipResult := s.staleOfflineSequenceDecision(ctx, q, claims, ev)
+			if skip {
+				productionmetrics.RecordOfflineEventResult("skipped_already_synced")
+				recordOfflineOutcomeMetrics(skipResult)
+				results = append(results, skipResult)
+				continue
+			}
+		} else if seq != streamExpected {
 			if !gapTolerant {
-				return nil, machineruntime.OfflineSequenceOutOfOrder(expected, seq)
+				return nil, machineruntime.OfflineSequenceOutOfOrder(streamExpected, seq)
 			}
 			productionmetrics.RecordOfflineEventResult("accepted_with_gap")
 			slog.InfoContext(
 				ctx,
 				"offline sequence gap accepted",
 				"machine_id", claims.MachineID,
-				"stream", streamName,
-				"expected", expected,
+				"stream", evStream,
+				"expected", streamExpected,
 				"got", seq,
 				"skipped_through", seq-1,
 			)
@@ -386,9 +405,9 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		if result.GetStatus() == machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED {
 			break
 		}
-		cursor.LastSequence = seq
-		expected++
-		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: streamName, LastSequence: seq}); err != nil {
+		st.LastSequence = seq
+		lastCursorSeq = seq
+		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: evStream, LastSequence: seq}); err != nil {
 			return nil, status.Error(codes.Internal, "offline cursor update failed")
 		}
 	}
@@ -401,7 +420,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 			"",
 		),
 		Results:        results,
-		NextSyncCursor: strconv.FormatInt(cursor.LastSequence, 10),
+		NextSyncCursor: strconv.FormatInt(lastCursorSeq, 10),
 	}, nil
 }
 
@@ -433,28 +452,29 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		})
 		switch {
 		case err == nil:
-			if prior.OfflineSequence != seq {
-				if strings.TrimSpace(meta.GetStreamId()) != "" {
-					return &machinev1.OfflineEventResult{
-						OfflineSequence: seq,
-						IdempotencyKey:  idem,
-						Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
-						Reason:          "offline event replayed on new stream",
-					}, false
-				}
-				return &machinev1.OfflineEventResult{
-					OfflineSequence: seq,
-					IdempotencyKey:  idem,
-					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
-					Reason:          fmt.Sprintf("duplicate client_event_id %q already recorded at offline_sequence %d", clientEventID, prior.OfflineSequence),
-				}, false
-			}
-			if offlineLedgerSkipRedispatch(prior.ProcessingStatus) {
+			if offlineProvenReplay(prior.ProcessingStatus, prior.Payload, payload) {
 				return &machinev1.OfflineEventResult{
 					OfflineSequence: seq,
 					IdempotencyKey:  idem,
 					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
 					Reason:          "offline event replayed",
+				}, false
+			}
+			if prior.OfflineSequence != seq {
+				if err := s.dispatchOfflineEvent(WithOfflineReplayOccurredAt(ctx, occurredAt), eventType, payload, meta); err != nil {
+					code := status.Code(err)
+					_, retryable := offlineDispatchFailureProcessingStatus(code)
+					return &machinev1.OfflineEventResult{
+						OfflineSequence: seq,
+						IdempotencyKey:  idem,
+						Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+						Reason:          err.Error(),
+					}, retryable
+				}
+				return &machinev1.OfflineEventResult{
+					OfflineSequence: seq,
+					IdempotencyKey:  idem,
+					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
 				}, false
 			}
 		case errors.Is(err, pgx.ErrNoRows):
@@ -527,13 +547,23 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 			Reason:          offlineEventInsertFailedReason(err),
 		}, false
 	}
-	if !row.Inserted && offlineLedgerSkipRedispatch(row.ProcessingStatus) {
-		return &machinev1.OfflineEventResult{
-			OfflineSequence: seq,
-			IdempotencyKey:  idem,
-			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
-			Reason:          "offline event replayed",
-		}, false
+	if !row.Inserted {
+		if strings.TrimSpace(row.ClientEventID) != "" && strings.TrimSpace(row.ClientEventID) != clientEventID {
+			return &machinev1.OfflineEventResult{
+				OfflineSequence: seq,
+				IdempotencyKey:  idem,
+				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+				Reason:          "offline sequence already synced",
+			}, false
+		}
+		if offlineProvenReplay(row.ProcessingStatus, row.Payload, payload) {
+			return &machinev1.OfflineEventResult{
+				OfflineSequence: seq,
+				IdempotencyKey:  idem,
+				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+				Reason:          "offline event replayed",
+			}, false
+		}
 	}
 	dispatchCtx := WithOfflineReplayOccurredAt(ctx, occurredAt)
 	if err := s.dispatchOfflineEvent(dispatchCtx, eventType, payload, meta); err != nil {
@@ -662,6 +692,10 @@ func unmarshalOfflineVendPayload(payload []byte, msg proto.Message) error {
 	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(payload, msg)
 }
 
+func unmarshalOfflineCashPayload(payload []byte, msg proto.Message) error {
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(payload, msg)
+}
+
 func offlineDispatchFailureProcessingStatus(code codes.Code) (string, bool) {
 	switch code {
 	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted, codes.Internal:
@@ -728,7 +762,7 @@ func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eve
 		return err
 	case "commerce.report_cash_movements":
 		var req machinev1.ReportCashMovementsRequest
-		if err := protojson.Unmarshal(payload, &req); err != nil {
+		if err := unmarshalOfflineCashPayload(payload, &req); err != nil {
 			return status.Error(codes.InvalidArgument, "invalid cash movements payload")
 		}
 		_, err := (&machineCommerceServer{deps: s.deps}).ReportCashMovements(ctx, &req)
@@ -851,10 +885,89 @@ func (s *machineOfflineSyncServer) GetSyncCursor(ctx context.Context, req *machi
 }
 
 func resolveOfflineStreamName(reqMeta *machinev1.MachineRequestMeta, events []*machinev1.OfflineEvent) string {
-	if len(events) > 0 && events[0].GetMeta() != nil {
-		return machineruntime.OfflineStreamName(events[0].GetMeta())
+	if len(events) > 0 {
+		return resolveOfflineStreamNameForEvent(reqMeta, events[0])
 	}
 	return machineruntime.OfflineStreamName(reqMeta)
+}
+
+func resolveOfflineStreamNameForEvent(reqMeta *machinev1.MachineRequestMeta, ev *machinev1.OfflineEvent) string {
+	meta := reqMeta
+	if ev != nil && ev.GetMeta() != nil {
+		meta = ev.GetMeta()
+	}
+	base := machineruntime.OfflineStreamName(meta)
+	kind := offlineEventStreamKind("")
+	if ev != nil {
+		kind = offlineEventStreamKind(ev.GetEventType())
+	}
+	return machineruntime.QualifyOfflineStreamName(base, kind)
+}
+
+func offlineEventStreamKind(eventType string) string {
+	switch mapOfflineEventAlias(strings.ToLower(strings.TrimSpace(eventType))) {
+	case "commerce.report_cash_movements", "commerce.confirm_cash_payment":
+		return machineruntime.OfflineStreamKindCash
+	default:
+		return machineruntime.OfflineStreamKindCommerce
+	}
+}
+
+func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(
+	ctx context.Context,
+	q *db.Queries,
+	claims plauth.MachineAccessClaims,
+	ev *machinev1.OfflineEvent,
+) (bool, *machinev1.OfflineEventResult) {
+	meta := ev.GetMeta()
+	seq := meta.GetOfflineSequence()
+	idem := strings.TrimSpace(meta.GetIdempotencyKey())
+	alreadySynced := &machinev1.OfflineEventResult{
+		OfflineSequence: seq,
+		IdempotencyKey:  idem,
+		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+		Reason:          "offline sequence already synced",
+	}
+	clientEventID := strings.TrimSpace(meta.GetClientEventId())
+	if clientEventID == "" {
+		return true, alreadySynced
+	}
+	payload, err := protojson.Marshal(ev.GetPayload())
+	if err != nil || len(payload) == 0 {
+		payload = []byte(`{}`)
+	}
+	prior, err := q.GetMachineOfflineEventByClientEventID(ctx, db.GetMachineOfflineEventByClientEventIDParams{
+		MachineID:     claims.MachineID,
+		ClientEventID: clientEventID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, alreadySynced
+	}
+	if err != nil {
+		return true, alreadySynced
+	}
+	if offlineProvenReplay(prior.ProcessingStatus, prior.Payload, payload) {
+		return true, &machinev1.OfflineEventResult{
+			OfflineSequence: seq,
+			IdempotencyKey:  idem,
+			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+			Reason:          "offline event replayed",
+		}
+	}
+	return false, nil
+}
+
+func offlinePayloadFingerprint(payload []byte) string {
+	sum := sha256.Sum256(bytes.TrimSpace(payload))
+	return hex.EncodeToString(sum[:])
+}
+
+func offlinePayloadsMatch(a, b []byte) bool {
+	return offlinePayloadFingerprint(a) == offlinePayloadFingerprint(b)
+}
+
+func offlineProvenReplay(priorStatus string, priorPayload, newPayload []byte) bool {
+	return offlineLedgerSkipRedispatch(priorStatus) && offlinePayloadsMatch(priorPayload, newPayload)
 }
 
 func (s *machineCommandServer) GetPendingCommands(context.Context, *machinev1.GetPendingCommandsRequest) (*machinev1.GetPendingCommandsResponse, error) {

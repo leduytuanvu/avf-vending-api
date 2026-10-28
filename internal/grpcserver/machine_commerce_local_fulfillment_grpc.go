@@ -28,6 +28,10 @@ func (s *machineCommerceServer) CommitLocalFulfillment(ctx context.Context, req 
 	if clientOrderID == "" {
 		return nil, status.Error(codes.InvalidArgument, "client_order_id required")
 	}
+	clientOrderUUID, err := uuid.Parse(clientOrderID)
+	if err != nil || clientOrderUUID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid client_order_id")
+	}
 	quoteRaw := strings.TrimSpace(req.GetQuoteId())
 	if quoteRaw == "" {
 		return nil, status.Error(codes.InvalidArgument, "quote_id required for commit")
@@ -44,6 +48,7 @@ func (s *machineCommerceServer) CommitLocalFulfillment(ctx context.Context, req 
 		QuoteID:        quoteID,
 		PaymentMethod:  "local_fulfillment_commit",
 		IdempotencyKey: wctx.IdempotencyKey,
+		ClientOrderID:  clientOrderUUID,
 	})
 	if err != nil {
 		return nil, mapCommerceGRPCErr(err)

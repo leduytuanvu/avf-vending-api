@@ -21,3 +21,14 @@ func TestOfflineStreamName_usesStreamId(t *testing.T) {
 		t.Fatalf("got %q", OfflineStreamName(meta))
 	}
 }
+
+func TestQualifyOfflineStreamName_appendsKind(t *testing.T) {
+	got := QualifyOfflineStreamName("install-epoch-1", OfflineStreamKindCash)
+	if got != "install-epoch-1:cash" {
+		t.Fatalf("got %q", got)
+	}
+	got = QualifyOfflineStreamName("install-epoch-1:cash", OfflineStreamKindCommerce)
+	if got != "install-epoch-1:commerce" {
+		t.Fatalf("got %q", got)
+	}
+}
