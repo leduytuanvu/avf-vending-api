@@ -57,6 +57,8 @@ jobs:
             "chmod +x '${{ env.WEB_DEPLOY_ROOT }}/deploy-web.sh' '${{ env.WEB_DEPLOY_ROOT }}/rollback-web.sh' '${{ env.WEB_DEPLOY_ROOT }}/verify-web.sh'"
 
       - name: Capture current web container logs
+        timeout-minutes: 1
+        continue-on-error: true
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/deploy_key -p "${SSH_PORT}" "root@${{ env.WEB_VPS_HOST }}" bash -s <<'REMOTE'
