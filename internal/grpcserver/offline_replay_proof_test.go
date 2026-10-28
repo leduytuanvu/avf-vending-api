@@ -40,6 +40,15 @@ func TestOfflineEventStreamKind_splitsCashFromCommerce(t *testing.T) {
 	}
 }
 
+func TestStaleOfflineSkipReason_newClientEventOccupiesSlot(t *testing.T) {
+	if got := staleOfflineSkipReason("", false); got != "offline sequence already synced" {
+		t.Fatalf("empty client event id: %q", got)
+	}
+	if got := staleOfflineSkipReason("be6f4c3d-45d8-43e7-b8d5-52b6971a37e0", false); got != "offline sequence slot occupied" {
+		t.Fatalf("new client event id: %q", got)
+	}
+}
+
 func TestUnmarshalOfflineCashPayload_discardsUnknown(t *testing.T) {
 	raw := []byte(`{"events":[{"kind":"bill_credit","deviceEventId":"090204","denominationMinor":10000,"rawRecordHex":"4:10000:probe_rehydrate","probe_rehydrate":true,"currency":"VND"}]}`)
 	var req machinev1.ReportCashMovementsRequest

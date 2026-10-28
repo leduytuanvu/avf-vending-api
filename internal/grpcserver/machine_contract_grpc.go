@@ -553,7 +553,7 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 				OfflineSequence: seq,
 				IdempotencyKey:  idem,
 				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
-				Reason:          "offline sequence already synced",
+				Reason:          "offline sequence slot occupied",
 			}, false
 		}
 		if offlineProvenReplay(row.ProcessingStatus, row.Payload, payload) {
@@ -913,6 +913,13 @@ func offlineEventStreamKind(eventType string) string {
 	}
 }
 
+func staleOfflineSkipReason(clientEventID string, priorFound bool) string {
+	if strings.TrimSpace(clientEventID) == "" || priorFound {
+		return "offline sequence already synced"
+	}
+	return "offline sequence slot occupied"
+}
+
 func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(
 	ctx context.Context,
 	q *db.Queries,
@@ -926,7 +933,13 @@ func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(
 		OfflineSequence: seq,
 		IdempotencyKey:  idem,
 		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
-		Reason:          "offline sequence already synced",
+		Reason:          staleOfflineSkipReason("", false),
+	}
+	slotOccupied := &machinev1.OfflineEventResult{
+		OfflineSequence: seq,
+		IdempotencyKey:  idem,
+		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+		Reason:          staleOfflineSkipReason(meta.GetClientEventId(), false),
 	}
 	clientEventID := strings.TrimSpace(meta.GetClientEventId())
 	if clientEventID == "" {
@@ -941,7 +954,7 @@ func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(
 		ClientEventID: clientEventID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return true, alreadySynced
+		return true, slotOccupied
 	}
 	if err != nil {
 		return true, alreadySynced
