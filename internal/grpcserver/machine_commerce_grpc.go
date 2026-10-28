@@ -1013,6 +1013,19 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 	if cashMovementResultIsEmptyIngest(res.AcceptedCount, res.DuplicateCount) {
 		return nil, status.Error(codes.InvalidArgument, "invalid cash movements payload")
 	}
+	deviceIDs := make([]string, 0, len(events))
+	for _, ev := range events {
+		if id := strings.TrimSpace(ev.DeviceEventID); id != "" {
+			deviceIDs = append(deviceIDs, id)
+		}
+	}
+	observability.LoggerFromContext(ctx, zap.NewNop()).Info("REPORT_CASH_MOVEMENTS_INGEST",
+		zap.String("idempotency_key", wctx.IdempotencyKey),
+		zap.Int32("accepted_count", res.AcceptedCount),
+		zap.Int32("duplicate_count", res.DuplicateCount),
+		zap.Bool("replay", res.Replay || res.DuplicateCount > 0),
+		zap.Strings("device_event_ids", deviceIDs),
+	)
 	return &machinev1.ReportCashMovementsResponse{
 		Replay:         res.Replay || res.DuplicateCount > 0,
 		AcceptedCount:  res.AcceptedCount,

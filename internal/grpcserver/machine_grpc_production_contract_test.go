@@ -130,7 +130,6 @@ func TestMachineProductionContract_RequiredMutatingRPCsAreIdempotent(t *testing.
 		machinev1.MachineCommerceService_StartVend_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendSuccess_FullMethodName,
 		machinev1.MachineCommerceService_ReportVendFailure_FullMethodName,
-		machinev1.MachineOfflineSyncService_PushOfflineEvents_FullMethodName,
 		machinev1.MachineOperatorService_SubmitStockAdjustment_FullMethodName,
 		machinev1.MachineOperatorService_SubmitFillReport_FullMethodName,
 	}

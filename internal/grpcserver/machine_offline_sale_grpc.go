@@ -2,6 +2,7 @@ package grpcserver
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
@@ -35,16 +36,32 @@ func (s *machineOfflineSyncServer) replayOfflineSale(ctx context.Context, payloa
 	if !ok {
 		return status.Error(codes.Unavailable, "offline_sale requires commerce service")
 	}
-	return mapCommerceGRPCErr(svc.ProcessOfflineSale(
+	key := strings.TrimSpace(meta.GetIdempotencyKey())
+	clientEventID := strings.TrimSpace(meta.GetClientEventId())
+	err := svc.ProcessOfflineSale(
 		ctx,
 		claims.MachineID,
-		strings.TrimSpace(meta.GetIdempotencyKey()),
-		strings.TrimSpace(meta.GetClientEventId()),
+		key,
+		clientEventID,
 		payload,
 		appcommerce.OfflineSaleOutboxConfig{
 			Topic:         topic,
 			EventType:     evType,
 			AggregateType: aggType,
 		},
-	))
+	)
+	if err != nil {
+		slog.Warn("offline sale dispatch failed",
+			"idempotencyKey", key,
+			"clientEventId", clientEventID,
+			"err", err.Error(),
+		)
+		return mapCommerceGRPCErr(err)
+	}
+	slog.Info("offline sale dispatch ok",
+		"idempotencyKey", key,
+		"clientEventId", clientEventID,
+		"processingStatus", "processed",
+	)
+	return nil
 }

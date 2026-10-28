@@ -547,6 +547,14 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 			ProcessingStatus: st,
 			ProcessingError:  err.Error(),
 		})
+		slog.Warn("offline event dispatch failed",
+			"eventType", eventType,
+			"offlineSequence", seq,
+			"idempotencyKey", idem,
+			"clientEventId", clientEventID,
+			"processingStatus", st,
+			"reason", err.Error(),
+		)
 		return &machinev1.OfflineEventResult{
 			OfflineSequence: seq,
 			IdempotencyKey:  idem,
@@ -560,6 +568,13 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		ProcessingStatus: "processed",
 		ProcessingError:  "",
 	})
+	slog.Info("offline event dispatch processed",
+		"eventType", eventType,
+		"offlineSequence", seq,
+		"idempotencyKey", idem,
+		"clientEventId", clientEventID,
+		"processingStatus", "processed",
+	)
 	return &machinev1.OfflineEventResult{
 		OfflineSequence: seq,
 		IdempotencyKey:  idem,
@@ -584,14 +599,67 @@ func recordOfflineOutcomeMetrics(result *machinev1.OfflineEventResult) {
 }
 
 // offlineLedgerSkipRedispatch: ledger rows that should short-circuit to REPLAYED without re-running dispatch.
-// Rejected rows are excluded so a fixed API can re-process after kiosk retry (see client_created_at offline backfill).
+// Rejected and failed_terminal rows are excluded so a fixed API can re-process after kiosk retry
+// (cash/sale side tables may still be empty after a payload-mismatch interceptor reject).
 func offlineLedgerSkipRedispatch(st string) bool {
 	switch strings.ToLower(strings.TrimSpace(st)) {
-	case "succeeded", "processed", "replayed", "duplicate", "failed_terminal":
+	case "succeeded", "processed", "replayed", "duplicate":
 		return true
 	default:
 		return false
 	}
+}
+
+func payloadCanonicalOperation(payload []byte) string {
+	var peek struct {
+		CanonicalOperation string `json:"canonical_operation"`
+	}
+	if err := json.Unmarshal(payload, &peek); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(peek.CanonicalOperation)
+}
+
+func payloadVendStatus(payload []byte) string {
+	var peek struct {
+		Status string `json:"status"`
+	}
+	if err := json.Unmarshal(payload, &peek); err != nil {
+		return ""
+	}
+	return strings.ToUpper(strings.TrimSpace(peek.Status))
+}
+
+func vendConfirmRerouteFromOfflineMeta(payload []byte, meta *machinev1.MachineRequestMeta) string {
+	key := ""
+	if meta != nil {
+		key = strings.ToLower(strings.TrimSpace(meta.GetIdempotencyKey()))
+	}
+	op := strings.ToLower(payloadCanonicalOperation(payload))
+	st := payloadVendStatus(payload)
+	switch {
+	case strings.HasPrefix(key, "offline-vend-success:"),
+		op == "commerce.confirm_vend_success",
+		st == "SUCCESS", st == "SUCCEEDED", st == "COMPLETED":
+		return "commerce.confirm_vend_success"
+	case strings.HasPrefix(key, "offline-vend-failure:"),
+		op == "commerce.confirm_vend_failure",
+		st == "FAILED", st == "FAILURE":
+		return "commerce.confirm_vend_failure"
+	default:
+		return ""
+	}
+}
+
+func offlineMetaIdempotencyKey(meta *machinev1.MachineRequestMeta) string {
+	if meta == nil {
+		return ""
+	}
+	return strings.TrimSpace(meta.GetIdempotencyKey())
+}
+
+func unmarshalOfflineVendPayload(payload []byte, msg proto.Message) error {
+	return protojson.UnmarshalOptions{DiscardUnknown: true}.Unmarshal(payload, msg)
 }
 
 func offlineDispatchFailureProcessingStatus(code codes.Code) (string, bool) {
@@ -666,22 +734,45 @@ func (s *machineOfflineSyncServer) dispatchOfflineEvent(ctx context.Context, eve
 		_, err := (&machineCommerceServer{deps: s.deps}).ReportCashMovements(ctx, &req)
 		return err
 	case "commerce.start_vend", "sale.start_vend":
+		if reroute := vendConfirmRerouteFromOfflineMeta(payload, meta); reroute != "" {
+			slog.Info("offline start_vend rerouted",
+				"from", eventType,
+				"to", reroute,
+				"idempotencyKey", offlineMetaIdempotencyKey(meta),
+				"canonicalOperation", payloadCanonicalOperation(payload),
+			)
+			return s.dispatchOfflineEvent(ctx, reroute, payload, meta)
+		}
 		var req machinev1.StartVendRequest
-		if err := protojson.Unmarshal(payload, &req); err != nil {
+		if err := unmarshalOfflineVendPayload(payload, &req); err != nil {
+			slog.Warn("invalid start_vend payload",
+				"err", err.Error(),
+				"idempotencyKey", offlineMetaIdempotencyKey(meta),
+				"canonicalOperation", payloadCanonicalOperation(payload),
+				"status", payloadVendStatus(payload),
+			)
 			return status.Error(codes.InvalidArgument, "invalid start_vend payload")
 		}
 		_, err := (&machineCommerceServer{deps: s.deps}).StartVend(ctx, &req)
 		return err
 	case "commerce.confirm_vend_success", "sale.confirm_vend_success":
 		var req machinev1.ConfirmVendSuccessRequest
-		if err := protojson.Unmarshal(payload, &req); err != nil {
+		if err := unmarshalOfflineVendPayload(payload, &req); err != nil {
+			slog.Warn("invalid vend success payload",
+				"err", err.Error(),
+				"idempotencyKey", offlineMetaIdempotencyKey(meta),
+			)
 			return status.Error(codes.InvalidArgument, "invalid vend success payload")
 		}
 		_, err := (&machineCommerceServer{deps: s.deps}).ConfirmVendSuccess(ctx, &req)
 		return err
 	case "commerce.confirm_vend_failure", "sale.confirm_vend_failure":
 		var req machinev1.ReportVendFailureRequest
-		if err := protojson.Unmarshal(payload, &req); err != nil {
+		if err := unmarshalOfflineVendPayload(payload, &req); err != nil {
+			slog.Warn("invalid vend failure payload",
+				"err", err.Error(),
+				"idempotencyKey", offlineMetaIdempotencyKey(meta),
+			)
 			return status.Error(codes.InvalidArgument, "invalid vend failure payload")
 		}
 		_, err := (&machineCommerceServer{deps: s.deps}).ReportVendFailure(ctx, &req)

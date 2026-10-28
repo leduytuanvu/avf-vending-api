@@ -177,7 +177,6 @@ func isMachineIdempotentMutation(fullMethod string) bool {
 		machinev1.MachineTelemetryService_PushTelemetryBatch_FullMethodName,
 		machinev1.MachineTelemetryService_PushCriticalEvent_FullMethodName,
 		machinev1.MachineTelemetryService_ReconcileEvents_FullMethodName,
-		machinev1.MachineOfflineSyncService_PushOfflineEvents_FullMethodName,
 		machinev1.MachineBootstrapService_CheckIn_FullMethodName,
 		machinev1.MachineBootstrapService_AckConfigVersion_FullMethodName,
 		machinev1.MachineCatalogService_AckCatalogVersion_FullMethodName,
