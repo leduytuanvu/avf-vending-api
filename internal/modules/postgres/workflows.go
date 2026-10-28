@@ -110,6 +110,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			return commerce.CreateOrderVendResult{}, perr
 		}
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
+			ID:                     uuidPtrToPgUUID(in.OrderID),
 			MachineID:              in.MachineID,
 			Status:                 in.OrderStatus,
 			Currency:               in.Currency,

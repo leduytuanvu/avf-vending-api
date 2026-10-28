@@ -70,6 +70,7 @@ type CreateOrderFromQuoteInput struct {
 	FakeBill           bool
 	FakeBoard          bool
 	PricingSnapshot    *MachinePricingSnapshotInput
+	ClientOrderID      uuid.UUID
 }
 
 // OrderVendLineView is one vend session row created from a quote.

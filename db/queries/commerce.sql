@@ -1,5 +1,6 @@
 -- name: InsertOrder :one
 INSERT INTO orders (
+    id,
     machine_id,
     status,
     currency,
@@ -18,6 +19,7 @@ INSERT INTO orders (
     server_reference_total_minor
 )
 VALUES (
+    COALESCE(sqlc.narg('id'), public.uuid_generate_v7()),
     sqlc.arg('machine_id'),
     sqlc.arg('status'),
     sqlc.arg('currency'),

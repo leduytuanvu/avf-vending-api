@@ -13,6 +13,9 @@ DRY_RUN="${DRY_RUN:-0}"
 MACHINE_ID="${MACHINE_ID:-01a0a7e5-3c68-7895-b526-bcb6504bccfb}"
 KEY_TOKEN_A="${KEY_TOKEN_A:-920204}"
 KEY_TOKEN_B="${KEY_TOKEN_B:-940105}"
+KEY_TOKEN_C="${KEY_TOKEN_C:-BC0103}"
+KEY_TOKEN_D="${KEY_TOKEN_D:-C00103}"
+KEY_TOKEN_E="${KEY_TOKEN_E:-C20103}"
 
 fail() { echo "repair-cash-idempotency: error: $*" >&2; exit 1; }
 note() { echo "repair-cash-idempotency: $*"; }
@@ -76,9 +79,12 @@ run_sql() {
       -v "machine_id=${MACHINE_ID}" \
       -v "key_token_a=${KEY_TOKEN_A}" \
       -v "key_token_b=${KEY_TOKEN_B}" \
+      -v "key_token_c=${KEY_TOKEN_C}" \
+      -v "key_token_d=${KEY_TOKEN_D}" \
+      -v "key_token_e=${KEY_TOKEN_E}" \
       -f "/ops/$(basename "${SQL_FILE}")"
 }
 
-note "dry_run=${DRY_RUN} machine_id=${MACHINE_ID} key_token_a=${KEY_TOKEN_A} key_token_b=${KEY_TOKEN_B}"
+note "dry_run=${DRY_RUN} machine_id=${MACHINE_ID} key_token_a=${KEY_TOKEN_A} key_token_b=${KEY_TOKEN_B} key_token_c=${KEY_TOKEN_C} key_token_d=${KEY_TOKEN_D} key_token_e=${KEY_TOKEN_E}"
 run_sql
 note "done"

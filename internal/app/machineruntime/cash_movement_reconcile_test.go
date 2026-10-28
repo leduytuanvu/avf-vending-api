@@ -26,6 +26,18 @@ func TestDeviceEventIDFromCashMovementIdempotencyKey(t *testing.T) {
 			want: "010005",
 		},
 		{
+			key:  "cash_movement:01a0a7e5-3c68-7895-b526-bcb6504bccfb:boot-1:BC0103:bill_credit",
+			want: "BC0103",
+		},
+		{
+			key:  "cash_movement:v2:01a0a7e5-3c68-7895-b526-bcb6504bccfb:BC0103:bill_lifecycle:escrow_held",
+			want: "BC0103",
+		},
+		{
+			key:  "cash_movement:v3:01a0a7e5-3c68-7895-b526-bcb6504bccfb:BC0103:bill_credit:12345",
+			want: "BC0103",
+		},
+		{
 			key:  "cash_movement:01a0a7e5-3c68-7895-b526-bcb6504bccfb:payout:wd-1:1:NOTE_CONFIRMED",
 			want: "payout:wd-1:1:NOTE_CONFIRMED",
 		},

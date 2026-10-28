@@ -79,6 +79,7 @@ type PersistOrderFromQuoteInput struct {
 	SimulationScenario string
 	FakeBill           bool
 	FakeBoard          bool
+	ClientOrderID      uuid.UUID
 }
 
 type PersistOrderFromQuoteVendLine struct {
@@ -312,6 +313,7 @@ func (s *Service) CreateOrderFromQuote(ctx context.Context, in CreateOrderFromQu
 		SimulationScenario: strings.TrimSpace(in.SimulationScenario),
 		FakeBill:           in.FakeBill,
 		FakeBoard:          in.FakeBoard,
+		ClientOrderID:      in.ClientOrderID,
 	})
 	if err != nil {
 		return CreateOrderFromQuoteResult{}, err

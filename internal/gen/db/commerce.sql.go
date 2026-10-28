@@ -882,6 +882,7 @@ func (q *Queries) GetWinningPaymentForOrder(ctx context.Context, id uuid.UUID) (
 
 const InsertOrder = `-- name: InsertOrder :one
 INSERT INTO orders (
+    id,
     machine_id,
     status,
     currency,
@@ -900,7 +901,7 @@ INSERT INTO orders (
     server_reference_total_minor
 )
 VALUES (
-    $1,
+    COALESCE($1, public.uuid_generate_v7()),
     $2,
     $3,
     $4,
@@ -914,13 +915,15 @@ VALUES (
     $12,
     $13,
     $14,
-    NULLIF($15::text, '')::jsonb,
-    $16
+    $15,
+    NULLIF($16::text, '')::jsonb,
+    $17
 )
 RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, server_reference_total_minor, created_at, updated_at
 `
 
 type InsertOrderParams struct {
+	ID                        interface{}
 	MachineID                 uuid.UUID
 	Status                    string
 	Currency                  string
@@ -941,6 +944,7 @@ type InsertOrderParams struct {
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order, error) {
 	row := q.db.QueryRow(ctx, InsertOrder,
+		arg.ID,
 		arg.MachineID,
 		arg.Status,
 		arg.Currency,

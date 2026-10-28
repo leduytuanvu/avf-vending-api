@@ -28,6 +28,8 @@ type CreateOrderVendInput struct {
 	PricingSource          string
 	MachinePricingRevision *int64
 	MachinePricingSnapshot []byte
+	// OrderID is optional; uuid.Nil lets Postgres assign uuid_generate_v7().
+	OrderID uuid.UUID
 }
 
 // CreateOrderVendResult is the outcome of CreateOrderWithVendSession.

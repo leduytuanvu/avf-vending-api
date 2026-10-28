@@ -41,6 +41,19 @@ WHERE
                 SELECT p.provider
                 FROM payments p
                 WHERE p.order_id = o.id
+                  AND (
+                    p.state IN ('captured', 'partially_refunded', 'refunded')
+                    OR p.outcome = 'winner'
+                  )
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                  AND p.state NOT IN ('canceled', 'expired', 'failed')
+                  AND p.outcome <> 'superseded'
                 ORDER BY p.created_at DESC
                 LIMIT 1
             ),
@@ -183,6 +196,19 @@ SELECT
             SELECT p.provider
             FROM payments p
             WHERE p.order_id = o.id
+              AND (
+                p.state IN ('captured', 'partially_refunded', 'refunded')
+                OR p.outcome = 'winner'
+              )
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        ),
+        (
+            SELECT p.provider
+            FROM payments p
+            WHERE p.order_id = o.id
+              AND p.state NOT IN ('canceled', 'expired', 'failed')
+              AND p.outcome <> 'superseded'
             ORDER BY p.created_at DESC
             LIMIT 1
         ),
@@ -194,6 +220,19 @@ SELECT
             SELECT p.state
             FROM payments p
             WHERE p.order_id = o.id
+              AND (
+                p.state IN ('captured', 'partially_refunded', 'refunded')
+                OR p.outcome = 'winner'
+              )
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        ),
+        (
+            SELECT p.state
+            FROM payments p
+            WHERE p.order_id = o.id
+              AND p.state NOT IN ('canceled', 'expired', 'failed')
+              AND p.outcome <> 'superseded'
             ORDER BY p.created_at DESC
             LIMIT 1
         ),
@@ -427,6 +466,19 @@ SELECT
             SELECT p.provider
             FROM payments p
             WHERE p.order_id = o.id
+              AND (
+                p.state IN ('captured', 'partially_refunded', 'refunded')
+                OR p.outcome = 'winner'
+              )
+            ORDER BY p.created_at DESC
+            LIMIT 1
+        ),
+        (
+            SELECT p.provider
+            FROM payments p
+            WHERE p.order_id = o.id
+              AND p.state NOT IN ('canceled', 'expired', 'failed')
+              AND p.outcome <> 'superseded'
             ORDER BY p.created_at DESC
             LIMIT 1
         ),
@@ -457,6 +509,19 @@ WHERE
                 SELECT p.provider
                 FROM payments p
                 WHERE p.order_id = o.id
+                  AND (
+                    p.state IN ('captured', 'partially_refunded', 'refunded')
+                    OR p.outcome = 'winner'
+                  )
+                ORDER BY p.created_at DESC
+                LIMIT 1
+            ),
+            (
+                SELECT p.provider
+                FROM payments p
+                WHERE p.order_id = o.id
+                  AND p.state NOT IN ('canceled', 'expired', 'failed')
+                  AND p.outcome <> 'superseded'
                 ORDER BY p.created_at DESC
                 LIMIT 1
             ),

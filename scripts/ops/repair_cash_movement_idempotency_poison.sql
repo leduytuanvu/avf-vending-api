@@ -1,12 +1,18 @@
 -- Cash movement offline push: idempotency ledger poisoned without cash_acceptance_events.
 -- Incident 2026-10-27 18:36Z: ICT hex 920204 (historic) and 940105 (live) minted unbounded v3 keys.
+-- Incident 2026-10-28 14:00: same-hex escrow_held vs bill_credit (token B20204) stalled the
+-- offline sequence so nạp/rút never reached cash_acceptance_events / cash_payout_events.
+-- Incident 2026-10-28 17:04: duplicate bill_credit rows shared BC0103/C00103/C20103 and
+-- v3 rekey reused client_event_id, stalling floor 11189 so nạp/rút still missing on web.
 -- Machine from 2026-10-08 / 2026-10-27 incident (adjust UUID as needed).
 -- Run VERIFY sections first with a read-only role; apply DELETE only after the patched APK is installed
--- (or the old app is stopped). Deleting while the old APK still runs will remint v3 immediately.
+-- (kind-scoped cash_movement keys + enqueueIfAbsent, or the old app is stopped). Deleting while the
+-- old APK still mints colliding …:BC0103:bill_credit keys will re-poison immediately.
 --
 -- Usage:
 --   psql "$DATABASE_URL" -v dry_run=1 -v machine_id='01a0a7e5-3c68-7895-b526-bcb6504bccfb' \
 --     -v key_token_a='920204' -v key_token_b='940105' \
+--     -v key_token_c='BC0103' -v key_token_d='C00103' -v key_token_e='C20103' \
 --     -f scripts/ops/repair_cash_movement_idempotency_poison.sql
 
 \set ON_ERROR_STOP on
@@ -24,6 +30,21 @@
 \if :{?key_token_b}
 \else
 \set key_token_b '940105'
+\endif
+
+\if :{?key_token_c}
+\else
+\set key_token_c 'BC0103'
+\endif
+
+\if :{?key_token_d}
+\else
+\set key_token_d 'C00103'
+\endif
+
+\if :{?key_token_e}
+\else
+\set key_token_e 'C20103'
 \endif
 
 \if :{?dry_run}
@@ -44,6 +65,9 @@ WHERE mik.machine_id = :'machine_id'::uuid
   AND (
       mik.idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR mik.idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
 ORDER BY mik.last_seen_at DESC
 LIMIT 200;
@@ -62,6 +86,9 @@ WHERE machine_id = :'machine_id'::uuid
   AND (
       idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
 ORDER BY offline_sequence DESC
 LIMIT 200;
@@ -76,6 +103,9 @@ WHERE machine_id = :'machine_id'::uuid
   AND (
       device_event_id LIKE '%' || :'key_token_a' || '%'
       OR device_event_id LIKE '%' || :'key_token_b' || '%'
+      OR device_event_id LIKE '%' || :'key_token_c' || '%'
+      OR device_event_id LIKE '%' || :'key_token_d' || '%'
+      OR device_event_id LIKE '%' || :'key_token_e' || '%'
   )
 ORDER BY accepted_at DESC
 LIMIT 100;
@@ -91,6 +121,9 @@ WHERE mik.machine_id = :'machine_id'::uuid
   AND (
       mik.idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR mik.idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
   AND NOT EXISTS (
       SELECT 1
@@ -102,6 +135,25 @@ ORDER BY mik.last_seen_at DESC;
 
 \echo '=== Poison candidates (section 4, hex-narrowed) ==='
 
+-- 5) Inventory: every cash_movement key without a cash_acceptance_events row
+-- (17:04 stall can poison hexes beyond the token list). VERIFY only here;
+-- APPLY below stays token-narrowed unless operators expand tokens.
+\echo '=== All cash_movement keys missing cash_acceptance_events (verify) ==='
+SELECT mik.idempotency_key,
+       mik.status,
+       mik.last_seen_at
+FROM machine_idempotency_keys mik
+WHERE mik.machine_id = :'machine_id'::uuid
+  AND mik.idempotency_key LIKE 'cash_movement:%'
+  AND mik.idempotency_key NOT LIKE '%:payout:%'
+  AND NOT EXISTS (
+      SELECT 1 FROM cash_acceptance_events cae
+      WHERE cae.machine_id = mik.machine_id
+        AND mik.idempotency_key LIKE '%' || cae.device_event_id
+  )
+ORDER BY mik.last_seen_at DESC
+LIMIT 200;
+
 \if :dry_run
 \echo '=== DRY RUN: would delete poisoned idempotency keys (no writes) ==='
 SELECT mik.idempotency_key, mik.status, mik.last_seen_at
@@ -112,6 +164,9 @@ WHERE mik.machine_id = :'machine_id'::uuid
   AND (
       mik.idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR mik.idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
   AND NOT EXISTS (
       SELECT 1 FROM cash_acceptance_events cae
@@ -129,6 +184,9 @@ WHERE moe.machine_id = :'machine_id'::uuid
   AND (
       moe.idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR moe.idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR moe.idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR moe.idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR moe.idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
   AND lower(moe.processing_status) IN ('processed', 'succeeded')
   AND NOT EXISTS (
@@ -145,6 +203,9 @@ WHERE mik.machine_id = :'machine_id'::uuid
   AND (
       mik.idempotency_key LIKE '%' || :'key_token_a' || '%'
       OR mik.idempotency_key LIKE '%' || :'key_token_b' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_c' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_d' || '%'
+      OR mik.idempotency_key LIKE '%' || :'key_token_e' || '%'
   )
   AND NOT EXISTS (
       SELECT 1 FROM cash_acceptance_events cae

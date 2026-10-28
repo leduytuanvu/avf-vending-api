@@ -228,6 +228,7 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		serverRef = &v
 	}
 	orderRow, err := q.InsertOrder(ctx, db.InsertOrderParams{
+		ID:                        uuidPtrToPgUUID(in.ClientOrderID),
 		MachineID:                 quote.MachineID,
 		Status:                    "created",
 		Currency:                  quote.Currency,

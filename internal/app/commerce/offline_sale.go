@@ -100,7 +100,16 @@ func (s *Service) ProcessOfflineSale(
 	}
 
 	pricingSnap := machinePricingSnapshotFromAppCheckout(snap, payable)
-	orderID, err := s.createOfflineOrderFromSnapshot(ctx, machineID, snap, pricingSnap, currency, "cash", key)
+	orderID, err := s.createOfflineOrderFromSnapshot(
+		ctx,
+		machineID,
+		snap,
+		pricingSnap,
+		currency,
+		"cash",
+		key,
+		optionalClientOrderID(wire.OrderID),
+	)
 	if err != nil {
 		return err
 	}
@@ -165,7 +174,7 @@ func (s *Service) MaterializeOrderFromPricingSnapshotInput(
 	if pm == "" {
 		pm = "default"
 	}
-	return s.createOfflineOrderFromSnapshot(ctx, machineID, wireSnap, pricingSnap, currency, pm, idempotencyKey)
+	return s.createOfflineOrderFromSnapshot(ctx, machineID, wireSnap, pricingSnap, currency, pm, idempotencyKey, uuid.Nil)
 }
 
 // AppCheckoutPricingSnapshotFromPricingInput builds wire snapshot metadata from proto-mapped input.
@@ -201,6 +210,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 	currency string,
 	paymentMethod string,
 	key string,
+	clientOrderID uuid.UUID,
 ) (uuid.UUID, error) {
 	pm := strings.TrimSpace(paymentMethod)
 	if pm == "" {
@@ -234,6 +244,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 			Currency:        currency,
 			IdempotencyKey:  coKey,
 			PricingSnapshot: &pricingSnap,
+			ClientOrderID:   clientOrderID,
 		})
 		if err != nil {
 			return uuid.Nil, err
@@ -290,6 +301,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 		PaymentMethod:   pm,
 		IdempotencyKey:  coKey,
 		PricingSnapshot: &pricingSnap,
+		ClientOrderID:   clientOrderID,
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -384,4 +396,12 @@ func machinePricingSnapshotFromAppCheckout(snap appCheckoutPricingSnapshot, paya
 		SlotConfigVersion:    int64(snap.SlotConfigVersion),
 		Lines:                lines,
 	}
+}
+
+func optionalClientOrderID(raw string) uuid.UUID {
+	id, err := uuid.Parse(strings.TrimSpace(raw))
+	if err != nil || id == uuid.Nil {
+		return uuid.Nil
+	}
+	return id
 }
