@@ -42,6 +42,20 @@ func LookupOfflineEventReconcileStatus(
 	if !ok {
 		return OfflineReconcileStatus{}, nil
 	}
+	if st == "processed" && strings.HasPrefix(key, "cash_movement:") {
+		exists, ferr := CashMovementForensicRowExists(ctx, q, machineID, key)
+		if ferr != nil {
+			return OfflineReconcileStatus{}, ferr
+		}
+		if !exists {
+			return OfflineReconcileStatus{
+				Status:    "failed_retryable",
+				Retryable: true,
+				EventType: row.EventType,
+				Found:     true,
+			}, nil
+		}
+	}
 	return OfflineReconcileStatus{
 		Status:    st,
 		Retryable: retry,

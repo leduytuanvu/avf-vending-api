@@ -97,7 +97,7 @@ func (s *Store) RecordCashAcceptanceEvents(ctx context.Context, in appcommerce.R
 		_, err := q.InsertCashAcceptanceEvent(ctx, db.InsertCashAcceptanceEventParams{
 			MachineID:         in.MachineID,
 			OrderID:           uuidToPg(in.OrderID),
-			DeviceEventID:     ev.DeviceEventID,
+			DeviceEventID:     appcommerce.QualifyCashMovementDeviceEventID(ev.DeviceEventID, ev.BootID),
 			DenominationMinor: ev.DenominationMinor,
 			CreditSource:      ev.CreditSource,
 			Currency:          in.Currency,
@@ -106,7 +106,7 @@ func (s *Store) RecordCashAcceptanceEvents(ctx context.Context, in appcommerce.R
 			OccurredAtDevice:  optionalTimeToPgTimestamptz(&ev.AcceptedAt),
 			RawMetadata:       pgjson.TextJSON(ev.RawMetadata),
 		})
-		if err != nil {
+		if _, err := cashMovementInsertResult(err); err != nil {
 			return err
 		}
 	}

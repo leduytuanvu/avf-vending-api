@@ -393,29 +393,10 @@ func telemetryStatusForCashMovementForensic(
 	machineID uuid.UUID,
 	key string,
 ) (*machinev1.TelemetryEventStatus, bool) {
-	deviceID := machineruntime.DeviceEventIDFromCashMovementIdempotencyKey(machineID, key)
-	if deviceID == "" {
+	if !strings.HasPrefix(strings.TrimSpace(key), "cash_movement:") {
 		return nil, false
 	}
-	if strings.HasPrefix(deviceID, "payout:") {
-		exists, err := q.CashPayoutExistsForMachineDevice(ctx, db.CashPayoutExistsForMachineDeviceParams{
-			MachineID:     machineID,
-			DeviceEventID: deviceID,
-		})
-		if err != nil || !exists {
-			return nil, false
-		}
-		return &machinev1.TelemetryEventStatus{
-			IdempotencyKey: key,
-			Status:         "processed",
-			Retryable:      false,
-			EventType:      "commerce.report_cash_movements",
-		}, true
-	}
-	exists, err := q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
-		MachineID:     machineID,
-		DeviceEventID: deviceID,
-	})
+	exists, err := machineruntime.CashMovementForensicRowExists(ctx, q, machineID, key)
 	if err != nil || !exists {
 		return nil, false
 	}

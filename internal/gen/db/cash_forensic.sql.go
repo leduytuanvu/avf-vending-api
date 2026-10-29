@@ -33,6 +33,26 @@ func (q *Queries) CashAcceptanceExistsForMachineDevice(ctx context.Context, arg 
 	return exists, err
 }
 
+const CashBillLifecycleExistsForMachineDevice = `-- name: CashBillLifecycleExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_bill_lifecycle_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists
+`
+
+type CashBillLifecycleExistsForMachineDeviceParams struct {
+	MachineID     uuid.UUID
+	DeviceEventID string
+}
+
+func (q *Queries) CashBillLifecycleExistsForMachineDevice(ctx context.Context, arg CashBillLifecycleExistsForMachineDeviceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, CashBillLifecycleExistsForMachineDevice, arg.MachineID, arg.DeviceEventID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const CashPayoutExistsForMachineDevice = `-- name: CashPayoutExistsForMachineDevice :one
 SELECT EXISTS (
     SELECT 1
@@ -228,8 +248,7 @@ INSERT INTO cash_bill_lifecycle_events (
     $7,
     COALESCE(NULLIF($9::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING id, machine_id, order_id, device_event_id, lifecycle_type, denomination_minor, raw_record_hex, currency, occurred_at_device, created_at, raw_metadata
 `
 
@@ -296,8 +315,7 @@ INSERT INTO cash_hardware_observations (
     $7,
     COALESCE(NULLIF($9::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING id, machine_id, device_event_id, observed_at_device, created_at, recycler_denomination_minor, recycler_count, cashbox_count, source, currency, raw_metadata
 `
 
@@ -375,8 +393,7 @@ INSERT INTO cash_payout_events (
     $10,
     COALESCE(NULLIF($14::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING id, machine_id, order_id, withdrawal_id, note_sequence, event_type, device_event_id, denomination_minor, amount_minor, recycler_count_before, recycler_count_after, outcome_finality, currency, occurred_at_device, created_at, raw_metadata
 `
 

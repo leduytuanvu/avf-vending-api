@@ -1,16 +1,19 @@
 package machineruntime
 
 import (
+	"context"
 	"strings"
 
+	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 )
 
-// DeviceEventIDFromCashMovementIdempotencyKey extracts the hardware device_event_id suffix
-// from outbox keys such as cash_movement:<machineId>:<hex> or cash_movement:v2:<machineId>:<hex>
-// and cash_movement:<machineId>:<bootId>:<hex>. Kind suffixes (:bill_credit,
-// :bill_lifecycle:escrow_held) and v3 recovery nonces are stripped so forensic
-// matching still uses the ICT hex, not the movement kind.
+// DeviceEventIDFromCashMovementIdempotencyKey extracts the forensic device_event_id
+// from outbox keys such as cash_movement:<machineId>:<hex>,
+// cash_movement:<machineId>:<bootId>:<hex>[:episode], and v2/v3 variants.
+// Kind suffixes (:bill_credit, :bill_lifecycle:escrow_held) and v3 recovery
+// nonces (digit tails longer than 8) are stripped. Boot and episode stay in
+// the returned id so existence checks match boot-scoped acceptance rows.
 func DeviceEventIDFromCashMovementIdempotencyKey(machineID uuid.UUID, idempotencyKey string) string {
 	key := strings.TrimSpace(idempotencyKey)
 	if !strings.HasPrefix(key, "cash_movement:") {
@@ -33,35 +36,72 @@ func DeviceEventIDFromCashMovementIdempotencyKey(machineID uuid.UUID, idempotenc
 	if rest == "" {
 		return ""
 	}
-	if strings.HasPrefix(rest, "payout:") {
-		return rest
+	if i := strings.Index(rest, "payout:"); i >= 0 {
+		payoutID := strings.TrimSpace(rest[i:])
+		return strings.TrimSuffix(payoutID, ":payout")
 	}
-	rest = stripCashMovementKindAndNonce(rest)
-	// boot-scoped bill keys: <bootId>:<deviceHex> — device id is the last segment
-	if strings.Contains(rest, ":") {
-		parts := strings.Split(rest, ":")
-		return strings.TrimSpace(parts[len(parts)-1])
+	return stripCashMovementKindAndNonce(rest)
+}
+
+// BootIDFromCashMovementIdempotencyKey returns the boot prefix of a boot-scoped
+// cash_movement key, or empty when the key has no boot segment.
+func BootIDFromCashMovementIdempotencyKey(machineID uuid.UUID, idempotencyKey string) string {
+	id := DeviceEventIDFromCashMovementIdempotencyKey(machineID, idempotencyKey)
+	if id == "" || strings.HasPrefix(id, "payout:") {
+		return ""
 	}
-	return rest
+	idx := strings.IndexByte(id, ':')
+	if idx <= 0 {
+		return ""
+	}
+	return id[:idx]
+}
+
+func CashMovementForensicRowExists(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	idempotencyKey string,
+) (bool, error) {
+	key := strings.TrimSpace(idempotencyKey)
+	deviceID := DeviceEventIDFromCashMovementIdempotencyKey(machineID, key)
+	if deviceID == "" {
+		return true, nil
+	}
+	if strings.Contains(key, ":payout:") || strings.HasPrefix(deviceID, "payout:") {
+		return q.CashPayoutExistsForMachineDevice(ctx, db.CashPayoutExistsForMachineDeviceParams{
+			MachineID:     machineID,
+			DeviceEventID: deviceID,
+		})
+	}
+	if strings.Contains(key, ":bill_lifecycle:") {
+		return q.CashBillLifecycleExistsForMachineDevice(ctx, db.CashBillLifecycleExistsForMachineDeviceParams{
+			MachineID:     machineID,
+			DeviceEventID: deviceID,
+		})
+	}
+	if strings.Contains(key, ":recycler_observation") {
+		return true, nil
+	}
+	return q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
+		MachineID:     machineID,
+		DeviceEventID: deviceID,
+	})
 }
 
 func stripCashMovementKindAndNonce(rest string) string {
 	trimmed := strings.TrimSpace(rest)
-	strippedKind := false
 	if i := strings.Index(trimmed, ":bill_lifecycle:"); i >= 0 {
 		trimmed = trimmed[:i]
-		strippedKind = true
 	} else if i := strings.Index(trimmed, ":bill_credit"); i >= 0 {
 		trimmed = trimmed[:i]
-		strippedKind = true
 	} else if i := strings.Index(trimmed, ":recycler_observation"); i >= 0 {
 		trimmed = trimmed[:i]
-		strippedKind = true
 	}
-	// v3 recovery nonce is nanoTime (>> 6-char ICT hex). Do not strip hex like 010005.
+	// v3 recovery nonce is nanoTime (>> 8 digits). Keep short episode seq tails.
 	if i := strings.LastIndex(trimmed, ":"); i >= 0 {
 		tail := trimmed[i+1:]
-		if tail != "" && isAllDigits(tail) && (strippedKind || len(tail) > 8) {
+		if tail != "" && isAllDigits(tail) && len(tail) > 8 {
 			trimmed = trimmed[:i]
 		}
 	}

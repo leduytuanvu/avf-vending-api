@@ -55,7 +55,7 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 	q := db.New(s.pool)
 	var accepted, dup int32
 	for _, ev := range in.Events {
-		deviceID := strings.TrimSpace(ev.DeviceEventID)
+		deviceID := appcommerce.QualifyCashMovementDeviceEventID(ev.DeviceEventID, ev.BootID)
 		if deviceID == "" {
 			continue
 		}
@@ -83,8 +83,13 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 				OccurredAtDevice:  optionalTimeToPgTimestamptz(&at),
 				RawMetadata:       pgjson.TextJSON(ev.RawMetadata),
 			})
+			inserted, err := cashMovementInsertResult(err)
 			if err != nil {
 				return appcommerce.RecordCashMovementsResult{}, err
+			}
+			if !inserted {
+				dup++
+				continue
 			}
 			accepted++
 			_ = s.InsertLedgerEntry(ctx, appcommerce.LedgerEntryInput{
@@ -108,8 +113,13 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 				OccurredAtDevice:  at,
 				RawMetadata:       pgjson.TextJSON(ev.RawMetadata),
 			})
+			inserted, err := cashMovementInsertResult(err)
 			if err != nil {
 				return appcommerce.RecordCashMovementsResult{}, err
+			}
+			if !inserted {
+				dup++
+				continue
 			}
 			accepted++
 		case "payout", "withdrawal":
@@ -120,6 +130,7 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 			if withdrawalID == "" {
 				withdrawalID = "unknown"
 			}
+			finality := mapPayoutJournalToFinality(ev.EventType, ev.OutcomeFinality)
 			_, err := q.InsertCashPayoutEvent(ctx, db.InsertCashPayoutEventParams{
 				MachineID:           in.MachineID,
 				OrderID:             optionalUUIDToPg(ev.OrderID),
@@ -131,16 +142,21 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 				AmountMinor:         ev.AmountMinor,
 				RecyclerCountBefore: rcBefore,
 				RecyclerCountAfter:  rcAfter,
-				OutcomeFinality:     mapPayoutJournalToFinality(ev.EventType, ev.OutcomeFinality),
+				OutcomeFinality:     finality,
 				Currency:            cur,
 				OccurredAtDevice:    at,
 				RawMetadata:         pgjson.TextJSON(ev.RawMetadata),
 			})
+			inserted, err := cashMovementInsertResult(err)
 			if err != nil {
 				return appcommerce.RecordCashMovementsResult{}, err
 			}
+			if !inserted {
+				dup++
+				continue
+			}
 			accepted++
-			if mapPayoutJournalToFinality(ev.EventType, ev.OutcomeFinality) == "confirmed" && ev.AmountMinor > 0 {
+			if finality == "confirmed" && ev.AmountMinor > 0 {
 				_ = s.InsertLedgerEntry(ctx, appcommerce.LedgerEntryInput{
 					MachineID:         &in.MachineID,
 					OrderID:           ev.OrderID,
@@ -177,8 +193,13 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 				Currency:                  cur,
 				RawMetadata:               pgjson.TextJSON(ev.RawMetadata),
 			})
+			inserted, err := cashMovementInsertResult(err)
 			if err != nil {
 				return appcommerce.RecordCashMovementsResult{}, err
+			}
+			if !inserted {
+				dup++
+				continue
 			}
 			accepted++
 		default:
@@ -186,6 +207,16 @@ func (s *Store) RecordCashMovements(ctx context.Context, in appcommerce.RecordCa
 		}
 	}
 	return appcommerce.RecordCashMovementsResult{AcceptedCount: accepted, DuplicateCount: dup}, nil
+}
+
+func cashMovementInsertResult(err error) (inserted bool, retErr error) {
+	if err == nil {
+		return true, nil
+	}
+	if isNoRows(err) {
+		return false, nil
+	}
+	return false, err
 }
 
 func (s *Store) BindAcceptanceEventsToOrder(ctx context.Context, machineID, orderID uuid.UUID, deviceEventIDs []string) error {
@@ -303,20 +334,20 @@ func (s *Store) GetMachinePhysicalCashPosition(ctx context.Context, machineID uu
 		Limit:            100,
 	})
 	return appcommerce.MachinePhysicalCashPosition{
-		MachineID:                    machineID,
-		Currency:                     cur,
-		AsOf:                         at,
-		PhysicalExpectedCashboxMinor: cashboxExpected,
+		MachineID:                     machineID,
+		Currency:                      cur,
+		AsOf:                          at,
+		PhysicalExpectedCashboxMinor:  cashboxExpected,
 		PhysicalExpectedRecyclerMinor: recyclerExpected,
-		PhysicalExpectedMachineMinor: cashboxExpected + recyclerExpected,
-		SalesNetExpectedMinor:        salesNet,
-		ObservedRecyclerMinor:        observedMinor,
-		ObservedRecyclerCount:        observedCount,
-		ObservedRecyclerDenomMinor:   observedDenom,
-		UnresolvedLiabilityMinor:     liability,
-		AmbiguousEventCount:          int64(len(ambiguous)),
-		EvidenceStatus:               evidence,
-		Disclosure:                   "Cashbox expected is accounting-derived; recycler observed only when hardware snapshots exist.",
+		PhysicalExpectedMachineMinor:  cashboxExpected + recyclerExpected,
+		SalesNetExpectedMinor:         salesNet,
+		ObservedRecyclerMinor:         observedMinor,
+		ObservedRecyclerCount:         observedCount,
+		ObservedRecyclerDenomMinor:    observedDenom,
+		UnresolvedLiabilityMinor:      liability,
+		AmbiguousEventCount:           int64(len(ambiguous)),
+		EvidenceStatus:                evidence,
+		Disclosure:                    "Cashbox expected is accounting-derived; recycler observed only when hardware snapshots exist.",
 	}, nil
 }
 
@@ -529,10 +560,10 @@ func (s *Store) GetCashLedgerEventDetail(ctx context.Context, eventID uuid.UUID,
 		}
 		extra := map[string]any{
 			"withdrawalId":        row.WithdrawalID,
-			"noteSequence":          row.NoteSequence,
-			"outcomeFinality":       row.OutcomeFinality,
-			"recyclerCountBefore":   nullInt(row.RecyclerCountBefore),
-			"recyclerCountAfter":    nullInt(row.RecyclerCountAfter),
+			"noteSequence":        row.NoteSequence,
+			"outcomeFinality":     row.OutcomeFinality,
+			"recyclerCountBefore": nullInt(row.RecyclerCountBefore),
+			"recyclerCountAfter":  nullInt(row.RecyclerCountAfter),
 		}
 		meta := map[string]any{}
 		_ = json.Unmarshal(row.RawMetadata, &meta)

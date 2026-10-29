@@ -104,8 +104,7 @@ INSERT INTO cash_acceptance_events (
     COALESCE(sqlc.narg('occurred_at_device')::timestamptz, $6),
     COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING *;
 
 -- name: InsertCashAllocation :one

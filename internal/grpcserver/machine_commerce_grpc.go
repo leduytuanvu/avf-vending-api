@@ -12,6 +12,7 @@ import (
 	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
+	"github.com/avf/avf-vending-api/internal/app/machineruntime"
 	"github.com/avf/avf-vending-api/internal/config"
 	domaincommerce "github.com/avf/avf-vending-api/internal/domain/commerce"
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
@@ -970,14 +971,19 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 			v := ev.GetCashboxCount()
 			cashboxCount = &v
 		}
+		bootID := strings.TrimSpace(ev.GetBootId())
+		if bootID == "" {
+			bootID = machineruntime.BootIDFromCashMovementIdempotencyKey(claims.MachineID, wctx.IdempotencyKey)
+		}
+		deviceEventID := appcommerce.QualifyCashMovementDeviceEventID(ev.GetDeviceEventId(), bootID)
 		meta := map[string]any{
 			"rawRecordHex": strings.TrimSpace(ev.GetRawRecordHex()),
-			"bootId":       strings.TrimSpace(ev.GetBootId()),
+			"bootId":       bootID,
 		}
 		rawMeta, _ := json.Marshal(meta)
 		events = append(events, appcommerce.CashMovementEventInput{
 			Kind:                      strings.TrimSpace(ev.GetKind()),
-			DeviceEventID:             strings.TrimSpace(ev.GetDeviceEventId()),
+			DeviceEventID:             deviceEventID,
 			OccurredAt:                at,
 			DenominationMinor:         ev.GetDenominationMinor(),
 			AmountMinor:               ev.GetAmountMinor(),
@@ -990,7 +996,7 @@ func (s *machineCommerceServer) ReportCashMovements(ctx context.Context, req *ma
 			RecyclerCountAfter:        rcAfter,
 			OutcomeFinality:           strings.TrimSpace(ev.GetOutcomeFinality()),
 			RawRecordHex:              strings.TrimSpace(ev.GetRawRecordHex()),
-			BootID:                    strings.TrimSpace(ev.GetBootId()),
+			BootID:                    bootID,
 			OrderID:                   orderID,
 			Currency:                  strings.TrimSpace(ev.GetCurrency()),
 			CashboxCount:              cashboxCount,

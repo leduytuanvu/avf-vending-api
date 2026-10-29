@@ -32,8 +32,7 @@ INSERT INTO cash_payout_events (
     $10,
     COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING *;
 
 -- name: InsertCashBillLifecycleEvent :one
@@ -58,8 +57,7 @@ INSERT INTO cash_bill_lifecycle_events (
     $7,
     COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING *;
 
 -- name: InsertCashHardwareObservation :one
@@ -84,8 +82,7 @@ INSERT INTO cash_hardware_observations (
     $7,
     COALESCE(NULLIF(sqlc.narg('raw_metadata')::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING *;
 
 -- name: InsertCashAdjustment :one
@@ -289,6 +286,13 @@ SELECT EXISTS (
 SELECT EXISTS (
     SELECT 1
     FROM cash_payout_events
+    WHERE machine_id = $1 AND device_event_id = $2
+) AS exists;
+
+-- name: CashBillLifecycleExistsForMachineDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM cash_bill_lifecycle_events
     WHERE machine_id = $1 AND device_event_id = $2
 ) AS exists;
 

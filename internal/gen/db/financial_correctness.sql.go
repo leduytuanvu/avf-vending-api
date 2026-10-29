@@ -264,8 +264,7 @@ INSERT INTO cash_acceptance_events (
     COALESCE($9::timestamptz, $6),
     COALESCE(NULLIF($10::text, '')::jsonb, '{}'::jsonb)
 )
-ON CONFLICT (machine_id, device_event_id) DO UPDATE
-SET device_event_id = EXCLUDED.device_event_id
+ON CONFLICT (machine_id, device_event_id) DO NOTHING
 RETURNING id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, boot_id, occurred_at_device, raw_metadata, created_at
 `
 
