@@ -1,0 +1,77 @@
+name: Production ensure db-node stack
+
+# Brings up self-hosted Postgres + PgBouncer on VPS A when rollout fails pgbouncer checks.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Must be exactly ENSURE_DB_NODE"
+        required: true
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-ensure-db-node-stack
+  cancel-in-progress: false
+
+jobs:
+  ensure:
+    name: Start db-node compose and smoke PgBouncer
+    runs-on: [self-hosted, Linux, X64, production, avf-prod-app-a]
+    environment: production
+    env:
+      PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
+      SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
+    steps:
+      - name: Validate confirmation
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          [[ "${{ github.event.inputs.confirm }}" == "ENSURE_DB_NODE" ]] \
+            || { echo "error: confirm must be ENSURE_DB_NODE"; exit 1; }
+
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Configure privileged command helper
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          cat > /tmp/avf-prod-root.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          cmd="$*"
+          if [[ "$(id -un)" == "${SSH_USER:-root}" ]]; then
+            bash -lc "${cmd}"
+          elif sudo -n true 2>/dev/null; then
+            sudo bash -lc "${cmd}"
+          elif [[ -n "${PRODUCTION_ROOT_PASSWORD:-}" ]]; then
+            printf '%s\n' "${PRODUCTION_ROOT_PASSWORD}" | su - "${SSH_USER:-root}" -c "${cmd}"
+          else
+            echo "error: privileged command required but no root credentials are available" >&2
+            exit 1
+          fi
+          EOF
+          chmod +x /tmp/avf-prod-root.sh
+
+      - name: Ensure db-node stack is up
+        shell: bash
+        env:
+          PRODUCTION_ROOT_PASSWORD: ${{ secrets.PRODUCTION_ROOT_PASSWORD }}
+        run: |
+          set -Eeuo pipefail
+          remote_dir="${PRODUCTION_DEPLOY_ROOT}/deployments/prod/db-node"
+          PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
+            "set -Eeuo pipefail
+             cd '${remote_dir}'
+             test -f .env.db-node
+             docker compose --env-file .env.db-node -f docker-compose.db-node.yml up -d --remove-orphans
+             docker compose --env-file .env.db-node -f docker-compose.db-node.yml ps
+             bash scripts/smoke_local_pg.sh"

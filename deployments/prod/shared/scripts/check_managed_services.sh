@@ -136,6 +136,12 @@ check_managed_postgres() {
 	host="${host_port%:*}"
 	port="${host_port##*:}"
 
+	# Docker dbnet DSNs use hostname pgbouncer:5432; on the VPS host use published transaction port.
+	if [[ "${host}" == "pgbouncer" && "${port}" == "5432" ]]; then
+		host="${PGBOUNCER_HOST_CHECK:-127.0.0.1}"
+		port="${PGBOUNCER_PORT_CHECK:-6432}"
+	fi
+
 	if command -v pg_isready >/dev/null 2>&1; then
 		if pg_isready -d "${DATABASE_URL}" -t 5 >/dev/null 2>&1; then
 			pass "managed PostgreSQL accepts pg_isready"

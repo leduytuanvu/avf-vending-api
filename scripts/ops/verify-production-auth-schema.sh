@@ -48,11 +48,18 @@ print(urlunsplit((u.scheme, netloc, path, u.query, u.fragment)))
 PY
 }
 
+docker_psql_network_args() {
+	# pgbouncer resolves only on dbnet; run psql in the API container network namespace.
+	printf '%s' "--network container:${API_CONTAINER}"
+}
+
 table_exists() {
 	local url="$1"
-	local psql_url
+	local psql_url net_args
 	psql_url="$(sanitize_psql_url "${url}")"
-	docker run --rm \
+	net_args="$(docker_psql_network_args)"
+	# shellcheck disable=SC2086
+	docker run --rm ${net_args} \
 		-e "DATABASE_URL=${psql_url}" \
 		"${POSTGRES_TOOLS_IMAGE}" \
 		psql "${psql_url}" -v ON_ERROR_STOP=1 -Atqc \
@@ -61,9 +68,11 @@ table_exists() {
 
 account_count() {
 	local url="$1"
-	local psql_url
+	local psql_url net_args
 	psql_url="$(sanitize_psql_url "${url}")"
-	docker run --rm \
+	net_args="$(docker_psql_network_args)"
+	# shellcheck disable=SC2086
+	docker run --rm ${net_args} \
 		-e "DATABASE_URL=${psql_url}" \
 		"${POSTGRES_TOOLS_IMAGE}" \
 		psql "${psql_url}" -v ON_ERROR_STOP=1 -Atqc \
