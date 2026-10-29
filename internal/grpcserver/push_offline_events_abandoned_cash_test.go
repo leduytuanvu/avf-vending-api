@@ -311,6 +311,177 @@ func TestPushOfflineEvents_abandonedJumpDoesNotSkipLowerLiveCash(t *testing.T) {
 	require.Equal(t, int64(317), cashCursor, "abandoned 322 must not jump the cash cursor past live 317")
 }
 
+func TestPushOfflineEvents_processedCashWithoutForensicRedispatches(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	cfg.OfflineSync.GapTolerant = true
+	srv, issuer := machineOfflineCashTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineOfflineSyncServiceClient(conn)
+	resetMachineOfflineLedger(t, ctx, pool)
+	seedCashSyncCursor(t, ctx, pool, 5)
+
+	deviceEventID := "D20204-" + uuid.NewString()
+	cashKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + deviceEventID + ":bill_credit"
+	clientEventID := "cli-" + uuid.NewString()
+	payload := reportCashOfflinePayload(t, cashKey, deviceEventID)
+	payloadBytes, err := protojson.Marshal(payload)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+INSERT INTO machine_offline_events (
+    machine_id, offline_sequence, event_type, event_id, client_event_id,
+    occurred_at, payload, processing_status, processing_error, idempotency_key
+) VALUES (
+    $1, 5, 'commerce.report_cash_movements', $2, $2,
+    now(), $3::jsonb, 'processed', '', $4
+)`, testfixtures.DevMachineID, clientEventID, string(payloadBytes), cashKey)
+	require.NoError(t, err)
+
+	resp, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-forensic-retry"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 5,
+				IdempotencyKey:  cashKey,
+				RequestId:       "req-forensic-retry",
+				ClientEventId:   clientEventID,
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "commerce.report_cash_movements",
+			Payload:   payload,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, resp.GetResults(), 1)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, resp.GetResults()[0].GetStatus(), resp.GetResults()[0].GetReason())
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id = $2`,
+		testfixtures.DevMachineID, deviceEventID,
+	).Scan(&count))
+	if count == 0 {
+		require.NoError(t, pool.QueryRow(ctx,
+			`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id LIKE $2`,
+			testfixtures.DevMachineID, "%"+deviceEventID,
+		).Scan(&count))
+	}
+	require.Equal(t, 1, count)
+
+	var cashCursor int64
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT last_sequence FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline:cash'`,
+		testfixtures.DevMachineID,
+	).Scan(&cashCursor))
+	require.Equal(t, int64(5), cashCursor)
+}
+
+func TestPushOfflineEvents_processedCashWithForensicDoesNotDuplicate(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineOfflineCashTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineOfflineSyncServiceClient(conn)
+	resetMachineOfflineLedger(t, ctx, pool)
+
+	deviceEventID := "D20204-" + uuid.NewString()
+	cashKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + deviceEventID + ":bill_credit"
+	live := cashOfflineEvent(t, 1, cashKey, deviceEventID)
+
+	first, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-forensic-1"},
+		Events: []*machinev1.OfflineEvent{live},
+	})
+	require.NoError(t, err)
+	requireLiveCashAccepted(t, first, cashKey)
+
+	retry := &machinev1.OfflineEvent{
+		Meta: &machinev1.MachineRequestMeta{
+			OfflineSequence: 1,
+			IdempotencyKey:  cashKey,
+			RequestId:       "req-forensic-2",
+			ClientEventId:   live.GetMeta().GetClientEventId(),
+			OccurredAt:      timestamppb.Now(),
+		},
+		EventType: "commerce.report_cash_movements",
+		Payload:   live.GetPayload(),
+	}
+	second, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-forensic-2"},
+		Events: []*machinev1.OfflineEvent{retry},
+	})
+	require.NoError(t, err)
+	require.Len(t, second.GetResults(), 1)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED, second.GetResults()[0].GetStatus(), second.GetResults()[0].GetReason())
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id LIKE $2`,
+		testfixtures.DevMachineID, "%"+deviceEventID,
+	).Scan(&count))
+	require.Equal(t, 1, count)
+}
+
+func TestPushOfflineEvents_duplicateClientEventIdWithoutForensicRedispatches(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	cfg.OfflineSync.GapTolerant = true
+	srv, issuer := machineOfflineCashTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineOfflineSyncServiceClient(conn)
+	resetMachineOfflineLedger(t, ctx, pool)
+	seedCashSyncCursor(t, ctx, pool, 5)
+
+	deviceEventID := "D20204-" + uuid.NewString()
+	cashKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + deviceEventID + ":bill_credit"
+	clientEventID := "cli-" + uuid.NewString()
+	payload := reportCashOfflinePayload(t, cashKey, deviceEventID)
+	payloadBytes, err := protojson.Marshal(payload)
+	require.NoError(t, err)
+
+	_, err = pool.Exec(ctx, `
+INSERT INTO machine_offline_events (
+    machine_id, offline_sequence, event_type, event_id, client_event_id,
+    occurred_at, payload, processing_status, processing_error, idempotency_key
+) VALUES (
+    $1, 5, 'commerce.report_cash_movements', $2, $2,
+    now(), $3::jsonb, 'processed', '', $4
+)`, testfixtures.DevMachineID, clientEventID, string(payloadBytes), cashKey)
+	require.NoError(t, err)
+
+	resp, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-dup-cli"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 6,
+				IdempotencyKey:  cashKey,
+				RequestId:       "req-dup-cli",
+				ClientEventId:   clientEventID,
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "commerce.report_cash_movements",
+			Payload:   payload,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, resp.GetResults(), 1)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, resp.GetResults()[0].GetStatus(), resp.GetResults()[0].GetReason())
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id LIKE $2`,
+		testfixtures.DevMachineID, "%"+deviceEventID,
+	).Scan(&count))
+	require.Equal(t, 1, count)
+}
+
 func resetMachineOfflineLedger(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	t.Helper()
 	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)

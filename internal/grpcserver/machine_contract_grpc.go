@@ -405,10 +405,12 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		if result.GetStatus() == machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED {
 			break
 		}
-		st.LastSequence = seq
-		lastCursorSeq = seq
-		if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: evStream, LastSequence: seq}); err != nil {
-			return nil, status.Error(codes.Internal, "offline cursor update failed")
+		if seq > st.LastSequence {
+			st.LastSequence = seq
+			lastCursorSeq = seq
+			if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: evStream, LastSequence: seq}); err != nil {
+				return nil, status.Error(codes.Internal, "offline cursor update failed")
+			}
 		}
 	}
 	return &machinev1.SyncOfflineEventsResponse{
@@ -453,6 +455,11 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		switch {
 		case err == nil:
 			if offlineProvenReplay(prior.ProcessingStatus, prior.Payload, payload) {
+				if result, handled, retryable := s.redispatchCashIfForensicMissing(
+					ctx, q, claims, ev, seq, idem, eventType, payload, meta, occurredAt,
+				); handled {
+					return result, retryable
+				}
 				return &machinev1.OfflineEventResult{
 					OfflineSequence: seq,
 					IdempotencyKey:  idem,
@@ -515,6 +522,11 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 				ClientEventID: clientEventID,
 			})
 			if qerr == nil {
+				if result, handled, retryable := s.redispatchCashIfForensicMissing(
+					ctx, q, claims, ev, seq, idem, eventType, payload, meta, occurredAt,
+				); handled {
+					return result, retryable
+				}
 				if prior.OfflineSequence != seq {
 					return &machinev1.OfflineEventResult{
 						OfflineSequence: seq,
@@ -548,6 +560,11 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		}, false
 	}
 	if !row.Inserted {
+		if result, handled, retryable := s.redispatchCashIfForensicMissing(
+			ctx, q, claims, ev, seq, idem, eventType, payload, meta, occurredAt,
+		); handled {
+			return result, retryable
+		}
 		if strings.TrimSpace(row.ClientEventID) != "" && strings.TrimSpace(row.ClientEventID) != clientEventID {
 			return &machinev1.OfflineEventResult{
 				OfflineSequence: seq,
@@ -610,6 +627,62 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 		IdempotencyKey:  idem,
 		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
 	}, false
+}
+
+func isCashReportOfflineEvent(eventType string) bool {
+	return mapOfflineEventAlias(strings.ToLower(strings.TrimSpace(eventType))) == "commerce.report_cash_movements"
+}
+
+func (s *machineOfflineSyncServer) cashForensicMissing(
+	ctx context.Context,
+	q *db.Queries,
+	machineID uuid.UUID,
+	idempotencyKey string,
+) bool {
+	exists, err := machineruntime.CashMovementForensicRowExists(ctx, q, machineID, idempotencyKey)
+	if err != nil {
+		return false
+	}
+	return !exists
+}
+
+func (s *machineOfflineSyncServer) redispatchCashIfForensicMissing(
+	ctx context.Context,
+	q *db.Queries,
+	claims plauth.MachineAccessClaims,
+	ev *machinev1.OfflineEvent,
+	seq int64,
+	idem string,
+	eventType string,
+	payload []byte,
+	meta *machinev1.MachineRequestMeta,
+	occurredAt time.Time,
+) (*machinev1.OfflineEventResult, bool, bool) {
+	if ev != nil && eventType == "" {
+		eventType = ev.GetEventType()
+	}
+	if !isCashReportOfflineEvent(eventType) {
+		return nil, false, false
+	}
+	if !s.cashForensicMissing(ctx, q, claims.MachineID, idem) {
+		return nil, false, false
+	}
+	dispatchCtx := WithOfflineReplayOccurredAt(ctx, occurredAt)
+	if err := s.dispatchOfflineEvent(dispatchCtx, eventType, payload, meta); err != nil {
+		code := status.Code(err)
+		_, retryable := offlineDispatchFailureProcessingStatus(code)
+		return &machinev1.OfflineEventResult{
+			OfflineSequence: seq,
+			IdempotencyKey:  idem,
+			Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+			Reason:          err.Error(),
+		}, true, retryable
+	}
+	return &machinev1.OfflineEventResult{
+		OfflineSequence: seq,
+		IdempotencyKey:  idem,
+		Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
+	}, true, false
 }
 
 func recordOfflineOutcomeMetrics(result *machinev1.OfflineEventResult) {
@@ -942,6 +1015,9 @@ func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(
 		Reason:          staleOfflineSkipReason(meta.GetClientEventId(), false),
 	}
 	clientEventID := strings.TrimSpace(meta.GetClientEventId())
+	if s.cashForensicMissing(ctx, q, claims.MachineID, idem) && isCashReportOfflineEvent(ev.GetEventType()) {
+		return false, nil
+	}
 	if clientEventID == "" {
 		return true, alreadySynced
 	}
