@@ -41,6 +41,11 @@ on:
         required: false
         default: "C20103"
         type: string
+      key_token_f:
+        description: "Sixth cash_movement key hex to match (ICT bill, 17:04)"
+        required: false
+        default: "BE0103"
+        type: string
 
 permissions:
   contents: read
@@ -63,6 +68,7 @@ jobs:
       KEY_TOKEN_C: ${{ inputs.key_token_c }}
       KEY_TOKEN_D: ${{ inputs.key_token_d }}
       KEY_TOKEN_E: ${{ inputs.key_token_e }}
+      KEY_TOKEN_F: ${{ inputs.key_token_f }}
       PRODUCTION_DEPLOY_ROOT: ${{ secrets.PRODUCTION_DEPLOY_ROOT || secrets.DEPLOY_PATH || '/opt/avf-vending-api' }}
       SSH_USER: ${{ secrets.PRODUCTION_SSH_USER || vars.PRODUCTION_SSH_USER || 'root' }}
       E2E_PROD_ADMIN_USERNAME: ${{ secrets.E2E_PROD_ADMIN_USERNAME || vars.E2E_PROD_ADMIN_USERNAME || 'admin' }}
@@ -118,9 +124,9 @@ jobs:
           checkout_script="${GITHUB_WORKSPACE}/scripts/ops/repair_cash_movement_idempotency_poison.sh"
           run_repair() {
             if [[ -f "${checkout_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" KEY_TOKEN_C="${KEY_TOKEN_C}" KEY_TOKEN_D="${KEY_TOKEN_D}" KEY_TOKEN_E="${KEY_TOKEN_E}" bash "${checkout_script}"
+              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" KEY_TOKEN_C="${KEY_TOKEN_C}" KEY_TOKEN_D="${KEY_TOKEN_D}" KEY_TOKEN_E="${KEY_TOKEN_E}" KEY_TOKEN_F="${KEY_TOKEN_F}" bash "${checkout_script}"
             elif [[ -f "${deploy_script}" ]]; then
-              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" KEY_TOKEN_C="${KEY_TOKEN_C}" KEY_TOKEN_D="${KEY_TOKEN_D}" KEY_TOKEN_E="${KEY_TOKEN_E}" bash "${deploy_script}"
+              DRY_RUN="${DRY_RUN}" MACHINE_ID="${MACHINE_ID}" KEY_TOKEN_A="${KEY_TOKEN_A}" KEY_TOKEN_B="${KEY_TOKEN_B}" KEY_TOKEN_C="${KEY_TOKEN_C}" KEY_TOKEN_D="${KEY_TOKEN_D}" KEY_TOKEN_E="${KEY_TOKEN_E}" KEY_TOKEN_F="${KEY_TOKEN_F}" bash "${deploy_script}"
             else
               echo "error: repair_cash_movement_idempotency_poison.sh not found" >&2
               exit 1
@@ -128,9 +134,9 @@ jobs:
           }
           if [[ "${PRIV_MODE:-none}" != "none" ]]; then
             PRODUCTION_ROOT_PASSWORD="${PRODUCTION_ROOT_PASSWORD}" SSH_USER="${SSH_USER}" /tmp/avf-prod-root.sh \
-              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' && \
-              if [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' bash '${checkout_script}'; \
-              elif [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' bash '${deploy_script}'; \
+              "cd '${GITHUB_WORKSPACE}' && export DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' KEY_TOKEN_F='${KEY_TOKEN_F}' && \
+              if [[ -f '${checkout_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' KEY_TOKEN_F='${KEY_TOKEN_F}' bash '${checkout_script}'; \
+              elif [[ -f '${deploy_script}' ]]; then DRY_RUN='${DRY_RUN}' MACHINE_ID='${MACHINE_ID}' KEY_TOKEN_A='${KEY_TOKEN_A}' KEY_TOKEN_B='${KEY_TOKEN_B}' KEY_TOKEN_C='${KEY_TOKEN_C}' KEY_TOKEN_D='${KEY_TOKEN_D}' KEY_TOKEN_E='${KEY_TOKEN_E}' KEY_TOKEN_F='${KEY_TOKEN_F}' bash '${deploy_script}'; \
               else echo 'error: script not found' >&2; exit 1; fi" \
               | tee repair-cash-idempotency.log
           else
