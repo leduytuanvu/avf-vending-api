@@ -427,6 +427,85 @@ func TestPushOfflineEvents_processedCashWithForensicDoesNotDuplicate(t *testing.
 	require.Equal(t, 1, count)
 }
 
+func TestPushOfflineEvents_slotOccupiedWhenForensicExistsIsReplayed(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineOfflineCashTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineOfflineSyncServiceClient(conn)
+	resetMachineOfflineLedger(t, ctx, pool)
+
+	deviceEventID := "1C0106"
+	cashKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + deviceEventID + ":bill_credit"
+	live := cashOfflineEvent(t, 1, cashKey, deviceEventID)
+
+	first, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-slot-1"},
+		Events: []*machinev1.OfflineEvent{live},
+	})
+	require.NoError(t, err)
+	requireLiveCashAccepted(t, first, cashKey)
+
+	retry := cashOfflineEvent(t, 1, cashKey, deviceEventID)
+	second, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: cashKey, RequestId: "sync-slot-2"},
+		Events: []*machinev1.OfflineEvent{retry},
+	})
+	require.NoError(t, err)
+	require.Len(t, second.GetResults(), 1)
+	result := second.GetResults()[0]
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED, result.GetStatus(), result.GetReason())
+	require.Equal(t, "offline event replayed", result.GetReason())
+	require.NotContains(t, strings.ToLower(result.GetReason()), "slot occupied")
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id LIKE $2`,
+		testfixtures.DevMachineID, "%"+deviceEventID,
+	).Scan(&count))
+	require.Equal(t, 1, count)
+}
+
+func TestPushOfflineEvents_hexAndEpisodeQualifyToOneAcceptance(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+	cfg := testMachineGRPCConfig()
+	srv, issuer := machineOfflineCashTestServer(t, pool, cfg)
+	conn := dialMachineCommerceServer(t, srv)
+	md := machineAccessMD(t, pool, issuer, testfixtures.DevMachineID, testfixtures.DevSiteID)
+	cli := machinev1.NewMachineOfflineSyncServiceClient(conn)
+	resetMachineOfflineLedger(t, ctx, pool)
+
+	hex := "1C0106"
+	bareKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + hex + ":bill_credit"
+	episodeKey := "cash_movement:" + testfixtures.DevMachineID.String() + ":boot:" + hex + ":1:bill_credit"
+	bare := cashOfflineEvent(t, 1, bareKey, hex)
+	episode := cashOfflineEvent(t, 2, episodeKey, hex+":1")
+
+	first, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: bareKey, RequestId: "sync-hex-1"},
+		Events: []*machinev1.OfflineEvent{bare},
+	})
+	require.NoError(t, err)
+	requireLiveCashAccepted(t, first, bareKey)
+
+	second, err := cli.PushOfflineEvents(md, &machinev1.SyncOfflineEventsRequest{
+		Meta:   &machinev1.MachineRequestMeta{IdempotencyKey: episodeKey, RequestId: "sync-hex-2"},
+		Events: []*machinev1.OfflineEvent{episode},
+	})
+	require.NoError(t, err)
+	require.Len(t, second.GetResults(), 1)
+
+	var count int
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM cash_acceptance_events WHERE machine_id = $1 AND device_event_id LIKE $2`,
+		testfixtures.DevMachineID, "%"+hex+"%",
+	).Scan(&count))
+	require.Equal(t, 1, count, "HEX and HEX:N must not insert two acceptance rows")
+}
+
 func TestPushOfflineEvents_duplicateClientEventIdWithoutForensicRedispatches(t *testing.T) {
 	pool := machineGRPCTestPool(t)
 	ctx := context.Background()

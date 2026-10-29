@@ -8,7 +8,8 @@ func TestQualifyCashMovementDeviceEventID(t *testing.T) {
 		id, boot, want string
 	}{
 		{id: "560204", boot: "boot-1", want: "boot-1:560204"},
-		{id: "560204:9", boot: "boot-1", want: "boot-1:560204:9"},
+		{id: "560204:9", boot: "boot-1", want: "boot-1:560204"},
+		{id: "boot-1:560204:9", boot: "boot-1", want: "boot-1:560204"},
 		{id: "boot-1:560204", boot: "boot-1", want: "boot-1:560204"},
 		{id: "payout:wd:1:NOTE_CONFIRMED", boot: "boot-1", want: "payout:wd:1:NOTE_CONFIRMED"},
 		{id: "bill_reject:ep:5CFF0A", boot: "boot-1", want: "bill_reject:ep:5CFF0A"},
@@ -27,9 +28,12 @@ func TestQualifyCashMovementDeviceEventID(t *testing.T) {
 		}
 	}
 	same := QualifyCashMovementDeviceEventID("390106:1", "boot-1")
-	replay := QualifyCashMovementDeviceEventID("390106:1", "boot-1")
+	replay := QualifyCashMovementDeviceEventID("390106", "boot-1")
 	if same != replay {
 		t.Fatalf("replay identity drifted: %q vs %q", same, replay)
+	}
+	if CanonicalizeCashMovementDeviceEventID("boot-1:1C0106:1") != "boot-1:1C0106" {
+		t.Fatalf("canonical episode strip failed")
 	}
 	otherBoot := QualifyCashMovementDeviceEventID("560204", "boot-2")
 	if QualifyCashMovementDeviceEventID("560204", "boot-1") == otherBoot {

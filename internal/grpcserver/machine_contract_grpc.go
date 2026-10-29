@@ -566,9 +566,21 @@ func (s *machineOfflineSyncServer) processOfflineEvent(
 			return result, retryable
 		}
 		if strings.TrimSpace(row.ClientEventID) != "" && strings.TrimSpace(row.ClientEventID) != clientEventID {
+			if isCashReportOfflineEvent(eventType) && !s.cashForensicMissing(ctx, q, claims.MachineID, idem) {
+				return &machinev1.OfflineEventResult{
+					OfflineSequence: seq,
+					IdempotencyKey:  idem,
+					Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+					Reason:          "offline event replayed",
+				}, false
+			}
+			occupyingKey := strings.TrimSpace(row.IdempotencyKey)
+			if occupyingKey == "" {
+				occupyingKey = idem
+			}
 			return &machinev1.OfflineEventResult{
 				OfflineSequence: seq,
-				IdempotencyKey:  idem,
+				IdempotencyKey:  occupyingKey,
 				Status:          machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
 				Reason:          "offline sequence slot occupied",
 			}, false

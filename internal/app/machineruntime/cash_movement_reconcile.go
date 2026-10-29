@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
 )
@@ -83,9 +84,20 @@ func CashMovementForensicRowExists(
 	if strings.Contains(key, ":recycler_observation") {
 		return true, nil
 	}
-	return q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
+	exists, err := q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
 		MachineID:     machineID,
 		DeviceEventID: deviceID,
+	})
+	if err != nil || exists {
+		return exists, err
+	}
+	canonical := appcommerce.CanonicalizeCashMovementDeviceEventID(deviceID)
+	if canonical == "" || canonical == deviceID {
+		return false, nil
+	}
+	return q.CashAcceptanceExistsForMachineDevice(ctx, db.CashAcceptanceExistsForMachineDeviceParams{
+		MachineID:     machineID,
+		DeviceEventID: canonical,
 	})
 }
 
