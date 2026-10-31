@@ -20,8 +20,8 @@ import (
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/platform/clockskew"
-	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	"github.com/avf/avf-vending-api/internal/platform/observability/productionmetrics"
+	"github.com/avf/avf-vending-api/internal/platform/pgjson"
 	machinev1 "github.com/avf/avf-vending-api/proto/avf/machine/v1"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -405,7 +405,7 @@ func (s *machineOfflineSyncServer) PushOfflineEvents(ctx context.Context, req *m
 		if result.GetStatus() == machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED {
 			break
 		}
-		if seq > st.LastSequence {
+		if seq > st.LastSequence && shouldAdvanceOfflineStreamCursor(result) {
 			st.LastSequence = seq
 			lastCursorSeq = seq
 			if _, err := q.UpsertMachineSyncCursor(ctx, db.UpsertMachineSyncCursorParams{MachineID: claims.MachineID, StreamName: evStream, LastSequence: seq}); err != nil {
@@ -1003,6 +1003,31 @@ func staleOfflineSkipReason(clientEventID string, priorFound bool) string {
 		return "offline sequence already synced"
 	}
 	return "offline sequence slot occupied"
+}
+
+// shouldAdvanceOfflineStreamCursor reports whether a successful-looking push may move
+// last_sequence. Slot-occupied / already-synced of a *different* event must not advance
+// the stream cursor: the slot is owned by another ledger row, so later commerce would
+// see a false HOL floor (AVF000195 2026-11-01 seq 1186).
+func shouldAdvanceOfflineStreamCursor(result *machinev1.OfflineEventResult) bool {
+	if result == nil {
+		return false
+	}
+	switch result.GetStatus() {
+	case machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED:
+		return true
+	case machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED:
+		reason := strings.ToLower(strings.TrimSpace(result.GetReason()))
+		if strings.Contains(reason, "offline sequence slot occupied") {
+			return false
+		}
+		if strings.Contains(reason, "offline sequence already synced") {
+			return false
+		}
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *machineOfflineSyncServer) staleOfflineSequenceDecision(

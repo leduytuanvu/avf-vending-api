@@ -49,6 +49,43 @@ func TestStaleOfflineSkipReason_newClientEventOccupiesSlot(t *testing.T) {
 	}
 }
 
+func TestShouldAdvanceOfflineStreamCursor_skipsForeignSlotOccupancy(t *testing.T) {
+	accepted := &machinev1.OfflineEventResult{
+		Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED,
+	}
+	if !shouldAdvanceOfflineStreamCursor(accepted) {
+		t.Fatal("accepted must advance cursor")
+	}
+	proven := &machinev1.OfflineEventResult{
+		Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+		Reason: "offline event replayed",
+	}
+	if !shouldAdvanceOfflineStreamCursor(proven) {
+		t.Fatal("proven replay must advance cursor")
+	}
+	occupied := &machinev1.OfflineEventResult{
+		Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+		Reason: "offline sequence slot occupied",
+	}
+	if shouldAdvanceOfflineStreamCursor(occupied) {
+		t.Fatal("slot occupied must not advance cursor")
+	}
+	alreadySynced := &machinev1.OfflineEventResult{
+		Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED,
+		Reason: "offline sequence already synced",
+	}
+	if shouldAdvanceOfflineStreamCursor(alreadySynced) {
+		t.Fatal("already synced of a different event must not advance cursor")
+	}
+	rejected := &machinev1.OfflineEventResult{
+		Status: machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REJECTED,
+		Reason: "invalid cash movements payload",
+	}
+	if shouldAdvanceOfflineStreamCursor(rejected) {
+		t.Fatal("rejected must not advance cursor")
+	}
+}
+
 func TestUnmarshalOfflineCashPayload_discardsUnknown(t *testing.T) {
 	raw := []byte(`{"events":[{"kind":"bill_credit","deviceEventId":"090204","denominationMinor":10000,"rawRecordHex":"4:10000:probe_rehydrate","probe_rehydrate":true,"currency":"VND"}]}`)
 	var req machinev1.ReportCashMovementsRequest
