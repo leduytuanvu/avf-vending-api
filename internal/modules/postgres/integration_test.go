@@ -144,6 +144,46 @@ func TestCreateOrderWithVendSession_AndReplay(t *testing.T) {
 	require.Equal(t, r1.Vend.ID, r2.Vend.ID)
 }
 
+func TestCreateOrderWithVendSession_ConcurrentIdempotencyRaceReplays(t *testing.T) {
+	pool := testPool(t)
+	ctx := context.Background()
+	store := postgres.NewStore(pool)
+
+	idem := "order-race-" + uuid.NewString()
+	in := commerce.CreateOrderVendInput{
+		MachineID:      testfixtures.DevMachineID,
+		ProductID:      testfixtures.DevProductCola,
+		SlotIndex:      1,
+		Currency:       "USD",
+		SubtotalMinor:  100,
+		TaxMinor:       0,
+		TotalMinor:     100,
+		IdempotencyKey: idem,
+		OrderStatus:    "created",
+		VendState:      "pending",
+	}
+
+	type result struct {
+		out commerce.CreateOrderVendResult
+		err error
+	}
+	ch := make(chan result, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			out, err := store.CreateOrderWithVendSession(ctx, in)
+			ch <- result{out: out, err: err}
+		}()
+	}
+
+	first := <-ch
+	second := <-ch
+	require.NoError(t, first.err)
+	require.NoError(t, second.err)
+	require.Equal(t, first.out.Order.ID, second.out.Order.ID)
+	require.Equal(t, first.out.Vend.ID, second.out.Vend.ID)
+	require.True(t, first.out.Replay || second.out.Replay)
+}
+
 func TestCreateOrderWithVendSession_RollbackOnInvalidMachine(t *testing.T) {
 	pool := testPool(t)
 	ctx := context.Background()

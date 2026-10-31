@@ -109,6 +109,9 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 		if perr != nil {
 			return commerce.CreateOrderVendResult{}, perr
 		}
+		if _, err = tx.Exec(ctx, "SAVEPOINT insert_order"); err != nil {
+			return commerce.CreateOrderVendResult{}, err
+		}
 		orderRow, err = q.InsertOrder(ctx, db.InsertOrderParams{
 			ID:                     uuidPtrToPgUUID(in.OrderID),
 			MachineID:              in.MachineID,
@@ -128,10 +131,23 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			MachinePricingSnapshot: pgjson.OptionalString(in.MachinePricingSnapshot),
 		})
 		if err != nil {
-			if isUniqueViolation(err) {
-				return commerce.CreateOrderVendResult{}, errors.New("postgres: duplicate order idempotency key race")
+			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT insert_order")
+			if !isUniqueViolation(err) {
+				return commerce.CreateOrderVendResult{}, err
 			}
-			return commerce.CreateOrderVendResult{}, err
+			existingOrder, replayErr := q.GetOrderByMachineAndIdempotencyKey(ctx, db.GetOrderByMachineAndIdempotencyKeyParams{
+				MachineID:      in.MachineID,
+				IdempotencyKey: optionalStringToPgText(in.IdempotencyKey),
+			})
+			if replayErr != nil {
+				return commerce.CreateOrderVendResult{}, fmt.Errorf("postgres: duplicate order idempotency key race: %w", replayErr)
+			}
+			orderRow = existingOrder
+			orderInserted = false
+			break
+		}
+		if _, relErr := tx.Exec(ctx, "RELEASE SAVEPOINT insert_order"); relErr != nil {
+			return commerce.CreateOrderVendResult{}, relErr
 		}
 		orderInserted = true
 	default:
