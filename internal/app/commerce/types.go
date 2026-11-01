@@ -31,6 +31,8 @@ type CreateOrderInput struct {
 	PricingSnapshot *MachinePricingSnapshotInput
 	// ClientOrderID, when set, is persisted as orders.id so local-first vend close can reuse the device UUID.
 	ClientOrderID uuid.UUID
+	// CreatedAt, when set, is persisted as orders.created_at. Zero keeps the database default now().
+	CreatedAt time.Time
 }
 
 // StartPaymentInput binds a payment row and optional outbox fan-out; provider is an opaque label from the caller.

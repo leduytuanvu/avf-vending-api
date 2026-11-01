@@ -16,7 +16,8 @@ INSERT INTO orders (
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
-    server_reference_total_minor
+    server_reference_total_minor,
+    created_at
 )
 VALUES (
     COALESCE(sqlc.narg('id'), public.uuid_generate_v7()),
@@ -35,7 +36,8 @@ VALUES (
     sqlc.arg('pricing_source'),
     sqlc.arg('machine_pricing_revision'),
     NULLIF(sqlc.arg('machine_pricing_snapshot')::text, '')::jsonb,
-    sqlc.arg('server_reference_total_minor')
+    sqlc.arg('server_reference_total_minor'),
+    COALESCE(sqlc.narg('created_at')::timestamptz, now())
 )
 RETURNING *;
 

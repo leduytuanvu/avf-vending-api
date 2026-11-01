@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/avf/avf-vending-api/internal/testfixtures"
@@ -197,4 +198,110 @@ func TestP06_OfflineSync_offlineSaleReplayReusesClientOrderUUID(t *testing.T) {
 		`SELECT p.state FROM payments p WHERE p.order_id = $1 AND p.provider = 'cash'`,
 		clientOrderID).Scan(&cashState))
 	require.Equal(t, "captured", cashState)
+}
+
+func TestP06_OfflineSync_offlineSaleReplayPreservesDeviceCreatedAt(t *testing.T) {
+	pool := machineGRPCTestPool(t)
+	ctx := context.Background()
+
+	_, err := pool.Exec(ctx, `DELETE FROM machine_offline_events WHERE machine_id = $1`, testfixtures.DevMachineID)
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `DELETE FROM machine_sync_cursors WHERE machine_id = $1 AND stream_name = 'offline'`,
+		testfixtures.DevMachineID)
+	require.NoError(t, err)
+
+	deps := offlineSyncIntegrationDeps(t, pool)
+	srv := &machineOfflineSyncServer{deps: deps}
+	var credVer int64
+	require.NoError(t, pool.QueryRow(ctx, `SELECT credential_version FROM machines WHERE id = $1`, testfixtures.DevMachineID).Scan(&credVer))
+	claims := plauth.MachineAccessClaims{MachineID: testfixtures.DevMachineID, CredentialVersion: credVer}
+	ctxClaims := plauth.WithMachineAccessClaims(ctx, claims)
+
+	clientOrderID := uuid.New()
+	occurredAt := time.Now().UTC().Add(-7 * time.Minute).Truncate(time.Millisecond)
+	capturedAt := time.Now().UTC().Add(-30 * time.Second)
+	base := "p06-offline-sale-created-at-" + uuid.NewString()
+	snapshot := map[string]any{
+		"snapshotId":           base + ":snap",
+		"machineId":            testfixtures.DevMachineID.String(),
+		"payableTotalMinor":    100,
+		"currency":             "USD",
+		"localPricingRevision": 1,
+		"slotConfigVersion":    1,
+		"capturedAtEpochMs":    capturedAt.UnixMilli(),
+		"lines": []map[string]any{
+			{
+				"slotCode":       "0",
+				"productId":      testfixtures.DevProductCola.String(),
+				"unitPriceMinor": 100,
+				"quantity":       1,
+			},
+		},
+	}
+	payloadMap := map[string]any{
+		"orderId":             clientOrderID.String(),
+		"machineId":           testfixtures.DevMachineID.String(),
+		"transactionId":       base + ":tx",
+		"cashReceivedMinor":   100,
+		"payableTotalMinor":   100,
+		"currency":            "USD",
+		"snapshotId":          base + ":snap",
+		"pricingSnapshot":     snapshot,
+		"canonical_operation": "commerce.offline_sale",
+	}
+	payloadJSON, err := json.Marshal(payloadMap)
+	require.NoError(t, err)
+	var payloadStruct structpb.Struct
+	require.NoError(t, protojson.Unmarshal(payloadJSON, &payloadStruct))
+
+	out, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: base + ":sync", RequestId: base + ":sync"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 1,
+				IdempotencyKey:  base + ":offline-sale",
+				RequestId:       base + ":req",
+				ClientEventId:   base + ":cli",
+				OccurredAt:      timestamppb.New(occurredAt),
+			},
+			EventType: "commerce.offline_sale",
+			Payload:   &payloadStruct,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, out.GetResults(), 1)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED, out.GetResults()[0].GetStatus())
+
+	var createdAt time.Time
+	require.NoError(t, pool.QueryRow(ctx, `SELECT created_at FROM orders WHERE id = $1`, clientOrderID).Scan(&createdAt))
+	require.WithinDuration(t, occurredAt, createdAt.UTC(), time.Second)
+	require.Greater(t, createdAt.UTC().Sub(capturedAt.UTC()).Abs(), 2*time.Minute)
+
+	var cashState string
+	require.NoError(t, pool.QueryRow(ctx,
+		`SELECT p.state FROM payments p WHERE p.order_id = $1 AND p.provider = 'cash'`,
+		clientOrderID).Scan(&cashState))
+	require.Equal(t, "captured", cashState)
+
+	out2, err := srv.PushOfflineEvents(ctxClaims, &machinev1.SyncOfflineEventsRequest{
+		Meta: &machinev1.MachineRequestMeta{IdempotencyKey: base + ":sync2", RequestId: base + ":sync2"},
+		Events: []*machinev1.OfflineEvent{{
+			Meta: &machinev1.MachineRequestMeta{
+				OfflineSequence: 1,
+				IdempotencyKey:  base + ":offline-sale",
+				RequestId:       base + ":req2",
+				ClientEventId:   base + ":cli",
+				OccurredAt:      timestamppb.Now(),
+			},
+			EventType: "commerce.offline_sale",
+			Payload:   &payloadStruct,
+		}},
+	})
+	require.NoError(t, err)
+	require.Len(t, out2.GetResults(), 1)
+	require.Equal(t, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_REPLAYED, out2.GetResults()[0].GetStatus())
+
+	var createdAtReplay time.Time
+	require.NoError(t, pool.QueryRow(ctx, `SELECT created_at FROM orders WHERE id = $1`, clientOrderID).Scan(&createdAtReplay))
+	require.Equal(t, createdAt.UTC(), createdAtReplay.UTC())
 }

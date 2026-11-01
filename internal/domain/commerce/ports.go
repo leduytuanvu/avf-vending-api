@@ -30,6 +30,8 @@ type CreateOrderVendInput struct {
 	MachinePricingSnapshot []byte
 	// OrderID is optional; uuid.Nil lets Postgres assign uuid_generate_v7().
 	OrderID uuid.UUID
+	// CreatedAt, when set, is persisted as orders.created_at. Zero keeps the database default now().
+	CreatedAt time.Time
 }
 
 // CreateOrderVendResult is the outcome of CreateOrderWithVendSession.

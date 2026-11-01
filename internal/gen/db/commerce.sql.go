@@ -898,7 +898,8 @@ INSERT INTO orders (
     pricing_source,
     machine_pricing_revision,
     machine_pricing_snapshot,
-    server_reference_total_minor
+    server_reference_total_minor,
+    created_at
 )
 VALUES (
     COALESCE($1, public.uuid_generate_v7()),
@@ -917,7 +918,8 @@ VALUES (
     $14,
     $15,
     NULLIF($16::text, '')::jsonb,
-    $17
+    $17,
+    COALESCE($18::timestamptz, now())
 )
 RETURNING id, machine_id, status, currency, subtotal_minor, tax_minor, total_minor, idempotency_key, simulated, simulation_run_id, simulation_scenario, fake_bill, fake_board, simulation_metadata, winning_payment_id, winning_claimed_at, pricing_source, machine_pricing_revision, machine_pricing_snapshot, server_reference_total_minor, created_at, updated_at
 `
@@ -940,6 +942,7 @@ type InsertOrderParams struct {
 	MachinePricingRevision    pgtype.Int8
 	MachinePricingSnapshot    string
 	ServerReferenceTotalMinor pgtype.Int8
+	CreatedAt                 pgtype.Timestamptz
 }
 
 func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order, error) {
@@ -961,6 +964,7 @@ func (q *Queries) InsertOrder(ctx context.Context, arg InsertOrderParams) (Order
 		arg.MachinePricingRevision,
 		arg.MachinePricingSnapshot,
 		arg.ServerReferenceTotalMinor,
+		arg.CreatedAt,
 	)
 	var i Order
 	err := row.Scan(

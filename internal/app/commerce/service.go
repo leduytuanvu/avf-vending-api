@@ -188,6 +188,7 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateOrderInput) (CreateO
 		MachinePricingRevision: machinePricingRevision,
 		MachinePricingSnapshot: machinePricingSnapshot,
 		OrderID:                in.ClientOrderID,
+		CreatedAt:              in.CreatedAt,
 	})
 	if err != nil {
 		return CreateOrderResult{}, err

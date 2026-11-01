@@ -72,6 +72,13 @@ func optionalTimeToPgTimestamptz(t *time.Time) pgtype.Timestamptz {
 	return pgtype.Timestamptz{Time: t.UTC(), Valid: true}
 }
 
+func optionalTimeValueToPgTimestamptz(t time.Time) pgtype.Timestamptz {
+	if t.IsZero() {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: t.UTC(), Valid: true}
+}
+
 func ptrTimeOrNow(t *time.Time) time.Time {
 	if t == nil {
 		return time.Now().UTC()

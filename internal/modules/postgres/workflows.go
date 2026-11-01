@@ -129,6 +129,7 @@ func (s *Store) CreateOrderWithVendSession(ctx context.Context, in commerce.Crea
 			PricingSource:          pricingSource,
 			MachinePricingRevision: optionalInt64ToPgInt8(in.MachinePricingRevision),
 			MachinePricingSnapshot: pgjson.OptionalString(in.MachinePricingSnapshot),
+			CreatedAt:              optionalTimeValueToPgTimestamptz(in.CreatedAt),
 		})
 		if err != nil {
 			_, _ = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT insert_order")

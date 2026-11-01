@@ -71,6 +71,8 @@ type CreateOrderFromQuoteInput struct {
 	FakeBoard          bool
 	PricingSnapshot    *MachinePricingSnapshotInput
 	ClientOrderID      uuid.UUID
+	// CreatedAt, when set, is persisted as orders.created_at. Zero keeps the database default now().
+	CreatedAt time.Time
 }
 
 // OrderVendLineView is one vend session row created from a quote.

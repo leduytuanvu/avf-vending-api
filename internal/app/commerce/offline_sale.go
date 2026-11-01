@@ -58,6 +58,7 @@ func (s *Service) ProcessOfflineSale(
 	clientEventID string,
 	payload []byte,
 	outbox OfflineSaleOutboxConfig,
+	occurredAt time.Time,
 ) error {
 	if s == nil {
 		return ErrNotConfigured
@@ -109,6 +110,7 @@ func (s *Service) ProcessOfflineSale(
 		"cash",
 		key,
 		optionalClientOrderID(wire.OrderID),
+		resolveOfflineOrderCreatedAt(occurredAt, pricingSnap.CapturedAt),
 	)
 	if err != nil {
 		return err
@@ -174,7 +176,7 @@ func (s *Service) MaterializeOrderFromPricingSnapshotInput(
 	if pm == "" {
 		pm = "default"
 	}
-	return s.createOfflineOrderFromSnapshot(ctx, machineID, wireSnap, pricingSnap, currency, pm, idempotencyKey, uuid.Nil)
+	return s.createOfflineOrderFromSnapshot(ctx, machineID, wireSnap, pricingSnap, currency, pm, idempotencyKey, uuid.Nil, time.Time{})
 }
 
 // AppCheckoutPricingSnapshotFromPricingInput builds wire snapshot metadata from proto-mapped input.
@@ -211,6 +213,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 	paymentMethod string,
 	key string,
 	clientOrderID uuid.UUID,
+	createdAt time.Time,
 ) (uuid.UUID, error) {
 	pm := strings.TrimSpace(paymentMethod)
 	if pm == "" {
@@ -245,6 +248,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 			IdempotencyKey:  coKey,
 			PricingSnapshot: &pricingSnap,
 			ClientOrderID:   clientOrderID,
+			CreatedAt:       createdAt,
 		})
 		if err != nil {
 			return uuid.Nil, err
@@ -302,6 +306,7 @@ func (s *Service) createOfflineOrderFromSnapshot(
 		IdempotencyKey:  coKey,
 		PricingSnapshot: &pricingSnap,
 		ClientOrderID:   clientOrderID,
+		CreatedAt:       createdAt,
 	})
 	if err != nil {
 		return uuid.Nil, err
@@ -404,4 +409,17 @@ func optionalClientOrderID(raw string) uuid.UUID {
 		return uuid.Nil
 	}
 	return id
+}
+
+// resolveOfflineOrderCreatedAt prefers the outbox envelope occurred_at (enqueue / order-create time).
+// Snapshot capturedAt is a fallback when the envelope timestamp is missing. Zero means InsertOrder
+// keeps the database default now(); missing timestamps never reject the sale.
+func resolveOfflineOrderCreatedAt(occurredAt, capturedAt time.Time) time.Time {
+	if !occurredAt.IsZero() {
+		return occurredAt.UTC()
+	}
+	if !capturedAt.IsZero() {
+		return capturedAt.UTC()
+	}
+	return time.Time{}
 }

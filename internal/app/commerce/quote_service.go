@@ -80,6 +80,7 @@ type PersistOrderFromQuoteInput struct {
 	FakeBill           bool
 	FakeBoard          bool
 	ClientOrderID      uuid.UUID
+	CreatedAt          time.Time
 }
 
 type PersistOrderFromQuoteVendLine struct {
@@ -314,6 +315,7 @@ func (s *Service) CreateOrderFromQuote(ctx context.Context, in CreateOrderFromQu
 		FakeBill:           in.FakeBill,
 		FakeBoard:          in.FakeBoard,
 		ClientOrderID:      in.ClientOrderID,
+		CreatedAt:          in.CreatedAt,
 	})
 	if err != nil {
 		return CreateOrderFromQuoteResult{}, err

@@ -3,6 +3,7 @@ package commerce
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -129,4 +130,22 @@ func TestParseOfflineSalePayload_requiresProductIdOnEveryLine(t *testing.T) {
 
 	_, _, err := parseOfflineSalePayload(payload)
 	require.Error(t, err)
+}
+
+func TestResolveOfflineOrderCreatedAt_prefersOccurredAt(t *testing.T) {
+	t.Parallel()
+	occurred := time.UnixMilli(1_700_000_100_000).UTC()
+	captured := time.UnixMilli(1_700_000_000_000).UTC()
+	require.Equal(t, occurred, resolveOfflineOrderCreatedAt(occurred, captured))
+}
+
+func TestResolveOfflineOrderCreatedAt_fallsBackToCapturedAt(t *testing.T) {
+	t.Parallel()
+	captured := time.UnixMilli(1_700_000_000_000).UTC()
+	require.Equal(t, captured, resolveOfflineOrderCreatedAt(time.Time{}, captured))
+}
+
+func TestResolveOfflineOrderCreatedAt_zeroWhenBothMissing(t *testing.T) {
+	t.Parallel()
+	require.True(t, resolveOfflineOrderCreatedAt(time.Time{}, time.Time{}).IsZero())
 }

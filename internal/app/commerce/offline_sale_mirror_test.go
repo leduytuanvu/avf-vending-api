@@ -2,8 +2,10 @@ package commerce
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/avf/avf-vending-api/internal/gen/db"
 	"github.com/google/uuid"
@@ -55,6 +57,7 @@ func TestCreateOfflineOrderFromSnapshot_singleLineUsesCheckoutMirror(t *testing.
 		"cash",
 		"offline-sale:test",
 		uuid.Nil,
+		time.Time{},
 	)
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, orderID)
@@ -127,6 +130,7 @@ func TestCreateOfflineOrderFromSnapshot_mirrorWhenPublishedAssortmentStale(t *te
 		"cash",
 		"offline-sale:stale",
 		uuid.Nil,
+		time.Time{},
 	)
 	require.NoError(t, err)
 	require.NotEqual(t, uuid.Nil, orderID)
@@ -186,7 +190,128 @@ func TestCreateOfflineOrderFromSnapshot_reusesClientOrderID(t *testing.T) {
 		"cash",
 		"offline-sale:client-uuid",
 		clientOrderID,
+		time.Time{},
 	)
 	require.NoError(t, err)
 	require.Equal(t, clientOrderID, orderVend.lastInput.OrderID)
+}
+
+func TestCreateOfflineOrderFromSnapshot_forwardsCreatedAt(t *testing.T) {
+	t.Parallel()
+	slotID := uuid.New()
+	productID := uuid.New()
+	machineID := uuid.New()
+	createdAt := time.UnixMilli(1_700_000_100_000).UTC()
+	slotIdx := int32(4)
+	slotsJSON := []byte(`[{"slotCode":"A4","productId":"` + productID.String() + `","priceMinor":5000,"localPricingRevision":1}]`)
+	orderVend := &captureOrderVendWorkflow{}
+	svc := NewService(Deps{
+		OrderVend: orderVend,
+		SaleLines: mirrorFallbackResolver{
+			fail: true,
+			byCode: map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow{
+				"A4": {
+					ID:          slotID,
+					SlotCode:    "A4",
+					CabinetCode: "A",
+					SlotIndex:   pgtype.Int4{Int32: slotIdx, Valid: true},
+				},
+			},
+		},
+		LocalLayoutMirror: stubMirrorReader{
+			mirror: LocalLayoutMirror{Revision: 1, SlotsJSON: slotsJSON},
+		},
+	})
+	snap := appCheckoutPricingSnapshot{
+		SnapshotID:        "snap-created-at",
+		PayableTotalMinor: 5000,
+		Currency:          "VND",
+		Lines: []appCheckoutLine{
+			{SlotCode: "A4", ProductID: productID.String(), UnitPriceMinor: 5000, Quantity: 1},
+		},
+	}
+	pricingSnap := machinePricingSnapshotFromAppCheckout(snap, 5000)
+
+	_, err := svc.createOfflineOrderFromSnapshot(
+		t.Context(),
+		machineID,
+		snap,
+		pricingSnap,
+		"VND",
+		"cash",
+		"offline-sale:created-at",
+		uuid.Nil,
+		createdAt,
+	)
+	require.NoError(t, err)
+	require.Equal(t, createdAt, orderVend.lastInput.CreatedAt)
+}
+
+func TestProcessOfflineSale_stampsCreatedAtFromOccurredAt(t *testing.T) {
+	t.Parallel()
+	slotID := uuid.New()
+	productID := uuid.New()
+	machineID := uuid.New()
+	occurredAt := time.Now().UTC().Add(-7 * time.Minute).Truncate(time.Millisecond)
+	capturedMs := time.Now().UTC().Add(-30 * time.Second).UnixMilli()
+	slotIdx := int32(4)
+	slotsJSON := []byte(`[{"slotCode":"A4","productId":"` + productID.String() + `","priceMinor":5000,"localPricingRevision":1}]`)
+	orderVend := &captureOrderVendWorkflow{}
+	life := &cashConfirmLifecycle{
+		order: domainOrder(uuidNew(), machineID, 5000, PricingSourceMachineLocalUnverified),
+	}
+	payments := &cashConfirmPayments{}
+	life.payments = payments
+	svc := NewService(Deps{
+		OrderVend:     orderVend,
+		PaymentOutbox: payments,
+		Lifecycle:     life,
+		SaleLines: mirrorFallbackResolver{
+			fail: true,
+			byCode: map[string]db.InventoryAdminListCurrentMachineSlotConfigsByMachineRow{
+				"A4": {
+					ID:          slotID,
+					SlotCode:    "A4",
+					CabinetCode: "A",
+					SlotIndex:   pgtype.Int4{Int32: slotIdx, Valid: true},
+				},
+			},
+		},
+		LocalLayoutMirror: stubMirrorReader{
+			mirror: LocalLayoutMirror{Revision: 1, SlotsJSON: slotsJSON},
+		},
+	})
+	payload, err := json.Marshal(map[string]any{
+		"orderId":           uuid.NewString(),
+		"machineId":         machineID.String(),
+		"transactionId":     "tx-created-at",
+		"cashReceivedMinor": 5000,
+		"payableTotalMinor": 5000,
+		"currency":          "VND",
+		"pricingSnapshot": map[string]any{
+			"snapshotId":           "snap-created-at",
+			"payableTotalMinor":    5000,
+			"currency":             "VND",
+			"localPricingRevision": 1,
+			"slotConfigVersion":    1,
+			"capturedAtEpochMs":    capturedMs,
+			"lines": []map[string]any{
+				{"slotCode": "A4", "productId": productID.String(), "unitPriceMinor": 5000, "quantity": 1},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	err = svc.ProcessOfflineSale(
+		t.Context(),
+		machineID,
+		"offline-sale:occurred-at",
+		"client-event-1",
+		payload,
+		OfflineSaleOutboxConfig{Topic: "commerce", EventType: "cash", AggregateType: "order"},
+		occurredAt,
+	)
+	require.NoError(t, err)
+	require.Equal(t, occurredAt, orderVend.lastInput.CreatedAt)
+	require.NotEqual(t, time.UnixMilli(capturedMs).UTC(), orderVend.lastInput.CreatedAt)
 }

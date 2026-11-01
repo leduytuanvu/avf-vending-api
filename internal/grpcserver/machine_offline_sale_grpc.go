@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
 
 	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	plauth "github.com/avf/avf-vending-api/internal/platform/auth"
@@ -38,6 +39,10 @@ func (s *machineOfflineSyncServer) replayOfflineSale(ctx context.Context, payloa
 	}
 	key := strings.TrimSpace(meta.GetIdempotencyKey())
 	clientEventID := strings.TrimSpace(meta.GetClientEventId())
+	var occurredAt time.Time
+	if ts := meta.GetOccurredAt(); ts != nil && ts.IsValid() {
+		occurredAt = ts.AsTime().UTC()
+	}
 	err := svc.ProcessOfflineSale(
 		ctx,
 		claims.MachineID,
@@ -49,6 +54,7 @@ func (s *machineOfflineSyncServer) replayOfflineSale(ctx context.Context, payloa
 			EventType:     evType,
 			AggregateType: aggType,
 		},
+		occurredAt,
 	)
 	if err != nil {
 		slog.Warn("offline sale dispatch failed",

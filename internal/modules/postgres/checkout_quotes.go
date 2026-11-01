@@ -245,6 +245,7 @@ func (s *Store) CreateOrderFromQuoteWithVendSessions(ctx context.Context, in app
 		MachinePricingRevision:    lockedQuote.MachinePricingRevision,
 		MachinePricingSnapshot:    pgjson.OptionalString(lockedQuote.MachinePricingSnapshot),
 		ServerReferenceTotalMinor: optionalInt64ToPg(serverRef),
+		CreatedAt:                 optionalTimeValueToPgTimestamptz(in.CreatedAt),
 	})
 	if err != nil {
 		return appcommerce.PersistOrderFromQuoteResult{}, err
