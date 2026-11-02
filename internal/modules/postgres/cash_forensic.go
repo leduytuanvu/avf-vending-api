@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -384,6 +385,35 @@ func (s *Store) InsertCashAdjustment(ctx context.Context, in appcommerce.InsertC
 	}, nil
 }
 
+func cashLedgerFetchLimit(limit, offset int32) int32 {
+	if offset <= 0 {
+		return limit
+	}
+	sum := int64(limit) + int64(offset)
+	if sum > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(sum)
+}
+
+func sliceCashLedgerPage(items []appcommerce.CashLedgerRow, offset, limit int32) []appcommerce.CashLedgerRow {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		return []appcommerce.CashLedgerRow{}
+	}
+	start := int(offset)
+	if start >= len(items) {
+		return []appcommerce.CashLedgerRow{}
+	}
+	end := start + int(limit)
+	if end > len(items) {
+		end = len(items)
+	}
+	return items[start:end]
+}
+
 func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedgerInput) (appcommerce.ListCashLedgerResult, error) {
 	if in.Limit <= 0 {
 		in.Limit = 50
@@ -391,19 +421,66 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 	if in.Limit > 500 {
 		in.Limit = 500
 	}
+	if in.Offset < 0 {
+		in.Offset = 0
+	}
+	if in.Offset > 0 {
+		in.AfterOccurredAt = nil
+		in.AfterID = nil
+	}
 	if in.MachineID == nil || *in.MachineID == uuid.Nil {
 		return appcommerce.ListCashLedgerResult{}, fmt.Errorf("machine_id required")
 	}
 	machineID := *in.MachineID
+	fetchLimit := cashLedgerFetchLimit(in.Limit, in.Offset)
 	q := db.New(s.pool)
+	fromTime := pgtype.Timestamptz{Time: in.From.UTC(), Valid: true}
+	toTime := pgtype.Timestamptz{Time: in.To.UTC(), Valid: true}
+	orderID := optionalUUIDToPg(in.OrderID)
+	acceptanceCount, err := q.CountCashLedgerAcceptanceEvents(ctx, db.CountCashLedgerAcceptanceEventsParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	payoutCount, err := q.CountCashLedgerPayoutEvents(ctx, db.CountCashLedgerPayoutEventsParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	lifecycleCount, err := q.CountCashLedgerLifecycleEvents(ctx, db.CountCashLedgerLifecycleEventsParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	obsCount, err := q.CountCashLedgerHardwareObservations(ctx, db.CountCashLedgerHardwareObservationsParams{
+		MachineID: uuidToPg(machineID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+	})
+	if err != nil {
+		return appcommerce.ListCashLedgerResult{}, err
+	}
+	total := acceptanceCount + payoutCount + lifecycleCount + obsCount
 	params := db.ListCashLedgerAcceptanceEventsParams{
 		MachineID: uuidToPg(machineID),
-		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
-		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
-		OrderID:   optionalUUIDToPg(in.OrderID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
 		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
 		AfterID:   ledgerAfterID(in.AfterID),
-		Limit:     in.Limit,
+		Limit:     fetchLimit,
 	}
 	rows, err := q.ListCashLedgerAcceptanceEvents(ctx, params)
 	if err != nil {
@@ -431,12 +508,12 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 	}
 	payoutParams := db.ListCashLedgerPayoutEventsParams{
 		MachineID: uuidToPg(machineID),
-		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
-		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
-		OrderID:   optionalUUIDToPg(in.OrderID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
 		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
 		AfterID:   ledgerAfterID(in.AfterID),
-		Limit:     in.Limit,
+		Limit:     fetchLimit,
 	}
 	payoutRows, err := q.ListCashLedgerPayoutEvents(ctx, payoutParams)
 	if err != nil {
@@ -469,12 +546,12 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 	}
 	lifecycleRows, err := q.ListCashBillLifecycleEventsForLedger(ctx, db.ListCashBillLifecycleEventsForLedgerParams{
 		MachineID: uuidToPg(machineID),
-		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
-		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
-		OrderID:   optionalUUIDToPg(in.OrderID),
+		FromTime:  fromTime,
+		ToTime:    toTime,
+		OrderID:   orderID,
 		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
 		AfterID:   ledgerAfterID(in.AfterID),
-		Limit:     in.Limit,
+		Limit:     fetchLimit,
 	})
 	if err != nil {
 		return appcommerce.ListCashLedgerResult{}, err
@@ -498,11 +575,11 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 	}
 	obsRows, err := q.ListCashHardwareObservationsForLedger(ctx, db.ListCashHardwareObservationsForLedgerParams{
 		MachineID: uuidToPg(machineID),
-		FromTime:  pgtype.Timestamptz{Time: in.From.UTC(), Valid: true},
-		ToTime:    pgtype.Timestamptz{Time: in.To.UTC(), Valid: true},
+		FromTime:  fromTime,
+		ToTime:    toTime,
 		AfterTime: optionalTimeToPgTimestamptz(in.AfterOccurredAt),
 		AfterID:   ledgerAfterID(in.AfterID),
-		Limit:     in.Limit,
+		Limit:     fetchLimit,
 	})
 	if err != nil {
 		return appcommerce.ListCashLedgerResult{}, err
@@ -529,15 +606,16 @@ func (s *Store) ListCashLedger(ctx context.Context, in appcommerce.ListCashLedge
 		}
 		return items[i].OccurredAtDevice.After(items[j].OccurredAtDevice)
 	})
-	if int32(len(items)) > in.Limit {
-		items = items[:in.Limit]
+	if int32(len(items)) > fetchLimit {
+		items = items[:fetchLimit]
 	}
+	items = sliceCashLedgerPage(items, in.Offset, in.Limit)
 	var next *appcommerce.CashLedgerCursor
 	if len(items) > 0 {
 		last := items[len(items)-1]
 		next = &appcommerce.CashLedgerCursor{OccurredAt: last.OccurredAtDevice, ID: last.ID}
 	}
-	return appcommerce.ListCashLedgerResult{Items: items, NextCursor: next}, nil
+	return appcommerce.ListCashLedgerResult{Items: items, NextCursor: next, Total: total}, nil
 }
 
 func (s *Store) GetCashLedgerEventDetail(ctx context.Context, eventID uuid.UUID, movementClass string) (appcommerce.CashLedgerEventDetail, error) {

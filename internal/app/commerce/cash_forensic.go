@@ -50,9 +50,9 @@ type CashMovementEventInput struct {
 }
 
 type RecordCashMovementsResult struct {
-	Replay          bool
-	AcceptedCount   int32
-	DuplicateCount  int32
+	Replay         bool
+	AcceptedCount  int32
+	DuplicateCount int32
 }
 
 type InsertCashAdjustmentInput struct {
@@ -67,65 +67,67 @@ type InsertCashAdjustmentInput struct {
 }
 
 type CashAdjustmentView struct {
-	ID           uuid.UUID
-	MachineID    uuid.UUID
-	AmountMinor  int64
-	Bucket       string
-	Reason       string
-	Currency     string
-	CreatedAt    time.Time
+	ID          uuid.UUID
+	MachineID   uuid.UUID
+	AmountMinor int64
+	Bucket      string
+	Reason      string
+	Currency    string
+	CreatedAt   time.Time
 }
 
 type MachinePhysicalCashPosition struct {
-	MachineID                  uuid.UUID
-	Currency                   string
-	AsOf                       time.Time
-	PhysicalExpectedCashboxMinor int64
-	PhysicalExpectedRecyclerMinor  int64
-	PhysicalExpectedMachineMinor   int64
-	SalesNetExpectedMinor          int64
-	ObservedRecyclerMinor          int64
-	ObservedRecyclerCount          int32
-	ObservedRecyclerDenomMinor     int64
-	LastPhysicalCountMinor         int64
-	LastPhysicalCountAt            *time.Time
-	VarianceMinor                  int64
-	UnresolvedLiabilityMinor       int64
-	AmbiguousEventCount            int64
-	EvidenceStatus                 string
-	Disclosure                     string
+	MachineID                     uuid.UUID
+	Currency                      string
+	AsOf                          time.Time
+	PhysicalExpectedCashboxMinor  int64
+	PhysicalExpectedRecyclerMinor int64
+	PhysicalExpectedMachineMinor  int64
+	SalesNetExpectedMinor         int64
+	ObservedRecyclerMinor         int64
+	ObservedRecyclerCount         int32
+	ObservedRecyclerDenomMinor    int64
+	LastPhysicalCountMinor        int64
+	LastPhysicalCountAt           *time.Time
+	VarianceMinor                 int64
+	UnresolvedLiabilityMinor      int64
+	AmbiguousEventCount           int64
+	EvidenceStatus                string
+	Disclosure                    string
 }
 
 type ListCashLedgerInput struct {
-	MachineID      *uuid.UUID
-	OrderID        *uuid.UUID
-	From           time.Time
-	To             time.Time
-	Limit          int32
+	MachineID       *uuid.UUID
+	OrderID         *uuid.UUID
+	From            time.Time
+	To              time.Time
+	Limit           int32
+	Offset          int32
 	AfterOccurredAt *time.Time
-	AfterID        *uuid.UUID
-	MovementClass  string
+	AfterID         *uuid.UUID
+	MovementClass   string
 }
 
 type CashLedgerRow struct {
-	ID              uuid.UUID
-	MachineID       uuid.UUID
-	OrderID         *uuid.UUID
-	MovementClass   string
-	EventType       string
-	Destination     string
+	ID                uuid.UUID
+	MachineID         uuid.UUID
+	OrderID           *uuid.UUID
+	MovementClass     string
+	EventType         string
+	Destination       string
 	DenominationMinor int64
-	AmountMinor     int64
-	Currency        string
-	OccurredAtDevice time.Time
-	RecordedAt      time.Time
-	EvidenceStatus  string
-	DeviceEventID   string
+	AmountMinor       int64
+	Currency          string
+	OccurredAtDevice  time.Time
+	RecordedAt        time.Time
+	EvidenceStatus    string
+	DeviceEventID     string
 }
 
 type ListCashLedgerResult struct {
 	Items      []CashLedgerRow
 	NextCursor *CashLedgerCursor
+	Total      int64
 }
 
 type CashLedgerCursor struct {
@@ -141,7 +143,7 @@ type CashLedgerEventDetail struct {
 
 type OrderCashForensicsView struct {
 	OrderMoneyView
-	RemainderMinor int64
+	RemainderMinor  int64
 	LifecycleEvents []CashLifecycleEventView
 	PayoutEvents    []CashPayoutEventView
 }
@@ -155,14 +157,14 @@ type CashLifecycleEventView struct {
 }
 
 type CashPayoutEventView struct {
-	ID                   uuid.UUID
-	WithdrawalID         string
-	NoteSequence         int32
-	EventType            string
-	DenominationMinor    int64
-	AmountMinor          int64
-	OutcomeFinality      string
-	RecyclerCountBefore  *int32
-	RecyclerCountAfter   *int32
-	OccurredAt           time.Time
+	ID                  uuid.UUID
+	WithdrawalID        string
+	NoteSequence        int32
+	EventType           string
+	DenominationMinor   int64
+	AmountMinor         int64
+	OutcomeFinality     string
+	RecyclerCountBefore *int32
+	RecyclerCountAfter  *int32
+	OccurredAt          time.Time
 }

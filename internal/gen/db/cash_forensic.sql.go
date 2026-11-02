@@ -73,6 +73,124 @@ func (q *Queries) CashPayoutExistsForMachineDevice(ctx context.Context, arg Cash
 	return exists, err
 }
 
+const CountCashLedgerAcceptanceEvents = `-- name: CountCashLedgerAcceptanceEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_acceptance_events
+WHERE
+    machine_id = $1::uuid
+    AND accepted_at >= $2::timestamptz
+    AND accepted_at < $3::timestamptz
+    AND (
+        $4::uuid IS NULL
+        OR order_id = $4::uuid
+    )
+`
+
+type CountCashLedgerAcceptanceEventsParams struct {
+	MachineID pgtype.UUID
+	FromTime  pgtype.Timestamptz
+	ToTime    pgtype.Timestamptz
+	OrderID   pgtype.UUID
+}
+
+func (q *Queries) CountCashLedgerAcceptanceEvents(ctx context.Context, arg CountCashLedgerAcceptanceEventsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CountCashLedgerAcceptanceEvents,
+		arg.MachineID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.OrderID,
+	)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const CountCashLedgerHardwareObservations = `-- name: CountCashLedgerHardwareObservations :one
+SELECT count(*)::bigint AS cnt
+FROM cash_hardware_observations
+WHERE
+    machine_id = $1::uuid
+    AND observed_at_device >= $2::timestamptz
+    AND observed_at_device < $3::timestamptz
+`
+
+type CountCashLedgerHardwareObservationsParams struct {
+	MachineID pgtype.UUID
+	FromTime  pgtype.Timestamptz
+	ToTime    pgtype.Timestamptz
+}
+
+func (q *Queries) CountCashLedgerHardwareObservations(ctx context.Context, arg CountCashLedgerHardwareObservationsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CountCashLedgerHardwareObservations, arg.MachineID, arg.FromTime, arg.ToTime)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const CountCashLedgerLifecycleEvents = `-- name: CountCashLedgerLifecycleEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_bill_lifecycle_events
+WHERE
+    machine_id = $1::uuid
+    AND occurred_at_device >= $2::timestamptz
+    AND occurred_at_device < $3::timestamptz
+    AND (
+        $4::uuid IS NULL
+        OR order_id = $4::uuid
+    )
+`
+
+type CountCashLedgerLifecycleEventsParams struct {
+	MachineID pgtype.UUID
+	FromTime  pgtype.Timestamptz
+	ToTime    pgtype.Timestamptz
+	OrderID   pgtype.UUID
+}
+
+func (q *Queries) CountCashLedgerLifecycleEvents(ctx context.Context, arg CountCashLedgerLifecycleEventsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CountCashLedgerLifecycleEvents,
+		arg.MachineID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.OrderID,
+	)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
+const CountCashLedgerPayoutEvents = `-- name: CountCashLedgerPayoutEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_payout_events
+WHERE
+    machine_id = $1::uuid
+    AND occurred_at_device >= $2::timestamptz
+    AND occurred_at_device < $3::timestamptz
+    AND (
+        $4::uuid IS NULL
+        OR order_id = $4::uuid
+    )
+`
+
+type CountCashLedgerPayoutEventsParams struct {
+	MachineID pgtype.UUID
+	FromTime  pgtype.Timestamptz
+	ToTime    pgtype.Timestamptz
+	OrderID   pgtype.UUID
+}
+
+func (q *Queries) CountCashLedgerPayoutEvents(ctx context.Context, arg CountCashLedgerPayoutEventsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, CountCashLedgerPayoutEvents,
+		arg.MachineID,
+		arg.FromTime,
+		arg.ToTime,
+		arg.OrderID,
+	)
+	var cnt int64
+	err := row.Scan(&cnt)
+	return cnt, err
+}
+
 const GetCashAcceptanceEventByID = `-- name: GetCashAcceptanceEventByID :one
 SELECT id, machine_id, order_id, device_event_id, denomination_minor, credit_source, currency, accepted_at, boot_id, occurred_at_device, raw_metadata, created_at
 FROM cash_acceptance_events

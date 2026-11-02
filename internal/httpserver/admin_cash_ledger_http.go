@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/app/api"
+	appcommerce "github.com/avf/avf-vending-api/internal/app/commerce"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -77,7 +77,7 @@ func listAdminCashLedger(app *api.HTTPApplication) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_machine_id", "machineId required")
 			return
 		}
-		limit, _, perr := parseAdminLimitOffset(r)
+		limit, offset, perr := parseAdminLimitOffset(r)
 		if perr != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_pagination", perr.Error())
 			return
@@ -108,6 +108,7 @@ func listAdminCashLedger(app *api.HTTPApplication) http.HandlerFunc {
 			From:            from,
 			To:              to,
 			Limit:           limit,
+			Offset:          offset,
 			AfterOccurredAt: afterTime,
 			AfterID:         afterID,
 		})
@@ -146,7 +147,12 @@ func listAdminCashLedger(app *api.HTTPApplication) http.HandlerFunc {
 		writeJSON(w, http.StatusOK, V1CashLedgerListResponse{
 			Items:      items,
 			NextCursor: nextCursor,
-			Meta:       V1CollectionListMeta{Limit: limit, Returned: len(items)},
+			Meta: V1CollectionListMeta{
+				Limit:    limit,
+				Offset:   offset,
+				Returned: len(items),
+				Total:    res.Total,
+			},
 		})
 	}
 }
@@ -259,10 +265,10 @@ func getAdminOrderCashForensics(app *api.HTTPApplication) http.HandlerFunc {
 			return
 		}
 		out := V1OrderCashForensicsResponse{
-			OrderID:                  view.OrderID.String(),
+			OrderID:                   view.OrderID.String(),
 			OutstandingLiabilityMinor: view.OutstandingLiability,
-			RemainderMinor:           view.RemainderMinor,
-			AcceptanceEvents:     make([]V1OrderMoneyAcceptanceEvent, 0, len(view.AcceptanceEvents)),
+			RemainderMinor:            view.RemainderMinor,
+			AcceptanceEvents:          make([]V1OrderMoneyAcceptanceEvent, 0, len(view.AcceptanceEvents)),
 		}
 		if view.WinningPaymentID != nil {
 			s := view.WinningPaymentID.String()

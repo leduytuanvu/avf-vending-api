@@ -377,6 +377,50 @@ WHERE
 ORDER BY observed_at_device DESC, id DESC
 LIMIT sqlc.arg('limit');
 
+-- name: CountCashLedgerAcceptanceEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_acceptance_events
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND accepted_at >= sqlc.narg('from_time')::timestamptz
+    AND accepted_at < sqlc.narg('to_time')::timestamptz
+    AND (
+        sqlc.narg('order_id')::uuid IS NULL
+        OR order_id = sqlc.narg('order_id')::uuid
+    );
+
+-- name: CountCashLedgerPayoutEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_payout_events
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND occurred_at_device >= sqlc.narg('from_time')::timestamptz
+    AND occurred_at_device < sqlc.narg('to_time')::timestamptz
+    AND (
+        sqlc.narg('order_id')::uuid IS NULL
+        OR order_id = sqlc.narg('order_id')::uuid
+    );
+
+-- name: CountCashLedgerLifecycleEvents :one
+SELECT count(*)::bigint AS cnt
+FROM cash_bill_lifecycle_events
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND occurred_at_device >= sqlc.narg('from_time')::timestamptz
+    AND occurred_at_device < sqlc.narg('to_time')::timestamptz
+    AND (
+        sqlc.narg('order_id')::uuid IS NULL
+        OR order_id = sqlc.narg('order_id')::uuid
+    );
+
+-- name: CountCashLedgerHardwareObservations :one
+SELECT count(*)::bigint AS cnt
+FROM cash_hardware_observations
+WHERE
+    machine_id = sqlc.narg('machine_id')::uuid
+    AND observed_at_device >= sqlc.narg('from_time')::timestamptz
+    AND observed_at_device < sqlc.narg('to_time')::timestamptz;
+
 -- name: ListCashBillLifecycleEventsForOrder :many
 SELECT *
 FROM cash_bill_lifecycle_events
