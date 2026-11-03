@@ -21,6 +21,8 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	MachineProductMasterCatalogService_GetProductMasterCatalogSnapshot_FullMethodName = "/avf.machine.v1.MachineProductMasterCatalogService/GetProductMasterCatalogSnapshot"
 	MachineProductMasterCatalogService_GetProductMasterCatalogDelta_FullMethodName    = "/avf.machine.v1.MachineProductMasterCatalogService/GetProductMasterCatalogDelta"
+	MachineProductMasterCatalogService_ListMachineProductLists_FullMethodName         = "/avf.machine.v1.MachineProductMasterCatalogService/ListMachineProductLists"
+	MachineProductMasterCatalogService_GetProductListSnapshot_FullMethodName          = "/avf.machine.v1.MachineProductMasterCatalogService/GetProductListSnapshot"
 )
 
 // MachineProductMasterCatalogServiceClient is the client API for MachineProductMasterCatalogService service.
@@ -35,6 +37,10 @@ type MachineProductMasterCatalogServiceClient interface {
 	GetProductMasterCatalogSnapshot(ctx context.Context, in *GetProductMasterCatalogSnapshotRequest, opts ...grpc.CallOption) (*GetProductMasterCatalogSnapshotResponse, error)
 	// Compares basis_catalog_version to the current server product-master version.
 	GetProductMasterCatalogDelta(ctx context.Context, in *GetProductMasterCatalogDeltaRequest, opts ...grpc.CallOption) (*GetProductMasterCatalogDeltaResponse, error)
+	// Lists named product lists visible to this machine (common + assigned).
+	ListMachineProductLists(ctx context.Context, in *ListMachineProductListsRequest, opts ...grpc.CallOption) (*ListMachineProductListsResponse, error)
+	// Returns a product-list snapshot. Optional product_ids downloads a subset.
+	GetProductListSnapshot(ctx context.Context, in *GetProductListSnapshotRequest, opts ...grpc.CallOption) (*GetProductListSnapshotResponse, error)
 }
 
 type machineProductMasterCatalogServiceClient struct {
@@ -65,6 +71,26 @@ func (c *machineProductMasterCatalogServiceClient) GetProductMasterCatalogDelta(
 	return out, nil
 }
 
+func (c *machineProductMasterCatalogServiceClient) ListMachineProductLists(ctx context.Context, in *ListMachineProductListsRequest, opts ...grpc.CallOption) (*ListMachineProductListsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMachineProductListsResponse)
+	err := c.cc.Invoke(ctx, MachineProductMasterCatalogService_ListMachineProductLists_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *machineProductMasterCatalogServiceClient) GetProductListSnapshot(ctx context.Context, in *GetProductListSnapshotRequest, opts ...grpc.CallOption) (*GetProductListSnapshotResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetProductListSnapshotResponse)
+	err := c.cc.Invoke(ctx, MachineProductMasterCatalogService_GetProductListSnapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MachineProductMasterCatalogServiceServer is the server API for MachineProductMasterCatalogService service.
 // All implementations must embed UnimplementedMachineProductMasterCatalogServiceServer
 // for forward compatibility.
@@ -77,6 +103,10 @@ type MachineProductMasterCatalogServiceServer interface {
 	GetProductMasterCatalogSnapshot(context.Context, *GetProductMasterCatalogSnapshotRequest) (*GetProductMasterCatalogSnapshotResponse, error)
 	// Compares basis_catalog_version to the current server product-master version.
 	GetProductMasterCatalogDelta(context.Context, *GetProductMasterCatalogDeltaRequest) (*GetProductMasterCatalogDeltaResponse, error)
+	// Lists named product lists visible to this machine (common + assigned).
+	ListMachineProductLists(context.Context, *ListMachineProductListsRequest) (*ListMachineProductListsResponse, error)
+	// Returns a product-list snapshot. Optional product_ids downloads a subset.
+	GetProductListSnapshot(context.Context, *GetProductListSnapshotRequest) (*GetProductListSnapshotResponse, error)
 	mustEmbedUnimplementedMachineProductMasterCatalogServiceServer()
 }
 
@@ -92,6 +122,12 @@ func (UnimplementedMachineProductMasterCatalogServiceServer) GetProductMasterCat
 }
 func (UnimplementedMachineProductMasterCatalogServiceServer) GetProductMasterCatalogDelta(context.Context, *GetProductMasterCatalogDeltaRequest) (*GetProductMasterCatalogDeltaResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProductMasterCatalogDelta not implemented")
+}
+func (UnimplementedMachineProductMasterCatalogServiceServer) ListMachineProductLists(context.Context, *ListMachineProductListsRequest) (*ListMachineProductListsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMachineProductLists not implemented")
+}
+func (UnimplementedMachineProductMasterCatalogServiceServer) GetProductListSnapshot(context.Context, *GetProductListSnapshotRequest) (*GetProductListSnapshotResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetProductListSnapshot not implemented")
 }
 func (UnimplementedMachineProductMasterCatalogServiceServer) mustEmbedUnimplementedMachineProductMasterCatalogServiceServer() {
 }
@@ -151,6 +187,42 @@ func _MachineProductMasterCatalogService_GetProductMasterCatalogDelta_Handler(sr
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MachineProductMasterCatalogService_ListMachineProductLists_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMachineProductListsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineProductMasterCatalogServiceServer).ListMachineProductLists(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineProductMasterCatalogService_ListMachineProductLists_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineProductMasterCatalogServiceServer).ListMachineProductLists(ctx, req.(*ListMachineProductListsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MachineProductMasterCatalogService_GetProductListSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetProductListSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MachineProductMasterCatalogServiceServer).GetProductListSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MachineProductMasterCatalogService_GetProductListSnapshot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MachineProductMasterCatalogServiceServer).GetProductListSnapshot(ctx, req.(*GetProductListSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MachineProductMasterCatalogService_ServiceDesc is the grpc.ServiceDesc for MachineProductMasterCatalogService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -165,6 +237,14 @@ var MachineProductMasterCatalogService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetProductMasterCatalogDelta",
 			Handler:    _MachineProductMasterCatalogService_GetProductMasterCatalogDelta_Handler,
+		},
+		{
+			MethodName: "ListMachineProductLists",
+			Handler:    _MachineProductMasterCatalogService_ListMachineProductLists_Handler,
+		},
+		{
+			MethodName: "GetProductListSnapshot",
+			Handler:    _MachineProductMasterCatalogService_GetProductListSnapshot_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

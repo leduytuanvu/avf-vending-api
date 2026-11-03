@@ -1082,6 +1082,86 @@ type V1AdminPlanogramSlotsReplaceRequest struct {
 	Slots []V1AdminPlanogramSlotReplaceItem `json:"slots"`
 }
 
+// V1AdminProductList is a named product list (assortment).
+type V1AdminProductList struct {
+	ID            string                             `json:"id"`
+	Name          string                             `json:"name"`
+	Status        string                             `json:"status"`
+	Kind          string                             `json:"kind"`
+	Description   string                             `json:"description,omitempty"`
+	ItemCount     int64                              `json:"itemCount"`
+	Items         []V1AdminProductListItemMembership `json:"items,omitempty"`
+	CreatedAt     string                             `json:"createdAt"`
+	UpdatedAt     string                             `json:"updatedAt"`
+	CreatedCount  int                                `json:"createdCount,omitempty"`
+	AddedCount    int                                `json:"addedCount,omitempty"`
+	ExistingCount int                                `json:"existingCount,omitempty"`
+	SkippedCount  int                                `json:"skippedCount,omitempty"`
+}
+
+// V1AdminProductListItemMembership is one SKU on a named product list.
+type V1AdminProductListItemMembership struct {
+	ProductID   string  `json:"productId"`
+	Sku         string  `json:"sku"`
+	Name        string  `json:"name"`
+	Active      bool    `json:"active"`
+	SortOrder   int32   `json:"sortOrder"`
+	Barcode     *string `json:"barcode,omitempty"`
+	Description string  `json:"description,omitempty"`
+	CategoryID  *string `json:"categoryId,omitempty"`
+	BrandID     *string `json:"brandId,omitempty"`
+}
+
+// V1AdminNamedProductListEnvelope is GET /v1/admin/product-lists.
+type V1AdminNamedProductListEnvelope struct {
+	Items []V1AdminProductList `json:"items"`
+	Meta  V1AdminPageMeta      `json:"meta"`
+}
+
+// V1AdminProductListCreateRequest is POST /v1/admin/product-lists.
+type V1AdminProductListCreateRequest struct {
+	Name        string `json:"name"`
+	Status      string `json:"status,omitempty"`
+	Kind        string `json:"kind,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// V1AdminProductListPatchRequest is PATCH /v1/admin/product-lists/{listId}.
+type V1AdminProductListPatchRequest struct {
+	Name        *string `json:"name,omitempty"`
+	Status      *string `json:"status,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
+// V1AdminProductListItemsReplaceRequest is PUT /v1/admin/product-lists/{listId}/items.
+type V1AdminProductListItemsReplaceRequest struct {
+	ProductIDs []string `json:"productIds"`
+}
+
+// V1AdminMachineProductLists is GET/PUT /v1/admin/machines/{machineId}/product-lists.
+type V1AdminMachineProductLists struct {
+	MachineID           string                             `json:"machineId"`
+	PrimaryListID       *string                            `json:"primaryListId,omitempty"`
+	SupplementalListIDs []string                           `json:"supplementalListIds"`
+	Lists               []V1AdminMachineProductListBinding `json:"lists"`
+}
+
+// V1AdminMachineProductListBinding is one active list binding on a machine.
+type V1AdminMachineProductListBinding struct {
+	ListID    string `json:"listId"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Status    string `json:"status"`
+	IsPrimary bool   `json:"isPrimary"`
+	ValidFrom string `json:"validFrom"`
+}
+
+// V1AdminMachineProductListsPutRequest is PUT /v1/admin/machines/{machineId}/product-lists.
+type V1AdminMachineProductListsPutRequest struct {
+	PrimaryListID       string   `json:"primaryListId"`
+	SupplementalListIDs []string `json:"supplementalListIds"`
+}
+
 // --- Admin inventory (read-only) ---
 
 // V1AdminMachineSlot is a machine slot projection with catalog joins.
@@ -1374,11 +1454,11 @@ type V1OrderListItem struct {
 	MachineCode     string  `json:"machineCode"`
 	PaymentProvider *string `json:"paymentProvider,omitempty"`
 	Status          string  `json:"status"`
-	Currency       string  `json:"currency"`
-	SubtotalMinor  int64   `json:"subtotalMinor"`
-	TaxMinor       int64   `json:"taxMinor"`
-	TotalMinor     int64   `json:"totalMinor"`
-	IdempotencyKey *string `json:"idempotencyKey,omitempty"`
+	Currency        string  `json:"currency"`
+	SubtotalMinor   int64   `json:"subtotalMinor"`
+	TaxMinor        int64   `json:"taxMinor"`
+	TotalMinor      int64   `json:"totalMinor"`
+	IdempotencyKey  *string `json:"idempotencyKey,omitempty"`
 	// CreatedAt is the canonical server-authoritative business order time (orders.created_at, RFC3339Nano UTC).
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
@@ -1869,24 +1949,24 @@ type V1CashDenominationExpectation struct {
 
 // V1AdminMachineCashboxResponse is GET /v1/admin/machines/{machineId}/cashbox.
 type V1AdminMachineCashboxResponse struct {
-	MachineID                    string                          `json:"machineId"`
-	Currency                     string                          `json:"currency"`
-	ExpectedCashboxMinor         int64                           `json:"expectedCashboxMinor"` // legacy alias; same as ExpectedCloudCashMinor
-	ExpectedCloudCashMinor       int64                           `json:"expectedCloudCashMinor"`
-	ExpectedRecyclerMinor        int64                           `json:"expectedRecyclerMinor"`
-	LastCollectionAt             *string                         `json:"lastCollectionAt,omitempty"`
-	Denominations                []V1CashDenominationExpectation `json:"denominations"`
-	OpenCollectionID             *string                         `json:"openCollectionId,omitempty"`
-	VarianceReviewThresholdMinor int64                           `json:"varianceReviewThresholdMinor"`
-	Disclosure                   string                          `json:"disclosure"`
-	PhysicalExpectedCashboxMinor int64                           `json:"physicalExpectedCashboxMinor"`
-	PhysicalExpectedRecyclerMinor int64                          `json:"physicalExpectedRecyclerMinor"`
-	PhysicalExpectedMachineMinor int64                           `json:"physicalExpectedMachineMinor"`
-	SalesNetExpectedMinor        int64                           `json:"salesNetExpectedMinor"`
-	ObservedRecyclerMinor        int64                           `json:"observedRecyclerMinor"`
-	ObservedRecyclerCount        int32                           `json:"observedRecyclerCount"`
-	ObservedRecyclerDenomMinor   int64                           `json:"observedRecyclerDenomMinor"`
-	EvidenceStatus               string                          `json:"evidenceStatus"`
+	MachineID                     string                          `json:"machineId"`
+	Currency                      string                          `json:"currency"`
+	ExpectedCashboxMinor          int64                           `json:"expectedCashboxMinor"` // legacy alias; same as ExpectedCloudCashMinor
+	ExpectedCloudCashMinor        int64                           `json:"expectedCloudCashMinor"`
+	ExpectedRecyclerMinor         int64                           `json:"expectedRecyclerMinor"`
+	LastCollectionAt              *string                         `json:"lastCollectionAt,omitempty"`
+	Denominations                 []V1CashDenominationExpectation `json:"denominations"`
+	OpenCollectionID              *string                         `json:"openCollectionId,omitempty"`
+	VarianceReviewThresholdMinor  int64                           `json:"varianceReviewThresholdMinor"`
+	Disclosure                    string                          `json:"disclosure"`
+	PhysicalExpectedCashboxMinor  int64                           `json:"physicalExpectedCashboxMinor"`
+	PhysicalExpectedRecyclerMinor int64                           `json:"physicalExpectedRecyclerMinor"`
+	PhysicalExpectedMachineMinor  int64                           `json:"physicalExpectedMachineMinor"`
+	SalesNetExpectedMinor         int64                           `json:"salesNetExpectedMinor"`
+	ObservedRecyclerMinor         int64                           `json:"observedRecyclerMinor"`
+	ObservedRecyclerCount         int32                           `json:"observedRecyclerCount"`
+	ObservedRecyclerDenomMinor    int64                           `json:"observedRecyclerDenomMinor"`
+	EvidenceStatus                string                          `json:"evidenceStatus"`
 }
 
 type V1CashLedgerItem struct {
@@ -1912,8 +1992,8 @@ type V1CashLedgerListResponse struct {
 }
 
 type V1CashLedgerEventDetailResponse struct {
-	Event V1CashLedgerItem       `json:"event"`
-	Extra map[string]any         `json:"extra,omitempty"`
+	Event V1CashLedgerItem `json:"event"`
+	Extra map[string]any   `json:"extra,omitempty"`
 }
 
 type V1AdminMachineCashPositionResponse struct {
@@ -1934,12 +2014,12 @@ type V1AdminMachineCashPositionResponse struct {
 }
 
 type V1OrderCashForensicsResponse struct {
-	OrderID                   string                      `json:"orderId"`
-	WinningPaymentID          *string                     `json:"winningPaymentId,omitempty"`
-	OutstandingLiabilityMinor int64                       `json:"outstandingLiabilityMinor"`
-	RemainderMinor            int64                       `json:"remainderMinor"`
-	CashAllocation            *V1OrderMoneyCashAllocation `json:"cashAllocation,omitempty"`
-	CashChange                *V1OrderMoneyCashChange     `json:"cashChange,omitempty"`
+	OrderID                   string                        `json:"orderId"`
+	WinningPaymentID          *string                       `json:"winningPaymentId,omitempty"`
+	OutstandingLiabilityMinor int64                         `json:"outstandingLiabilityMinor"`
+	RemainderMinor            int64                         `json:"remainderMinor"`
+	CashAllocation            *V1OrderMoneyCashAllocation   `json:"cashAllocation,omitempty"`
+	CashChange                *V1OrderMoneyCashChange       `json:"cashChange,omitempty"`
 	AcceptanceEvents          []V1OrderMoneyAcceptanceEvent `json:"acceptanceEvents"`
 }
 

@@ -17,6 +17,12 @@ service MachineProductMasterCatalogService {
 
   // Compares basis_catalog_version to the current server product-master version.
   rpc GetProductMasterCatalogDelta(GetProductMasterCatalogDeltaRequest) returns (GetProductMasterCatalogDeltaResponse);
+
+  // Lists named product lists visible to this machine (common + assigned).
+  rpc ListMachineProductLists(ListMachineProductListsRequest) returns (ListMachineProductListsResponse);
+
+  // Returns a product-list snapshot. Optional product_ids downloads a subset.
+  rpc GetProductListSnapshot(GetProductListSnapshotRequest) returns (GetProductListSnapshotResponse);
 }
 
 message ProductMasterRecord {
@@ -74,4 +80,38 @@ message GetProductMasterCatalogDeltaResponse {
   repeated string deleted_or_deactivated_product_ids = 7;
   google.protobuf.Timestamp generated_at = 8;
   bool reset_required = 9;
+}
+
+message MachineProductListSummary {
+  string list_id = 1;
+  string name = 2;
+  string kind = 3;
+  string status = 4;
+  bool is_primary = 5;
+  bool assigned = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message ListMachineProductListsRequest {
+  MachineRequestMeta meta = 1;
+  string machine_id = 2;
+}
+
+message ListMachineProductListsResponse {
+  repeated MachineProductListSummary lists = 1;
+  MachineResponseMeta meta = 2;
+}
+
+message GetProductListSnapshotRequest {
+  MachineRequestMeta meta = 1;
+  string machine_id = 2;
+  string list_id = 3;
+  repeated string product_ids = 4;
+}
+
+message GetProductListSnapshotResponse {
+  string list_id = 1;
+  string list_version = 2;
+  ProductMasterCatalogSnapshot snapshot = 3;
+  MachineResponseMeta meta = 4;
 }

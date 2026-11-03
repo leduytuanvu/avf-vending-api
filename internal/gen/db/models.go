@@ -53,6 +53,7 @@ type Assortment struct {
 	ID          uuid.UUID
 	Name        string
 	Status      string
+	Kind        string
 	Description string
 	Meta        []byte
 	CreatedAt   time.Time

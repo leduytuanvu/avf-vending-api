@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/avf/avf-vending-api/internal/app/api"
+	"github.com/avf/avf-vending-api/internal/app/productmastercatalog"
 	"github.com/avf/avf-vending-api/internal/app/salecatalog"
 	"github.com/avf/avf-vending-api/internal/app/setupapp"
 	"github.com/avf/avf-vending-api/internal/gen/db"
@@ -38,6 +39,14 @@ func mountMachineMerchCatalogRoutes(r chi.Router, app *api.HTTPApplication) {
 		RequireMachineCompanyAccess(app, "machineId"),
 		auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead),
 	).Get("/machines/{machineId}/catalog/merch/products", getMachineCatalogMerchProducts(app))
+	r.With(
+		RequireMachineCompanyAccess(app, "machineId"),
+		auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead),
+	).Get("/machines/{machineId}/product-lists", getMachineProductLists(app))
+	r.With(
+		RequireMachineCompanyAccess(app, "machineId"),
+		auth.RequireInteractivePermissionOrMachinePrincipal(auth.PermCatalogRead),
+	).Get("/machines/{machineId}/product-lists/{listId}/snapshot", getMachineProductListSnapshot(app))
 }
 
 func getMachineCatalogBundleMeta(app *api.HTTPApplication) http.HandlerFunc {
@@ -170,7 +179,7 @@ func buildMachineSaleCatalogSnapshot(ctx context.Context, app *api.HTTPApplicati
 	}
 	return svc.BuildSnapshot(ctx, machineID, salecatalog.Options{
 		IncludeUnavailable: true,
-		IncludeImages:    withImages,
+		IncludeImages:      withImages,
 	})
 }
 
@@ -309,6 +318,109 @@ func mapInventorySlotsToPlanogram(invSlots []db.InventoryAdminListMachineSlotsRo
 		out = append(out, entry)
 	}
 	return out
+}
+
+func getMachineProductLists(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		machineID, ok := parseMachineIDParam(w, r)
+		if !ok {
+			return
+		}
+		pool, err := machineCatalogPool(app)
+		if err != nil {
+			writeMachineCatalogError(w, ctx, err)
+			return
+		}
+		lists, err := productmastercatalog.NewService(pool).ListVisibleLists(ctx, machineID)
+		if err != nil {
+			writeMachineCatalogError(w, ctx, err)
+			return
+		}
+		items := make([]map[string]any, 0, len(lists))
+		for _, row := range lists {
+			items = append(items, map[string]any{
+				"listId":    row.ListID.String(),
+				"name":      row.Name,
+				"kind":      row.Kind,
+				"status":    row.Status,
+				"isPrimary": row.IsPrimary,
+				"assigned":  row.Assigned,
+				"updatedAt": row.UpdatedAt.UTC().Format("2006-01-02T15:04:05.000000000Z07:00"),
+			})
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	}
+}
+
+func getMachineProductListSnapshot(app *api.HTTPApplication) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		machineID, ok := parseMachineIDParam(w, r)
+		if !ok {
+			return
+		}
+		listID, ok := parseChiUUID(w, r, "listId")
+		if !ok {
+			return
+		}
+		var filterIDs []uuid.UUID
+		for _, raw := range r.URL.Query()["product_id"] {
+			id, err := uuid.Parse(strings.TrimSpace(raw))
+			if err != nil || id == uuid.Nil {
+				writeAPIError(w, ctx, http.StatusBadRequest, "invalid_product_id", "invalid product_id")
+				return
+			}
+			filterIDs = append(filterIDs, id)
+		}
+		pool, err := machineCatalogPool(app)
+		if err != nil {
+			writeMachineCatalogError(w, ctx, err)
+			return
+		}
+		snap, err := productmastercatalog.NewService(pool).BuildListSnapshot(ctx, machineID, listID, filterIDs)
+		if err != nil {
+			if strings.Contains(err.Error(), "not visible") {
+				writeAPIError(w, ctx, http.StatusNotFound, "list_not_found", err.Error())
+				return
+			}
+			writeMachineCatalogError(w, ctx, err)
+			return
+		}
+		products := make([]map[string]any, 0, len(snap.Snapshot.Products))
+		for _, p := range snap.Snapshot.Products {
+			entry := map[string]any{
+				"productId":      p.ProductID.String(),
+				"sku":            p.SKU,
+				"barcode":        p.Barcode,
+				"name":           p.Name,
+				"description":    p.Description,
+				"basePriceMinor": p.BasePriceMinor,
+				"currency":       p.Currency,
+				"active":         p.Active,
+			}
+			if p.CategoryID != nil {
+				entry["categoryId"] = p.CategoryID.String()
+			}
+			if p.BrandID != nil {
+				entry["brandId"] = p.BrandID.String()
+			}
+			if p.Image != nil {
+				entry["thumbUrl"] = p.Image.ThumbURL
+				entry["displayUrl"] = p.Image.DisplayURL
+				entry["imageHash"] = p.Image.ContentHash
+				entry["imageKey"] = p.Image.CacheKey
+			}
+			products = append(products, entry)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"listId":       snap.ListID.String(),
+			"listVersion":  snap.ListVersion,
+			"generatedAt":  snap.Snapshot.GeneratedAt.UTC().Format("2006-01-02T15:04:05.000000000Z07:00"),
+			"productCount": snap.Snapshot.TotalActiveCount,
+			"products":     products,
+		})
+	}
 }
 
 func mapSaleCatalogItemsToMerchProducts(snap salecatalog.Snapshot, includeImages bool) []map[string]any {

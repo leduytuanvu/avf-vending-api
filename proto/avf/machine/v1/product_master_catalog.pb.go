@@ -529,6 +529,338 @@ func (x *GetProductMasterCatalogDeltaResponse) GetResetRequired() bool {
 	return false
 }
 
+type MachineProductListSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ListId        string                 `protobuf:"bytes,1,opt,name=list_id,json=listId,proto3" json:"list_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Kind          string                 `protobuf:"bytes,3,opt,name=kind,proto3" json:"kind,omitempty"`
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	IsPrimary     bool                   `protobuf:"varint,5,opt,name=is_primary,json=isPrimary,proto3" json:"is_primary,omitempty"`
+	Assigned      bool                   `protobuf:"varint,6,opt,name=assigned,proto3" json:"assigned,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MachineProductListSummary) Reset() {
+	*x = MachineProductListSummary{}
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MachineProductListSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MachineProductListSummary) ProtoMessage() {}
+
+func (x *MachineProductListSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MachineProductListSummary.ProtoReflect.Descriptor instead.
+func (*MachineProductListSummary) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *MachineProductListSummary) GetListId() string {
+	if x != nil {
+		return x.ListId
+	}
+	return ""
+}
+
+func (x *MachineProductListSummary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *MachineProductListSummary) GetKind() string {
+	if x != nil {
+		return x.Kind
+	}
+	return ""
+}
+
+func (x *MachineProductListSummary) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *MachineProductListSummary) GetIsPrimary() bool {
+	if x != nil {
+		return x.IsPrimary
+	}
+	return false
+}
+
+func (x *MachineProductListSummary) GetAssigned() bool {
+	if x != nil {
+		return x.Assigned
+	}
+	return false
+}
+
+func (x *MachineProductListSummary) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+type ListMachineProductListsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMachineProductListsRequest) Reset() {
+	*x = ListMachineProductListsRequest{}
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMachineProductListsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMachineProductListsRequest) ProtoMessage() {}
+
+func (x *ListMachineProductListsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMachineProductListsRequest.ProtoReflect.Descriptor instead.
+func (*ListMachineProductListsRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListMachineProductListsRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *ListMachineProductListsRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+type ListMachineProductListsResponse struct {
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Lists         []*MachineProductListSummary `protobuf:"bytes,1,rep,name=lists,proto3" json:"lists,omitempty"`
+	Meta          *MachineResponseMeta         `protobuf:"bytes,2,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMachineProductListsResponse) Reset() {
+	*x = ListMachineProductListsResponse{}
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMachineProductListsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMachineProductListsResponse) ProtoMessage() {}
+
+func (x *ListMachineProductListsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMachineProductListsResponse.ProtoReflect.Descriptor instead.
+func (*ListMachineProductListsResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListMachineProductListsResponse) GetLists() []*MachineProductListSummary {
+	if x != nil {
+		return x.Lists
+	}
+	return nil
+}
+
+func (x *ListMachineProductListsResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+type GetProductListSnapshotRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *MachineRequestMeta    `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	MachineId     string                 `protobuf:"bytes,2,opt,name=machine_id,json=machineId,proto3" json:"machine_id,omitempty"`
+	ListId        string                 `protobuf:"bytes,3,opt,name=list_id,json=listId,proto3" json:"list_id,omitempty"`
+	ProductIds    []string               `protobuf:"bytes,4,rep,name=product_ids,json=productIds,proto3" json:"product_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProductListSnapshotRequest) Reset() {
+	*x = GetProductListSnapshotRequest{}
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProductListSnapshotRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProductListSnapshotRequest) ProtoMessage() {}
+
+func (x *GetProductListSnapshotRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProductListSnapshotRequest.ProtoReflect.Descriptor instead.
+func (*GetProductListSnapshotRequest) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetProductListSnapshotRequest) GetMeta() *MachineRequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetProductListSnapshotRequest) GetMachineId() string {
+	if x != nil {
+		return x.MachineId
+	}
+	return ""
+}
+
+func (x *GetProductListSnapshotRequest) GetListId() string {
+	if x != nil {
+		return x.ListId
+	}
+	return ""
+}
+
+func (x *GetProductListSnapshotRequest) GetProductIds() []string {
+	if x != nil {
+		return x.ProductIds
+	}
+	return nil
+}
+
+type GetProductListSnapshotResponse struct {
+	state         protoimpl.MessageState        `protogen:"open.v1"`
+	ListId        string                        `protobuf:"bytes,1,opt,name=list_id,json=listId,proto3" json:"list_id,omitempty"`
+	ListVersion   string                        `protobuf:"bytes,2,opt,name=list_version,json=listVersion,proto3" json:"list_version,omitempty"`
+	Snapshot      *ProductMasterCatalogSnapshot `protobuf:"bytes,3,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
+	Meta          *MachineResponseMeta          `protobuf:"bytes,4,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProductListSnapshotResponse) Reset() {
+	*x = GetProductListSnapshotResponse{}
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProductListSnapshotResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProductListSnapshotResponse) ProtoMessage() {}
+
+func (x *GetProductListSnapshotResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_avf_machine_v1_product_master_catalog_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProductListSnapshotResponse.ProtoReflect.Descriptor instead.
+func (*GetProductListSnapshotResponse) Descriptor() ([]byte, []int) {
+	return file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetProductListSnapshotResponse) GetListId() string {
+	if x != nil {
+		return x.ListId
+	}
+	return ""
+}
+
+func (x *GetProductListSnapshotResponse) GetListVersion() string {
+	if x != nil {
+		return x.ListVersion
+	}
+	return ""
+}
+
+func (x *GetProductListSnapshotResponse) GetSnapshot() *ProductMasterCatalogSnapshot {
+	if x != nil {
+		return x.Snapshot
+	}
+	return nil
+}
+
+func (x *GetProductListSnapshotResponse) GetMeta() *MachineResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
 var File_avf_machine_v1_product_master_catalog_proto protoreflect.FileDescriptor
 
 const file_avf_machine_v1_product_master_catalog_proto_rawDesc = "" +
@@ -582,10 +914,41 @@ const file_avf_machine_v1_product_master_catalog_proto_rawDesc = "" +
 	"\aupserts\x18\x06 \x03(\v2#.avf.machine.v1.ProductMasterRecordR\aupserts\x12J\n" +
 	"\"deleted_or_deactivated_product_ids\x18\a \x03(\tR\x1edeletedOrDeactivatedProductIds\x12=\n" +
 	"\fgenerated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12%\n" +
-	"\x0ereset_required\x18\t \x01(\bR\rresetRequired2\xc5\x02\n" +
+	"\x0ereset_required\x18\t \x01(\bR\rresetRequired\"\xea\x01\n" +
+	"\x19MachineProductListSummary\x12\x17\n" +
+	"\alist_id\x18\x01 \x01(\tR\x06listId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
+	"\x04kind\x18\x03 \x01(\tR\x04kind\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"is_primary\x18\x05 \x01(\bR\tisPrimary\x12\x1a\n" +
+	"\bassigned\x18\x06 \x01(\bR\bassigned\x129\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"w\n" +
+	"\x1eListMachineProductListsRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\"\x9b\x01\n" +
+	"\x1fListMachineProductListsResponse\x12?\n" +
+	"\x05lists\x18\x01 \x03(\v2).avf.machine.v1.MachineProductListSummaryR\x05lists\x127\n" +
+	"\x04meta\x18\x02 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta\"\xb0\x01\n" +
+	"\x1dGetProductListSnapshotRequest\x126\n" +
+	"\x04meta\x18\x01 \x01(\v2\".avf.machine.v1.MachineRequestMetaR\x04meta\x12\x1d\n" +
+	"\n" +
+	"machine_id\x18\x02 \x01(\tR\tmachineId\x12\x17\n" +
+	"\alist_id\x18\x03 \x01(\tR\x06listId\x12\x1f\n" +
+	"\vproduct_ids\x18\x04 \x03(\tR\n" +
+	"productIds\"\xdf\x01\n" +
+	"\x1eGetProductListSnapshotResponse\x12\x17\n" +
+	"\alist_id\x18\x01 \x01(\tR\x06listId\x12!\n" +
+	"\flist_version\x18\x02 \x01(\tR\vlistVersion\x12H\n" +
+	"\bsnapshot\x18\x03 \x01(\v2,.avf.machine.v1.ProductMasterCatalogSnapshotR\bsnapshot\x127\n" +
+	"\x04meta\x18\x04 \x01(\v2#.avf.machine.v1.MachineResponseMetaR\x04meta2\xba\x04\n" +
 	"\"MachineProductMasterCatalogService\x12\x92\x01\n" +
 	"\x1fGetProductMasterCatalogSnapshot\x126.avf.machine.v1.GetProductMasterCatalogSnapshotRequest\x1a7.avf.machine.v1.GetProductMasterCatalogSnapshotResponse\x12\x89\x01\n" +
-	"\x1cGetProductMasterCatalogDelta\x123.avf.machine.v1.GetProductMasterCatalogDeltaRequest\x1a4.avf.machine.v1.GetProductMasterCatalogDeltaResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
+	"\x1cGetProductMasterCatalogDelta\x123.avf.machine.v1.GetProductMasterCatalogDeltaRequest\x1a4.avf.machine.v1.GetProductMasterCatalogDeltaResponse\x12z\n" +
+	"\x17ListMachineProductLists\x12..avf.machine.v1.ListMachineProductListsRequest\x1a/.avf.machine.v1.ListMachineProductListsResponse\x12w\n" +
+	"\x16GetProductListSnapshot\x12-.avf.machine.v1.GetProductListSnapshotRequest\x1a..avf.machine.v1.GetProductListSnapshotResponseB?Z=github.com/avf/avf-vending-api/proto/avf/machine/v1;machinev1b\x06proto3"
 
 var (
 	file_avf_machine_v1_product_master_catalog_proto_rawDescOnce sync.Once
@@ -599,7 +962,7 @@ func file_avf_machine_v1_product_master_catalog_proto_rawDescGZIP() []byte {
 	return file_avf_machine_v1_product_master_catalog_proto_rawDescData
 }
 
-var file_avf_machine_v1_product_master_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_avf_machine_v1_product_master_catalog_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_avf_machine_v1_product_master_catalog_proto_goTypes = []any{
 	(*ProductMasterRecord)(nil),                     // 0: avf.machine.v1.ProductMasterRecord
 	(*ProductMasterCatalogSnapshot)(nil),            // 1: avf.machine.v1.ProductMasterCatalogSnapshot
@@ -607,31 +970,47 @@ var file_avf_machine_v1_product_master_catalog_proto_goTypes = []any{
 	(*GetProductMasterCatalogSnapshotResponse)(nil), // 3: avf.machine.v1.GetProductMasterCatalogSnapshotResponse
 	(*GetProductMasterCatalogDeltaRequest)(nil),     // 4: avf.machine.v1.GetProductMasterCatalogDeltaRequest
 	(*GetProductMasterCatalogDeltaResponse)(nil),    // 5: avf.machine.v1.GetProductMasterCatalogDeltaResponse
-	(*ProductMediaRef)(nil),                         // 6: avf.machine.v1.ProductMediaRef
-	(*timestamppb.Timestamp)(nil),                   // 7: google.protobuf.Timestamp
-	(*MachineRequestMeta)(nil),                      // 8: avf.machine.v1.MachineRequestMeta
-	(*MachineResponseMeta)(nil),                     // 9: avf.machine.v1.MachineResponseMeta
+	(*MachineProductListSummary)(nil),               // 6: avf.machine.v1.MachineProductListSummary
+	(*ListMachineProductListsRequest)(nil),          // 7: avf.machine.v1.ListMachineProductListsRequest
+	(*ListMachineProductListsResponse)(nil),         // 8: avf.machine.v1.ListMachineProductListsResponse
+	(*GetProductListSnapshotRequest)(nil),           // 9: avf.machine.v1.GetProductListSnapshotRequest
+	(*GetProductListSnapshotResponse)(nil),          // 10: avf.machine.v1.GetProductListSnapshotResponse
+	(*ProductMediaRef)(nil),                         // 11: avf.machine.v1.ProductMediaRef
+	(*timestamppb.Timestamp)(nil),                   // 12: google.protobuf.Timestamp
+	(*MachineRequestMeta)(nil),                      // 13: avf.machine.v1.MachineRequestMeta
+	(*MachineResponseMeta)(nil),                     // 14: avf.machine.v1.MachineResponseMeta
 }
 var file_avf_machine_v1_product_master_catalog_proto_depIdxs = []int32{
-	6,  // 0: avf.machine.v1.ProductMasterRecord.primary_media:type_name -> avf.machine.v1.ProductMediaRef
-	7,  // 1: avf.machine.v1.ProductMasterCatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
+	11, // 0: avf.machine.v1.ProductMasterRecord.primary_media:type_name -> avf.machine.v1.ProductMediaRef
+	12, // 1: avf.machine.v1.ProductMasterCatalogSnapshot.generated_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: avf.machine.v1.ProductMasterCatalogSnapshot.products:type_name -> avf.machine.v1.ProductMasterRecord
-	8,  // 3: avf.machine.v1.GetProductMasterCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	13, // 3: avf.machine.v1.GetProductMasterCatalogSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
 	1,  // 4: avf.machine.v1.GetProductMasterCatalogSnapshotResponse.snapshot:type_name -> avf.machine.v1.ProductMasterCatalogSnapshot
-	9,  // 5: avf.machine.v1.GetProductMasterCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
-	8,  // 6: avf.machine.v1.GetProductMasterCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
-	9,  // 7: avf.machine.v1.GetProductMasterCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	14, // 5: avf.machine.v1.GetProductMasterCatalogSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	13, // 6: avf.machine.v1.GetProductMasterCatalogDeltaRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	14, // 7: avf.machine.v1.GetProductMasterCatalogDeltaResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
 	0,  // 8: avf.machine.v1.GetProductMasterCatalogDeltaResponse.upserts:type_name -> avf.machine.v1.ProductMasterRecord
-	7,  // 9: avf.machine.v1.GetProductMasterCatalogDeltaResponse.generated_at:type_name -> google.protobuf.Timestamp
-	2,  // 10: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogSnapshot:input_type -> avf.machine.v1.GetProductMasterCatalogSnapshotRequest
-	4,  // 11: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogDelta:input_type -> avf.machine.v1.GetProductMasterCatalogDeltaRequest
-	3,  // 12: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogSnapshot:output_type -> avf.machine.v1.GetProductMasterCatalogSnapshotResponse
-	5,  // 13: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogDelta:output_type -> avf.machine.v1.GetProductMasterCatalogDeltaResponse
-	12, // [12:14] is the sub-list for method output_type
-	10, // [10:12] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	12, // 9: avf.machine.v1.GetProductMasterCatalogDeltaResponse.generated_at:type_name -> google.protobuf.Timestamp
+	12, // 10: avf.machine.v1.MachineProductListSummary.updated_at:type_name -> google.protobuf.Timestamp
+	13, // 11: avf.machine.v1.ListMachineProductListsRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	6,  // 12: avf.machine.v1.ListMachineProductListsResponse.lists:type_name -> avf.machine.v1.MachineProductListSummary
+	14, // 13: avf.machine.v1.ListMachineProductListsResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	13, // 14: avf.machine.v1.GetProductListSnapshotRequest.meta:type_name -> avf.machine.v1.MachineRequestMeta
+	1,  // 15: avf.machine.v1.GetProductListSnapshotResponse.snapshot:type_name -> avf.machine.v1.ProductMasterCatalogSnapshot
+	14, // 16: avf.machine.v1.GetProductListSnapshotResponse.meta:type_name -> avf.machine.v1.MachineResponseMeta
+	2,  // 17: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogSnapshot:input_type -> avf.machine.v1.GetProductMasterCatalogSnapshotRequest
+	4,  // 18: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogDelta:input_type -> avf.machine.v1.GetProductMasterCatalogDeltaRequest
+	7,  // 19: avf.machine.v1.MachineProductMasterCatalogService.ListMachineProductLists:input_type -> avf.machine.v1.ListMachineProductListsRequest
+	9,  // 20: avf.machine.v1.MachineProductMasterCatalogService.GetProductListSnapshot:input_type -> avf.machine.v1.GetProductListSnapshotRequest
+	3,  // 21: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogSnapshot:output_type -> avf.machine.v1.GetProductMasterCatalogSnapshotResponse
+	5,  // 22: avf.machine.v1.MachineProductMasterCatalogService.GetProductMasterCatalogDelta:output_type -> avf.machine.v1.GetProductMasterCatalogDeltaResponse
+	8,  // 23: avf.machine.v1.MachineProductMasterCatalogService.ListMachineProductLists:output_type -> avf.machine.v1.ListMachineProductListsResponse
+	10, // 24: avf.machine.v1.MachineProductMasterCatalogService.GetProductListSnapshot:output_type -> avf.machine.v1.GetProductListSnapshotResponse
+	21, // [21:25] is the sub-list for method output_type
+	17, // [17:21] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_avf_machine_v1_product_master_catalog_proto_init() }
@@ -647,7 +1026,7 @@ func file_avf_machine_v1_product_master_catalog_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_avf_machine_v1_product_master_catalog_proto_rawDesc), len(file_avf_machine_v1_product_master_catalog_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -39,6 +39,9 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 		registerAdminPromotionReadRoutes(r, svc)
 		r.Get("/planograms", listAdminPlanograms(svc))
 		r.Get("/planograms/{planogramId}", getAdminPlanogram(svc))
+		r.Get("/product-lists", listAdminProductLists(svc))
+		r.Get("/product-lists/{listId}", getAdminProductList(svc))
+		r.Get("/machines/{machineId}/product-lists", getAdminMachineProductLists(svc))
 	})
 	r.Group(func(r chi.Router) {
 		r.Use(auth.RequireAnyPermission(auth.PermCatalogWrite))
@@ -80,6 +83,11 @@ func mountAdminCatalogRoutes(r chi.Router, app *api.HTTPApplication, writeRL fun
 		r.With(writeRL).Put("/planograms/{planogramId}", patchAdminPlanogramUpdate(svc))
 		r.With(writeRL).With(auth.RequireAnyPermission(auth.PermCatalogDelete)).Delete("/planograms/{planogramId}", deleteAdminPlanogram(svc))
 		r.With(writeRL).Put("/planograms/{planogramId}/slots", putAdminPlanogramSlotsReplace(svc))
+		r.With(writeRL).Post("/product-lists", postAdminProductListCreate(svc))
+		r.With(writeRL).Patch("/product-lists/{listId}", patchAdminProductList(svc))
+		r.With(writeRL).Put("/product-lists/{listId}/items", putAdminProductListItems(svc))
+		r.With(writeRL).Post("/product-lists/{listId}/import", postAdminProductListImport(svc))
+		r.With(writeRL).Put("/machines/{machineId}/product-lists", putAdminMachineProductLists(svc))
 	})
 }
 

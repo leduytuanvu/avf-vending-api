@@ -592,14 +592,24 @@ type FleetAdminInsertAssortmentParams struct {
 	Meta        string
 }
 
-func (q *Queries) FleetAdminInsertAssortment(ctx context.Context, arg FleetAdminInsertAssortmentParams) (Assortment, error) {
+type FleetAdminInsertAssortmentRow struct {
+	ID          uuid.UUID
+	Name        string
+	Status      string
+	Description string
+	Meta        []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) FleetAdminInsertAssortment(ctx context.Context, arg FleetAdminInsertAssortmentParams) (FleetAdminInsertAssortmentRow, error) {
 	row := q.db.QueryRow(ctx, FleetAdminInsertAssortment,
 		arg.Name,
 		arg.Status,
 		arg.Description,
 		arg.Meta,
 	)
-	var i Assortment
+	var i FleetAdminInsertAssortmentRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -1529,7 +1539,17 @@ type FleetAdminUpdateAssortmentParams struct {
 	ID          uuid.UUID
 }
 
-func (q *Queries) FleetAdminUpdateAssortment(ctx context.Context, arg FleetAdminUpdateAssortmentParams) (Assortment, error) {
+type FleetAdminUpdateAssortmentRow struct {
+	ID          uuid.UUID
+	Name        string
+	Status      string
+	Description string
+	Meta        []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) FleetAdminUpdateAssortment(ctx context.Context, arg FleetAdminUpdateAssortmentParams) (FleetAdminUpdateAssortmentRow, error) {
 	row := q.db.QueryRow(ctx, FleetAdminUpdateAssortment,
 		arg.Name,
 		arg.Status,
@@ -1537,7 +1557,7 @@ func (q *Queries) FleetAdminUpdateAssortment(ctx context.Context, arg FleetAdmin
 		arg.Meta,
 		arg.ID,
 	)
-	var i Assortment
+	var i FleetAdminUpdateAssortmentRow
 	err := row.Scan(
 		&i.ID,
 		&i.Name,

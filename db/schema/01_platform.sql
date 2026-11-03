@@ -2632,12 +2632,17 @@ CREATE TABLE assortments (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),
     name text NOT NULL,
     status text NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'published', 'archived')),
+    kind text NOT NULL DEFAULT 'custom' CHECK (kind IN ('common', 'custom')),
     description text NOT NULL DEFAULT '',
     meta jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT ck_assortments_name_nonempty CHECK (btrim(name) <> '')
 );
+
+CREATE UNIQUE INDEX ux_assortments_one_common ON assortments (kind)
+WHERE
+    kind = 'common';
 
 CREATE TABLE assortment_items (
     id uuid PRIMARY KEY DEFAULT public.uuid_generate_v7(),

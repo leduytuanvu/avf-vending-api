@@ -107,6 +107,105 @@ func (s *machineProductMasterCatalogServer) GetProductMasterCatalogDelta(
 	}, nil
 }
 
+func (s *machineProductMasterCatalogServer) ListMachineProductLists(
+	ctx context.Context,
+	req *machinev1.ListMachineProductListsRequest,
+) (*machinev1.ListMachineProductListsResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	if s.deps.ProductMasterCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "product master catalog not configured")
+	}
+	lists, err := s.deps.ProductMasterCatalog.ListVisibleLists(ctx, machineID)
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	out := make([]*machinev1.MachineProductListSummary, 0, len(lists))
+	for _, row := range lists {
+		out = append(out, &machinev1.MachineProductListSummary{
+			ListId:    row.ListID.String(),
+			Name:      row.Name,
+			Kind:      row.Kind,
+			Status:    row.Status,
+			IsPrimary: row.IsPrimary,
+			Assigned:  row.Assigned,
+			UpdatedAt: timestamppb.New(row.UpdatedAt),
+		})
+	}
+	return &machinev1.ListMachineProductListsResponse{
+		Lists: out,
+		Meta:  responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+	}, nil
+}
+
+func (s *machineProductMasterCatalogServer) GetProductListSnapshot(
+	ctx context.Context,
+	req *machinev1.GetProductListSnapshotRequest,
+) (*machinev1.GetProductListSnapshotResponse, error) {
+	claims, ok := plauth.MachineAccessClaimsFromContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "missing machine credentials")
+	}
+	if s.deps.Pool != nil {
+		q := db.New(s.deps.Pool)
+		if err := machineCredentialGate(ctx, q, claims); err != nil {
+			return nil, err
+		}
+	}
+	machineID, err := resolveMachineScope(claims.MachineID, req.GetMachineId())
+	if err != nil {
+		return nil, err
+	}
+	listID, perr := uuid.Parse(strings.TrimSpace(req.GetListId()))
+	if perr != nil || listID == uuid.Nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid list_id")
+	}
+	if s.deps.ProductMasterCatalog == nil {
+		return nil, status.Error(codes.Unavailable, "product master catalog not configured")
+	}
+	filterIDs := make([]uuid.UUID, 0, len(req.GetProductIds()))
+	for _, raw := range req.GetProductIds() {
+		id, ierr := uuid.Parse(strings.TrimSpace(raw))
+		if ierr != nil || id == uuid.Nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid product_ids")
+		}
+		filterIDs = append(filterIDs, id)
+	}
+	snap, err := s.deps.ProductMasterCatalog.BuildListSnapshot(ctx, machineID, listID, filterIDs)
+	if err != nil {
+		if strings.Contains(err.Error(), "not visible") {
+			return nil, status.Error(codes.NotFound, err.Error())
+		}
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	rid := ""
+	if req.GetMeta() != nil {
+		rid = req.GetMeta().GetRequestId()
+	}
+	return &machinev1.GetProductListSnapshotResponse{
+		ListId:      snap.ListID.String(),
+		ListVersion: snap.ListVersion,
+		Snapshot:    productMasterSnapshotProto(snap.Snapshot),
+		Meta:        responseMetaCtx(ctx, rid, machinev1.MachineResponseStatus_MACHINE_RESPONSE_STATUS_ACCEPTED),
+	}, nil
+}
+
 func productMasterSnapshotProto(snap productmastercatalog.Snapshot) *machinev1.ProductMasterCatalogSnapshot {
 	if snap.CatalogVersion == "" && len(snap.Products) == 0 {
 		return nil
