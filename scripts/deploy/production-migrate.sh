@@ -197,7 +197,7 @@ validate_image_migrations() {
 pg_dump_docker_network_args() {
 	local url="$1"
 	if [[ -n "${PG_DUMP_DOCKER_NETWORK:-}" ]]; then
-		printf '%s\0--network\0%s' "${PG_DUMP_DOCKER_NETWORK}"
+		printf -- '--network\0%s\0' "${PG_DUMP_DOCKER_NETWORK}"
 		return 0
 	fi
 	if python3 - "${url}" <<'PY'
@@ -207,8 +207,20 @@ host = (urlparse(sys.argv[1]).hostname or "").lower()
 sys.exit(0 if host in ("127.0.0.1", "localhost") else 1)
 PY
 	then
-		printf '%s\0--network\0host'
+		printf -- '--network\0host\0'
 	fi
+}
+
+# readarray -d '' emits one empty field on empty stdin; docker then treats "" as the image
+# and fails with "invalid reference format".
+filter_nonempty_tokens() {
+	local -n _tokens="$1"
+	local -a _cleaned=()
+	local _tok
+	for _tok in "${_tokens[@]}"; do
+		[[ -n "${_tok}" ]] && _cleaned+=("${_tok}")
+	done
+	_tokens=("${_cleaned[@]}")
 }
 
 backup_database() {
@@ -229,7 +241,9 @@ backup_database() {
 	err_file="$(mktemp)"
 	trap 'rm -f "${err_file}"' RETURN
 	if readarray -d '' -t pg_dump_network_args < <(pg_dump_docker_network_args "${dump_url}"); then
-		[[ "${#pg_dump_network_args[@]}" -gt 0 ]] || pg_dump_network_args=()
+		filter_nonempty_tokens pg_dump_network_args
+	else
+		pg_dump_network_args=()
 	fi
 	while [[ "${attempt}" -le "${max_attempts}" ]]; do
 		if docker run --rm \
