@@ -38,6 +38,46 @@ func TestParseProductListItemInputs_productIdsInherit(t *testing.T) {
 	require.Nil(t, got[0].UnitPriceMinor)
 }
 
+func TestParseMachineProductListsPutRequest_fullReplace(t *testing.T) {
+	t.Parallel()
+	primary := uuid.New()
+	supp := uuid.New()
+	gotPrimary, gotSupp, err := parseMachineProductListsPutRequest(V1AdminMachineProductListsPutRequest{
+		PrimaryListID:       primary.String(),
+		SupplementalListIDs: []string{supp.String()},
+	})
+	require.NoError(t, err)
+	require.Equal(t, primary, gotPrimary)
+	require.Equal(t, []uuid.UUID{supp}, gotSupp)
+}
+
+func TestParseMachineProductListsPutRequest_supplementalOnly(t *testing.T) {
+	t.Parallel()
+	supp := uuid.New()
+	gotPrimary, gotSupp, err := parseMachineProductListsPutRequest(V1AdminMachineProductListsPutRequest{
+		SupplementalListIDs: []string{supp.String()},
+	})
+	require.NoError(t, err)
+	require.Equal(t, uuid.Nil, gotPrimary)
+	require.Equal(t, []uuid.UUID{supp}, gotSupp)
+}
+
+func TestParseMachineProductListsPutRequest_emptyRequiresPrimary(t *testing.T) {
+	t.Parallel()
+	_, _, err := parseMachineProductListsPutRequest(V1AdminMachineProductListsPutRequest{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "primaryListId required")
+}
+
+func TestParseMachineProductListsPutRequest_invalidPrimary(t *testing.T) {
+	t.Parallel()
+	_, _, err := parseMachineProductListsPutRequest(V1AdminMachineProductListsPutRequest{
+		PrimaryListID: "not-a-uuid",
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid primaryListId")
+}
+
 func TestProductListItemWriteJSON_roundTripZero(t *testing.T) {
 	t.Parallel()
 	raw := []byte(`{"items":[{"productId":"11111111-1111-1111-1111-111111111111","unitPriceMinor":0}]}`)

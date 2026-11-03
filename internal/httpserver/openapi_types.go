@@ -1167,8 +1167,10 @@ type V1AdminMachineProductListBinding struct {
 }
 
 // V1AdminMachineProductListsPutRequest is PUT /v1/admin/machines/{machineId}/product-lists.
+// primaryListId is required for a full replace. Omit it (with supplementalListIds)
+// to assign download sources without changing the commerce primary assortment.
 type V1AdminMachineProductListsPutRequest struct {
-	PrimaryListID       string   `json:"primaryListId"`
+	PrimaryListID       string   `json:"primaryListId,omitempty"`
 	SupplementalListIDs []string `json:"supplementalListIds"`
 }
 

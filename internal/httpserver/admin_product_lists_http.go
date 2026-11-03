@@ -230,12 +230,7 @@ func putAdminMachineProductLists(svc *appcatalogadmin.Service) http.HandlerFunc 
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid json")
 			return
 		}
-		primary, err := uuid.Parse(strings.TrimSpace(body.PrimaryListID))
-		if err != nil || primary == uuid.Nil {
-			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_primary_list_id", "invalid primaryListId")
-			return
-		}
-		supp, err := parseUUIDStrings(body.SupplementalListIDs)
+		primary, supp, err := parseMachineProductListsPutRequest(body)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_list_id", err.Error())
 			return
@@ -312,6 +307,25 @@ func mapAdminMachineProductLists(asg appcatalogadmin.MachineProductListsAssignme
 		out.SupplementalListIDs = append(out.SupplementalListIDs, id.String())
 	}
 	return out
+}
+
+func parseMachineProductListsPutRequest(body V1AdminMachineProductListsPutRequest) (uuid.UUID, []uuid.UUID, error) {
+	supp, err := parseUUIDStrings(body.SupplementalListIDs)
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+	primaryRaw := strings.TrimSpace(body.PrimaryListID)
+	if primaryRaw == "" {
+		if len(supp) == 0 {
+			return uuid.Nil, nil, fmt.Errorf("primaryListId required")
+		}
+		return uuid.Nil, supp, nil
+	}
+	primary, err := uuid.Parse(primaryRaw)
+	if err != nil || primary == uuid.Nil {
+		return uuid.Nil, nil, fmt.Errorf("invalid primaryListId")
+	}
+	return primary, supp, nil
 }
 
 func parseUUIDStrings(raw []string) ([]uuid.UUID, error) {

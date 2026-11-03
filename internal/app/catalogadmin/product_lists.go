@@ -72,7 +72,10 @@ type MachineProductListsAssignment struct {
 	Bindings            []db.ProductListMachineBindingsRow
 }
 
-// PutMachineProductListsInput assigns one primary and zero or more supplemental lists.
+// PutMachineProductListsInput assigns lists on a machine.
+// A non-zero PrimaryListID replaces primary and supplemental (existing admin card).
+// A zero PrimaryListID with SupplementalListIDs replaces only supplemental bindings
+// and leaves the commerce primary assortment untouched.
 type PutMachineProductListsInput struct {
 	MachineID           uuid.UUID
 	PrimaryListID       uuid.UUID
@@ -517,7 +520,9 @@ func (s *Service) GetMachineProductLists(ctx context.Context, machineID uuid.UUI
 }
 
 // PutMachineProductLists replaces active primary and supplemental bindings.
-// Supplemental assignment does not change the commerce primary assortment allow-list.
+// Supplemental assignment does not change the commerce primary assortment allow-list
+// unless PrimaryListID is set (full replace). An omitted primary with supplemental
+// IDs only rewrites is_primary=false bindings.
 func (s *Service) PutMachineProductLists(ctx context.Context, in PutMachineProductListsInput) (*MachineProductListsAssignment, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
@@ -525,17 +530,21 @@ func (s *Service) PutMachineProductLists(ctx context.Context, in PutMachineProdu
 	if err := s.requireMachine(ctx, in.MachineID); err != nil {
 		return nil, err
 	}
-	if in.PrimaryListID == uuid.Nil {
-		return nil, fmt.Errorf("%w: primaryListId required", ErrInvalidArgument)
-	}
-	if err := s.requirePublishedList(ctx, in.PrimaryListID); err != nil {
-		return nil, err
-	}
 	supp, err := normalizeProductIDs(in.SupplementalListIDs)
 	if err != nil {
 		return nil, err
 	}
-	seen := map[uuid.UUID]struct{}{in.PrimaryListID: {}}
+	if in.PrimaryListID == uuid.Nil {
+		return s.replaceSupplementalBindings(ctx, in.MachineID, supp)
+	}
+	return s.replaceFullMachineProductLists(ctx, in.MachineID, in.PrimaryListID, supp)
+}
+
+func (s *Service) replaceFullMachineProductLists(ctx context.Context, machineID, primary uuid.UUID, supp []uuid.UUID) (*MachineProductListsAssignment, error) {
+	if err := s.requirePublishedList(ctx, primary); err != nil {
+		return nil, err
+	}
+	seen := map[uuid.UUID]struct{}{primary: {}}
 	for _, id := range supp {
 		if _, ok := seen[id]; ok {
 			return nil, fmt.Errorf("%w: duplicate list id in assignment", ErrInvalidArgument)
@@ -552,27 +561,27 @@ func (s *Service) PutMachineProductLists(ctx context.Context, in PutMachineProdu
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := pgxutil.NewQueries(tx)
 	if err := qtx.ProductListCloseMachineBindings(ctx, db.ProductListCloseMachineBindingsParams{
-		MachineID: in.MachineID,
+		MachineID: machineID,
 		Column2:   true,
 	}); err != nil {
 		return nil, err
 	}
 	if err := qtx.ProductListCloseMachineBindings(ctx, db.ProductListCloseMachineBindingsParams{
-		MachineID: in.MachineID,
+		MachineID: machineID,
 		Column2:   false,
 	}); err != nil {
 		return nil, err
 	}
 	if err := qtx.ProductListInsertBinding(ctx, db.ProductListInsertBindingParams{
-		MachineID:    in.MachineID,
-		AssortmentID: in.PrimaryListID,
+		MachineID:    machineID,
+		AssortmentID: primary,
 		IsPrimary:    true,
 	}); err != nil {
 		return nil, err
 	}
 	for _, id := range supp {
 		if err := qtx.ProductListInsertBinding(ctx, db.ProductListInsertBindingParams{
-			MachineID:    in.MachineID,
+			MachineID:    machineID,
 			AssortmentID: id,
 			IsPrimary:    false,
 		}); err != nil {
@@ -582,7 +591,61 @@ func (s *Service) PutMachineProductLists(ctx context.Context, in PutMachineProdu
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
-	return s.GetMachineProductLists(ctx, in.MachineID)
+	return s.GetMachineProductLists(ctx, machineID)
+}
+
+func (s *Service) replaceSupplementalBindings(ctx context.Context, machineID uuid.UUID, supp []uuid.UUID) (*MachineProductListsAssignment, error) {
+	if len(supp) == 0 {
+		return nil, fmt.Errorf("%w: primaryListId required", ErrInvalidArgument)
+	}
+	current, err := s.GetMachineProductLists(ctx, machineID)
+	if err != nil {
+		return nil, err
+	}
+	var activePrimary uuid.UUID
+	if current != nil && current.PrimaryListID != nil {
+		activePrimary = *current.PrimaryListID
+	}
+	filtered := make([]uuid.UUID, 0, len(supp))
+	seen := map[uuid.UUID]struct{}{}
+	for _, id := range supp {
+		if id == activePrimary {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			return nil, fmt.Errorf("%w: duplicate list id in assignment", ErrInvalidArgument)
+		}
+		seen[id] = struct{}{}
+		if err := s.requirePublishedList(ctx, id); err != nil {
+			return nil, err
+		}
+		filtered = append(filtered, id)
+	}
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	qtx := pgxutil.NewQueries(tx)
+	if err := qtx.ProductListCloseMachineBindings(ctx, db.ProductListCloseMachineBindingsParams{
+		MachineID: machineID,
+		Column2:   false,
+	}); err != nil {
+		return nil, err
+	}
+	for _, id := range filtered {
+		if err := qtx.ProductListInsertBinding(ctx, db.ProductListInsertBindingParams{
+			MachineID:    machineID,
+			AssortmentID: id,
+			IsPrimary:    false,
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return s.GetMachineProductLists(ctx, machineID)
 }
 
 func (s *Service) requireMachine(ctx context.Context, machineID uuid.UUID) error {
