@@ -358,7 +358,9 @@ done
 [[ -f "${COMPOSE_FILE}" ]] || fail "compose file not found: ${COMPOSE_FILE}"
 [[ -f "${COMPOSE_ENV_FILE}" ]] || fail "compose env file not found: ${COMPOSE_ENV_FILE}"
 
-COMPOSE=(docker compose --env-file "${COMPOSE_ENV_FILE}" -f "${COMPOSE_FILE}")
+# Match release_app_node: attach dbnet overlay when ATTACH_APP_TO_DBNET is set so
+# hostname pgbouncer in DATABASE_URL resolves for goose status/up.
+compose_with_optional_dbnet "${COMPOSE_ENV_FILE}" "${COMPOSE_FILE}"
 if [[ -n "${COMPOSE_PROJECT_NAME}" ]]; then
 	COMPOSE+=(--project-name "${COMPOSE_PROJECT_NAME}")
 fi
