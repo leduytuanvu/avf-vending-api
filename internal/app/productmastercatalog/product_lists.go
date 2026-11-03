@@ -111,6 +111,7 @@ func (s *Service) BuildListSnapshot(ctx context.Context, machineID, listID uuid.
 	if err != nil {
 		return ListSnapshot{}, err
 	}
+	applyListSnapshotPrices(records, rows)
 	version := catalogVersion(records)
 	now := time.Now().UTC()
 	return ListSnapshot{
@@ -123,4 +124,18 @@ func (s *Service) BuildListSnapshot(ctx context.Context, machineID, listID uuid.
 			Products:         records,
 		},
 	}, nil
+}
+
+func applyListSnapshotPrices(records []Record, rows []db.ProductListSnapshotRowsRow) {
+	listPriceByID := make(map[uuid.UUID]int64, len(rows))
+	for _, row := range rows {
+		if row.UnitPriceMinor.Valid {
+			listPriceByID[row.ID] = row.UnitPriceMinor.Int64
+		}
+	}
+	for i := range records {
+		if price, ok := listPriceByID[records[i].ProductID]; ok {
+			records[i].BasePriceMinor = price
+		}
+	}
 }

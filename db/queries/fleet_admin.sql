@@ -464,6 +464,7 @@ RETURNING
     assortment_id,
     product_id,
     sort_order,
+    unit_price_minor,
     notes,
     created_at;
 

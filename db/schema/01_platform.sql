@@ -2649,9 +2649,14 @@ CREATE TABLE assortment_items (
     assortment_id uuid NOT NULL REFERENCES assortments (id) ON DELETE CASCADE,
     product_id uuid NOT NULL,
     sort_order int NOT NULL DEFAULT 0,
+    unit_price_minor bigint,
     notes jsonb NOT NULL DEFAULT '{}'::jsonb,
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT ux_assortment_items_assortment_product UNIQUE (assortment_id, product_id)
+    CONSTRAINT ux_assortment_items_assortment_product UNIQUE (assortment_id, product_id),
+    CONSTRAINT ck_assortment_items_unit_price_minor_nonneg CHECK (
+        unit_price_minor IS NULL
+        OR unit_price_minor >= 0
+    )
 );
 
 CREATE INDEX ix_assortment_items_assortment_sort ON assortment_items (assortment_id, sort_order ASC, id ASC);

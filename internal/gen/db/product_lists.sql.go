@@ -246,39 +246,50 @@ const ProductListInsertItem = `-- name: ProductListInsertItem :one
 INSERT INTO assortment_items (
     assortment_id,
     product_id,
-    sort_order
+    sort_order,
+    unit_price_minor
 )
 VALUES (
     $1,
     $2,
-    $3
+    $3,
+    $4
 )
 ON CONFLICT (assortment_id, product_id) DO UPDATE
 SET
-    sort_order = EXCLUDED.sort_order
+    sort_order = EXCLUDED.sort_order,
+    unit_price_minor = EXCLUDED.unit_price_minor
 RETURNING
     id,
     assortment_id,
     product_id,
     sort_order,
+    unit_price_minor,
     notes,
     created_at
 `
 
 type ProductListInsertItemParams struct {
-	AssortmentID uuid.UUID
-	ProductID    uuid.UUID
-	SortOrder    int32
+	AssortmentID   uuid.UUID
+	ProductID      uuid.UUID
+	SortOrder      int32
+	UnitPriceMinor pgtype.Int8
 }
 
 func (q *Queries) ProductListInsertItem(ctx context.Context, arg ProductListInsertItemParams) (AssortmentItem, error) {
-	row := q.db.QueryRow(ctx, ProductListInsertItem, arg.AssortmentID, arg.ProductID, arg.SortOrder)
+	row := q.db.QueryRow(ctx, ProductListInsertItem,
+		arg.AssortmentID,
+		arg.ProductID,
+		arg.SortOrder,
+		arg.UnitPriceMinor,
+	)
 	var i AssortmentItem
 	err := row.Scan(
 		&i.ID,
 		&i.AssortmentID,
 		&i.ProductID,
 		&i.SortOrder,
+		&i.UnitPriceMinor,
 		&i.Notes,
 		&i.CreatedAt,
 	)
@@ -289,6 +300,7 @@ const ProductListItems = `-- name: ProductListItems :many
 SELECT
     ai.product_id,
     ai.sort_order,
+    ai.unit_price_minor,
     p.sku,
     p.name,
     p.active,
@@ -303,15 +315,16 @@ ORDER BY ai.sort_order ASC, p.name ASC, p.id ASC
 `
 
 type ProductListItemsRow struct {
-	ProductID   uuid.UUID
-	SortOrder   int32
-	Sku         string
-	Name        string
-	Active      bool
-	Barcode     pgtype.Text
-	Description string
-	CategoryID  pgtype.UUID
-	BrandID     pgtype.UUID
+	ProductID      uuid.UUID
+	SortOrder      int32
+	UnitPriceMinor pgtype.Int8
+	Sku            string
+	Name           string
+	Active         bool
+	Barcode        pgtype.Text
+	Description    string
+	CategoryID     pgtype.UUID
+	BrandID        pgtype.UUID
 }
 
 func (q *Queries) ProductListItems(ctx context.Context, assortmentID uuid.UUID) ([]ProductListItemsRow, error) {
@@ -326,6 +339,7 @@ func (q *Queries) ProductListItems(ctx context.Context, assortmentID uuid.UUID) 
 		if err := rows.Scan(
 			&i.ProductID,
 			&i.SortOrder,
+			&i.UnitPriceMinor,
 			&i.Sku,
 			&i.Name,
 			&i.Active,
@@ -495,7 +509,8 @@ SELECT
     p.brand_id,
     p.updated_at,
     a.id AS assortment_id,
-    a.updated_at AS assortment_updated_at
+    a.updated_at AS assortment_updated_at,
+    ai.unit_price_minor
 FROM assortments a
 INNER JOIN assortment_items ai ON ai.assortment_id = a.id
 INNER JOIN products p ON p.id = ai.product_id
@@ -525,6 +540,7 @@ type ProductListSnapshotRowsRow struct {
 	UpdatedAt           time.Time
 	AssortmentID        uuid.UUID
 	AssortmentUpdatedAt time.Time
+	UnitPriceMinor      pgtype.Int8
 }
 
 func (q *Queries) ProductListSnapshotRows(ctx context.Context, arg ProductListSnapshotRowsParams) ([]ProductListSnapshotRowsRow, error) {
@@ -548,6 +564,7 @@ func (q *Queries) ProductListSnapshotRows(ctx context.Context, arg ProductListSn
 			&i.UpdatedAt,
 			&i.AssortmentID,
 			&i.AssortmentUpdatedAt,
+			&i.UnitPriceMinor,
 		); err != nil {
 			return nil, err
 		}

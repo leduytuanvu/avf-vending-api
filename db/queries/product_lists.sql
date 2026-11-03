@@ -89,21 +89,25 @@ WHERE assortment_id = $1;
 INSERT INTO assortment_items (
     assortment_id,
     product_id,
-    sort_order
+    sort_order,
+    unit_price_minor
 )
 VALUES (
     $1,
     $2,
-    $3
+    $3,
+    $4
 )
 ON CONFLICT (assortment_id, product_id) DO UPDATE
 SET
-    sort_order = EXCLUDED.sort_order
+    sort_order = EXCLUDED.sort_order,
+    unit_price_minor = EXCLUDED.unit_price_minor
 RETURNING
     id,
     assortment_id,
     product_id,
     sort_order,
+    unit_price_minor,
     notes,
     created_at;
 
@@ -111,6 +115,7 @@ RETURNING
 SELECT
     ai.product_id,
     ai.sort_order,
+    ai.unit_price_minor,
     p.sku,
     p.name,
     p.active,
@@ -218,7 +223,8 @@ SELECT
     p.brand_id,
     p.updated_at,
     a.id AS assortment_id,
-    a.updated_at AS assortment_updated_at
+    a.updated_at AS assortment_updated_at,
+    ai.unit_price_minor
 FROM assortments a
 INNER JOIN assortment_items ai ON ai.assortment_id = a.id
 INNER JOIN products p ON p.id = ai.product_id

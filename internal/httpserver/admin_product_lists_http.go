@@ -145,12 +145,12 @@ func putAdminProductListItems(svc *appcatalogadmin.Service) http.HandlerFunc {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_json", "invalid json")
 			return
 		}
-		ids, err := parseUUIDStrings(body.ProductIDs)
+		inputs, err := parseProductListItemInputs(body)
 		if err != nil {
 			writeAPIError(w, r.Context(), http.StatusBadRequest, "invalid_product_id", err.Error())
 			return
 		}
-		detail, err := svc.ReplaceProductListItems(r.Context(), listID, ids)
+		detail, err := svc.ReplaceProductListItems(r.Context(), listID, inputs)
 		if err != nil {
 			writeAdminCatalogError(w, r, err)
 			return
@@ -272,15 +272,16 @@ func mapAdminProductListDetail(detail appcatalogadmin.ProductListDetail) V1Admin
 	items := make([]V1AdminProductListItemMembership, 0, len(detail.Items))
 	for _, it := range detail.Items {
 		items = append(items, V1AdminProductListItemMembership{
-			ProductID:   it.ProductID.String(),
-			Sku:         it.Sku,
-			Name:        it.Name,
-			Active:      it.Active,
-			SortOrder:   it.SortOrder,
-			Barcode:     textFromPgText(it.Barcode),
-			Description: it.Description,
-			CategoryID:  uuidPtrFromPgUUID(it.CategoryID),
-			BrandID:     uuidPtrFromPgUUID(it.BrandID),
+			ProductID:      it.ProductID.String(),
+			Sku:            it.Sku,
+			Name:           it.Name,
+			Active:         it.Active,
+			SortOrder:      it.SortOrder,
+			Barcode:        textFromPgText(it.Barcode),
+			Description:    it.Description,
+			CategoryID:     uuidPtrFromPgUUID(it.CategoryID),
+			BrandID:        uuidPtrFromPgUUID(it.BrandID),
+			UnitPriceMinor: int64PtrFromPgInt8(it.UnitPriceMinor),
 		})
 	}
 	return mapAdminProductList(detail.List, int64(len(items)), items)
@@ -321,6 +322,32 @@ func parseUUIDStrings(raw []string) ([]uuid.UUID, error) {
 			return nil, fmt.Errorf("invalid uuid")
 		}
 		out = append(out, id)
+	}
+	return out, nil
+}
+
+func parseProductListItemInputs(body V1AdminProductListItemsReplaceRequest) ([]appcatalogadmin.ProductListItemInput, error) {
+	if len(body.Items) > 0 {
+		out := make([]appcatalogadmin.ProductListItemInput, 0, len(body.Items))
+		for _, it := range body.Items {
+			id, err := uuid.Parse(strings.TrimSpace(it.ProductID))
+			if err != nil || id == uuid.Nil {
+				return nil, fmt.Errorf("invalid uuid")
+			}
+			out = append(out, appcatalogadmin.ProductListItemInput{
+				ProductID:      id,
+				UnitPriceMinor: it.UnitPriceMinor,
+			})
+		}
+		return out, nil
+	}
+	ids, err := parseUUIDStrings(body.ProductIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]appcatalogadmin.ProductListItemInput, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, appcatalogadmin.ProductListItemInput{ProductID: id})
 	}
 	return out, nil
 }

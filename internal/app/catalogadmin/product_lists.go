@@ -13,6 +13,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/platform/pgxutil"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -76,6 +77,13 @@ type PutMachineProductListsInput struct {
 	MachineID           uuid.UUID
 	PrimaryListID       uuid.UUID
 	SupplementalListIDs []uuid.UUID
+}
+
+// ProductListItemInput is one membership row for PUT /product-lists/{id}/items.
+// Nil UnitPriceMinor inherits the previous list price, then the default price book.
+type ProductListItemInput struct {
+	ProductID      uuid.UUID
+	UnitPriceMinor *int64
 }
 
 // ImportProductListResult reports created SKUs and membership after CSV/JSON import.
@@ -237,17 +245,21 @@ func (s *Service) UpdateProductList(ctx context.Context, in UpdateProductListInp
 	return row, nil
 }
 
-// ReplaceProductListItems overwrites membership with existing SKU ids (order preserved).
-func (s *Service) ReplaceProductListItems(ctx context.Context, listID uuid.UUID, productIDs []uuid.UUID) (*ProductListDetail, error) {
+// ReplaceProductListItems overwrites membership (order preserved) with optional per-list prices.
+func (s *Service) ReplaceProductListItems(ctx context.Context, listID uuid.UUID, items []ProductListItemInput) (*ProductListDetail, error) {
 	if s == nil {
 		return nil, errors.New("catalogadmin: nil service")
 	}
 	if listID == uuid.Nil {
 		return nil, fmt.Errorf("%w: list id required", ErrInvalidArgument)
 	}
-	ids, err := normalizeProductIDs(productIDs)
+	normalized, err := normalizeProductListItems(items)
 	if err != nil {
 		return nil, err
+	}
+	ids := make([]uuid.UUID, 0, len(normalized))
+	for _, it := range normalized {
+		ids = append(ids, it.ProductID)
 	}
 	if len(ids) > 0 {
 		existing, err := s.q.ProductListExistingProductIDs(ctx, ids)
@@ -257,6 +269,46 @@ func (s *Service) ReplaceProductListItems(ctx context.Context, listID uuid.UUID,
 		if len(existing) != len(ids) {
 			return nil, fmt.Errorf("%w: one or more product ids are not in the company catalog", ErrInvalidArgument)
 		}
+	}
+	previous, err := s.q.ProductListItems(ctx, listID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	prevPrice := make(map[uuid.UUID]pgtype.Int8, len(previous))
+	for _, row := range previous {
+		prevPrice[row.ProductID] = row.UnitPriceMinor
+	}
+	needDefault := make([]uuid.UUID, 0, len(ids))
+	for _, it := range normalized {
+		if it.UnitPriceMinor != nil {
+			continue
+		}
+		if prev, ok := prevPrice[it.ProductID]; ok && prev.Valid {
+			continue
+		}
+		needDefault = append(needDefault, it.ProductID)
+	}
+	defaultPrice := map[uuid.UUID]int64{}
+	if len(needDefault) > 0 {
+		rows, err := s.q.ProductMasterDefaultPriceByProductIDs(ctx, needDefault)
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			defaultPrice[row.ProductID] = row.UnitPriceMinor
+		}
+	}
+	resolved := make([]pgtype.Int8, len(normalized))
+	for i, it := range normalized {
+		def, hasDefault := defaultPrice[it.ProductID]
+		price, rerr := resolveListUnitPrice(it.UnitPriceMinor, prevPrice[it.ProductID], def, hasDefault)
+		if rerr != nil {
+			return nil, rerr
+		}
+		resolved[i] = price
 	}
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
@@ -273,11 +325,12 @@ func (s *Service) ReplaceProductListItems(ctx context.Context, listID uuid.UUID,
 	if err := qtx.ProductListDeleteItems(ctx, listID); err != nil {
 		return nil, err
 	}
-	for i, pid := range ids {
+	for i, it := range normalized {
 		if _, err := qtx.ProductListInsertItem(ctx, db.ProductListInsertItemParams{
-			AssortmentID: listID,
-			ProductID:    pid,
-			SortOrder:    int32(i),
+			AssortmentID:   listID,
+			ProductID:      it.ProductID,
+			SortOrder:      int32(i),
+			UnitPriceMinor: resolved[i],
 		}); err != nil {
 			return nil, err
 		}
@@ -418,7 +471,11 @@ func (s *Service) importProductListRows(
 			addID(id)
 		}
 	}
-	detail, err := s.ReplaceProductListItems(ctx, listID, ordered)
+	inputs := make([]ProductListItemInput, 0, len(ordered))
+	for _, id := range ordered {
+		inputs = append(inputs, ProductListItemInput{ProductID: id})
+	}
+	detail, err := s.ReplaceProductListItems(ctx, listID, inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -578,6 +635,41 @@ func normalizeProductIDs(ids []uuid.UUID) ([]uuid.UUID, error) {
 		out = append(out, id)
 	}
 	return out, nil
+}
+
+func normalizeProductListItems(items []ProductListItemInput) ([]ProductListItemInput, error) {
+	out := make([]ProductListItemInput, 0, len(items))
+	seen := make(map[uuid.UUID]struct{}, len(items))
+	for _, it := range items {
+		if it.ProductID == uuid.Nil {
+			return nil, fmt.Errorf("%w: product id required", ErrInvalidArgument)
+		}
+		if _, ok := seen[it.ProductID]; ok {
+			continue
+		}
+		seen[it.ProductID] = struct{}{}
+		out = append(out, it)
+	}
+	return out, nil
+}
+
+func resolveListUnitPrice(explicit *int64, existing pgtype.Int8, defaultMinor int64, hasDefault bool) (pgtype.Int8, error) {
+	if explicit != nil {
+		if *explicit < 0 {
+			return pgtype.Int8{}, fmt.Errorf("%w: unitPriceMinor must be >= 0", ErrInvalidArgument)
+		}
+		return pgtype.Int8{Int64: *explicit, Valid: true}, nil
+	}
+	if existing.Valid {
+		return existing, nil
+	}
+	if hasDefault {
+		if defaultMinor < 0 {
+			return pgtype.Int8{}, fmt.Errorf("%w: unitPriceMinor must be >= 0", ErrInvalidArgument)
+		}
+		return pgtype.Int8{Int64: defaultMinor, Valid: true}, nil
+	}
+	return pgtype.Int8{}, nil
 }
 
 func normalizeUUIDSlice(ids []uuid.UUID) []uuid.UUID {

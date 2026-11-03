@@ -1101,15 +1101,16 @@ type V1AdminProductList struct {
 
 // V1AdminProductListItemMembership is one SKU on a named product list.
 type V1AdminProductListItemMembership struct {
-	ProductID   string  `json:"productId"`
-	Sku         string  `json:"sku"`
-	Name        string  `json:"name"`
-	Active      bool    `json:"active"`
-	SortOrder   int32   `json:"sortOrder"`
-	Barcode     *string `json:"barcode,omitempty"`
-	Description string  `json:"description,omitempty"`
-	CategoryID  *string `json:"categoryId,omitempty"`
-	BrandID     *string `json:"brandId,omitempty"`
+	ProductID      string  `json:"productId"`
+	Sku            string  `json:"sku"`
+	Name           string  `json:"name"`
+	Active         bool    `json:"active"`
+	SortOrder      int32   `json:"sortOrder"`
+	Barcode        *string `json:"barcode,omitempty"`
+	Description    string  `json:"description,omitempty"`
+	CategoryID     *string `json:"categoryId,omitempty"`
+	BrandID        *string `json:"brandId,omitempty"`
+	UnitPriceMinor *int64  `json:"unitPriceMinor"`
 }
 
 // V1AdminNamedProductListEnvelope is GET /v1/admin/product-lists.
@@ -1133,9 +1134,18 @@ type V1AdminProductListPatchRequest struct {
 	Description *string `json:"description,omitempty"`
 }
 
+// V1AdminProductListItemWrite is one membership row on PUT /v1/admin/product-lists/{listId}/items.
+type V1AdminProductListItemWrite struct {
+	ProductID      string `json:"productId"`
+	UnitPriceMinor *int64 `json:"unitPriceMinor"`
+}
+
 // V1AdminProductListItemsReplaceRequest is PUT /v1/admin/product-lists/{listId}/items.
+// Items takes precedence over ProductIDs. Omitted unitPriceMinor inherits the previous
+// list price, then the default price book.
 type V1AdminProductListItemsReplaceRequest struct {
-	ProductIDs []string `json:"productIds"`
+	ProductIDs []string                      `json:"productIds"`
+	Items      []V1AdminProductListItemWrite `json:"items"`
 }
 
 // V1AdminMachineProductLists is GET/PUT /v1/admin/machines/{machineId}/product-lists.

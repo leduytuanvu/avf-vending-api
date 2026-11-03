@@ -62,12 +62,13 @@ type Assortment struct {
 
 // Products belonging to an assortment; sort_order drives UI and default sequencing.
 type AssortmentItem struct {
-	ID           uuid.UUID
-	AssortmentID uuid.UUID
-	ProductID    uuid.UUID
-	SortOrder    int32
-	Notes        []byte
-	CreatedAt    time.Time
+	ID             uuid.UUID
+	AssortmentID   uuid.UUID
+	ProductID      uuid.UUID
+	SortOrder      int32
+	UnitPriceMinor pgtype.Int8
+	Notes          []byte
+	CreatedAt      time.Time
 }
 
 type AuditEvent struct {

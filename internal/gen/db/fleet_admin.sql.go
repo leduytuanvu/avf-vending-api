@@ -1592,6 +1592,7 @@ RETURNING
     assortment_id,
     product_id,
     sort_order,
+    unit_price_minor,
     notes,
     created_at
 `
@@ -1616,6 +1617,7 @@ func (q *Queries) FleetAdminUpsertAssortmentItem(ctx context.Context, arg FleetA
 		&i.AssortmentID,
 		&i.ProductID,
 		&i.SortOrder,
+		&i.UnitPriceMinor,
 		&i.Notes,
 		&i.CreatedAt,
 	)

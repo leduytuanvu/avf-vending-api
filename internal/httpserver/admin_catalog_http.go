@@ -681,6 +681,14 @@ func textFromPgText(t pgtype.Text) *string {
 	return &s
 }
 
+func int64PtrFromPgInt8(v pgtype.Int8) *int64 {
+	if !v.Valid {
+		return nil
+	}
+	n := v.Int64
+	return &n
+}
+
 func mapAdminProduct(p db.Product, img *db.ProductImage, tags []db.Tag, media *V1AdminProductMediaDoc) V1AdminProduct {
 	if tags == nil {
 		tags = []db.Tag{}
