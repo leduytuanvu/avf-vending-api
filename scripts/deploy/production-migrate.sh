@@ -171,11 +171,33 @@ resolve_database_url() {
 	return 1
 }
 
+url_hostname() {
+	python3 - "$1" <<'PY'
+import sys
+from urllib.parse import urlparse
+print((urlparse(sys.argv[1]).hostname or "").lower())
+PY
+}
+
 run_psql() {
 	local sql="$1"
-	local psql_url
-	psql_url="$(sanitize_url_for_pg_tools "${DATABASE_URL}")"
+	local psql_url host container
+	local -a network_args=()
+	# Session-scoped advisory locks cannot use pgbouncer transaction pooling, and
+	# hostname pgbouncer only resolves on dbnet. Prefer BACKUP_DATABASE_URL.
+	psql_url="$(resolve_backup_database_url)"
+	host="$(url_hostname "${psql_url}")"
+	if [[ "${host}" == "pgbouncer" || "${host}" == "postgres" ]]; then
+		container="$(find_running_api_container)"
+		[[ -n "${container}" ]] || fail_with_code "${EXIT_MIGRATION}" "cannot resolve ${host}: no running api container for docker network namespace"
+		network_args=(--network "container:${container}")
+	elif readarray -d '' -t network_args < <(pg_dump_docker_network_args "${psql_url}"); then
+		filter_nonempty_tokens network_args
+	else
+		network_args=()
+	fi
 	docker run --rm \
+		"${network_args[@]}" \
 		--env-file "${COMPOSE_ENV_FILE}" \
 		-e "DATABASE_URL=${psql_url}" \
 		"${POSTGRES_TOOLS_IMAGE}" \
