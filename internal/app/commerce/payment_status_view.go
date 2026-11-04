@@ -54,17 +54,7 @@ func (s *Service) GetPaymentStatusView(
 	}
 	state := strings.ToLower(strings.TrimSpace(pay.State))
 	if state == "created" || state == "authorized" || state == "pending" {
-		refresh := s.RefreshPendingPaymentFromProviderForPayment(ctx, companyID, orderID, paymentID, machineExternalCode)
-		out.PaymentDiagnostic = strings.TrimSpace(refresh.Diagnostic)
-		pay, err = s.life.GetPaymentByID(ctx, paymentID)
-		if err != nil {
-			return PaymentStatusView{}, err
-		}
-		out.Payment = pay
-		out.Outcome = strings.TrimSpace(pay.Outcome)
-		if o.WinningPaymentID != nil && *o.WinningPaymentID == paymentID {
-			out.IsWinningPayment = true
-		}
+		out.PaymentDiagnostic = "awaiting_callback"
 	}
 	return out, nil
 }

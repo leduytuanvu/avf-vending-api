@@ -1193,17 +1193,27 @@ func (s *machineCommerceServer) GetOrderStatus(ctx context.Context, req *machine
 		zap.String("order_state", st.Order.Status),
 		zap.String("payment_state", st.Payment.State),
 	)
-	// Accelerate pending QR payments via provider query (ZaloPay-style); IPN/MQTT remain primary.
+	// IPN/MQTT remain primary. One PSP probe per order after a short grace, then 5s/15s cooldown.
 	paymentDiagnostic := ""
 	if st.PaymentPresent {
 		ps := strings.ToLower(strings.TrimSpace(st.Payment.State))
 		os := strings.ToLower(strings.TrimSpace(st.Order.Status))
 		if ps == "created" || ps == "authorized" || ps == "pending" {
-			if shouldRunOrderStatusPSPRefresh(orderID) {
-				refreshCtx, cancelRefresh := contextForOrderStatusPSPRefresh(ctx)
-				refreshOutcome := svc.RefreshPendingPaymentFromProvider(refreshCtx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
-				cancelRefresh()
-				paymentDiagnostic = strings.TrimSpace(refreshOutcome.Diagnostic)
+			oldestPending, hasPending, pendingErr := svc.OldestPendingPaymentCreatedAt(ctx, orderID)
+			if pendingErr != nil {
+				log.Warn("ORDER_STATUS_PENDING_CREATED_AT_ERROR",
+					zap.String("order_id", orderID.String()),
+					zap.Error(pendingErr),
+				)
+			} else if hasPending {
+				if shouldRunOrderStatusPSPRefresh(orderID, oldestPending, time.Now()) {
+					refreshCtx, cancelRefresh := contextForOrderStatusPSPRefresh(ctx)
+					refreshOutcome := svc.RefreshPendingPaymentFromProvider(refreshCtx, uuid.Nil, orderID, machineExternalCode(ctx, s.deps, claims.MachineID))
+					cancelRefresh()
+					paymentDiagnostic = strings.TrimSpace(refreshOutcome.Diagnostic)
+				} else {
+					paymentDiagnostic = "awaiting_callback"
+				}
 			}
 			st, err = s.getStatus(ctx, claims, svc, orderID, slotIndex)
 			if err != nil {

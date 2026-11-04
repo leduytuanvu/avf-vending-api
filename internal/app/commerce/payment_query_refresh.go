@@ -94,6 +94,25 @@ func (s *Service) RefreshPendingPaymentFromProvider(
 	return out
 }
 
+// OldestPendingPaymentCreatedAt returns the created_at of the oldest pending payment on the order.
+// ok is false when the order has no created/authorized/pending payments.
+func (s *Service) OldestPendingPaymentCreatedAt(ctx context.Context, orderID uuid.UUID) (time.Time, bool, error) {
+	pending, err := s.pendingPaymentsForQueryRefresh(ctx, orderID)
+	if err != nil {
+		return time.Time{}, false, err
+	}
+	if len(pending) == 0 {
+		return time.Time{}, false, nil
+	}
+	oldest := pending[0].CreatedAt
+	for _, pay := range pending[1:] {
+		if oldest.IsZero() || (!pay.CreatedAt.IsZero() && pay.CreatedAt.Before(oldest)) {
+			oldest = pay.CreatedAt
+		}
+	}
+	return oldest, true, nil
+}
+
 func (s *Service) pendingPaymentsForQueryRefresh(ctx context.Context, orderID uuid.UUID) ([]domaincommerce.Payment, error) {
 	var all []domaincommerce.Payment
 	var err error

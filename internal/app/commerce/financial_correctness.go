@@ -210,10 +210,36 @@ func (s *Service) resolveAuthoritativePayment(ctx context.Context, orderID uuid.
 	if err == nil {
 		return pay, nil
 	}
-	if errors.Is(err, ErrNotFound) && s.life != nil {
+	if !errors.Is(err, ErrNotFound) {
+		return domaincommerce.Payment{}, err
+	}
+	all, listErr := s.financial.ListPaymentsForOrder(ctx, orderID)
+	if listErr != nil {
+		return domaincommerce.Payment{}, listErr
+	}
+	if captured, ok := oldestCapturedOrPartiallyRefundedPayment(all); ok {
+		return captured, nil
+	}
+	if s.life != nil {
 		return s.life.GetLatestPaymentForOrder(ctx, orderID)
 	}
-	return domaincommerce.Payment{}, err
+	return domaincommerce.Payment{}, ErrNotFound
+}
+
+func oldestCapturedOrPartiallyRefundedPayment(payments []domaincommerce.Payment) (domaincommerce.Payment, bool) {
+	var best domaincommerce.Payment
+	found := false
+	for _, pay := range payments {
+		state := strings.ToLower(strings.TrimSpace(pay.State))
+		if state != "captured" && state != "partially_refunded" {
+			continue
+		}
+		if !found || pay.CreatedAt.Before(best.CreatedAt) {
+			best = pay
+			found = true
+		}
+	}
+	return best, found
 }
 
 // AttemptWinningPaymentClaim atomically claims order financial ownership for a captured payment.
