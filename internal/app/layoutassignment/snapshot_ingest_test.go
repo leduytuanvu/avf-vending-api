@@ -92,3 +92,21 @@ func TestSnapshotHistoryPage_JSONTags(t *testing.T) {
 	require.Contains(t, string(raw), `"total"`)
 	require.NotContains(t, string(raw), `"Items"`)
 }
+
+func TestMarshalSnapshotSlotsJSON_includesZeroInventoryAndDisabled(t *testing.T) {
+	raw, err := marshalSnapshotSlotsJSON([]SnapshotSlotInput{{
+		SlotCode:         "A1",
+		MaxQuantity:      5,
+		CurrentInventory: 0,
+		Enabled:          false,
+	}})
+	require.NoError(t, err)
+
+	var decoded []map[string]any
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	require.Len(t, decoded, 1)
+	require.Equal(t, float64(0), decoded[0]["currentInventory"])
+	require.Equal(t, false, decoded[0]["enabled"])
+	require.Contains(t, string(raw), `"currentInventory":0`)
+	require.Contains(t, string(raw), `"enabled":false`)
+}

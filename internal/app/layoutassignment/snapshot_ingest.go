@@ -373,8 +373,8 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 		MaxQuantity          int32  `json:"maxQuantity,omitempty"`
 		PriceMinor           int64  `json:"priceMinor,omitempty"`
 		LocalPricingRevision int64  `json:"localPricingRevision,omitempty"`
-		CurrentInventory     int32  `json:"currentInventory,omitempty"`
-		Enabled              *bool  `json:"enabled,omitempty"`
+		CurrentInventory     int32  `json:"currentInventory"`
+		Enabled              bool   `json:"enabled"`
 		OperationalState     string `json:"operationalState,omitempty"`
 		ProductName          string `json:"productName,omitempty"`
 		ProductSku           string `json:"productSku,omitempty"`
@@ -387,7 +387,6 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 		if code == "" {
 			return nil, fmt.Errorf("slotCode is required for each slot")
 		}
-		enabled := sl.Enabled
 		out = append(out, slotJSON{
 			SlotCode:             code,
 			SlotOrdinal:          sl.SlotOrdinal,
@@ -398,7 +397,7 @@ func marshalSnapshotSlotsJSON(slots []SnapshotSlotInput) ([]byte, error) {
 			PriceMinor:           sl.PriceMinor,
 			LocalPricingRevision: sl.LocalPricingRevision,
 			CurrentInventory:     sl.CurrentInventory,
-			Enabled:              &enabled,
+			Enabled:              sl.Enabled,
 			OperationalState:     strings.TrimSpace(sl.OperationalState),
 			ProductName:          strings.TrimSpace(sl.ProductName),
 			ProductSku:           strings.TrimSpace(sl.ProductSku),

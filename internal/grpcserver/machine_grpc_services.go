@@ -878,8 +878,8 @@ func marshalLayoutSnapshotSlots(slots []*machinev1.LayoutSnapshotSlot) ([]byte, 
 		MaxQuantity          int32  `json:"maxQuantity,omitempty"`
 		PriceMinor           int64  `json:"priceMinor,omitempty"`
 		LocalPricingRevision int64  `json:"localPricingRevision,omitempty"`
-		CurrentInventory     int32  `json:"currentInventory,omitempty"`
-		Enabled              bool   `json:"enabled,omitempty"`
+		CurrentInventory     int32  `json:"currentInventory"`
+		Enabled              bool   `json:"enabled"`
 		OperationalState     string `json:"operationalState,omitempty"`
 		ProductName          string `json:"productName,omitempty"`
 		ProductSku           string `json:"productSku,omitempty"`
