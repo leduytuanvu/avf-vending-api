@@ -16,6 +16,7 @@ import (
 	"github.com/avf/avf-vending-api/internal/domain/compliance"
 	domainoperator "github.com/avf/avf-vending-api/internal/domain/operator"
 	"github.com/avf/avf-vending-api/internal/gen/db"
+	"github.com/avf/avf-vending-api/internal/modules/postgres"
 	"github.com/avf/avf-vending-api/internal/platform/auth"
 	platformmqtt "github.com/avf/avf-vending-api/internal/platform/mqtt"
 	"github.com/go-chi/chi/v5"
@@ -519,6 +520,14 @@ func serveAdminMachineOpsOverview(app *api.HTTPApplication) http.HandlerFunc {
 		if app.MachineRuntime != nil {
 			if enriched, err := app.MachineRuntime.BuildMachineAdminOperationalOverview(r.Context(), machineID); err == nil {
 				mergeOpsOverviewJSON(out, enriched)
+			}
+		}
+		if app.TelemetryStore != nil {
+			if snap, err := app.TelemetryStore.GetTelemetrySnapshot(r.Context(), machineID); err == nil {
+				filtered := postgres.FilterDeviceHealthMetrics(snap.MetricsState)
+				if metrics := strings.TrimSpace(string(filtered)); metrics != "" && metrics != "{}" && metrics != "null" {
+					out["device_health"] = json.RawMessage(filtered)
+				}
 			}
 		}
 		writeJSON(w, http.StatusOK, out)

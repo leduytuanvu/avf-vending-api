@@ -57,6 +57,7 @@ type AdminMachineListItem struct {
 	AppVersion            *string                      `json:"appVersion,omitempty"`
 	FirmwareVersion       *string                      `json:"firmwareVersion,omitempty"`
 	LastHeartbeatAt       *string                      `json:"lastHeartbeatAt,omitempty"`
+	DeviceCondition       *string                      `json:"deviceCondition,omitempty"`
 	EffectiveTimezone     string                       `json:"effectiveTimezone"`
 	AssignedTechnicians   []AdminAssignedTechnician    `json:"assignedTechnicians"`
 	CurrentOperator       *AdminCurrentOperator        `json:"currentOperator"`

@@ -370,6 +370,9 @@ func (w *JetStreamWorkers) handleState(ctx context.Context, env tel.Envelope) er
 
 func (w *JetStreamWorkers) handleMetrics(ctx context.Context, env tel.Envelope) error {
 	se := strings.TrimSpace(env.SourceEvent)
+	if se == "telemetry.snapshot" || strings.HasPrefix(se, "telemetry.snapshot.") {
+		return w.handleDeviceHealthSnapshot(ctx, env)
+	}
 	switch se {
 	case "events.vend", "events.cash":
 		data := unwrapTelemetryData(env.Payload)
@@ -421,6 +424,20 @@ func (w *JetStreamWorkers) handleMetrics(ctx context.Context, env tel.Envelope) 
 	default:
 		return w.handleGenericMetrics(ctx, env)
 	}
+}
+
+func (w *JetStreamWorkers) handleDeviceHealthSnapshot(ctx context.Context, env tel.Envelope) error {
+	data := unwrapTelemetryData(env.Payload)
+	patch := postgres.ParseDeviceHealthCustomFields(data)
+	if emptyJSONObject(patch) {
+		return nil
+	}
+	return w.store.MergeMachineMetricsState(ctx, env.MachineID, patch)
+}
+
+func emptyJSONObject(b []byte) bool {
+	s := strings.TrimSpace(string(b))
+	return s == "" || s == "{}" || s == "null"
 }
 
 func (w *JetStreamWorkers) handleGenericMetrics(ctx context.Context, env tel.Envelope) error {

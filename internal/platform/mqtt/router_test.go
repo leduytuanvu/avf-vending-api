@@ -1,6 +1,7 @@
 package mqtt
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/avf/avf-vending-api/internal/platform/id"
@@ -111,6 +112,60 @@ func TestParseDeviceTopic_newChannels(t *testing.T) {
 		if gotMid != mid || ch != tc.channel {
 			t.Fatalf("topic %s: mid=%s ch=%q want ch=%q", tc.topic, gotMid, ch, tc.channel)
 		}
+	}
+}
+
+func TestDispatch_telemetrySnapshot_usesRawBodyWhenPayloadMissing(t *testing.T) {
+	t.Parallel()
+	mid := uuid.MustParse("44444444-4444-4444-4444-444444444441")
+	topic := fmt.Sprintf("pre/%s/telemetry/snapshot", mid)
+	var cap captureIngest
+	body := []byte(`{"machineId":"` + mid.String() + `","timestamp":1,"customFields":{"cpu_pct":"9.5","device_condition":"ok"}}`)
+	if err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, body, &cap, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.lastTelemetry == nil {
+		t.Fatal("expected telemetry ingest")
+	}
+	if cap.lastTelemetry.EventType != "telemetry.snapshot" {
+		t.Fatalf("event type: %q", cap.lastTelemetry.EventType)
+	}
+	if string(cap.lastTelemetry.Payload) == "{}" {
+		t.Fatal("raw health snapshot body must not collapse to empty object")
+	}
+	if !bytes.Contains(cap.lastTelemetry.Payload, []byte(`"cpu_pct"`)) {
+		t.Fatalf("payload missing customFields: %s", cap.lastTelemetry.Payload)
+	}
+}
+
+func TestDispatch_telemetrySnapshot_prefersNestedEnvelopePayload(t *testing.T) {
+	t.Parallel()
+	mid := uuid.MustParse("44444444-4444-4444-4444-444444444442")
+	topic := fmt.Sprintf("pre/%s/telemetry/snapshot", mid)
+	var cap captureIngest
+	body := []byte(`{"event_type":"telemetry.snapshot","payload":{"customFields":{"cpu_pct":"3"}}}`)
+	if err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, body, &cap, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.lastTelemetry == nil || !bytes.Contains(cap.lastTelemetry.Payload, []byte(`"cpu_pct"`)) {
+		t.Fatalf("nested payload: %+v", cap.lastTelemetry)
+	}
+}
+
+func TestDispatch_eventsVend_doesNotFallbackToOuterBody(t *testing.T) {
+	t.Parallel()
+	mid := uuid.MustParse("44444444-4444-4444-4444-444444444443")
+	topic := fmt.Sprintf("pre/%s/events/vend", mid)
+	var cap captureIngest
+	body := []byte(`{"event_type":"events.vend","customFields":{"cpu_pct":"1"}}`)
+	if err := Dispatch(context.Background(), TopicLayoutLegacy, "pre", topic, body, &cap, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if cap.lastTelemetry == nil {
+		t.Fatal("expected telemetry ingest")
+	}
+	if string(cap.lastTelemetry.Payload) != "{}" {
+		t.Fatalf("vend inner payload must stay empty without nested payload, got %s", cap.lastTelemetry.Payload)
 	}
 }
 

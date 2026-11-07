@@ -351,7 +351,13 @@ func Dispatch(ctx context.Context, layout TopicLayout, prefix, topic string, pay
 			ingestReject(hooks, topic, "telemetry_missing_event_type", len(payload))
 			return err
 		}
-		raw := innerPayloadFromWire(w, nil)
+		// App health snapshots are raw HealthSnapshotPayload JSON (no nested "payload").
+		// Only this channel falls back to the original body so CPU/thermal fields persist.
+		var innerFallback json.RawMessage
+		if channel == "telemetry/snapshot" {
+			innerFallback = payload
+		}
+		raw := innerPayloadFromWire(w, innerFallback)
 		if !json.Valid(raw) {
 			ingestReject(hooks, topic, "telemetry_invalid_inner_json", len(payload))
 			return errors.New("mqtt: telemetry.payload must be valid JSON")

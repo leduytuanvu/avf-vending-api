@@ -18,6 +18,7 @@ SELECT
     snap.app_version,
     snap.firmware_version,
     snap.last_heartbeat_at,
+    COALESCE(snap.metrics_state ->> 'device_condition', '')::text AS device_condition,
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,

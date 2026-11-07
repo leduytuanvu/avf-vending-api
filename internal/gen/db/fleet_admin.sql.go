@@ -1204,6 +1204,7 @@ SELECT
     snap.app_version,
     snap.firmware_version,
     snap.last_heartbeat_at,
+    COALESCE(snap.metrics_state ->> 'device_condition', '')::text AS device_condition,
     COALESCE(
         NULLIF(btrim(COALESCE(m.timezone_override, '')), ''),
         s.timezone,
@@ -1256,6 +1257,7 @@ type FleetAdminListMachinesRow struct {
 	AppVersion        pgtype.Text
 	FirmwareVersion   pgtype.Text
 	LastHeartbeatAt   pgtype.Timestamptz
+	DeviceCondition   string
 	EffectiveTimezone string
 }
 
@@ -1298,6 +1300,7 @@ func (q *Queries) FleetAdminListMachines(ctx context.Context, arg FleetAdminList
 			&i.AppVersion,
 			&i.FirmwareVersion,
 			&i.LastHeartbeatAt,
+			&i.DeviceCondition,
 			&i.EffectiveTimezone,
 		); err != nil {
 			return nil, err

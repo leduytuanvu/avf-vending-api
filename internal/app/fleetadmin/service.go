@@ -49,6 +49,14 @@ func pgTextStringPtr(t pgtype.Text) *string {
 	return &s
 }
 
+func nonBlankStringPtr(s string) *string {
+	t := strings.TrimSpace(s)
+	if t == "" {
+		return nil
+	}
+	return &t
+}
+
 func sqlcScalarString(v interface{}) string {
 	if v == nil {
 		return ""
@@ -122,6 +130,7 @@ func baseItemFromFleetListRow(m db.FleetAdminListMachinesRow) AdminMachineListIt
 		AppVersion:          pgTextStringPtr(m.AppVersion),
 		FirmwareVersion:     pgTextStringPtr(m.FirmwareVersion),
 		LastHeartbeatAt:     pgTimestamptzRFC3339NanoString(m.LastHeartbeatAt),
+		DeviceCondition:     nonBlankStringPtr(m.DeviceCondition),
 		EffectiveTimezone:   m.EffectiveTimezone,
 		AssignedTechnicians: nil,
 		CurrentOperator:     nil,
